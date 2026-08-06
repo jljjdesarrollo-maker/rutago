@@ -18,13 +18,35 @@ export function CaptureScreen({ onBack, onPhotoCaptured, onSkipPhoto }: CaptureS
   const handleFile = (file: File) => {
     if (!file.type.startsWith('image/')) return;
     setLoading(true);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      setPreview(result);
-      onPhotoCaptured(result);
+
+    // Compress for mobile: max 600px, JPEG quality 0.5
+    const img = new Image();
+    const blobUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+      const MAX = 600;
+      let w = img.width;
+      let h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0, w, h);
+      const compressed = canvas.toDataURL('image/jpeg', 0.5);
+      setPreview(compressed);
+      onPhotoCaptured(compressed);
+      setLoading(false);
     };
-    reader.readAsDataURL(file);
+    img.onerror = () => {
+      URL.revokeObjectURL(blobUrl);
+      setLoading(false);
+      alert('Error al cargar la imagen.');
+    };
+    img.src = blobUrl;
   };
 
   const handleCameraCapture = () => {

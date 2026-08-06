@@ -148,10 +148,12 @@ export function RecordForm({ saving, error, onBack, onSave }: RecordFormProps) {
     if (!file || !file.type.startsWith('image/')) return;
     e.target.value = '';
 
-    // Compress photo: max 800px, JPEG quality 0.6 (~50-150KB vs 2-8MB original)
+    // Compress photo: max 600px, JPEG quality 0.5 (optimized for mobile ~30-80KB)
     const img = new Image();
+    const blobUrl = URL.createObjectURL(file);
     img.onload = () => {
-      const MAX = 800;
+      URL.revokeObjectURL(blobUrl);
+      const MAX = 600;
       let w = img.width;
       let h = img.height;
       if (w > MAX || h > MAX) {
@@ -163,10 +165,13 @@ export function RecordForm({ saving, error, onBack, onSave }: RecordFormProps) {
       canvas.height = h;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(img, 0, 0, w, h);
-      setPhotoPreview(canvas.toDataURL('image/jpeg', 0.6));
+      setPhotoPreview(canvas.toDataURL('image/jpeg', 0.5));
     };
-    img.src = URL.createObjectURL(file);
-    URL.revokeObjectURL(img.src);
+    img.onerror = () => {
+      URL.revokeObjectURL(blobUrl);
+      alert('Error al cargar la imagen. Intenta con otra foto.');
+    };
+    img.src = blobUrl;
   };
 
   const totals = useMemo(() => {
