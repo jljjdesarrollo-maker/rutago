@@ -65,6 +65,28 @@ export default function Home() {
     setSaving(true);
     setError(null);
     try {
+      // Step 1: Upload photo separately via FormData (mobile-friendly)
+      let uploadedPhotoUrl: string | null = null;
+      if (photoBase64) {
+        // Convert base64 data URL to Blob for FormData upload
+        const blob = await fetch(photoBase64).then(r => r.blob());
+        const formData = new FormData();
+        formData.append('photo', blob, 'cuaderno.jpg');
+
+        const uploadRes = await fetch('/api/upload-photo', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          const uploadErr = await uploadRes.json();
+          throw new Error(uploadErr.error || 'Error al subir foto');
+        }
+        const uploadData = await uploadRes.json();
+        uploadedPhotoUrl = uploadData.photoUrl;
+      }
+
+      // Step 2: Save record with photo URL
       const res = await fetch('/api/records', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,7 +109,7 @@ export default function Home() {
             description: e.description,
             amount: num(e.amount),
           })),
-          photoUrl: photoBase64,
+          photoUrl: uploadedPhotoUrl,
         }),
       });
 

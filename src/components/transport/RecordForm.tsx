@@ -147,31 +147,9 @@ export function RecordForm({ saving, error, onBack, onSave }: RecordFormProps) {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith('image/')) return;
     e.target.value = '';
-
-    // Compress photo: max 600px, JPEG quality 0.5 (optimized for mobile ~30-80KB)
-    const img = new Image();
-    const blobUrl = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(blobUrl);
-      const MAX = 600;
-      let w = img.width;
-      let h = img.height;
-      if (w > MAX || h > MAX) {
-        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-        else { w = Math.round(w * MAX / h); h = MAX; }
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(img, 0, 0, w, h);
-      setPhotoPreview(canvas.toDataURL('image/jpeg', 0.5));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(blobUrl);
-      alert('Error al cargar la imagen. Intenta con otra foto.');
-    };
-    img.src = blobUrl;
+    // Just show preview — server will compress on upload
+    const url = URL.createObjectURL(file);
+    setPhotoPreview(url);
   };
 
   const totals = useMemo(() => {
