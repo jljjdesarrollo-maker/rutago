@@ -18,11 +18,13 @@ export function CaptureScreen({ onBack, onPhotoCaptured, onSkipPhoto }: CaptureS
   const handleFile = (file: File) => {
     if (!file.type.startsWith('image/')) return;
     setLoading(true);
-    // Store file reference for upload (server will compress)
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    onPhotoCaptured(url);
-    setLoading(false);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setPreview(result);
+      onPhotoCaptured(result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleCameraCapture = () => {
