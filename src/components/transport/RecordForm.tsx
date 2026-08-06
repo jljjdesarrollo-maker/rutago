@@ -146,14 +146,10 @@ export function RecordForm({ saving, error, onBack, onSave }: RecordFormProps) {
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith('image/')) return;
-    e.target.value = '';
-    // FileReader directo (sin compresion canvas) - compatible con celular
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result as string;
-      setPhotoPreview(result);
-    };
+    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const totals = useMemo(() => {
