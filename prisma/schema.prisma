@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model BusVT {
+  id          String  @id @default(cuid())
+  codigo      String  @unique
+  nombre      String
+  frecuencias Json    @default("[]")
+  activo      Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DailyRecord {
+  id             String   @id @default(cuid())
+  date           String
+  km             String?
+  conductor      String?
+  ayudanteNombre String?
+  vtCode         String?
+  production     Float    @default(0)
+  cajaComun      Float    @default(0)
+  sobrante       Float    @default(0)
+  tickets        Float    @default(0)
+  entregaAyudante  Float  @default(0)
+  entregaCompania  Float  @default(0)
+  totalGastos    Float    @default(0)
+  photoUrl       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  trips   Trip[]
+  expenses Expense[]
+}
+
+model Trip {
+  id           String  @id @default(cuid())
+  recordId     String
+  order        Int
+  routeFrom    String
+  routeTo      String
+  time         String?
+  income       Float   @default(0)
+  boletos      Float   @default(0)
+
+  record DailyRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id          String  @id @default(cuid())
+  recordId    String
+  order       Int
+  description String
+  amount      Float   @default(0)
+
+  record DailyRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+}
+
+model Persona {
+  id        String   @id @default(cuid())
+  nombre    String
+  cedula    String?
+  telefono  String?
+  rol       String   @default("CONDUCTOR") // CONDUCTOR | AYUDANTE | ADMIN
+  pin       String   @unique
+  esActual  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
