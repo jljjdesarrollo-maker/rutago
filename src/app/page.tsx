@@ -65,6 +65,13 @@ export default function Home() {
     setSaving(true);
     setError(null);
     try {
+      // Log photo size for debugging
+      const photoSizeKB = photoBase64 ? Math.round(photoBase64.length / 1024) : 0;
+      console.log('Foto size:', photoSizeKB, 'KB');
+      if (photoBase64 && photoSizeKB > 4000) {
+        throw new Error('La foto es muy grande (' + photoSizeKB + 'KB). Usa una imagen mas pequena o toma la foto desde la PC.');
+      }
+
       const res = await fetch('/api/records', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
