@@ -1,34 +1,61 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { type VTSession } from './types-boletos';
-import { Bus, User, ArrowRight } from 'lucide-react';
+import { Bus, User, ArrowRight, Loader2 } from 'lucide-react';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;
 }
 
-const VT_OPTIONS = [
-  { vtCode: 'BUS01', nombre: 'Bus 01' },
-  { vtCode: 'BUS02', nombre: 'Bus 02' },
-  { vtCode: 'BUS03', nombre: 'Bus 03' },
-];
+interface VTOption {
+  id: string;
+  codigo: string;
+  nombre: string;
+}
 
 export function HomeScreenVT({ onSessionStart }: Props) {
+  const [vts, setVts] = useState<VTOption[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedVT, setSelectedVT] = useState<string>('');
   const [ayudanteNombre, setAyudanteNombre] = useState('');
   const [ayudanteId, setAyudanteId] = useState('');
 
+  useEffect(() => {
+    fetch('/api/bus-vts')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setVts(data.map((vt: any) => ({
+            id: vt.id,
+            codigo: vt.codigo,
+            nombre: vt.nombre,
+          })));
+        }
+      })
+      .catch(err => console.error('Error cargando VTs:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
   const handleStart = () => {
     if (!selectedVT || !ayudanteNombre.trim()) return;
-    const vt = VT_OPTIONS.find(v => v.vtCode === selectedVT)!;
+    const vt = vts.find(v => v.codigo === selectedVT)!;
     onSessionStart({
-      vtCode: vt.vtCode,
+      vtCode: vt.codigo,
       nombre: vt.nombre,
       ayudanteId: ayudanteId.trim() || `ayu_${Date.now()}`,
       ayudanteNombre: ayudanteNombre.trim(),
     });
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-[100dvh] bg-gray-50 items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#912D26] animate-spin" />
+        <p className="mt-3 text-[#3A3A3A] text-sm">Cargando unidades...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-gray-50">
@@ -40,19 +67,26 @@ export function HomeScreenVT({ onSessionStart }: Props) {
         <p className="text-red-100 text-sm">TRANSPORTES VILCABAMBA</p>
       </div>
       <div className="flex-1 px-6 py-8 space-y-6">
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-bold text-[#3A3A3A] mb-4 flex items-center gap-2">
-            <Bus className="w-5 h-5 text-[#912D26]" /> Unidad
-          </h2>
-          <div className="grid grid-cols-3 gap-3">
-            {VT_OPTIONS.map(vt => (
-              <button key={vt.vtCode} onClick={() => setSelectedVT(vt.vtCode)}
-                className={`py-4 px-3 rounded-xl text-center transition-all ${selectedVT === vt.vtCode ? 'bg-[#912D26] text-white shadow-md' : 'bg-gray-100 text-[#3A3A3A] hover:bg-gray-200'}`}>
-                <div className="text-xs font-medium">{vt.nombre}</div>
-              </button>
-            ))}
+        {vts.length === 0 ? (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 text-center">
+            <p className="text-yellow-700 font-medium">No hay unidades activas</p>
+            <p className="text-yellow-600 text-sm mt-1">Ejecuta el seed: POST /api/seed-vts</p>
           </div>
-        </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <h2 className="text-lg font-bold text-[#3A3A3A] mb-4 flex items-center gap-2">
+              <Bus className="w-5 h-5 text-[#912D26]" /> Unidad
+            </h2>
+            <div className="grid grid-cols-3 gap-3">
+              {vts.map(vt => (
+                <button key={vt.codigo} onClick={() => setSelectedVT(vt.codigo)}
+                  className={`py-4 px-3 rounded-xl text-center transition-all ${selectedVT === vt.codigo ? 'bg-[#912D26] text-white shadow-md' : 'bg-gray-100 text-[#3A3A3A] hover:bg-gray-200'}`}>
+                  <div className="text-sm font-bold">{vt.codigo}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <h2 className="text-lg font-bold text-[#3A3A3A] mb-4 flex items-center gap-2">
             <User className="w-5 h-5 text-[#912D26]" /> Ayudante
