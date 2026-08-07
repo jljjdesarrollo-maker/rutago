@@ -5,7 +5,7 @@ import { type FrecuenciaEstado, type VTSession } from './types-boletos';
 import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta } from '@/lib/tarifas-data';
 import { saveVenta } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
-import { Check, X, ChevronLeft } from 'lucide-react';
+import { Check, ChevronLeft } from 'lucide-react';
 
 interface Props {
   session: VTSession;
@@ -15,17 +15,18 @@ interface Props {
 }
 
 export function TicketScreen({ session, estado, connection, onClose }: Props) {
-  const [tipo, setTipo] = useState<'ida' | 'vuelta' | null>(null);
   const [parada, setParada] = useState('');
   const [cobrado, setCobrado] = useState('');
   const [lastSale, setLastSale] = useState<{ parada: string; monto: number } | null>(null);
   const [ventasHoy, setVentasHoy] = useState(0);
   const [totalHoy, setTotalHoy] = useState(0);
 
+  // La dirección ya viene de la frecuencia: "Loja-Vilcabamba" → ida, "Vilcabamba-Loja" → vuelta
+  const tipo = estado.direccion as 'ida' | 'vuelta';
   const ruta = estado.ruta;
   const rutaMatched = matchRuta(ruta);
-  const paradas = tipo ? getParadasByRutaAndTipo(rutaMatched, tipo) : [];
-  const tarifaAuto = parada ? getTarifa(rutaMatched, parada, tipo || 'ida') : 0;
+  const paradas = getParadasByRutaAndTipo(rutaMatched, tipo);
+  const tarifaAuto = parada ? getTarifa(rutaMatched, parada, tipo) : 0;
 
   const loadStats = useCallback(async () => {
     try {
@@ -45,7 +46,7 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
   };
 
   const handleVenta = async () => {
-    if (!parada.trim() || !cobrado.trim() || !tipo) return;
+    if (!parada.trim() || !cobrado.trim()) return;
     const cobradoNum = parseFloat(cobrado) || 0;
     if (cobradoNum < TARIFA_MINIMA) return;
 
@@ -77,51 +78,12 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
     setParada('');
     setCobrado('');
     loadStats();
-    // Auto-hide after 1.5s
     setTimeout(() => setLastSale(null), 1500);
   };
 
-  // ── Si no seleccionó dirección (ida/vuelta) → Mostrar selector primero ──
-  if (!tipo) {
-    return (
-      <div className="flex flex-col min-h-[100dvh] bg-gray-50">
-        {/* Header compacto */}
-        <div className="bg-[#912D26] text-white px-4 py-3">
-          <div className="flex items-center justify-between">
-            <button onClick={onClose} className="p-1 -ml-1">
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <div className="text-center">
-              <div className="text-base font-bold">{estado.hora} — {rutaMatched}</div>
-            </div>
-            <div className="text-sm font-mono">{ventasHoy} · ${totalHoy.toFixed(2)}</div>
-          </div>
-        </div>
+  const direccionLabel = tipo === 'ida' ? 'IDA' : 'VUELTA';
+  const direccionColor = tipo === 'ida' ? 'bg-[#912D26]' : 'bg-[#3A3A3A]';
 
-        {/* Selector de dirección - botones GRANDES para una mano */}
-        <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6">
-          <div className="text-center mb-2">
-            <p className="text-lg font-bold text-[#3A3A3A]">{estado.nombre}</p>
-            <p className="text-sm text-gray-500">Selecciona la dirección</p>
-          </div>
-
-          <button onClick={() => setTipo('ida')}
-            className="w-full max-w-xs py-8 rounded-3xl bg-[#912D26] text-white shadow-lg shadow-red-200 active:scale-95 transition-all">
-            <div className="text-2xl font-bold">IDA</div>
-            <div className="text-red-100 text-sm mt-1">Loja → Destino</div>
-          </button>
-
-          <button onClick={() => setTipo('vuelta')}
-            className="w-full max-w-xs py-8 rounded-3xl bg-[#3A3A3A] text-white shadow-lg shadow-gray-300 active:scale-95 transition-all">
-            <div className="text-2xl font-bold">VUELTA</div>
-            <div className="text-gray-300 text-sm mt-1">Destino → Loja</div>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Pantalla de venta principal ──
   return (
     <div className="flex flex-col min-h-[100dvh] bg-gray-50">
       {/* Barra de conexión */}
@@ -133,15 +95,15 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
         )}
       </div>
 
-      {/* Header ultra compacto */}
-      <div className="bg-[#912D26] text-white px-4 py-2.5">
+      {/* Header compacto con dirección */}
+      <div className={`${direccionColor} text-white px-4 py-3`}>
         <div className="flex items-center justify-between">
           <button onClick={onClose} className="p-1 -ml-1">
             <ChevronLeft className="w-6 h-6" />
           </button>
           <div className="flex-1 text-center">
-            <div className="text-sm font-bold leading-tight">{estado.hora} · {rutaMatched}</div>
-            <div className="text-[10px] text-red-200 uppercase font-semibold">{tipo}</div>
+            <div className="text-base font-bold leading-tight">{estado.hora} · {rutaMatched}</div>
+            <div className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold uppercase">{direccionLabel}</div>
           </div>
           <div className="text-right">
             <div className="text-xs font-mono">{ventasHoy}t</div>
@@ -150,7 +112,7 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
         </div>
       </div>
 
-      {/* Paradas - botones grandes para una mano */}
+      {/* Contenido principal */}
       <div className="flex-1 px-3 py-3 space-y-3 overflow-y-auto">
         {/* Confirmación de venta (flash) */}
         {lastSale && (
@@ -163,7 +125,7 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
           </div>
         )}
 
-        {/* Grid de paradas */}
+        {/* Grid de paradas - botones grandes para una mano */}
         <div className="grid grid-cols-2 gap-2">
           {paradas.map(p => {
             const isSelected = parada === p.parada;
@@ -197,7 +159,7 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
           />
         </div>
 
-        {/* Campo de monto y botón registrar */}
+        {/* Campo de monto */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
@@ -221,7 +183,7 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
           )}
         </div>
 
-        {/* Botón REGISTRAR - grande, al alcance del pulgar */}
+        {/* Botón REGISTRAR */}
         <button
           onClick={handleVenta}
           disabled={!parada.trim() || !cobrado.trim() || parseFloat(cobrado) < TARIFA_MINIMA}
