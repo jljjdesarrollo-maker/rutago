@@ -19,6 +19,7 @@ import { SyncScreen } from '@/components/transport/SyncScreen';
 import { type AppView, type RecordFormData, type SavedRecord, type UserSession, num } from '@/components/transport/types';
 import { type VTSession, type FrecuenciaEstado } from '@/components/transport/types-boletos';
 import { useToast } from '@/hooks/use-toast';
+import { useConnectionStatus } from '@/hooks/use-connection';
 
 export default function Home() {
   const [user, setUser] = useState<UserSession | null>(null);
@@ -34,6 +35,7 @@ export default function Home() {
   // Boletos state
   const [vtSession, setVtSession] = useState<VTSession | null>(null);
   const [currentEstado, setCurrentEstado] = useState<FrecuenciaEstado | null>(null);
+  const connection = useConnectionStatus();
 
   // Restore session from localStorage on mount
   useEffect(() => {
@@ -214,7 +216,7 @@ export default function Home() {
     );
   }
   if (view === 'boletos_tickets' && vtSession && currentEstado) {
-    return <TicketScreen session={vtSession} estado={currentEstado} onClose={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} />;
+    return <TicketScreen session={vtSession} estado={currentEstado} connection={connection.info} onClose={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} />;
   }
   if (view === 'boletos_cierre' && vtSession && currentEstado) {
     return <CloseFrequencyScreen session={vtSession} estado={currentEstado} onClosed={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} onBack={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} />;
