@@ -22,7 +22,7 @@ export interface VentaLocal {
 }
 
 const DB_NAME = 'RutaGoOffline';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -48,6 +48,11 @@ function openDB(): Promise<IDBDatabase> {
 
       if (!db.objectStoreNames.contains('frecuencias_cache')) {
         db.createObjectStore('frecuencias_cache', { keyPath: 'id' });
+      }
+
+      if (!db.objectStoreNames.contains('estados_frecuencias')) {
+        const efStore = db.createObjectStore('estados_frecuencias', { keyPath: 'estadoId' });
+        efStore.createIndex('vtCode_fecha', ['vtCode', 'fecha'], { unique: false });
       }
     };
 
@@ -207,6 +212,24 @@ export async function getTarifasCache(vtCode: string): Promise<TarifaCache | nul
   });
 }
 
+// Persisted frequency state for offline sequential flow
+export interface EstadoFrecuencia {
+  estadoId: string;           // Composite: fecha_frecuenciaId
+  frecuenciaId: string;
+  nombre: string;
+  ruta: string;
+  hora: string;
+  direccion: string;
+  estado: 'pendiente' | 'abierta' | 'cerrada' | 'no_realizada';
+  ventasCount: number;
+  totalRecaudado: number;
+  arqueoEfectivo?: number;
+  arqueoDiferencia?: number;
+  arqueoFecha?: string;
+  vtCode: string;
+  fecha: string;
+}
+
 export interface FrecuenciaCache {
   id: string; vtCode: string; frecuencias: any[]; updatedAt: string;
 }
@@ -227,4 +250,46 @@ export async function getFrecuenciasCache(vtCode: string): Promise<FrecuenciaCac
     request.onsuccess = () => resolve(request.result || null);
     request.onerror = () => reject(request.error);
   });
+}
+
+// ─── Estado Frecuencia (persisted) ───
+
+export async function saveEstadoFrecuencia(estado: EstadoFrecuencia): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('estados_frecuencias', 'readwrite');
+    tx.objectStore('estados_frecuencias').put(estado);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function getEstadoFrecuencia(estadoId: string): Promise<EstadoFrecuencia | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('estados_frecuencias', 'readonly');
+    const request = tx.objectStore('estados_frecuencias').get(estadoId);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function getAllEstadosFrecuencia(vtCode: string, fecha: string): Promise<EstadoFrecuencia[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('estados_frecuencias', 'readonly');
+    const store = tx.objectStore('estados_frecuencias');
+    const request = store.getAll();
+    request.onsuccess = () => {
+      const all: EstadoFrecuencia[] = request.result;
+      resolve(all.filter(e => e.vtCode === vtCode && e.fecha === fecha));
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function updateEstadoFrecuencia(estadoId: string, updates: Partial<EstadoFrecuencia>): Promise<void> {
+  const existing = await getEstadoFrecuencia(estadoId);
+  if (!existing) return;
+  await saveEstadoFrecuencia({ ...existing, ...updates });
 }
