@@ -11,7 +11,13 @@ import { PersonalScreen } from '@/components/transport/PersonalScreen';
 import { ReportsScreen } from '@/components/transport/ReportsScreen';
 import { VTConfigScreen } from '@/components/transport/VTConfigScreen';
 import { CompareFrequenciesScreen } from '@/components/transport/CompareFrequenciesScreen';
+import { HomeScreenVT } from '@/components/transport/HomeScreenVT';
+import { FrecuenciaSelector } from '@/components/transport/FrecuenciaSelector';
+import { TicketScreen } from '@/components/transport/TicketScreen';
+import { CloseFrequencyScreen } from '@/components/transport/CloseFrequencyScreen';
+import { SyncScreen } from '@/components/transport/SyncScreen';
 import { type AppView, type RecordFormData, type SavedRecord, type UserSession, num } from '@/components/transport/types';
+import { type VTSession, type FrecuenciaEstado } from '@/components/transport/types-boletos';
 import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
@@ -24,6 +30,10 @@ export default function Home() {
   const [detailRecord, setDetailRecord] = useState<SavedRecord | null>(null);
   const [comprobanteRecord, setComprobanteRecord] = useState<SavedRecord | null>(null);
   const { toast } = useToast();
+
+  // Boletos state
+  const [vtSession, setVtSession] = useState<VTSession | null>(null);
+  const [currentEstado, setCurrentEstado] = useState<FrecuenciaEstado | null>(null);
 
   // Restore session from localStorage on mount
   useEffect(() => {
@@ -189,6 +199,30 @@ export default function Home() {
     );
   }
 
+  // ─── Boletos views ───
+  if (view === 'boletos_home') {
+    return <HomeScreenVT onSessionStart={(s) => { setVtSession(s); setView('boletos_frecuencias'); }} />;
+  }
+  if (view === 'boletos_frecuencias' && vtSession) {
+    return (
+      <FrecuenciaSelector
+        session={vtSession}
+        onOpenFrequency={(e) => { setCurrentEstado(e); setView('boletos_tickets'); }}
+        onCloseFrequency={(e) => { setCurrentEstado(e); setView('boletos_cierre'); }}
+        onBack={() => setView('home')}
+      />
+    );
+  }
+  if (view === 'boletos_tickets' && vtSession && currentEstado) {
+    return <TicketScreen session={vtSession} estado={currentEstado} onClose={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} />;
+  }
+  if (view === 'boletos_cierre' && vtSession && currentEstado) {
+    return <CloseFrequencyScreen session={vtSession} estado={currentEstado} onClosed={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} onBack={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} />;
+  }
+  if (view === 'boletos_sync' && vtSession) {
+    return <SyncScreen session={vtSession} onBack={() => setView('boletos_frecuencias')} />;
+  }
+
   switch (view) {
     case 'form':
       return (
@@ -218,6 +252,7 @@ export default function Home() {
           onGoToReports={() => setView('reports')}
           onGoToVtConfig={() => setView('vtconfig')}
           onGoToCompare={() => setView('compare')}
+          onGoToBoletos={() => setView('boletos_home')}
           onLogout={handleLogout}
           recordCount={recordCount}
         />

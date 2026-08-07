@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { History, Pencil, Truck, Users, LogOut, User, FileText, Database, Loader2, Share2, Settings, ArrowLeftRight } from 'lucide-react';
+import { History, Pencil, Truck, Users, LogOut, User, FileText, Database, Loader2, Share2, Settings, ArrowLeftRight, Ticket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { UserSession } from './types';
@@ -15,11 +15,12 @@ interface HomeScreenProps {
   onGoToReports: () => void;
   onGoToVtConfig: () => void;
   onGoToCompare: () => void;
+  onGoToBoletos: () => void;
   onLogout: () => void;
   recordCount: number;
 }
 
-export function HomeScreen({ user, isAdmin, onGoToForm, onGoToHistory, onGoToPersonal, onGoToReports, onGoToVtConfig, onGoToCompare, onLogout, recordCount }: HomeScreenProps) {
+export function HomeScreen({ user, isAdmin, onGoToForm, onGoToHistory, onGoToPersonal, onGoToReports, onGoToVtConfig, onGoToCompare, onGoToBoletos, onLogout, recordCount }: HomeScreenProps) {
   const [backupLoading, setBackupLoading] = useState(false);
 
   const handleBackup = async () => {
@@ -125,6 +126,22 @@ export function HomeScreen({ user, isAdmin, onGoToForm, onGoToHistory, onGoToPer
             <div>
               <p className="font-semibold text-[#3A3A3A]">Comparar Frecuencias</p>
               <p className="text-xs text-[#3A3A3A]/60">Evalua cual frecuencia rinde mas</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* RutaGo Boletos - visible to ALL users */}
+        <Card
+          onClick={onGoToBoletos}
+          className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border-2 border-[#912D26]/30 bg-gradient-to-r from-[#912D26]/5 to-transparent"
+        >
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="w-10 h-10 rounded-xl bg-[#912D26] flex items-center justify-center">
+              <Ticket className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="font-bold text-[#912D26]">RutaGo - Venta de Boletos</p>
+              <p className="text-xs text-[#3A3A3A]/60">Modulo offline de venta por frecuencia</p>
             </div>
           </CardContent>
         </Card>

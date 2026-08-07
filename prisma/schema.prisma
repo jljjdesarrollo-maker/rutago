@@ -15,6 +15,9 @@ model BusVT {
   activo      Boolean @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  frecBoletos Frecuencia[]
+  ventasBoleto VentaBoleto[]
 }
 
 model DailyRecord {
@@ -72,4 +75,44 @@ model Persona {
   esActual  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ─── RutaGo: Módulo de Venta de Boletos Offline ───
+
+model Frecuencia {
+  id        String   @id @default(cuid())
+  vtCode    String
+  nombre    String
+  ruta      String
+  hora      String
+  direccion String   // "ida" | "vuelta"
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vt     BusVT       @relation(fields: [vtCode], references: [codigo])
+  ventas VentaBoleto[]
+}
+
+model VentaBoleto {
+  id              String   @id @default(cuid())
+  fecha           String
+  vtCode          String
+  frecuenciaId    String?
+  ruta            String
+  parada          String
+  tipo            String   // "ida" | "vuelta"
+  tarifaOficial   Float
+  cobrado         Float
+  hora            String
+  ayudanteId      String
+  ayudanteNombre  String
+  syncStatus      String   @default("pending")
+  serverId        String?
+  syncError       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  frecuencia Frecuencia? @relation(fields: [frecuenciaId], references: [id])
+  vt         BusVT       @relation(fields: [vtCode], references: [codigo])
 }
