@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { type FrecuenciaEstado, type VTSession } from './types-boletos';
-import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, getAllRutas } from '@/lib/tarifas-data';
+import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, getAllRutas, matchRuta } from '@/lib/tarifas-data';
 import { saveVenta } from '@/lib/indexeddb';
 import { ArrowLeft, Plus, DollarSign, MapPin, Ticket } from 'lucide-react';
 
@@ -22,8 +22,9 @@ export function TicketScreen({ session, estado, onClose }: Props) {
   const [totalHoy, setTotalHoy] = useState(0);
   const [showRutaPicker, setShowRutaPicker] = useState(false);
 
-  const paradas = getParadasByRutaAndTipo(ruta, tipo);
-  const tarifaAuto = parada ? getTarifa(ruta, parada, tipo) : 0;
+  const rutaMatched = matchRuta(ruta);
+  const paradas = getParadasByRutaAndTipo(rutaMatched, tipo);
+  const tarifaAuto = parada ? getTarifa(rutaMatched, parada, tipo) : 0;
   const allRutas = getAllRutas();
 
   const loadStats = useCallback(async () => {
@@ -112,7 +113,7 @@ export function TicketScreen({ session, estado, onClose }: Props) {
               ))}
             </div>
           )}
-          <div className="text-sm text-gray-600">{ruta}</div>
+          <div className="text-sm text-gray-600">{rutaMatched}</div>
           <div className="flex mt-3 bg-gray-100 rounded-xl p-1">
             <button onClick={() => { setTipo('ida'); setParada(''); setCobrado(''); }}
               className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${tipo === 'ida' ? 'bg-[#912D26] text-white shadow' : 'text-gray-500'}`}>Ida</button>

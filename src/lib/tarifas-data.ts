@@ -1,110 +1,145 @@
 // Tarifas oficiales RutaGo - TRANSPORTES VILCABAMBATURIS CÍA. LTDA.
 // TARIFA_MINIMA = $0.75
-// IMPORTANTE: El Tambo NO pasa por Vilcabamba (ramifica en Malacatos)
-// Zahuayco, La Elvira, Yangana SÍ pasan por Vilcabamba
+// TODOS los precios son desde Loja hacia cada destino
+// El Tambo: mismos precios hasta Malacatos, luego ramifica (NO pasa Vilcabamba)
+// Zahuayco, La Elvira, Yangana, Tambillo, El Cisne: SIEMPRE pasan por Vilcabamba
 
 export interface TarifaItem {
   id: string;
-  ruta: string;
   parada: string;
-  tarifa: number;
-  tipo: string;
+  tarifa: number; // precio desde Loja
 }
 
 export const TARIFA_MINIMA = 0.75;
 
-const tarifas: TarifaItem[] = [
-  // ─── LOJA - VILCABAMBA (Ida) ───
-  { id: 'lv-01', ruta: 'Loja - Vilcabamba', parada: 'Loja', tarifa: 0.75, tipo: 'ida' },
-  { id: 'lv-02', ruta: 'Loja - Vilcabamba', parada: 'Quingeo', tarifa: 1.00, tipo: 'ida' },
-  { id: 'lv-03', ruta: 'Loja - Vilcabamba', parada: 'San Pedro de Vilcabamba', tarifa: 1.25, tipo: 'ida' },
-  { id: 'lv-04', ruta: 'Loja - Vilcabamba', parada: 'Malacatos', tarifa: 1.50, tipo: 'ida' },
-  { id: 'lv-05', ruta: 'Loja - Vilcabamba', parada: 'Vilcabamba', tarifa: 2.00, tipo: 'ida' },
-  { id: 'lv-06', ruta: 'Loja - Vilcabamba', parada: 'Zahuayco', tarifa: 2.25, tipo: 'ida' },
-  { id: 'lv-07', ruta: 'Loja - Vilcabamba', parada: 'La Elvira', tarifa: 2.50, tipo: 'ida' },
-  { id: 'lv-08', ruta: 'Loja - Vilcabamba', parada: 'Yangana', tarifa: 2.75, tipo: 'ida' },
-  { id: 'lv-09', ruta: 'Loja - Vilcabamba', parada: 'Tambillo', tarifa: 2.50, tipo: 'ida' },
-  { id: 'lv-10', ruta: 'Loja - Vilcabamba', parada: 'El Cisne', tarifa: 2.75, tipo: 'ida' },
+// ─── Precios desde Loja ───
+const preciosDesdeLoja: TarifaItem[] = [
+  // Paradas comunes: Loja → Malacatos (todas las rutas comparten estos precios)
+  { id: 'loja', parada: 'Loja', tarifa: 0.75 },
+  { id: 'quingeo', parada: 'Quingeo', tarifa: 1.00 },
+  { id: 'sanpedro', parada: 'San Pedro', tarifa: 1.25 },
+  { id: 'malacatos', parada: 'Malacatos', tarifa: 1.50 },
 
-  // ─── LOJA - VILCABAMBA (Vuelta) ───
-  { id: 'lv-v01', ruta: 'Loja - Vilcabamba', parada: 'Vilcabamba', tarifa: 0.75, tipo: 'vuelta' },
-  { id: 'lv-v02', ruta: 'Loja - Vilcabamba', parada: 'Malacatos', tarifa: 1.25, tipo: 'vuelta' },
-  { id: 'lv-v03', ruta: 'Loja - Vilcabamba', parada: 'San Pedro de Vilcabamba', tarifa: 1.50, tipo: 'vuelta' },
-  { id: 'lv-v04', ruta: 'Loja - Vilcabamba', parada: 'Quingeo', tarifa: 1.75, tipo: 'vuelta' },
-  { id: 'lv-v05', ruta: 'Loja - Vilcabamba', parada: 'Loja', tarifa: 2.00, tipo: 'vuelta' },
-  { id: 'lv-v06', ruta: 'Loja - Vilcabamba', parada: 'Zahuayco', tarifa: 1.00, tipo: 'vuelta' },
-  { id: 'lv-v07', ruta: 'Loja - Vilcabamba', parada: 'La Elvira', tarifa: 0.75, tipo: 'vuelta' },
-  { id: 'lv-v08', ruta: 'Loja - Vilcabamba', parada: 'Yangana', tarifa: 1.00, tipo: 'vuelta' },
-  { id: 'lv-v09', ruta: 'Loja - Vilcabamba', parada: 'Tambillo', tarifa: 1.25, tipo: 'vuelta' },
-  { id: 'lv-v10', ruta: 'Loja - Vilcabamba', parada: 'El Cisne', tarifa: 1.00, tipo: 'vuelta' },
+  // Ruta Vilcabamba y sus extensiones (Zahuayco, La Elvira, Yangana, Tambillo, El Cisne)
+  { id: 'vilcabamba', parada: 'Vilcabamba', tarifa: 2.00 },
+  { id: 'zahuayco', parada: 'Zahuayco', tarifa: 2.25 },
+  { id: 'laelvira', parada: 'La Elvira', tarifa: 2.50 },
+  { id: 'yangana', parada: 'Yangana', tarifa: 2.75 },
+  { id: 'tambillo', parada: 'Tambillo', tarifa: 2.50 },
+  { id: 'elcisne', parada: 'El Cisne', tarifa: 2.75 },
 
-  // ─── LOJA - EL TAMBO (Ida) ───
-  // El Tambo NO pasa por Vilcabamba - ramifica en Malacatos
-  { id: 'lt-01', ruta: 'Loja - El Tambo', parada: 'Loja', tarifa: 0.75, tipo: 'ida' },
-  { id: 'lt-02', ruta: 'Loja - El Tambo', parada: 'Quingeo', tarifa: 1.00, tipo: 'ida' },
-  { id: 'lt-03', ruta: 'Loja - El Tambo', parada: 'Malacatos', tarifa: 1.25, tipo: 'ida' },
-  { id: 'lt-04', ruta: 'Loja - El Tambo', parada: 'El Tambo', tarifa: 1.75, tipo: 'ida' },
-  { id: 'lt-05', ruta: 'Loja - El Tambo', parada: 'El Tundo', tarifa: 2.00, tipo: 'ida' },
-  { id: 'lt-06', ruta: 'Loja - El Tambo', parada: 'La Vega', tarifa: 2.25, tipo: 'ida' },
-
-  // ─── LOJA - EL TAMBO (Vuelta) ───
-  { id: 'lt-v01', ruta: 'Loja - El Tambo', parada: 'El Tambo', tarifa: 0.75, tipo: 'vuelta' },
-  { id: 'lt-v02', ruta: 'Loja - El Tambo', parada: 'Malacatos', tarifa: 1.25, tipo: 'vuelta' },
-  { id: 'lt-v03', ruta: 'Loja - El Tambo', parada: 'Quingeo', tarifa: 1.50, tipo: 'vuelta' },
-  { id: 'lt-v04', ruta: 'Loja - El Tambo', parada: 'Loja', tarifa: 1.75, tipo: 'vuelta' },
-  { id: 'lt-v05', ruta: 'Loja - El Tambo', parada: 'El Tundo', tarifa: 1.00, tipo: 'vuelta' },
-  { id: 'lt-v06', ruta: 'Loja - El Tambo', parada: 'La Vega', tarifa: 0.75, tipo: 'vuelta' },
-
-  // ─── LOJA - ZAHUAYCO (Ida) - pasa por Vilcabamba ───
-  { id: 'lz-01', ruta: 'Loja - Zahuayco', parada: 'Loja', tarifa: 0.75, tipo: 'ida' },
-  { id: 'lz-02', ruta: 'Loja - Zahuayco', parada: 'Vilcabamba', tarifa: 1.50, tipo: 'ida' },
-  { id: 'lz-03', ruta: 'Loja - Zahuayco', parada: 'Zahuayco', tarifa: 2.25, tipo: 'ida' },
-
-  // ─── LOJA - ZAHUAYCO (Vuelta) ───
-  { id: 'lz-v01', ruta: 'Loja - Zahuayco', parada: 'Zahuayco', tarifa: 0.75, tipo: 'vuelta' },
-  { id: 'lz-v02', ruta: 'Loja - Zahuayco', parada: 'Vilcabamba', tarifa: 1.00, tipo: 'vuelta' },
-  { id: 'lz-v03', ruta: 'Loja - Zahuayco', parada: 'Loja', tarifa: 1.75, tipo: 'vuelta' },
-
-  // ─── LOJA - LA ELVIRA (Ida) - pasa por Vilcabamba ───
-  { id: 'le-01', ruta: 'Loja - La Elvira', parada: 'Loja', tarifa: 0.75, tipo: 'ida' },
-  { id: 'le-02', ruta: 'Loja - La Elvira', parada: 'Vilcabamba', tarifa: 1.50, tipo: 'ida' },
-  { id: 'le-03', ruta: 'Loja - La Elvira', parada: 'La Elvira', tarifa: 2.50, tipo: 'ida' },
-
-  // ─── LOJA - LA ELVIRA (Vuelta) ───
-  { id: 'le-v01', ruta: 'Loja - La Elvira', parada: 'La Elvira', tarifa: 0.75, tipo: 'vuelta' },
-  { id: 'le-v02', ruta: 'Loja - La Elvira', parada: 'Vilcabamba', tarifa: 1.25, tipo: 'vuelta' },
-  { id: 'le-v03', ruta: 'Loja - La Elvira', parada: 'Loja', tarifa: 2.00, tipo: 'vuelta' },
-
-  // ─── LOJA - YANGANA (Ida) - pasa por Vilcabamba ───
-  { id: 'ly-01', ruta: 'Loja - Yangana', parada: 'Loja', tarifa: 0.75, tipo: 'ida' },
-  { id: 'ly-02', ruta: 'Loja - Yangana', parada: 'Vilcabamba', tarifa: 1.50, tipo: 'ida' },
-  { id: 'ly-03', ruta: 'Loja - Yangana', parada: 'Yangana', tarifa: 2.75, tipo: 'ida' },
-
-  // ─── LOJA - YANGANA (Vuelta) ───
-  { id: 'ly-v01', ruta: 'Loja - Yangana', parada: 'Yangana', tarifa: 0.75, tipo: 'vuelta' },
-  { id: 'ly-v02', ruta: 'Loja - Yangana', parada: 'Vilcabamba', tarifa: 1.25, tipo: 'vuelta' },
-  { id: 'ly-v03', ruta: 'Loja - Yangana', parada: 'Loja', tarifa: 2.25, tipo: 'vuelta' },
+  // Ruta El Tambo (ramifica en Malacatos, NO pasa por Vilcabamba)
+  { id: 'eltambo', parada: 'El Tambo', tarifa: 1.75 },
+  { id: 'eltundo', parada: 'El Tundo', tarifa: 2.00 },
+  { id: 'lavega', parada: 'La Vega', tarifa: 2.25 },
 ];
 
-export function getTarifasByRuta(ruta: string, tipo?: string): TarifaItem[] {
-  return tarifas.filter(t => {
-    const matchRuta = t.ruta === ruta;
-    const matchTipo = tipo ? t.tipo === tipo : true;
-    return matchRuta && matchTipo;
-  });
+// ─── Paradas por ruta según dirección ───
+// "ida" = desde Loja hacia el destino (se muestran las paradas en orden)
+// "vuelta" = desde el destino hacia Loja (se muestran las paradas en orden inverso)
+
+export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> = {
+  // Vilcabamba y extensiones pasan SIEMPRE por Vilcabamba
+  'Loja - Vilcabamba': {
+    ida: ['Loja', 'Quingeo', 'San Pedro', 'Malacatos', 'Vilcabamba'],
+    vuelta: ['Vilcabamba', 'Malacatos', 'San Pedro', 'Quingeo', 'Loja'],
+  },
+  'Loja - Zahuayco': {
+    ida: ['Loja', 'Quingeo', 'San Pedro', 'Malacatos', 'Vilcabamba', 'Zahuayco'],
+    vuelta: ['Zahuayco', 'Vilcabamba', 'Malacatos', 'San Pedro', 'Quingeo', 'Loja'],
+  },
+  'Loja - La Elvira': {
+    ida: ['Loja', 'Quingeo', 'San Pedro', 'Malacatos', 'Vilcabamba', 'La Elvira'],
+    vuelta: ['La Elvira', 'Vilcabamba', 'Malacatos', 'San Pedro', 'Quingeo', 'Loja'],
+  },
+  'Loja - Yangana': {
+    ida: ['Loja', 'Quingeo', 'San Pedro', 'Malacatos', 'Vilcabamba', 'Yangana'],
+    vuelta: ['Yangana', 'Vilcabamba', 'Malacatos', 'San Pedro', 'Quingeo', 'Loja'],
+  },
+  'Loja - Tambillo': {
+    ida: ['Loja', 'Quingeo', 'San Pedro', 'Malacatos', 'Vilcabamba', 'Tambillo'],
+    vuelta: ['Tambillo', 'Vilcabamba', 'Malacatos', 'San Pedro', 'Quingeo', 'Loja'],
+  },
+  'Loja - El Cisne': {
+    ida: ['Loja', 'Quingeo', 'San Pedro', 'Malacatos', 'Vilcabamba', 'El Cisne'],
+    vuelta: ['El Cisne', 'Vilcabamba', 'Malacatos', 'San Pedro', 'Quingeo', 'Loja'],
+  },
+  // El Tambo ramifica en Malacatos (NO pasa por Vilcabamba)
+  'Loja - El Tambo': {
+    ida: ['Loja', 'Quingeo', 'San Pedro', 'Malacatos', 'El Tambo'],
+    vuelta: ['El Tambo', 'Malacatos', 'San Pedro', 'Quingeo', 'Loja'],
+  },
+  'Vilcabamba - Loja': {
+    ida: ['Vilcabamba', 'Malacatos', 'San Pedro', 'Quingeo', 'Loja'],
+    vuelta: ['Loja', 'Quingeo', 'San Pedro', 'Malacatos', 'Vilcabamba'],
+  },
+  'Zahuayco - Loja': {
+    ida: ['Zahuayco', 'Vilcabamba', 'Malacatos', 'San Pedro', 'Quingeo', 'Loja'],
+    vuelta: ['Loja', 'Quingeo', 'San Pedro', 'Malacatos', 'Vilcabamba', 'Zahuayco'],
+  },
+  'La Elvira - Loja': {
+    ida: ['La Elvira', 'Vilcabamba', 'Malacatos', 'San Pedro', 'Quingeo', 'Loja'],
+    vuelta: ['Loja', 'Quingeo', 'San Pedro', 'Malacatos', 'Vilcabamba', 'La Elvira'],
+  },
+  'Yangana - Loja': {
+    ida: ['Yangana', 'Vilcabamba', 'Malacatos', 'San Pedro', 'Quingeo', 'Loja'],
+    vuelta: ['Loja', 'Quingeo', 'San Pedro', 'Malacatos', 'Vilcabamba', 'Yangana'],
+  },
+};
+
+// Precio desde Loja a una parada
+function getPrecioDesdeLoja(parada: string): number {
+  const item = preciosDesdeLoja.find(p => p.parada === parada);
+  return item?.tarifa ?? TARIFA_MINIMA;
 }
 
-export function getTarifa(ruta: string, parada: string, tipo: string): number {
-  const tarifa = tarifas.find(t => t.ruta === ruta && t.parada === parada && t.tipo === tipo);
-  return tarifa?.tarifa ?? TARIFA_MINIMA;
-}
-
-export function getAllRutas(): string[] {
-  return [...new Set(tarifas.map(t => t.ruta))];
-}
-
+// Obtener paradas con tarifa para una ruta y dirección
+// La tarifa siempre es el precio desde Loja a esa parada
 export function getParadasByRutaAndTipo(ruta: string, tipo: string): { parada: string; tarifa: number }[] {
-  return tarifas.filter(t => t.ruta === ruta && t.tipo === tipo).map(t => ({ parada: t.parada, tarifa: t.tarifa }));
+  const rutaConfig = RUTA_PARADAS[ruta];
+  if (!rutaConfig) return [];
+  const paradas = tipo === 'ida' ? rutaConfig.ida : rutaConfig.vuelta;
+  return paradas.map(parada => ({
+    parada,
+    tarifa: getPrecioDesdeLoja(parada),
+  }));
 }
 
-export default tarifas;
+// Obtener tarifa oficial (siempre precio desde Loja)
+export function getTarifa(_ruta: string, parada: string, _tipo: string): number {
+  return getPrecioDesdeLoja(parada);
+}
+
+// Obtener todas las rutas disponibles
+export function getAllRutas(): string[] {
+  return Object.keys(RUTA_PARADAS);
+}
+
+// Buscar la ruta más cercana dado un nombre de ruta parcial
+export function matchRuta(rutaNombre: string): string {
+  // Intentar match directo
+  if (RUTA_PARADAS[rutaNombre]) return rutaNombre;
+
+  // Normalizar: "Loja-Vilcabamba" → buscar "Loja - Vilcabamba"
+  const normalized = rutaNombre.replace(/\s*-\s*/g, ' - ').trim();
+  if (RUTA_PARADAS[normalized]) return normalized;
+
+  // Buscar por partes
+  const parts = rutaNombre.split(/[-–]/).map(s => s.trim());
+  for (const key of Object.keys(RUTA_PARADAS)) {
+    const keyParts = key.split(' - ');
+    if (parts.length >= 2 && keyParts.length >= 2) {
+      const match = (
+        (keyParts[0].toLowerCase().includes(parts[0].toLowerCase()) ||
+         parts[0].toLowerCase().includes(keyParts[0].toLowerCase())) &&
+        (keyParts[1].toLowerCase().includes(parts[1].toLowerCase()) ||
+         parts[1].toLowerCase().includes(keyParts[1].toLowerCase()))
+      );
+      if (match) return key;
+    }
+  }
+
+  return rutaNombre;
+}
+
+export default preciosDesdeLoja;
