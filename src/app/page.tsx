@@ -212,6 +212,7 @@ export default function Home() {
         onOpenFrequency={(e) => { setCurrentEstado(e); setView('boletos_tickets'); }}
         onCloseFrequency={(e) => { setCurrentEstado(e); setView('boletos_cierre'); }}
         onBack={() => setView('home')}
+        onGoToSync={() => setView('boletos_sync')}
       />
     );
   }
@@ -219,7 +220,7 @@ export default function Home() {
     return <TicketScreen session={vtSession} estado={currentEstado} connection={connection.info} onClose={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} />;
   }
   if (view === 'boletos_cierre' && vtSession && currentEstado) {
-    return <CloseFrequencyScreen session={vtSession} estado={currentEstado} onClosed={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} onBack={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} />;
+    return <CloseFrequencyScreen session={vtSession} estado={currentEstado} connection={connection.info} onClosed={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} onBack={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} onGoToSync={() => setView('boletos_sync')} />;
   }
   if (view === 'boletos_sync' && vtSession) {
     return <SyncScreen session={vtSession} onBack={() => setView('boletos_frecuencias')} />;

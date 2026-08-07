@@ -9,6 +9,7 @@ export interface VentaLocal {
   ruta: string;
   parada: string;
   tipo: string;
+  pasajeroTipo: string;
   tarifaOficial: number;
   cobrado: number;
   hora: string;
