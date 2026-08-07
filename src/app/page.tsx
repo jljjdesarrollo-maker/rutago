@@ -14,7 +14,7 @@ import { CompareFrequenciesScreen } from '@/components/transport/CompareFrequenc
 import { HomeScreenVT } from '@/components/transport/HomeScreenVT';
 import { FrecuenciaSelector } from '@/components/transport/FrecuenciaSelector';
 import { TicketScreen } from '@/components/transport/TicketScreen';
-import { CloseFrequencyScreen } from '@/components/transport/CloseFrequencyScreen';
+import { ArqueoScreen } from '@/components/transport/ArqueoScreen';
 import { SyncScreen } from '@/components/transport/SyncScreen';
 import { type AppView, type RecordFormData, type SavedRecord, type UserSession, num } from '@/components/transport/types';
 import { type VTSession, type FrecuenciaEstado } from '@/components/transport/types-boletos';
@@ -35,6 +35,7 @@ export default function Home() {
   // Boletos state
   const [vtSession, setVtSession] = useState<VTSession | null>(null);
   const [currentEstado, setCurrentEstado] = useState<FrecuenciaEstado | null>(null);
+  const [esUltimaFrecuencia, setEsUltimaFrecuencia] = useState(false);
   const connection = useConnectionStatus();
 
   // Restore session from localStorage on mount
@@ -210,7 +211,7 @@ export default function Home() {
       <FrecuenciaSelector
         session={vtSession}
         onOpenFrequency={(e) => { setCurrentEstado(e); setView('boletos_tickets'); }}
-        onCloseFrequency={(e) => { setCurrentEstado(e); setView('boletos_cierre'); }}
+        onGoToArqueo={(e, esUltima) => { setCurrentEstado(e); setEsUltimaFrecuencia(esUltima); setView('boletos_arqueo'); }}
         onBack={() => setView('home')}
         onGoToSync={() => setView('boletos_sync')}
       />
@@ -219,8 +220,18 @@ export default function Home() {
   if (view === 'boletos_tickets' && vtSession && currentEstado) {
     return <TicketScreen session={vtSession} estado={currentEstado} connection={connection.info} onClose={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} />;
   }
-  if (view === 'boletos_cierre' && vtSession && currentEstado) {
-    return <CloseFrequencyScreen session={vtSession} estado={currentEstado} connection={connection.info} onClosed={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} onBack={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} onGoToSync={() => setView('boletos_sync')} />;
+  if (view === 'boletos_arqueo' && vtSession && currentEstado) {
+    return (
+      <ArqueoScreen
+        session={vtSession}
+        estado={currentEstado}
+        connection={connection.info}
+        esUltima={esUltimaFrecuencia}
+        onArqueoConfirmado={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }}
+        onBack={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }}
+        onGoToSync={() => setView('boletos_sync')}
+      />
+    );
   }
   if (view === 'boletos_sync' && vtSession) {
     return <SyncScreen session={vtSession} onBack={() => setView('boletos_frecuencias')} />;

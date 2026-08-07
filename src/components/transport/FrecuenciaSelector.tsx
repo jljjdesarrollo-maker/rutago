@@ -8,7 +8,7 @@ import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle,
 interface Props {
   session: VTSession;
   onOpenFrequency: (estado: FrecuenciaEstado) => void;
-  onCloseFrequency: (estado: FrecuenciaEstado) => void;
+  onGoToArqueo: (estado: FrecuenciaEstado, esUltima: boolean) => void;
   onBack: () => void;
   onGoToSync: () => void;
 }
@@ -31,7 +31,7 @@ function getLocalityFromRoute(ruta: string): string {
   return ruta;
 }
 
-export function FrecuenciaSelector({ session, onOpenFrequency, onCloseFrequency, onBack, onGoToSync }: Props) {
+export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onBack, onGoToSync }: Props) {
   const [estados, setEstados] = useState<FrecuenciaEstado[]>([]);
   const [frecuencias, setFrecuencias] = useState<FrecuenciaData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,6 +109,27 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onCloseFrequency,
 
   const updateEstado = (estadoId: string, updates: Partial<FrecuenciaEstado>) => {
     setEstados(prev => prev.map(e => e.estadoId === estadoId ? { ...e, ...updates } : e));
+  };
+
+  // Lógica secuencial: una frecuencia está disponible si:
+  // - No ha sido cerrada ni marcada como no_realizada
+  // - Todas las anteriores ya fueron cerradas o no_realizadas
+  const isFrecuenciaDisponible = (index: number): boolean => {
+    const estado = estados[index];
+    if (!estado) return false;
+    if (estado.estado === 'cerrada' || estado.estado === 'no_realizada') return false;
+    // Verificar que todas las frecuencias anteriores están cerradas o no_realizadas
+    for (let i = 0; i < index; i++) {
+      const prev = estados[i];
+      if (prev && prev.estado !== 'cerrada' && prev.estado !== 'no_realizada') {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const getPrimeraDisponible = (): number => {
+    return estados.findIndex((_, i) => isFrecuenciaDisponible(i));
   };
 
   const handleOpen = (estado: FrecuenciaEstado) => {
@@ -269,58 +290,73 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onCloseFrequency,
             <p className="text-gray-400">No hay frecuencias configuradas</p>
           </div>
         ) : (
-          estados.map(estado => (
-            <div key={estado.estadoId} className={`${getStateColor(estado.estado)} rounded-2xl border p-3 transition-all`}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  {getStateIcon(estado.estado)}
-                  <div>
-                    <span className="font-bold text-[#3A3A3A]">{estado.hora}</span>
-                    <span className="text-sm text-gray-500 ml-2">{estado.nombre}</span>
+          estados.map((estado, index) => {
+            const disponible = isFrecuenciaDisponible(index);
+            const esUltimaFrec = index === estados.length - 1;
+            const bloqueada = !disponible && estado.estado === 'pendiente';
+
+            return (
+              <div key={estado.estadoId} className={`rounded-2xl border p-3 transition-all ${
+                bloqueada ? 'bg-gray-50 border-gray-100 opacity-50' : getStateColor(estado.estado)
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    {getStateIcon(estado.estado)}
+                    <div>
+                      <span className="font-bold text-[#3A3A3A]">{estado.hora}</span>
+                      <span className="text-sm text-gray-500 ml-2">{estado.nombre}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {estado.ventasCount > 0 && (
+                      <span className="bg-[#912D26]/10 text-[#912D26] text-xs font-bold px-1.5 py-0.5 rounded-full">
+                        {estado.ventasCount}t · ${estado.totalRecaudado.toFixed(2)}
+                      </span>
+                    )}
+                    {getEstadoBadge(estado.estado)}
+                    {bloqueada && <span className="text-xs text-gray-400">Bloqueada</span>}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {estado.ventasCount > 0 && (
-                    <span className="bg-[#912D26]/10 text-[#912D26] text-xs font-bold px-1.5 py-0.5 rounded-full">
-                      {estado.ventasCount}t · ${estado.totalRecaudado.toFixed(2)}
-                    </span>
+                <div className="text-xs text-gray-500 mb-2">{estado.ruta}</div>
+                <div className="flex gap-2">
+                  {estado.estado === 'pendiente' && disponible && (
+                    <>
+                      <button onClick={() => handleOpen(estado)} className="flex-1 py-2 rounded-xl bg-[#912D26] text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
+                        <Play className="w-4 h-4" /> Vender
+                      </button>
+                      <button onClick={() => handleNoRealizada(estado)} className="py-2 px-3 rounded-xl bg-orange-100 text-orange-600 font-semibold text-sm flex items-center gap-1">
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleReassign(estado)} className="py-2 px-3 rounded-xl bg-gray-200 text-gray-600 font-semibold text-sm flex items-center gap-1" title="Reasignar">
+                        <RotateCcw className="w-4 h-4" />
+                      </button>
+                    </>
                   )}
-                  {getEstadoBadge(estado.estado)}
+                  {estado.estado === 'abierta' && (
+                    <>
+                      <button onClick={() => onOpenFrequency(estado)} className="flex-1 py-2 rounded-xl bg-green-600 text-white font-semibold text-sm flex items-center justify-center gap-1">
+                        <ChevronRight className="w-4 h-4" /> Vender
+                      </button>
+                      <button onClick={() => onGoToArqueo(estado, esUltimaFrec)} className="py-2 px-3 rounded-xl bg-blue-100 text-blue-600 font-semibold text-sm flex items-center gap-1">
+                        <CheckCircle2 className="w-4 h-4" /> Arqueo
+                      </button>
+                    </>
+                  )}
+                  {estado.estado === 'cerrada' && (
+                    <div className="text-sm text-gray-400">
+                      Cerrada · {estado.ventasCount} ventas · ${estado.totalRecaudado.toFixed(2)}
+                    </div>
+                  )}
+                  {estado.estado === 'no_realizada' && (
+                    <div className="text-sm text-gray-400">No realizada</div>
+                  )}
+                  {bloqueada && (
+                    <div className="text-sm text-gray-400">Espera el arqueo de la frecuencia anterior</div>
+                  )}
                 </div>
               </div>
-              <div className="text-xs text-gray-500 mb-2">{estado.ruta}</div>
-              <div className="flex gap-2">
-                {estado.estado === 'pendiente' && (
-                  <>
-                    <button onClick={() => handleOpen(estado)} className="flex-1 py-2 rounded-xl bg-[#912D26] text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
-                      <Play className="w-4 h-4" /> Vender
-                    </button>
-                    <button onClick={() => handleNoRealizada(estado)} className="py-2 px-3 rounded-xl bg-orange-100 text-orange-600 font-semibold text-sm flex items-center gap-1">
-                      <XCircle className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleReassign(estado)} className="py-2 px-3 rounded-xl bg-gray-200 text-gray-600 font-semibold text-sm flex items-center gap-1" title="Reasignar">
-                      <RotateCcw className="w-4 h-4" />
-                    </button>
-                  </>
-                )}
-                {estado.estado === 'abierta' && (
-                  <>
-                    <button onClick={() => onOpenFrequency(estado)} className="flex-1 py-2 rounded-xl bg-green-600 text-white font-semibold text-sm flex items-center justify-center gap-1">
-                      <ChevronRight className="w-4 h-4" /> Vender
-                    </button>
-                    <button onClick={() => onCloseFrequency(estado)} className="py-2 px-3 rounded-xl bg-blue-100 text-blue-600 font-semibold text-sm flex items-center gap-1">
-                      <CheckCircle2 className="w-4 h-4" /> Liquidar
-                    </button>
-                  </>
-                )}
-                {(estado.estado === 'cerrada' || estado.estado === 'no_realizada') && (
-                  <div className="text-sm text-gray-400">
-                    {estado.estado === 'cerrada' ? `Cerrada · ${estado.ventasCount} ventas · $${estado.totalRecaudado.toFixed(2)}` : 'No realizada'}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
