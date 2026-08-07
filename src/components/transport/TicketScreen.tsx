@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { type FrecuenciaEstado, type VTSession } from './types-boletos';
-import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta } from '@/lib/tarifas-data';
+import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta, type TipoPasajero } from '@/lib/tarifas-data';
 import { saveVenta } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
-import { Check, ChevronLeft } from 'lucide-react';
+import { Check, ChevronLeft, User, UserRound } from 'lucide-react';
 
 interface Props {
   session: VTSession;
@@ -17,16 +17,16 @@ interface Props {
 export function TicketScreen({ session, estado, connection, onClose }: Props) {
   const [parada, setParada] = useState('');
   const [cobrado, setCobrado] = useState('');
-  const [lastSale, setLastSale] = useState<{ parada: string; monto: number } | null>(null);
+  const [pasajeroTipo, setPasajeroTipo] = useState<TipoPasajero>('normal');
+  const [lastSale, setLastSale] = useState<{ parada: string; monto: number; tipo: string } | null>(null);
   const [ventasHoy, setVentasHoy] = useState(0);
   const [totalHoy, setTotalHoy] = useState(0);
 
-  // La dirección ya viene de la frecuencia: "Loja-Vilcabamba" → ida, "Vilcabamba-Loja" → vuelta
   const tipo = estado.direccion as 'ida' | 'vuelta';
   const ruta = estado.ruta;
   const rutaMatched = matchRuta(ruta);
   const paradas = getParadasByRutaAndTipo(rutaMatched, tipo);
-  const tarifaAuto = parada ? getTarifa(rutaMatched, parada, tipo) : 0;
+  const tarifaAuto = parada ? getTarifa(rutaMatched, parada, tipo, pasajeroTipo) : 0;
 
   const loadStats = useCallback(async () => {
     try {
@@ -40,9 +40,21 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
 
   useEffect(() => { loadStats(); }, [loadStats]);
 
-  const handleQuickSelect = (paradaName: string, tarifa: number) => {
+  const handleQuickSelect = (paradaName: string, normal: number, media: number) => {
     setParada(paradaName);
+    const tarifa = pasajeroTipo === 'media' ? media : normal;
     setCobrado(tarifa.toString());
+  };
+
+  const handleTipoChange = (nuevoTipo: TipoPasajero) => {
+    setPasajeroTipo(nuevoTipo);
+    if (parada) {
+      const pData = paradas.find(p => p.parada === parada);
+      if (pData) {
+        const tarifa = nuevoTipo === 'media' ? pData.media : pData.normal;
+        setCobrado(tarifa.toString());
+      }
+    }
   };
 
   const handleVenta = async () => {
@@ -64,6 +76,7 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
       ruta: rutaMatched,
       parada: parada.trim(),
       tipo,
+      pasajeroTipo,
       tarifaOficial: tarifaAuto || cobradoNum,
       cobrado: cobradoNum,
       hora,
@@ -74,7 +87,7 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
     };
 
     await saveVenta(venta);
-    setLastSale({ parada: parada.trim(), monto: cobradoNum });
+    setLastSale({ parada: parada.trim(), monto: cobradoNum, tipo: pasajeroTipo === 'normal' ? 'ENTERO' : 'MEDIA' });
     setParada('');
     setCobrado('');
     loadStats();
@@ -95,7 +108,7 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
         )}
       </div>
 
-      {/* Header compacto con dirección */}
+      {/* Header */}
       <div className={`${direccionColor} text-white px-4 py-3`}>
         <div className="flex items-center justify-between">
           <button onClick={onClose} className="p-1 -ml-1">
@@ -112,27 +125,54 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
         </div>
       </div>
 
-      {/* Contenido principal */}
+      {/* Contenido */}
       <div className="flex-1 px-3 py-3 space-y-3 overflow-y-auto">
-        {/* Confirmación de venta (flash) */}
+        {/* Confirmación flash */}
         {lastSale && (
           <div className="bg-green-500 text-white rounded-2xl px-4 py-3 flex items-center gap-3 animate-pulse">
             <Check className="w-6 h-6 flex-shrink-0" />
             <div>
               <div className="font-bold">Venta registrada</div>
-              <div className="text-green-100 text-sm">{lastSale.parada} — ${lastSale.monto.toFixed(2)}</div>
+              <div className="text-green-100 text-sm">{lastSale.parada} — ${lastSale.monto.toFixed(2)} ({lastSale.tipo})</div>
             </div>
           </div>
         )}
 
-        {/* Grid de paradas - botones grandes para una mano */}
+        {/* Selector NORMAL / MEDIA - botones grandes */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleTipoChange('normal')}
+            className={`flex-1 py-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm transition-all active:scale-95 ${
+              pasajeroTipo === 'normal'
+                ? 'bg-[#912D26] text-white shadow-lg shadow-red-200'
+                : 'bg-white text-[#3A3A3A] border border-gray-200'
+            }`}
+          >
+            <User className="w-5 h-5" />
+            ENTERO
+          </button>
+          <button
+            onClick={() => handleTipoChange('media')}
+            className={`flex-1 py-3 rounded-2xl flex items-center justify-center gap-2 font-bold text-sm transition-all active:scale-95 ${
+              pasajeroTipo === 'media'
+                ? 'bg-[#912D26] text-white shadow-lg shadow-red-200'
+                : 'bg-white text-[#3A3A3A] border border-gray-200'
+            }`}
+          >
+            <UserRound className="w-5 h-5" />
+            MEDIA
+          </button>
+        </div>
+
+        {/* Grid de paradas */}
         <div className="grid grid-cols-2 gap-2">
           {paradas.map(p => {
             const isSelected = parada === p.parada;
+            const precio = pasajeroTipo === 'media' ? p.media : p.normal;
             return (
               <button
                 key={p.parada}
-                onClick={() => handleQuickSelect(p.parada, p.tarifa)}
+                onClick={() => handleQuickSelect(p.parada, p.normal, p.media)}
                 className={`rounded-2xl p-3 text-left transition-all active:scale-95 ${
                   isSelected
                     ? 'bg-[#912D26] text-white shadow-lg shadow-red-200 ring-2 ring-red-400'
@@ -141,14 +181,17 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
               >
                 <div className="text-sm font-bold leading-tight">{p.parada}</div>
                 <div className={`text-lg font-black mt-1 ${isSelected ? 'text-red-100' : 'text-[#912D26]'}`}>
-                  ${p.tarifa.toFixed(2)}
+                  ${precio.toFixed(2)}
+                </div>
+                <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-red-200' : 'text-gray-400'}`}>
+                  N:${p.normal.toFixed(2)} M:${p.media.toFixed(2)}
                 </div>
               </button>
             );
           })}
         </div>
 
-        {/* Entrada manual para parada no listada */}
+        {/* Parada manual */}
         <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm">
           <input
             type="text"
@@ -159,26 +202,24 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
           />
         </div>
 
-        {/* Campo de monto */}
+        {/* Monto */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.25"
-                min={TARIFA_MINIMA}
-                placeholder="0.75"
-                value={cobrado}
-                onChange={e => setCobrado(e.target.value)}
-                className="w-full pl-8 pr-3 py-4 rounded-2xl border-2 border-gray-200 bg-white text-2xl font-black text-[#3A3A3A] text-center focus:outline-none focus:ring-2 focus:ring-[#912D26]/30 focus:border-[#912D26]"
-              />
-            </div>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.05"
+              min={TARIFA_MINIMA}
+              placeholder="0.00"
+              value={cobrado}
+              onChange={e => setCobrado(e.target.value)}
+              className="w-full pl-8 pr-3 py-4 rounded-2xl border-2 border-gray-200 bg-white text-2xl font-black text-[#3A3A3A] text-center focus:outline-none focus:ring-2 focus:ring-[#912D26]/30 focus:border-[#912D26]"
+            />
           </div>
           {parada && tarifaAuto > 0 && cobrado && parseFloat(cobrado) !== tarifaAuto && (
             <div className="text-center text-xs text-amber-600 bg-amber-50 rounded-xl px-3 py-1.5">
-              Tarifa oficial: ${tarifaAuto.toFixed(2)} — Diferencia: ${Math.abs(parseFloat(cobrado || '0') - tarifaAuto).toFixed(2)}
+              Tarifa oficial: ${tarifaAuto.toFixed(2)} ({pasajeroTipo === 'normal' ? 'ENTERO' : 'MEDIA'}) — Diferencia: ${Math.abs(parseFloat(cobrado || '0') - tarifaAuto).toFixed(2)}
             </div>
           )}
         </div>
