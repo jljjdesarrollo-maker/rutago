@@ -57,6 +57,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   const [motivoPersonalizado, setMotivoPersonalizado] = useState('');
   const [confirmNoRealizada, setConfirmNoRealizada] = useState(false);
   const [allFrecuencias, setAllFrecuencias] = useState<FrecuenciaData[]>([]);
+  const [exitModal, setExitModal] = useState(false);
   const fecha = today();
 
   useEffect(() => {
@@ -289,6 +290,17 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     );
   }
 
+  // Check if there are unfinished frequencies (for exit guard)
+  const hasUnfinishedFrecuencias = estados.some(e => e.estado === 'pendiente' || e.estado === 'abierta');
+
+  const handleBack = () => {
+    if (hasUnfinishedFrecuencias) {
+      setExitModal(true);
+    } else {
+      onBack();
+    }
+  };
+
   // Check if ALL frequencies are done (cerrada or no_realizada)
   const allFrecuenciasDone = estados.length > 0 && estados.every(e => e.estado === 'cerrada' || e.estado === 'no_realizada');
 
@@ -306,7 +318,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
       <div className="bg-[#912D26] text-white px-4 py-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <button onClick={onBack} className="text-red-100"><ArrowLeft className="w-5 h-5" /></button>
+            <button onClick={handleBack} className="text-red-100"><ArrowLeft className="w-5 h-5" /></button>
             <div>
               <h1 className="text-lg font-bold">Frecuencias</h1>
               <p className="text-red-100 text-xs">{session.nombre} - {session.ayudanteNombre}</p>
@@ -360,6 +372,36 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
         <div className="text-center text-xs text-gray-500 mb-1">
           {new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </div>
+
+        {/* Modal Exit Warning */}
+        {exitModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-[#912D26]" />
+              </div>
+              <h3 className="text-lg font-bold text-[#3A3A3A] mb-2">Salir del turno?</h3>
+              <div className="bg-red-50 rounded-xl p-3 mb-4">
+                <p className="text-sm text-[#912D26] font-semibold">
+                  Tienes {estados.filter(e => e.estado === 'abierta').length} frecuencia{estados.filter(e => e.estado === 'abierta').length !== 1 ? 's' : ''} abierta{estados.filter(e => e.estado === 'abierta').length !== 1 ? 's' : ''} y {estados.filter(e => e.estado === 'pendiente').length} pendiente{estados.filter(e => e.estado === 'pendiente').length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              <p className="text-sm text-gray-500 mb-5">
+                Si sales, el progreso se conservará y podrás continuar cuando vuelvas a ingresar.
+              </p>
+              <div className="flex gap-2">
+                <button onClick={() => setExitModal(false)}
+                  className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-bold text-sm active:scale-[0.98] shadow-lg shadow-red-200">
+                  Cancelar
+                </button>
+                <button onClick={() => { setExitModal(false); onBack(); }}
+                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold text-sm active:scale-[0.98]">
+                  Salir
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Reassign modal */}
         {reassigning && (

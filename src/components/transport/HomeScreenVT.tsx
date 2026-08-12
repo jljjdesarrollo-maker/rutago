@@ -55,13 +55,19 @@ export function HomeScreenVT({ onSessionStart }: Props) {
   const handleStart = () => {
     if (!selectedVT || !ayudante) return;
     const vt = vts.find(v => v.codigo === selectedVT)!;
-    onSessionStart({
+    const newSession: VTSession = {
       vtCode: vt.codigo,
       nombre: vt.nombre,
       ayudanteId: ayudante.id,
       ayudanteNombre: ayudante.nombre,
-      fecha: new Date().toISOString().split('T')[0], // Fecha del inicio del turno
-    });
+      fecha: new Date().toISOString().split('T')[0],
+    };
+    // Persistir sesión del VT para restaurar al reabrir la app
+    localStorage.setItem('rg_vt_session', JSON.stringify({
+      ...newSession,
+      timestamp: Date.now(),
+    }));
+    onSessionStart(newSession);
   };
 
   if (loading) {

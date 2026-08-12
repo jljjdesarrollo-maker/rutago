@@ -53,6 +53,35 @@ export default function Home() {
     setLoading(false);
   }, []);
 
+  // Auto-restore VT session if exists and has unfinished frequencies
+  const [vtRestoreChecked, setVtRestoreChecked] = useState(false);
+  useEffect(() => {
+    if (user && !vtRestoreChecked) {
+      setVtRestoreChecked(true);
+      try {
+        const stored = localStorage.getItem('rg_vt_session');
+        if (!stored) return;
+        const saved: VTSession & { timestamp: number } = JSON.parse(stored);
+        if (!saved.vtCode || !saved.fecha) return;
+        // Check if there are unfinished frequencies for this VT
+        const estadosKey = `rg_estados_${saved.vtCode}_${saved.fecha}`;
+        const estadosRaw = localStorage.getItem(estadosKey);
+        if (!estadosRaw) return;
+        const estados: { estado: string }[] = JSON.parse(estadosRaw);
+        const hasUnfinished = estados.some(e => e.estado === 'pendiente' || e.estado === 'abierta');
+        if (!hasUnfinished) {
+          // All done but session not cleared — clean up
+          localStorage.removeItem('rg_vt_session');
+          return;
+        }
+        // Restore VT session and go directly to frequencies
+        const { timestamp, ...sessionData } = saved;
+        setVtSession(sessionData);
+        setView('boletos_frecuencias');
+      } catch { /* ignore parse errors */ }
+    }
+  }, [user, vtRestoreChecked]);
+
   const isAdmin = user?.rol === 'ADMIN';
 
   const fetchCount = useCallback(async () => {
@@ -250,7 +279,12 @@ export default function Home() {
         connection={connection.info}
         onClose={() => setView('boletos_frecuencias')}
         onGoToSync={() => setView('boletos_sync')}
-        onSaved={() => { setVtSession(null); setView('home'); }}
+        onSaved={() => {
+          // Limpiar sesión VT persistida al completar arqueo general
+          localStorage.removeItem('rg_vt_session');
+          setVtSession(null);
+          setView('home');
+        }}
       />
     );
   }
