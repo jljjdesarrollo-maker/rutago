@@ -38,3 +38,26 @@ Stage Summary:
 - Antes: getTarifa ignoraba dirección → siempre precio desde Loja
 - Ahora: precios correctos por dirección (ida/vuelta)
 - Ejemplo: San Pedro ida=$2.25, San Pedro vuelta=$0.75
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Implementar GPS invisible en ventas, apertura y cierre de frecuencias
+
+Work Log:
+- Creó src/lib/gps.ts con getGPSPosition() (5s timeout, high accuracy, 30s cache)
+- Agregó campos lat/lng a VentaBoleto en Prisma schema + DB push exitoso
+- Agregó campos lat/lng a VentaLocal interface en IndexedDB
+- Agregó campos gpsLatStart/gpsLngStart/gpsLatEnd/gpsLngEnd a EstadoFrecuencia
+- TicketScreen: captura GPS automático al registrar cada venta
+- FrecuenciaSelector.handleOpen: captura GPS al abrir frecuencia
+- ArqueoScreen.handleConfirm: captura GPS al cerrar frecuencia (arqueo)
+- SyncScreen: envía lat/lng al sincronizar ventas pendientes
+- API /api/ventas: guarda lat/lng en base de datos
+
+Stage Summary:
+- 8 archivos cambiados, 87 insertions, 4 deletions
+- GPS 100% invisible para el usuario, no afecta agilidad
+- Timeout 5s para no bloquear, acepta cache de 30s
+- Datos almacenados en IndexedDB (offline) + Prisma DB (online)
+- Flujo: venta → IndexedDB con GPS → sync → API → DB con GPS
