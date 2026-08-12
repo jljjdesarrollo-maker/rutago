@@ -250,7 +250,8 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
               className="w-full pl-8 pr-3 py-4 rounded-2xl border-2 border-gray-200 bg-white text-2xl font-black text-[#3A3A3A] text-center focus:outline-none focus:ring-2 focus:ring-[#912D26]/30 focus:border-[#912D26]"
             />
           </div>
-          {parada && tarifaAuto > 0 && cobrado && parseFloat(cobrado) !== tarifaAuto && (
+          {/* Solo mostrar advertencia si es parada conocida y el monto difiere de la tarifa oficial */}
+          {parada && paradas.some(p => p.parada === parada) && tarifaAuto > 0 && cobrado && parseFloat(cobrado) !== tarifaAuto && (
             <div className="text-center text-xs text-amber-600 bg-amber-50 rounded-xl px-3 py-1.5">
               Tarifa oficial: ${tarifaAuto.toFixed(2)} ({pasajeroTipo === 'normal' ? 'ENTERO' : 'MEDIA'}) — Diferencia: ${Math.abs(parseFloat(cobrado || '0') - tarifaAuto).toFixed(2)}
             </div>
