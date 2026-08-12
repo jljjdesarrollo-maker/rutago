@@ -21,6 +21,7 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
   const [efectivo, setEfectivo] = useState('');
   const [confirmado, setConfirmado] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [ventasOpen, setVentasOpen] = useState(false);
 
   const loadVentas = useCallback(async () => {
     const all = await getVentasByFrecuencia(estado.estadoId);
@@ -131,7 +132,7 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
       </div>
 
       {/* Header */}
-      <div className="bg-[#3A3A3A] text-white px-4 py-3">
+      <div className="bg-[#912D26] text-white px-4 py-3">
         <div className="flex items-center justify-between">
           <button onClick={onBack} className="text-gray-300"><ChevronLeft className="w-6 h-6" /></button>
           <div className="text-center">
@@ -243,19 +244,26 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
           </div>
         )}
 
-        {/* Detalle de ventas */}
+        {/* Detalle de ventas - colapsable */}
         {ventas.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-            <h3 className="font-bold text-[#3A3A3A] mb-2 text-sm">Detalle de ventas</h3>
-            <div className="space-y-1 max-h-36 overflow-y-auto">
-              {ventas.map((v, i) => (
-                <div key={v.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 rounded-lg text-xs">
-                  <span className="text-gray-400 font-bold w-5">{i + 1}</span>
-                  <span className="text-[#3A3A3A] flex-1">{v.parada} <span className="text-gray-400">{v.pasajeroTipo === 'media' ? '(M)' : '(E)'}</span></span>
-                  <span className="font-bold text-[#912D26]">${v.cobrado.toFixed(2)}</span>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <button onClick={() => setVentasOpen(!ventasOpen)} className="w-full p-4 flex items-center justify-between">
+              <h3 className="font-bold text-[#3A3A3A] text-sm">Detalle de ventas ({ventas.length})</h3>
+              <svg className={`w-4 h-4 text-gray-400 transition-transform ${ventasOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            {ventasOpen && (
+              <div className="px-4 pb-3">
+                <div className="space-y-1 max-h-36 overflow-y-auto">
+                  {ventas.map((v, i) => (
+                    <div key={v.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 rounded-lg text-xs">
+                      <span className="text-gray-400 font-bold w-5">{i + 1}</span>
+                      <span className="text-[#3A3A3A] flex-1">{v.parada} <span className="text-gray-400">{v.pasajeroTipo === 'media' ? '(M)' : '(E)'}</span></span>
+                      <span className="font-bold text-[#912D26]">${v.cobrado.toFixed(2)}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         )}
 

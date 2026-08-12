@@ -15,6 +15,8 @@ export function SyncScreen({ session, onBack }: Props) {
   const [syncing, setSyncing] = useState(false);
   const [syncResults, setSyncResults] = useState<{ ok: number; fail: number; total: number }>({ ok: 0, fail: 0, total: 0 });
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [autoSyncDone, setAutoSyncDone] = useState(false);
+  const [autoReturned, setAutoReturned] = useState(false);
 
   useEffect(() => {
     const handle = () => setIsOnline(navigator.onLine);
@@ -29,6 +31,24 @@ export function SyncScreen({ session, onBack }: Props) {
   }, []);
 
   useEffect(() => { loadVentas(); }, [loadVentas]);
+
+  // Auto-sync when screen opens (if online + pending)
+  useEffect(() => {
+    if (isOnline && !autoSyncDone && totalPending > 0) {
+      setAutoSyncDone(true);
+      const timer = setTimeout(() => handleSyncAll(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isOnline, autoSyncDone, totalPending]);
+
+  // Auto-return after successful sync
+  useEffect(() => {
+    if (autoSyncDone && !syncing && syncResults.ok > 0 && syncResults.fail === 0 && totalPending === 0 && !autoReturned) {
+      setAutoReturned(true);
+      const timer = setTimeout(() => onBack(), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [autoSyncDone, syncing, syncResults, totalPending, autoReturned, onBack]);
 
   const pendingCount = ventas.filter(v => v.syncStatus === 'pending').length;
   const errorCount = ventas.filter(v => v.syncStatus === 'error').length;

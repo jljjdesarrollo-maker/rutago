@@ -473,40 +473,17 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
                 <button onClick={() => setNoRealizadaModal(null)}
                   className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Cancelar</button>
                 <button
-                  onClick={() => motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim()) ? setConfirmNoRealizada(true) : null}
+                  onClick={() => {
+                    if (motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim())) {
+                      confirmNoRealizadaAction();
+                    }
+                  }}
                   disabled={!motivoSeleccionado || (motivoSeleccionado === 'otro' && !motivoPersonalizado.trim())}
                   className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
                     motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim())
                       ? 'bg-orange-500 text-white shadow-lg shadow-orange-200'
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}>
-                  <XCircle className="w-4 h-4" /> Confirmar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modal No Realizada - Confirmación */}
-        {noRealizadaModal && confirmNoRealizada && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="w-8 h-8 text-orange-500" />
-              </div>
-              <h3 className="text-lg font-bold text-[#3A3A3A] mb-2">Confirmar No Realizada</h3>
-              <div className="bg-orange-50 rounded-xl p-3 mb-4">
-                <p className="text-sm font-semibold text-orange-700">{noRealizadaModal.hora} — {noRealizadaModal.nombre}</p>
-                <p className="text-xs text-orange-600 mt-1">
-                  Motivo: <strong>{motivoSeleccionado === 'otro' ? motivoPersonalizado.trim() : MOTIVOS_NO_REALIZADA.find(m => m.id === motivoSeleccionado)?.label}</strong>
-                </p>
-              </div>
-              <p className="text-sm text-gray-500 mb-5">Esta frecuencia se marcará como NO realizada y no podrá vender boletos. Esta acción quedará registrada.</p>
-              <div className="flex gap-2">
-                <button onClick={() => setConfirmNoRealizada(false)}
-                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Volver</button>
-                <button onClick={confirmNoRealizadaAction}
-                  className="flex-1 py-3 rounded-xl bg-orange-500 text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] shadow-lg shadow-orange-200">
                   <XCircle className="w-4 h-4" /> Confirmar
                 </button>
               </div>
@@ -559,13 +536,13 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
                   {/* PENDIENTE + disponible */}
                   {estado.estado === 'pendiente' && disponible && (
                     <>
-                      <button onClick={() => handleOpen(estado)} className="flex-1 py-2 rounded-xl bg-[#912D26] text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
+                      <button onClick={() => handleOpen(estado)} className="flex-1 py-3.5 rounded-xl bg-[#912D26] text-white font-bold text-sm flex items-center justify-center gap-1.5 active:scale-[0.97] shadow-md shadow-red-200">
                         <Play className="w-4 h-4" /> Vender
                       </button>
-                      <button onClick={() => handleNoRealizada(estado)} className="py-2 px-3 rounded-xl bg-orange-100 text-orange-600 font-semibold text-sm flex items-center gap-1" title="No Realizada">
+                      <button onClick={() => handleNoRealizada(estado)} className="py-3.5 px-4 rounded-xl bg-orange-100 text-orange-600 font-bold text-sm flex items-center gap-1.5 active:scale-[0.97]" title="No Realizada">
                         <XCircle className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleReassign(estado)} className="py-2 px-3 rounded-xl bg-gray-200 text-gray-600 font-semibold text-sm flex items-center gap-1" title="Reasignar">
+                      <button onClick={() => handleReassign(estado)} className="py-3.5 px-4 rounded-xl bg-gray-200 text-gray-600 font-bold text-sm flex items-center gap-1.5 active:scale-[0.97]" title="Reasignar">
                         <RotateCcw className="w-4 h-4" />
                       </button>
                     </>
