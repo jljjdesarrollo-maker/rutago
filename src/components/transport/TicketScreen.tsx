@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { type FrecuenciaEstado, type VTSession } from './types-boletos';
 import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta, type TipoPasajero } from '@/lib/tarifas-data';
 import { saveVenta } from '@/lib/indexeddb';
@@ -19,6 +19,8 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
   const [parada, setParada] = useState('');
   const [cobrado, setCobrado] = useState('');
   const [pasajeroTipo, setPasajeroTipo] = useState<TipoPasajero>('normal');
+  const paradaInputRef = useRef<HTMLInputElement>(null);
+  const montoInputRef = useRef<HTMLInputElement>(null);
   const [lastSale, setLastSale] = useState<{ parada: string; monto: number; tipo: string } | null>(null);
   const [ventasHoy, setVentasHoy] = useState(0);
   const [totalHoy, setTotalHoy] = useState(0);
@@ -45,6 +47,20 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
     setParada(paradaName);
     const tarifa = pasajeroTipo === 'media' ? media : normal;
     setCobrado(tarifa.toString());
+  };
+
+  const handleParadaManualChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setParada(val);
+    // Solo limpiar cobrado si la parada escrita NO está en la lista (es manual)
+    const isKnownParada = paradas.find(p => p.parada.toLowerCase() === val.toLowerCase());
+    if (!isKnownParada) {
+      setCobrado('');
+      // Auto-enfocar campo de monto después de escribir para agilizar
+      if (val.trim().length > 2) {
+        setTimeout(() => montoInputRef.current?.focus(), 100);
+      }
+    }
   };
 
   const handleTipoChange = (nuevoTipo: TipoPasajero) => {
@@ -198,13 +214,24 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
 
         {/* Parada manual */}
         <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm">
-          <input
-            type="text"
-            placeholder="Otra parada..."
-            value={parada}
-            onChange={e => { setParada(e.target.value); setCobrado(''); }}
-            className="w-full px-3 py-2.5 rounded-xl bg-gray-50 text-sm text-[#3A3A3A] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#912D26]/30"
-          />
+          <div className="flex gap-2">
+            <input
+              ref={paradaInputRef}
+              type="text"
+              placeholder="Otra parada..."
+              value={parada}
+              onChange={handleParadaManualChange}
+              className="flex-1 px-3 py-2.5 rounded-xl bg-gray-50 text-sm text-[#3A3A3A] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#912D26]/30"
+            />
+            {parada && !paradas.find(p => p.parada === parada) && cobrado && parseFloat(cobrado) >= TARIFA_MINIMA && (
+              <button
+                onClick={handleVenta}
+                className="px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-bold active:scale-95 transition-all"
+              >
+                OK
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Monto */}
@@ -212,6 +239,7 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
             <input
+              ref={montoInputRef}
               type="number"
               inputMode="decimal"
               step="0.05"
