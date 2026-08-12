@@ -62,7 +62,7 @@ export interface UserSession {
   rol: string;
 }
 
-export type AppView = 'home' | 'form' | 'history' | 'reports' | 'personal' | 'vtconfig' | 'compare' | 'boletos_home' | 'boletos_frecuencias' | 'boletos_tickets' | 'boletos_cierre' | 'boletos_arqueo' | 'boletos_sync';
+export type AppView = 'home' | 'form' | 'history' | 'reports' | 'personal' | 'vtconfig' | 'compare' | 'boletos_home' | 'boletos_frecuencias' | 'boletos_tickets' | 'boletos_cierre' | 'boletos_arqueo' | 'boletos_arqueo_general' | 'boletos_sync';
 
 export function num(v: string): number {
   return parseFloat(v) || 0;

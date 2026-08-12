@@ -15,6 +15,7 @@ import { HomeScreenVT } from '@/components/transport/HomeScreenVT';
 import { FrecuenciaSelector } from '@/components/transport/FrecuenciaSelector';
 import { TicketScreen } from '@/components/transport/TicketScreen';
 import { ArqueoScreen } from '@/components/transport/ArqueoScreen';
+import { ArqueoGeneralScreen } from '@/components/transport/ArqueoGeneralScreen';
 import { SyncScreen } from '@/components/transport/SyncScreen';
 import { type AppView, type RecordFormData, type SavedRecord, type UserSession, num } from '@/components/transport/types';
 import { type VTSession, type FrecuenciaEstado } from '@/components/transport/types-boletos';
@@ -227,9 +228,28 @@ export default function Home() {
         estado={currentEstado}
         connection={connection.info}
         esUltima={esUltimaFrecuencia}
-        onArqueoConfirmado={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }}
+        onArqueoConfirmado={() => {
+          setCurrentEstado(null);
+          // Si era la ultima frecuencia, ir al arqueo general
+          if (esUltimaFrecuencia) {
+            setView('boletos_arqueo_general');
+          } else {
+            setView('boletos_frecuencias');
+          }
+        }}
         onBack={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }}
         onGoToSync={() => setView('boletos_sync')}
+      />
+    );
+  }
+  if (view === 'boletos_arqueo_general' && vtSession) {
+    return (
+      <ArqueoGeneralScreen
+        session={vtSession}
+        connection={connection.info}
+        onClose={() => setView('boletos_frecuencias')}
+        onGoToSync={() => setView('boletos_sync')}
+        onSaved={() => { setVtSession(null); setView('home'); }}
       />
     );
   }
