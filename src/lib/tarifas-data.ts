@@ -229,15 +229,16 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
 
 // ─── Funciones de precio con soporte por dirección ───
 //
-// Lógica de precios:
-// - "IDA" siempre = el bus se aleja de Loja (Loja → Vilcabamba, Loja → Zahuayco, etc.)
-//   Precios: cada parada se cobra desde Loja (preciosIda)
-// - "VUELTA" siempre = el bus viaja HACIA Loja (Vilcabamba → Loja, Zahuayco → Loja, etc.)
-//   Precios: cada parada se cobra desde el destino (preciosVuelta)
+// Lógica de precios (tipo semántico asignado por el API):
+// - "ida"   = el bus se ALEJA de Loja → usar preciosIda
+// - "vuelta" = el bus VIAJA HACIA Loja → usar preciosVuelta
 //
-// Para rutas "X - Loja" (Vilcabamba-Loja, etc.):
-//   "ida" = desde X hacia Loja → es lo mismo que VUELTA en términos de precios
-//   "vuelta" = desde Loja hacia X → es lo mismo que IDA en términos de precios
+// El API asigna dirección según el origen:
+//   Si origen = Loja →  "ida" (alejándose)
+//   Si origen ≠ Loja → "vuelta" (hacia Loja)
+//
+// normalizeRutaTipo solo cambia el nombre de ruta ("Vilcabamba-Loja" → "Loja-Vilcabamba")
+// SIN invertir el tipo, porque el API ya lo asigna semánticamente correcto.
 
 function viajaHaciaLoja(ruta: string, tipo: string): boolean {
   // Ruta "Loja - X": ida se aleja de Loja, vuelta regresa a Loja
@@ -266,17 +267,20 @@ export type TipoPasajero = 'normal' | 'media';
 
 // Obtener paradas con tarifas para una ruta y dirección (USA PRECIOS POR DIRECCIÓN)
 export function getParadasByRutaAndTipo(ruta: string, tipo: string): { parada: string; normal: number; media: number }[] {
-  // Normalize: rutas "X - Loja" tienen ida/vuelta invertidos respecto a "Loja - X"
-  // "Vilcabamba - Loja" ida = viaje Vilcabamba→Loja = usar preciosVuelta, paradas desde Vilcabamba
-  // "Vilcabamba - Loja" vuelta = viaje Loja→Vilcabamba = usar preciosIda, paradas desde Loja
+  // Normalize: para rutas "X - Loja", mapear a "Loja - X" pero mantener tipo semántico
+  // "Vilcabamba - Loja" tipo="vuelta" (API) → "Loja - Vilcabamba" tipo="vuelta"
+  //   → usa paradas vuelta = [Vilcabamba, San Pedro, ...] y preciosVuelta ✓
+  // "Vilcabamba - Loja" tipo="ida" (API) → "Loja - Vilcabamba" tipo="ida"
+  //   → usa paradas ida = [Dos Puentes, Cajánuma, ...] y preciosIda ✓
   let effectiveRuta = ruta;
   let effectiveTipo = tipo;
   if (ruta.endsWith('Loja') && !ruta.startsWith('Loja')) {
-    // "Vilcabamba - Loja" ida → "Loja - Vilcabamba" vuelta
-    // "Vilcabamba - Loja" vuelta → "Loja - Vilcabamba" ida
+    // "Vilcabamba - Loja" → mapear a "Loja - Vilcabamba" manteniendo el tipo semántico
+    // El API ya asigna el tipo correcto: "ida"=alejándose de Loja, "vuelta"=hacia Loja
+    // Solo necesitamos el nombre de ruta base, SIN invertir el tipo
     const baseName = ruta.replace(' - Loja', '');
     effectiveRuta = `Loja - ${baseName}`;
-    effectiveTipo = tipo === 'ida' ? 'vuelta' : 'ida';
+    // NO invertir effectiveTipo — ya viene correcto del API
   }
 
   const rutaConfig = RUTA_PARADAS[effectiveRuta];
@@ -305,8 +309,10 @@ export function getParadasByRutaAndTipo(ruta: string, tipo: string): { parada: s
 // Normalizar ruta y tipo para rutas "X - Loja"
 function normalizeRutaTipo(ruta: string, tipo: string): { ruta: string; tipo: string } {
   if (ruta.endsWith('Loja') && !ruta.startsWith('Loja')) {
+    // "Vilcabamba - Loja" → mapear a "Loja - Vilcabamba" manteniendo tipo semántico
+    // El API ya asigna tipo correcto, NO invertir
     const baseName = ruta.replace(' - Loja', '');
-    return { ruta: `Loja - ${baseName}`, tipo: tipo === 'ida' ? 'vuelta' : 'ida' };
+    return { ruta: `Loja - ${baseName}`, tipo };
   }
   return { ruta, tipo };
 }
