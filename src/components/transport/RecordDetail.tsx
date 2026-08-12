@@ -134,8 +134,17 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
               <CardTitle className="text-base font-semibold text-[#3A3A3A]">Frecuencias ({rec.trips.length})</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-2">
+              {/* Header */}
+              <div className="flex items-center justify-between px-2 py-1 text-[10px] font-bold text-gray-400 uppercase">
+                <div className="flex-1">Frecuencia</div>
+                <div className="w-16 text-right">Sistema</div>
+                <div className="w-16 text-right">Real</div>
+                <div className="w-14 text-right">Dif.</div>
+              </div>
               {rec.trips.map((trip, i) => {
                 const odd = (i + 1) % 2 !== 0;
+                const diff = trip.efectivoReal - trip.income;
+                const hasDiff = Math.abs(diff) >= 0.01;
                 return (
                   <div key={trip.id} className={`flex items-center gap-3 p-2.5 rounded-xl ${odd ? 'bg-[#912D26]/5 border-l-4 border-[#912D26]' : 'bg-[#3A3A3A]/5 border-l-4 border-[#3A3A3A]'}`}>
                     <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${odd ? 'bg-[#912D26] text-white' : 'bg-[#3A3A3A] text-white'}`}>
@@ -148,9 +157,18 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
                       <p className="text-xs text-[#3A3A3A]/40">{trip.time || 'Sin hora'}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold text-[#3A3A3A]">S/ {trip.income.toFixed(2)}</p>
-                      {trip.boletos > 0 && (
-                        <p className="text-[10px] text-[#912D26]">BL: {trip.boletos.toFixed(2)}</p>
+                      <p className="text-sm font-semibold text-[#3A3A3A]">${trip.income.toFixed(2)}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-green-700">${trip.efectivoReal.toFixed(2)}</p>
+                    </div>
+                    <div className="w-14 text-right shrink-0">
+                      {hasDiff ? (
+                        <span className={`text-xs font-bold ${diff > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                          {diff > 0 ? '+' : ''}{diff.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
                       )}
                     </div>
                   </div>

@@ -46,6 +46,7 @@ export interface SavedRecord {
     routeTo: string;
     time: string | null;
     income: number;
+    efectivoReal: number;
     boletos: number;
   }[];
   expenses: {

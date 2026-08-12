@@ -178,6 +178,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         routeTo: f.direccion === 'ida' ? f.ruta.split(' - ')[1]?.trim() || 'Vilcabamba' : 'Loja',
         time: f.hora,
         income: f.totalRecaudado.toString(),
+        efectivoReal: f.efectivoContado.toString(),
         boletos: '0',
       }));
 

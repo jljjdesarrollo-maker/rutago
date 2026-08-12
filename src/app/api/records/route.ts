@@ -57,12 +57,13 @@ export async function POST(req: NextRequest) {
         totalGastos,
         photoUrl: photoUrl || null,
         trips: {
-          create: (trips || []).map((t: { routeFrom: string; routeTo: string; time?: string; income?: number | string; boletos?: number | string }, i: number) => ({
+          create: (trips || []).map((t: { routeFrom: string; routeTo: string; time?: string; income?: number | string; efectivoReal?: number | string; boletos?: number | string }, i: number) => ({
             order: i + 1,
             routeFrom: t.routeFrom || '',
             routeTo: t.routeTo || '',
             time: t.time || null,
             income: Number(t.income) || 0,
+            efectivoReal: Number(t.efectivoReal) || 0,
             boletos: Number(t.boletos) || 0,
           })),
         },
