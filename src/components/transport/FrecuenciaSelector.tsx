@@ -196,6 +196,22 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     setNoRealizadaModal(null);
   };
 
+  // Filtrar frecuencias por origen para reasignación
+  const getFrecuenciasParaReasignar = (estadoId: string): FrecuenciaData[] => {
+    const estadoActual = estados.find(e => e.estadoId === estadoId);
+    if (!estadoActual) return frecuencias;
+    // Extraer origen de la ruta: "Vilcabamba - Loja" → "Vilcabamba"
+    const partes = estadoActual.ruta.split(' - ');
+    const origen = partes[0]?.trim().toLowerCase();
+    if (!origen) return frecuencias;
+    // Filtrar frecuencias que tengan el mismo origen
+    return frecuencias.filter(f => {
+      const fPartes = f.ruta.split(' - ');
+      const fOrigen = fPartes[0]?.trim().toLowerCase();
+      return fOrigen === origen;
+    });
+  };
+
   const handleReassign = (estado: FrecuenciaEstado) => {
     setReassigning(estado.estadoId);
   };
@@ -337,9 +353,11 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
           <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
             <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 max-h-[80vh] overflow-y-auto">
               <h3 className="text-lg font-bold text-[#3A3A3A] mb-1">Reasignar Horario</h3>
-              <p className="text-sm text-gray-500 mb-4">Selecciona la nueva frecuencia</p>
+              <p className="text-sm text-gray-500 mb-4">
+                Rutas desde <strong className="text-[#912D26]">{estados.find(e => e.estadoId === reassigning)?.ruta.split(' - ')[0]?.trim()}</strong>
+              </p>
               <div className="space-y-2">
-                {frecuencias.map(target => (
+                {getFrecuenciasParaReasignar(reassigning).map(target => (
                   <button key={target.id} onClick={() => handleSelectReassignment(target)}
                     className="w-full p-4 rounded-xl border border-gray-200 hover:bg-[#912D26]/5 hover:border-[#912D26]/30 transition-all text-left">
                     <div className="flex items-center justify-between">
