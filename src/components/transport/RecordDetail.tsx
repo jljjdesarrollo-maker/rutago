@@ -197,13 +197,38 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
             </CardContent>
           </Card>
 
+          {/* Totals Sistema vs Real */}
+          <Card className="rounded-2xl bg-[#912D26] text-white">
+            <CardContent className="p-4 space-y-2">
+              <p className="text-xs font-bold text-white/50 uppercase tracking-wide mb-1">Resumen por Frecuencias</p>
+              <div className="flex justify-between text-sm">
+                <span className="text-white/60">Total Sistema</span>
+                <span className="font-semibold">S/ {rec.trips.reduce((s, t) => s + t.income, 0).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-white/60">Total Real (Contado)</span>
+                <span className="font-bold text-[#4ADE80]">S/ {rec.trips.reduce((s, t) => s + t.efectivoReal, 0).toFixed(2)}</span>
+              </div>
+              {(() => {
+                const dif = rec.trips.reduce((s, t) => s + t.efectivoReal, 0) - rec.trips.reduce((s, t) => s + t.income, 0);
+                return Math.abs(dif) >= 0.01 ? (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-white/60">Diferencia</span>
+                    <span className={`font-bold ${dif >= 0 ? 'text-blue-300' : 'text-red-300'}`}>{dif >= 0 ? '+' : ''}{dif.toFixed(2)}</span>
+                  </div>
+                ) : null;
+              })()}
+            </CardContent>
+          </Card>
+
           {/* Summary */}
           <Card className="rounded-2xl bg-[#3A3A3A] text-white">
             <CardContent className="p-4 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-white/60">Produccion</span>
-                <span className="font-semibold">S/ {rec.production.toFixed(2)}</span>
+                <span className="text-white/60">Produccion (Real)</span>
+                <span className="font-bold text-lg">S/ {rec.production.toFixed(2)}</span>
               </div>
+              <p className="text-[10px] text-white/30">Efectivo contado + Sobrante</p>
               <div className="flex justify-between text-sm">
                 <span className="text-white/60">Caja Comun</span>
                 <span className="font-semibold">S/ {rec.cajaComun.toFixed(2)}</span>

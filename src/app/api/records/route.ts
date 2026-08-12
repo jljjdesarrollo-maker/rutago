@@ -33,9 +33,11 @@ export async function POST(req: NextRequest) {
     const { date, km, conductor, ayudanteNombre, vtCode, trips, expenses, tickets, sobrante, photoUrl } = body;
 
     const tripIncome = (trips || []).reduce((s: number, t: { income: number | string }) => s + (Number(t.income) || 0), 0);
+    const tripEfectivoReal = (trips || []).reduce((s: number, t: { efectivoReal: number | string }) => s + (Number(t.efectivoReal) || 0), 0);
     const cajaComun = (trips || []).reduce((s: number, t: { boletos: number | string }) => s + (Number(t.boletos) || 0), 0);
     const sobranteNum = Number(sobrante) || 0;
-    const production = tripIncome + sobranteNum;
+    // PRODUCCION = efectivo real contado + sobrante (no sistema)
+    const production = tripEfectivoReal + sobranteNum;
     const totalGastos = (expenses || []).reduce((s: number, e: { amount: number | string }) => s + (Number(e.amount) || 0), 0);
     const entregaAyudante = production - totalGastos;
     const ticketsNum = Number(tickets) || 0;
