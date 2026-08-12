@@ -130,6 +130,22 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
         </div>
       </div>
 
+      {/* SYNC OBLIGATORIO banner - if online with pending ventas */}
+      {connection.status !== 'offline' && connection.pendingCount > 0 && (
+        <div className="mx-4 mt-3 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-2xl p-3 flex items-center gap-3 shadow-md">
+          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Send className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-white font-black text-sm">SYNC OBLIGATORIO</p>
+            <p className="text-white/80 text-xs">Tienes {connection.pendingCount} venta{connection.pendingCount !== 1 ? 's' : ''} sin sincronizar. Debes sincronizar antes del arqueo.</p>
+          </div>
+          <button onClick={onGoToSync} className="bg-white text-orange-600 font-black text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 active:scale-95 shadow-sm flex-shrink-0">
+            <Send className="w-4 h-4" /> SYNC
+          </button>
+        </div>
+      )}
+
       <div className="flex-1 px-4 py-4 space-y-4 overflow-y-auto">
         {/* Resumen sistema */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
