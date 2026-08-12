@@ -1,8 +1,9 @@
 // Tarifas oficiales RutaGo - TRANSPORTES VILCABAMBATURIS CÍA. LTDA.
-// Precios desde Loja a cada destino
 // NORMAL: pasaje entero | MEDIA: medio pasaje (niños, tercera edad, discapacidad)
 // El Tambo: ramifica en Malacatos (NO pasa por Vilcabamba)
 // Zahuayco, La Elvira, Yangana: pasan por Vilcabamba
+//
+// Actualizado: Agosto 2025 — precios diferenciados por dirección (ida/vuelta)
 
 export interface TarifaItem {
   id: string;
@@ -11,80 +12,129 @@ export interface TarifaItem {
   media: number;
 }
 
-export const TARIFA_MINIMA = 0.65; // Media tarifa más baja
+export const TARIFA_MINIMA = 0.40; // Media tarifa más baja
 
-// ─── Precios desde Loja ───
-const preciosDesdeLoja: TarifaItem[] = [
+// ─── Precios IDA (desde Loja hacia el destino) ───
+const preciosIda: Record<string, { normal: number; media: number }> = {
   // ═══ LOJA - VILCABAMBA ═══
-  { id: 'loja-vil-01', parada: 'Cajánuma',           normal: 1.25, media: 0.65 },
-  { id: 'loja-vil-02', parada: 'Pueblo Nuevo',        normal: 1.25, media: 0.65 },
-  { id: 'loja-vil-03', parada: 'Tres Leguas',         normal: 1.25, media: 0.65 },
-  { id: 'loja-vil-04', parada: 'Rumizhitana',         normal: 1.25, media: 0.65 },
-  { id: 'loja-vil-05', parada: 'Yamba',               normal: 1.25, media: 0.65 },
-  { id: 'loja-vil-06', parada: 'Granadillo',          normal: 1.40, media: 0.70 },
-  { id: 'loja-vil-07', parada: 'Porvenir',            normal: 1.40, media: 0.70 },
-  { id: 'loja-vil-08', parada: 'Nangora',             normal: 1.50, media: 0.75 },
-  { id: 'loja-vil-09', parada: 'Chorrillos',          normal: 1.75, media: 0.70 },
-  { id: 'loja-vil-10', parada: 'Landangui',           normal: 1.75, media: 0.90 },
-  { id: 'loja-vil-11', parada: 'La Peña',             normal: 1.75, media: 0.90 },
-  { id: 'loja-vil-12', parada: 'Malacatos',           normal: 2.00, media: 1.00 },
-  { id: 'loja-vil-13', parada: 'Taxiche',             normal: 2.00, media: 1.00 },
-  { id: 'loja-vil-14', parada: 'Cavianga',            normal: 2.25, media: 1.15 },
-  { id: 'loja-vil-15', parada: 'Cararango',           normal: 2.25, media: 1.15 },
-  { id: 'loja-vil-16', parada: 'San Pedro',           normal: 2.25, media: 1.15 },
-  { id: 'loja-vil-17', parada: 'Vilcabamba',          normal: 2.50, media: 1.25 },
+  'Dos Puentes':  { normal: 0.75, media: 0.40 },
+  'Cajánuma':     { normal: 1.25, media: 0.65 },
+  'Pueblo Nuevo': { normal: 1.25, media: 0.65 },
+  'Tres Leguas':  { normal: 1.25, media: 0.65 },
+  'Rumizhitana':  { normal: 1.25, media: 0.65 },
+  'Yamba':        { normal: 1.25, media: 0.65 },
+  'Granadillo':   { normal: 1.40, media: 0.70 },
+  'Porvenir':     { normal: 1.40, media: 0.70 },
+  'Nangora':      { normal: 1.50, media: 0.75 },
+  'Chorrillos':   { normal: 1.50, media: 0.75 },
+  'Landangui':    { normal: 1.75, media: 0.90 },
+  'La Peña':      { normal: 1.75, media: 0.90 },
+  'Malacatos':    { normal: 2.00, media: 1.00 },
+  'Taxiche':      { normal: 2.00, media: 1.00 },
+  'Cavianga':     { normal: 2.25, media: 1.15 },
+  'Cararango':    { normal: 2.25, media: 1.15 },
+  'San Pedro':    { normal: 2.25, media: 1.15 },
+  'Vilcabamba':   { normal: 2.50, media: 1.25 },
 
   // ═══ LOJA - ZAHUAYCO (pasa por Vilcabamba) ═══
-  // Paradas Vilcabamba ya incluidas arriba
-  { id: 'loja-zah-01', parada: 'Masanamaca',          normal: 3.00, media: 1.50 },
-  { id: 'loja-zah-02', parada: 'Quinara',             normal: 3.50, media: 1.75 },
-  { id: 'loja-zah-03', parada: 'Palmira',             normal: 3.75, media: 1.90 },
-  { id: 'loja-zah-04', parada: 'Zahuayco',           normal: 4.00, media: 2.00 },
+  'Masanamaca': { normal: 3.00, media: 1.50 },
+  'Quinara':    { normal: 3.50, media: 1.75 },
+  'Palmira':    { normal: 3.75, media: 1.90 },
+  'Zahuayco':   { normal: 4.00, media: 2.00 },
 
   // ═══ LOJA - EL TAMBO (ramifica en Malacatos, NO pasa Vilcabamba) ═══
-  // Paradas hasta Malacatos ya incluidas en Loja-Vilcabamba
-  { id: 'loja-tam-01', parada: 'Ceibopamba',          normal: 2.25, media: 1.15 },
-  { id: 'loja-tam-02', parada: 'San José',            normal: 2.25, media: 1.15 },
-  { id: 'loja-tam-03', parada: 'Santo Domingo',       normal: 2.50, media: 1.25 },
-  { id: 'loja-tam-04', parada: 'Naranjo Dulce',       normal: 2.75, media: 1.40 },
-  { id: 'loja-tam-05', parada: 'Zhotahuayco',         normal: 3.00, media: 1.50 },
-  { id: 'loja-tam-06', parada: 'La Merced',           normal: 3.25, media: 1.65 },
-  { id: 'loja-tam-07', parada: 'San Agustín',         normal: 3.75, media: 1.90 },
-  { id: 'loja-tam-08', parada: 'La Era',              normal: 3.75, media: 1.90 },
-  { id: 'loja-tam-09', parada: 'La Capilla',          normal: 4.00, media: 2.00 },
-  { id: 'loja-tam-10', parada: 'San Bernardo',        normal: 4.00, media: 2.00 },
-  { id: 'loja-tam-11', parada: 'El Tambo',            normal: 4.00, media: 2.00 },
+  'Ceibopamba':    { normal: 2.25, media: 1.15 },
+  'San José':      { normal: 2.25, media: 1.15 },
+  'Santo Domingo': { normal: 2.50, media: 1.25 },
+  'Naranjo Dulce': { normal: 2.75, media: 1.40 },
+  'Zhotahuayco':   { normal: 3.00, media: 1.50 },
+  'La Merced':     { normal: 3.25, media: 1.65 },
+  'San Agustín':   { normal: 3.75, media: 1.90 },
+  'La Era':        { normal: 3.75, media: 1.90 },
+  'La Capilla':    { normal: 4.00, media: 2.00 },
+  'San Bernardo':  { normal: 4.00, media: 2.00 },
+  'El Tambo':      { normal: 4.00, media: 2.00 },
 
   // ═══ LOJA - LA ELVIRA (pasa por Vilcabamba) ═══
-  { id: 'loja-elv-01', parada: 'Cucanama',            normal: 2.50, media: 1.25 },
-  { id: 'loja-elv-02', parada: 'Linderos',            normal: 2.75, media: 1.40 },
-  { id: 'loja-elv-03', parada: 'Moyococha',           normal: 3.00, media: 1.50 },
-  { id: 'loja-elv-04', parada: 'Santorum',            normal: 3.25, media: 1.65 },
-  { id: 'loja-elv-05', parada: 'Comunidades',         normal: 3.25, media: 1.65 },
-  { id: 'loja-elv-06', parada: 'Tumianuma',           normal: 3.25, media: 1.65 },
-  { id: 'loja-elv-07', parada: 'La Elvira',           normal: 3.75, media: 1.90 },
+  'Cucanama':    { normal: 2.50, media: 1.25 },
+  'Linderos':    { normal: 2.75, media: 1.40 },
+  'Moyococha':   { normal: 3.00, media: 1.50 },
+  'Santorum':    { normal: 3.25, media: 1.65 },
+  'Comunidades': { normal: 3.25, media: 1.65 },
+  'Tumianuma':   { normal: 3.25, media: 1.65 },
+  'La Elvira':   { normal: 3.75, media: 1.90 },
 
   // ═══ LOJA - YANGANA (pasa por Vilcabamba) ═══
-  { id: 'loja-yan-01', parada: 'Suro',                normal: 3.25, media: 1.65 },
-  { id: 'loja-yan-02', parada: 'Yangana',             normal: 3.60, media: 1.80 },
-];
+  'Suro':    { normal: 3.25, media: 1.65 },
+  'Yangana': { normal: 3.60, media: 1.80 },
+};
+
+// ─── Precios VUELTA (desde el destino hacia Loja) ───
+// Aplican cuando el bus viaja HACIA Loja (cualquier ruta)
+const preciosVuelta: Record<string, { normal: number; media: number }> = {
+  'San Pedro':    { normal: 0.75, media: 0.40 },
+  'Cararango':    { normal: 0.75, media: 0.40 },
+  'Cavianga':     { normal: 0.75, media: 0.40 },
+  'Taxiche':      { normal: 0.75, media: 0.40 },
+  'Malacatos':    { normal: 1.10, media: 0.55 },
+  'Landangui':    { normal: 1.10, media: 0.55 },
+  'Chorrillos':   { normal: 1.25, media: 0.65 },
+  'Nangora':      { normal: 1.25, media: 0.65 },
+  'Porvenir':     { normal: 1.25, media: 0.65 },
+  'Granadillo':   { normal: 1.50, media: 0.75 },
+  'Yamba':        { normal: 1.50, media: 0.75 },
+  'Rumizhitana':  { normal: 1.50, media: 0.75 },
+  'Tres Leguas':  { normal: 1.50, media: 0.75 },
+  'Pueblo Nuevo': { normal: 1.50, media: 0.75 },
+  'Cajánuma':     { normal: 2.00, media: 1.00 },
+  'Dos Puentes':  { normal: 2.00, media: 1.00 },
+  'Capulí':       { normal: 2.50, media: 1.25 },
+  'Loja':         { normal: 2.50, media: 1.25 },
+  // Rutas que pasan por Vilcabamba (Zahuayco, La Elvira, Yangana) comparten mismos precios
+  'Vilcabamba':   { normal: 2.50, media: 1.25 },
+  'Masanamaca':   { normal: 3.00, media: 1.50 },
+  'Quinara':      { normal: 3.50, media: 1.75 },
+  'Palmira':      { normal: 3.75, media: 1.90 },
+  'Zahuayco':     { normal: 4.00, media: 2.00 },
+  'Cucanama':     { normal: 2.50, media: 1.25 },
+  'Linderos':     { normal: 2.75, media: 1.40 },
+  'Moyococha':    { normal: 3.00, media: 1.50 },
+  'Santorum':     { normal: 3.25, media: 1.65 },
+  'Comunidades':  { normal: 3.25, media: 1.65 },
+  'Tumianuma':    { normal: 3.25, media: 1.65 },
+  'La Elvira':    { normal: 3.75, media: 1.90 },
+  'Suro':         { normal: 3.25, media: 1.65 },
+  'Yangana':      { normal: 3.60, media: 1.80 },
+  // El Tambo: mismos precios ida para vuelta (no hay lista diferenciada)
+  'Ceibopamba':    { normal: 2.25, media: 1.15 },
+  'San José':      { normal: 2.25, media: 1.15 },
+  'Santo Domingo': { normal: 2.50, media: 1.25 },
+  'Naranjo Dulce': { normal: 2.75, media: 1.40 },
+  'Zhotahuayco':   { normal: 3.00, media: 1.50 },
+  'La Merced':     { normal: 3.25, media: 1.65 },
+  'San Agustín':   { normal: 3.75, media: 1.90 },
+  'La Era':        { normal: 3.75, media: 1.90 },
+  'La Capilla':    { normal: 4.00, media: 2.00 },
+  'San Bernardo':  { normal: 4.00, media: 2.00 },
+  'El Tambo':      { normal: 4.00, media: 2.00 },
+};
 
 // ─── Paradas por ruta según dirección ───
-// "ida" = desde Loja hacia el destino
-// "vuelta" = desde el destino hacia Loja
+// "ida" = desde el origen de la ruta hacia el destino
+// "vuelta" = desde el destino de vuelta al origen
 
 export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> = {
   'Loja - Vilcabamba': {
-    ida: ['Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+    ida: ['Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
           'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
           'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba'],
     vuelta: ['Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
             'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
             'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma'],
+            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí'],
   },
   'Loja - Zahuayco': {
-    ida: ['Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+    ida: ['Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
           'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
           'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba',
           'Masanamaca', 'Quinara', 'Palmira', 'Zahuayco'],
@@ -92,10 +142,10 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
             'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
             'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
             'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma'],
+            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí'],
   },
   'Loja - El Tambo': {
-    ida: ['Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+    ida: ['Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
           'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
           'Malacatos', 'Taxiche', 'Ceibopamba', 'San José', 'Santo Domingo',
           'Naranjo Dulce', 'Zhotahuayco', 'La Merced', 'San Agustín', 'La Era',
@@ -104,10 +154,10 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
             'La Merced', 'Zhotahuayco', 'Naranjo Dulce', 'Santo Domingo',
             'San José', 'Ceibopamba', 'Taxiche', 'Malacatos',
             'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma'],
+            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí'],
   },
   'Loja - La Elvira': {
-    ida: ['Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+    ida: ['Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
           'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
           'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba',
           'Cucanama', 'Linderos', 'Moyococha', 'Santorum', 'Comunidades', 'Tumianuma',
@@ -117,10 +167,10 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
             'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
             'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
             'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma'],
+            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí'],
   },
   'Loja - Yangana': {
-    ida: ['Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+    ida: ['Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
           'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
           'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba',
           'Masanamaca', 'Suro', 'Yangana'],
@@ -128,15 +178,15 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
             'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
             'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
             'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma'],
+            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí'],
   },
   // Rutas inversas para frecuencias tipo "Vilcabamba-Loja"
   'Vilcabamba - Loja': {
     ida: ['Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
           'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
           'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-          'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma'],
-    vuelta: ['Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+          'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí'],
+    vuelta: ['Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
               'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
               'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba'],
   },
@@ -145,8 +195,8 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
           'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
           'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-          'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma'],
-    vuelta: ['Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+          'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí'],
+    vuelta: ['Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
               'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
               'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba',
               'Masanamaca', 'Quinara', 'Palmira', 'Zahuayco'],
@@ -157,8 +207,8 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
           'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
           'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-          'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma'],
-    vuelta: ['Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+          'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí'],
+    vuelta: ['Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
               'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
               'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba',
               'Cucanama', 'Linderos', 'Moyococha', 'Santorum', 'Comunidades', 'Tumianuma',
@@ -169,30 +219,50 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
           'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
           'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-          'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma'],
-    vuelta: ['Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+          'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí'],
+    vuelta: ['Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
               'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
               'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba',
               'Masanamaca', 'Suro', 'Yangana'],
   },
 };
 
-// Obtener precio desde Loja para una parada
+// ─── Funciones de precio con soporte por dirección ───
+
+// Determinar si el bus viaja HACIA Loja
+function viajaHaciaLoja(ruta: string, tipo: string): boolean {
+  // Ruta "Loja - X": ida se aleja de Loja, vuelta regresa a Loja
+  if (ruta.startsWith('Loja')) return tipo === 'vuelta';
+  // Ruta "X - Loja": ida va hacia Loja, vuelta se aleja
+  if (ruta.endsWith('Loja')) return tipo === 'ida';
+  return false;
+}
+
+// Obtener precio considerando la dirección del viaje
+function getPrecio(parada: string, ruta: string, tipo: string): { normal: number; media: number } | null {
+  if (viajaHaciaLoja(ruta, tipo)) {
+    const vuelta = preciosVuelta[parada];
+    if (vuelta) return vuelta;
+  }
+  const ida = preciosIda[parada];
+  return ida || null;
+}
+
+// Obtener precio desde Loja (compatibilidad con código que no tiene dirección)
 function getPrecioDesdeLoja(parada: string): { normal: number; media: number } | null {
-  const item = preciosDesdeLoja.find(p => p.parada === parada);
-  return item ? { normal: item.normal, media: item.media } : null;
+  return preciosIda[parada] || null;
 }
 
 // Tipo de pasajero
 export type TipoPasajero = 'normal' | 'media';
 
-// Obtener paradas con tarifas para una ruta y dirección
+// Obtener paradas con tarifas para una ruta y dirección (USA PRECIOS POR DIRECCIÓN)
 export function getParadasByRutaAndTipo(ruta: string, tipo: string): { parada: string; normal: number; media: number }[] {
   const rutaConfig = RUTA_PARADAS[ruta];
   if (!rutaConfig) return [];
   const paradas = tipo === 'ida' ? rutaConfig.ida : rutaConfig.vuelta;
   return paradas.map(parada => {
-    const precio = getPrecioDesdeLoja(parada);
+    const precio = getPrecio(parada, ruta, tipo);
     return {
       parada,
       normal: precio?.normal ?? 0,
@@ -201,9 +271,9 @@ export function getParadasByRutaAndTipo(ruta: string, tipo: string): { parada: s
   });
 }
 
-// Obtener tarifa oficial
-export function getTarifa(_ruta: string, parada: string, _tipo: string, pasajeroTipo: TipoPasajero = 'normal'): number {
-  const precio = getPrecioDesdeLoja(parada);
+// Obtener tarifa oficial (USA PRECIOS POR DIRECCIÓN)
+export function getTarifa(ruta: string, parada: string, tipo: string, pasajeroTipo: TipoPasajero = 'normal'): number {
+  const precio = getPrecio(parada, ruta, tipo);
   if (!precio) return TARIFA_MINIMA;
   return pasajeroTipo === 'media' ? precio.media : precio.normal;
 }
@@ -234,5 +304,13 @@ export function matchRuta(rutaNombre: string): string {
   }
   return rutaNombre;
 }
+
+// Exportar lista completa de tarifas ida para referencia
+export const preciosDesdeLoja: TarifaItem[] = Object.entries(preciosIda).map(([parada, p], i) => ({
+  id: `ida-${String(i).padStart(2, '0')}`,
+  parada,
+  normal: p.normal,
+  media: p.media,
+}));
 
 export default preciosDesdeLoja;
