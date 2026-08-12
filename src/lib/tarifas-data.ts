@@ -228,12 +228,21 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
 };
 
 // ─── Funciones de precio con soporte por dirección ───
+//
+// Lógica de precios:
+// - "IDA" siempre = el bus se aleja de Loja (Loja → Vilcabamba, Loja → Zahuayco, etc.)
+//   Precios: cada parada se cobra desde Loja (preciosIda)
+// - "VUELTA" siempre = el bus viaja HACIA Loja (Vilcabamba → Loja, Zahuayco → Loja, etc.)
+//   Precios: cada parada se cobra desde el destino (preciosVuelta)
+//
+// Para rutas "X - Loja" (Vilcabamba-Loja, etc.):
+//   "ida" = desde X hacia Loja → es lo mismo que VUELTA en términos de precios
+//   "vuelta" = desde Loja hacia X → es lo mismo que IDA en términos de precios
 
-// Determinar si el bus viaja HACIA Loja
 function viajaHaciaLoja(ruta: string, tipo: string): boolean {
   // Ruta "Loja - X": ida se aleja de Loja, vuelta regresa a Loja
   if (ruta.startsWith('Loja')) return tipo === 'vuelta';
-  // Ruta "X - Loja": ida va hacia Loja, vuelta se aleja
+  // Ruta "X - Loja": ida va hacia Loja (usar preciosVuelta), vuelta se aleja (usar preciosIda)
   if (ruta.endsWith('Loja')) return tipo === 'ida';
   return false;
 }
@@ -243,14 +252,13 @@ function getPrecio(parada: string, ruta: string, tipo: string): { normal: number
   if (viajaHaciaLoja(ruta, tipo)) {
     const vuelta = preciosVuelta[parada];
     if (vuelta) return vuelta;
+    // Si la parada no tiene precio de vuelta, buscar en precios base
   }
+  // Buscar primero en ida (base), luego en vuelta como fallback
   const ida = preciosIda[parada];
-  return ida || null;
-}
-
-// Obtener precio desde Loja (compatibilidad con código que no tiene dirección)
-function getPrecioDesdeLoja(parada: string): { normal: number; media: number } | null {
-  return preciosIda[parada] || null;
+  if (ida) return ida;
+  const vuelta = preciosVuelta[parada];
+  return vuelta || null;
 }
 
 // Tipo de pasajero
@@ -258,11 +266,34 @@ export type TipoPasajero = 'normal' | 'media';
 
 // Obtener paradas con tarifas para una ruta y dirección (USA PRECIOS POR DIRECCIÓN)
 export function getParadasByRutaAndTipo(ruta: string, tipo: string): { parada: string; normal: number; media: number }[] {
-  const rutaConfig = RUTA_PARADAS[ruta];
-  if (!rutaConfig) return [];
-  const paradas = tipo === 'ida' ? rutaConfig.ida : rutaConfig.vuelta;
+  // Normalize: rutas "X - Loja" tienen ida/vuelta invertidos respecto a "Loja - X"
+  // "Vilcabamba - Loja" ida = viaje Vilcabamba→Loja = usar preciosVuelta, paradas desde Vilcabamba
+  // "Vilcabamba - Loja" vuelta = viaje Loja→Vilcabamba = usar preciosIda, paradas desde Loja
+  let effectiveRuta = ruta;
+  let effectiveTipo = tipo;
+  if (ruta.endsWith('Loja') && !ruta.startsWith('Loja')) {
+    // "Vilcabamba - Loja" ida → "Loja - Vilcabamba" vuelta
+    // "Vilcabamba - Loja" vuelta → "Loja - Vilcabamba" ida
+    const baseName = ruta.replace(' - Loja', '');
+    effectiveRuta = `Loja - ${baseName}`;
+    effectiveTipo = tipo === 'ida' ? 'vuelta' : 'ida';
+  }
+
+  const rutaConfig = RUTA_PARADAS[effectiveRuta];
+  if (!rutaConfig) {
+    // Fallback: try original ruta
+    const origConfig = RUTA_PARADAS[ruta];
+    if (!origConfig) return [];
+    const paradas = tipo === 'ida' ? origConfig.ida : origConfig.vuelta;
+    return paradas.map(parada => {
+      const precio = getPrecio(parada, ruta, tipo);
+      return { parada, normal: precio?.normal ?? 0, media: precio?.media ?? 0 };
+    });
+  }
+
+  const paradas = effectiveTipo === 'ida' ? rutaConfig.ida : rutaConfig.vuelta;
   return paradas.map(parada => {
-    const precio = getPrecio(parada, ruta, tipo);
+    const precio = getPrecio(parada, effectiveRuta, effectiveTipo);
     return {
       parada,
       normal: precio?.normal ?? 0,
@@ -271,9 +302,19 @@ export function getParadasByRutaAndTipo(ruta: string, tipo: string): { parada: s
   });
 }
 
+// Normalizar ruta y tipo para rutas "X - Loja"
+function normalizeRutaTipo(ruta: string, tipo: string): { ruta: string; tipo: string } {
+  if (ruta.endsWith('Loja') && !ruta.startsWith('Loja')) {
+    const baseName = ruta.replace(' - Loja', '');
+    return { ruta: `Loja - ${baseName}`, tipo: tipo === 'ida' ? 'vuelta' : 'ida' };
+  }
+  return { ruta, tipo };
+}
+
 // Obtener tarifa oficial (USA PRECIOS POR DIRECCIÓN)
 export function getTarifa(ruta: string, parada: string, tipo: string, pasajeroTipo: TipoPasajero = 'normal'): number {
-  const precio = getPrecio(parada, ruta, tipo);
+  const { ruta: nr, tipo: nt } = normalizeRutaTipo(ruta, tipo);
+  const precio = getPrecio(parada, nr, nt);
   if (!precio) return TARIFA_MINIMA;
   return pasajeroTipo === 'media' ? precio.media : precio.normal;
 }
