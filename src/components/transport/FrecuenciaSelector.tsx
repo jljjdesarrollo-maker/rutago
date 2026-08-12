@@ -205,12 +205,14 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     const partes = estadoActual.ruta.split(' - ');
     const origen = partes[0]?.trim().toLowerCase();
     if (!origen) return allFrecuencias;
-    // Filtrar frecuencias que tengan el mismo origen
-    return allFrecuencias.filter(f => {
-      const fPartes = f.ruta.split(' - ');
-      const fOrigen = fPartes[0]?.trim().toLowerCase();
-      return fOrigen === origen;
-    });
+    // Filtrar frecuencias que tengan el mismo origen y ordenar por hora
+    return allFrecuencias
+      .filter(f => {
+        const fPartes = f.ruta.split(' - ');
+        const fOrigen = fPartes[0]?.trim().toLowerCase();
+        return fOrigen === origen;
+      })
+      .sort((a, b) => a.hora.localeCompare(b.hora));
   };
 
   const handleReassign = async (estado: FrecuenciaEstado) => {
