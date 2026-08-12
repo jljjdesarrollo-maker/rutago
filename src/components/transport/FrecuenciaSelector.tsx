@@ -56,6 +56,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   const [motivoSeleccionado, setMotivoSeleccionado] = useState('');
   const [motivoPersonalizado, setMotivoPersonalizado] = useState('');
   const [confirmNoRealizada, setConfirmNoRealizada] = useState(false);
+  const [allFrecuencias, setAllFrecuencias] = useState<FrecuenciaData[]>([]);
   const fecha = today();
 
   useEffect(() => {
@@ -196,23 +197,33 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     setNoRealizadaModal(null);
   };
 
-  // Filtrar frecuencias por origen para reasignación
+  // Filtrar frecuencias por origen para reasignación (usa TODAS las frecuencias del sistema)
   const getFrecuenciasParaReasignar = (estadoId: string): FrecuenciaData[] => {
     const estadoActual = estados.find(e => e.estadoId === estadoId);
-    if (!estadoActual) return frecuencias;
+    if (!estadoActual) return allFrecuencias;
     // Extraer origen de la ruta: "Vilcabamba - Loja" → "Vilcabamba"
     const partes = estadoActual.ruta.split(' - ');
     const origen = partes[0]?.trim().toLowerCase();
-    if (!origen) return frecuencias;
+    if (!origen) return allFrecuencias;
     // Filtrar frecuencias que tengan el mismo origen
-    return frecuencias.filter(f => {
+    return allFrecuencias.filter(f => {
       const fPartes = f.ruta.split(' - ');
       const fOrigen = fPartes[0]?.trim().toLowerCase();
       return fOrigen === origen;
     });
   };
 
-  const handleReassign = (estado: FrecuenciaEstado) => {
+  const handleReassign = async (estado: FrecuenciaEstado) => {
+    // Cargar todas las frecuencias del sistema si no están cargadas
+    if (allFrecuencias.length === 0) {
+      try {
+        const res = await fetch('/api/frecuencias?all=true');
+        if (res.ok) {
+          const data = await res.json();
+          setAllFrecuencias(data);
+        }
+      } catch { /* usar las que tengamos */ }
+    }
     setReassigning(estado.estadoId);
   };
 

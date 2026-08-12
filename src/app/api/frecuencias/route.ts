@@ -13,6 +13,54 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const vtCode = searchParams.get('vtCode');
+    const all = searchParams.get('all');
+
+    // Si se pide todas las frecuencias del sistema (para reasignación)
+    if (all === 'true') {
+      const todasFrecuencias = await prisma.frecuencia.findMany({
+        where: { activo: true },
+        orderBy: [{ hora: 'asc' }, { ruta: 'asc' }],
+      });
+
+      // También obtener frecuencias desde BusVT JSONs que no estén en tabla Frecuencia
+      const busesVT = await prisma.busVT.findMany({
+        where: { frecuencias: { not: null } },
+      });
+
+      const frecIds = new Set(todasFrecuencias.map(f => f.id));
+      const jsonFrecs: typeof todasFrecuencias = [];
+
+      for (const bus of busesVT) {
+        const arr = (bus.frecuencias || []) as VTJsonFrecuencia[];
+        arr.forEach((f, idx) => {
+          const from = f.routeFrom || 'Loja';
+          const to = f.routeTo || 'Vilcabamba';
+          const esIda = from === 'Loja';
+          jsonFrecs.push({
+            id: `${bus.codigo}_frec_${idx}`,
+            vtCode: bus.codigo,
+            nombre: `${from}-${to}`,
+            ruta: `${from} - ${to}`,
+            hora: f.time,
+            direccion: esIda ? 'ida' : 'vuelta',
+            activo: true,
+            createdAt: bus.createdAt || new Date(),
+          });
+        });
+      }
+
+      // Combinar: tabla Frecuencia + JSON de BusVT
+      const combined = [...todasFrecuencias, ...jsonFrecs];
+      // Deduplicar por id
+      const seen = new Set<string>();
+      const unique = combined.filter(f => {
+        if (seen.has(f.id)) return false;
+        seen.add(f.id);
+        return true;
+      });
+
+      return NextResponse.json(unique);
+    }
 
     if (!vtCode) {
       return NextResponse.json({ error: 'vtCode requerido' }, { status: 400 });
