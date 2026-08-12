@@ -24,8 +24,8 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
 
   const loadVentas = useCallback(async () => {
     const all = await getVentasByFrecuencia(estado.estadoId);
-    const unsynced = all.filter(v => v.syncStatus === 'pending' || v.syncStatus === 'error');
-    setVentas(unsynced);
+    // Show ALL ventas for arqueo (including synced ones)
+    setVentas(all);
   }, [estado.estadoId]);
 
   useEffect(() => { loadVentas(); }, [loadVentas]);

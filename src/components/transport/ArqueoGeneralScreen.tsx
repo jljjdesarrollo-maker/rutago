@@ -71,15 +71,15 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       const resumenes: FrecuenciaResumen[] = await Promise.all(
         cerradas.map(async (e) => {
           const ventas = await getVentasByFrecuencia(e.estadoId);
-          const unsynced = ventas.filter(v => v.syncStatus === 'pending' || v.syncStatus === 'error');
+          // Count ALL ventas (including synced) for arqueo general
           return {
             estadoId: e.estadoId,
             nombre: e.nombre,
             ruta: e.ruta,
             hora: e.hora,
             direccion: e.direccion,
-            ventasCount: unsynced.length,
-            totalRecaudado: unsynced.reduce((s, v) => s + v.cobrado, 0),
+            ventasCount: ventas.length,
+            totalRecaudado: ventas.reduce((s, v) => s + v.cobrado, 0),
             boletosCaja: 0,
           };
         })

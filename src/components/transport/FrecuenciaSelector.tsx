@@ -112,9 +112,9 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     for (const estado of estados) {
       try {
         const ventas = await getVentasByFrecuencia(estado.estadoId);
-        const unsynced = ventas.filter(v => v.syncStatus === 'pending' || v.syncStatus === 'error');
-        const newCount = unsynced.length;
-        const newTotal = unsynced.reduce((s, v) => s + v.cobrado, 0);
+        // Count ALL ventas (including synced) for display in arqueo
+        const newCount = ventas.length;
+        const newTotal = ventas.reduce((s, v) => s + v.cobrado, 0);
         if (newCount !== estado.ventasCount || Math.abs(newTotal - estado.totalRecaudado) > 0.01) {
           updateEstadoInLS(session.vtCode, fecha, estado.estadoId, { ventasCount: newCount, totalRecaudado: newTotal });
           setEstados(prev => prev.map(e =>
