@@ -213,6 +213,7 @@ export default function Home() {
         session={vtSession}
         onOpenFrequency={(e) => { setCurrentEstado(e); setView('boletos_tickets'); }}
         onGoToArqueo={(e, esUltima) => { setCurrentEstado(e); setEsUltimaFrecuencia(esUltima); setView('boletos_arqueo'); }}
+        onGoToArqueoGeneral={() => setView('boletos_arqueo_general')}
         onBack={() => setView('home')}
         onGoToSync={() => setView('boletos_sync')}
       />

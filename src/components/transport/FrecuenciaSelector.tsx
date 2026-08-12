@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { type VTSession, type FrecuenciaEstado, type FrecuenciaData } from './types-boletos';
 import { getVentasByFrecuencia, countVentasPendientes } from '@/lib/indexeddb';
-import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send } from 'lucide-react';
+import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck } from 'lucide-react';
 
 interface Props {
   session: VTSession;
   onOpenFrequency: (estado: FrecuenciaEstado) => void;
   onGoToArqueo: (estado: FrecuenciaEstado, esUltima: boolean) => void;
+  onGoToArqueoGeneral: () => void;
   onBack: () => void;
   onGoToSync: () => void;
 }
@@ -44,7 +45,7 @@ function updateEstadoInLS(vtCode: string, fecha: string, estadoId: string, updat
   }
 }
 
-export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onBack, onGoToSync }: Props) {
+export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onGoToArqueoGeneral, onBack, onGoToSync }: Props) {
   const [estados, setEstados] = useState<FrecuenciaEstado[]>([]);
   const [frecuencias, setFrecuencias] = useState<FrecuenciaData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -224,6 +225,14 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
     );
   }
 
+  // Check if ALL frequencies are done (cerrada or no_realizada)
+  const allFrecuenciasDone = estados.length > 0 && estados.every(e => e.estado === 'cerrada' || e.estado === 'no_realizada');
+
+  // Totals across all frequencies
+  const totalVentasAll = estados.reduce((s, e) => s + e.ventasCount, 0);
+  const totalRecaudadoAll = estados.reduce((s, e) => s + e.totalRecaudado, 0);
+  const cerradasCount = estados.filter(e => e.estado === 'cerrada').length;
+
   return (
     <div className="flex flex-col min-h-[100dvh] bg-gray-50">
       {/* Header */}
@@ -321,16 +330,24 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {estado.ventasCount > 0 && (
-                      <span className="bg-[#912D26]/10 text-[#912D26] text-xs font-bold px-1.5 py-0.5 rounded-full">
-                        {estado.ventasCount}t · ${estado.totalRecaudado.toFixed(2)}
-                      </span>
-                    )}
                     {getEstadoBadge(estado.estado)}
                     {bloqueada && <span className="text-xs text-gray-400">🔒</span>}
                   </div>
                 </div>
-                <div className="text-xs text-gray-500 mb-2">{estado.ruta}</div>
+                <div className="text-xs text-gray-500 mb-1">{estado.ruta} · {estado.direccion}</div>
+                {/* Stats bar: boletos + recaudado - visible when has sales or is cerrada */}
+                {(estado.ventasCount > 0 || estado.estado === 'cerrada') && (
+                  <div className="flex gap-3 mb-2">
+                    <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold">
+                      <Ticket className="w-3 h-3" />
+                      <span>{estado.ventasCount} boleto{estado.ventasCount !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="flex items-center gap-1 bg-[#912D26]/10 text-[#912D26] px-2 py-1 rounded-lg text-xs font-bold">
+                      <DollarSign className="w-3 h-3" />
+                      <span>${estado.totalRecaudado.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   {/* PENDIENTE + disponible */}
                   {estado.estado === 'pendiente' && disponible && (
@@ -359,11 +376,10 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
                   )}
                   {/* CERRADA */}
                   {estado.estado === 'cerrada' && (
-                    <div className="flex-1 flex items-center justify-between">
-                      <div className="text-sm text-gray-500">
-                        {estado.ventasCount} ventas · ${estado.totalRecaudado.toFixed(2)}
-                      </div>
-                      <span className="text-xs text-green-600 font-bold">Arqueo done</span>
+                    <div className="flex-1 flex items-center justify-center">
+                      <span className="text-xs text-green-600 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-4 h-4" /> Cerrada
+                      </span>
                     </div>
                   )}
                   {/* NO REALIZADA */}
@@ -380,6 +396,38 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
           })
         )}
       </div>
+
+      {/* ─── Arqueo General del VT ─── */}
+      {allFrecuenciasDone && cerradasCount > 0 && (
+        <div className="px-4 pb-3">
+          <div className="bg-gradient-to-r from-[#912D26] to-[#b33d34] rounded-2xl p-4 shadow-lg shadow-red-200/50">
+            <div className="flex items-center gap-2 mb-3">
+              <ClipboardCheck className="w-5 h-5 text-white" />
+              <h3 className="text-white font-bold text-sm">Todas las frecuencias completadas</h3>
+            </div>
+            <div className="flex gap-4 mb-3 text-white">
+              <div>
+                <p className="text-white/60 text-[10px]">Total Boletos</p>
+                <p className="font-black text-lg leading-tight">{totalVentasAll}</p>
+              </div>
+              <div>
+                <p className="text-white/60 text-[10px]">Total Recaudado</p>
+                <p className="font-black text-lg leading-tight">${totalRecaudadoAll.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-white/60 text-[10px]">Cerradas</p>
+                <p className="font-black text-lg leading-tight">{cerradasCount}/{estados.length}</p>
+              </div>
+            </div>
+            <button
+              onClick={onGoToArqueoGeneral}
+              className="w-full py-4 rounded-xl bg-white text-[#912D26] font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] shadow-md">
+              <ClipboardCheck className="w-5 h-5" />
+              ARQUEO GENERAL DEL {session.nombre}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Sync button */}
       {pendingCount > 0 && (
