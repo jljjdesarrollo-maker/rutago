@@ -24,7 +24,9 @@ interface FrecuenciaResumen {
   hora: string;
   direccion: string;
   ventasCount: number;
-  totalRecaudado: number;
+  totalRecaudado: number;        // What the system says
+  efectivoContado: number;        // What the helper actually counted
+  diferencia: number;             // efectivoContado - totalRecaudado
   boletosCaja: number;
 }
 
@@ -76,7 +78,10 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       const resumenes: FrecuenciaResumen[] = await Promise.all(
         cerradas.map(async (e) => {
           const ventas = await getVentasByFrecuencia(e.estadoId);
-          // Count ALL ventas (including synced) for arqueo general
+          const sistemaTotal = ventas.reduce((s, v) => s + v.cobrado, 0);
+          // Use arqueo data if available (what helper actually counted), else system total
+          const efectivo = (e as any).arqueoEfectivo ?? sistemaTotal;
+          const diff = efectivo - sistemaTotal;
           return {
             estadoId: e.estadoId,
             nombre: e.nombre,
@@ -84,7 +89,9 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
             hora: e.hora,
             direccion: e.direccion,
             ventasCount: ventas.length,
-            totalRecaudado: ventas.reduce((s, v) => s + v.cobrado, 0),
+            totalRecaudado: sistemaTotal,
+            efectivoContado: efectivo,
+            diferencia: diff,
             boletosCaja: 0,
           };
         })
@@ -103,6 +110,14 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     frecuencias.reduce((s, f) => s + f.totalRecaudado, 0),
     [frecuencias]
   );
+  const totalEfectivoReal = useMemo(() =>
+    frecuencias.reduce((s, f) => s + f.efectivoContado, 0),
+    [frecuencias]
+  );
+  const totalDiferencia = useMemo(() =>
+    frecuencias.reduce((s, f) => s + f.diferencia, 0),
+    [frecuencias]
+  );
   const totalVentas = useMemo(() =>
     frecuencias.reduce((s, f) => s + f.ventasCount, 0),
     [frecuencias]
@@ -114,7 +129,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const ticketsNum = parseFloat(tickets) || 0;
   const boletosCajaNum = parseFloat(boletosCajaTotal) || 0;
   const sobranteNum = parseFloat(sobrante) || 0;
-  const production = totalIngresosAuto + sobranteNum;
+  // PRODUCCION = efectivo real contado por el ayudante + sobrante ajuste manual
+  const production = totalEfectivoReal + sobranteNum;
   const entregaAyudante = production - totalGastos;
   const entregaCompania = boletosCajaNum - ticketsNum;
 
@@ -343,36 +359,71 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           </div>
         )}
 
-        {/* 1. INGRESOS POR FRECUENCIA (automático) */}
+        {/* 1. INGRESOS POR FRECUENCIA — Sistema vs Efectivo Real */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
           <h3 className="font-bold text-[#3A3A3A] mb-3 text-sm uppercase flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-green-600" /> Ingresos por Frecuencia (Automático)
+            <DollarSign className="w-4 h-4 text-green-600" /> Ingresos por Frecuencia
           </h3>
           {frecuencias.length === 0 ? (
             <p className="text-gray-400 text-xs text-center py-4">No hay frecuencias cerradas</p>
           ) : (
             <div className="space-y-2">
-              {frecuencias.map((f, i) => (
-                <div key={f.estadoId} className={`flex items-center justify-between py-2 px-3 rounded-xl ${i % 2 === 0 ? 'bg-[#912D26]/5' : 'bg-gray-50'}`}>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${i % 2 === 0 ? 'bg-[#912D26] text-white' : 'bg-[#3A3A3A] text-white'}`}>
-                      {i + 1}
-                    </span>
-                    <div>
-                      <div className="text-sm font-semibold text-[#3A3A3A]">{f.hora} — {f.nombre}</div>
-                      <div className="text-[10px] text-gray-400">{f.ruta} · {f.ventasCount} ventas</div>
+              {/* Header row */}
+              <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold text-gray-400 uppercase">
+                <div className="flex-1">Frecuencia</div>
+                <div className="w-20 text-right">Sistema</div>
+                <div className="w-20 text-right">Real</div>
+                <div className="w-16 text-right">Dif.</div>
+              </div>
+              {frecuencias.map((f, i) => {
+                const hasDiff = Math.abs(f.diferencia) >= 0.01;
+                return (
+                  <div key={f.estadoId} className={`flex items-center justify-between py-2 px-3 rounded-xl ${i % 2 === 0 ? 'bg-[#912D26]/5' : 'bg-gray-50'}`}>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${i % 2 === 0 ? 'bg-[#912D26] text-white' : 'bg-[#3A3A3A] text-white'}`}>
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-[#3A3A3A] truncate">{f.hora} — {f.nombre}</div>
+                        <div className="text-[10px] text-gray-400">{f.ventasCount} ventas</div>
+                      </div>
+                    </div>
+                    <div className="w-20 text-right">
+                      <div className="font-bold text-[#3A3A3A]">${f.totalRecaudado.toFixed(2)}</div>
+                    </div>
+                    <div className="w-20 text-right">
+                      <div className="font-black text-green-700">${f.efectivoContado.toFixed(2)}</div>
+                    </div>
+                    <div className="w-16 text-right">
+                      {hasDiff ? (
+                        <span className={`text-xs font-bold ${f.diferencia > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                          {f.diferencia > 0 ? '+' : ''}{f.diferencia.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-black text-green-700">${f.totalRecaudado.toFixed(2)}</div>
-                  </div>
-                </div>
-              ))}
-              <div className="border-t-2 border-green-200 pt-2 mt-2">
+                );
+              })}
+              {/* Totals row */}
+              <div className="border-t-2 border-green-200 pt-2 mt-2 space-y-1">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-[#3A3A3A]">TOTAL INGRESOS</span>
-                  <span className="font-black text-xl text-green-700">${totalIngresosAuto.toFixed(2)}</span>
+                  <span className="font-bold text-[#3A3A3A] text-xs">Total Sistema</span>
+                  <span className="font-bold text-sm text-[#3A3A3A]">${totalIngresosAuto.toFixed(2)}</span>
                 </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-green-700 text-xs">Total Efectivo Real</span>
+                  <span className="font-black text-lg text-green-700">${totalEfectivoReal.toFixed(2)}</span>
+                </div>
+                {Math.abs(totalDiferencia) >= 0.01 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Diferencia global</span>
+                    <span className={`text-xs font-bold ${totalDiferencia > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                      {totalDiferencia > 0 ? '+' : ''}{totalDiferencia.toFixed(2)}
+                    </span>
+                  </div>
+                )}
                 <div className="text-right text-[10px] text-gray-400">{totalVentas} boletos vendidos</div>
               </div>
             </div>
@@ -518,15 +569,29 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         <div className="bg-[#3A3A3A] text-white rounded-2xl p-4 space-y-2">
           <p className="text-xs font-bold uppercase tracking-wider text-white/50">Liquidación del Día</p>
           <div className="flex justify-between text-sm">
-            <span className="text-white/60">Producción (Ingresos + Sobrante)</span>
-            <span className="font-semibold">${production.toFixed(2)}</span>
+            <span className="text-white/60">Efectivo Real (Contado)</span>
+            <span className="font-semibold text-green-400">${totalEfectivoReal.toFixed(2)}</span>
           </div>
+          {Math.abs(totalDiferencia) >= 0.01 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-white/60">Diferencia vs Sistema</span>
+              <span className={`font-semibold ${totalDiferencia > 0 ? 'text-blue-400' : 'text-red-400'}`}>
+                {totalDiferencia > 0 ? '+' : ''}{totalDiferencia.toFixed(2)}
+              </span>
+            </div>
+          )}
           {sobranteNum !== 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-white/60">Sobrante</span>
+              <span className="text-white/60">Ajuste Manual</span>
               <span className="font-semibold text-green-400">${sobranteNum.toFixed(2)}</span>
             </div>
           )}
+          <hr className="border-white/10" />
+          <div className="flex justify-between text-sm">
+            <span className="text-white/80">Producción</span>
+            <span className="font-black text-lg">${production.toFixed(2)}</span>
+          </div>
+          <p className="text-[10px] text-white/30">Efectivo Real + Ajuste Manual</p>
           <div className="flex justify-between text-sm">
             <span className="text-white/60">Caja Común (Boletos)</span>
             <span className="font-semibold">${boletosCajaNum.toFixed(2)}</span>

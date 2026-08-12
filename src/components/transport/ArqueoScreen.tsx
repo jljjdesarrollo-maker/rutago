@@ -42,8 +42,8 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
   const handleConfirm = () => {
     setSaving(true);
     try {
-      // Mark as cerrada in localStorage (synchronous, reliable)
-      const fecha = new Date().toISOString().split('T')[0];
+      // Mark as cerrada in localStorage + save arqueo data
+      const fecha = session.fecha || new Date().toISOString().split('T')[0];
       const lsKey = `rg_estados_${session.vtCode}_${fecha}`;
       try {
         const raw = localStorage.getItem(lsKey);
@@ -52,6 +52,10 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
           const idx = all.findIndex((e: any) => e.estadoId === estado.estadoId);
           if (idx >= 0) {
             all[idx].estado = 'cerrada';
+            all[idx].arqueoEfectivo = efectivoNum;
+            all[idx].arqueoSistema = totalSistema;
+            all[idx].arqueoDiferencia = diferencia;
+            all[idx].arqueoFecha = new Date().toISOString();
             localStorage.setItem(lsKey, JSON.stringify(all));
           }
         }
