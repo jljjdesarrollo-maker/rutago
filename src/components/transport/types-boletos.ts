@@ -27,4 +27,5 @@ export interface VTSession {
   nombre: string;
   ayudanteId: string;
   ayudanteNombre: string;
+  fecha: string; // Fecha del turno (cuando se inició, no necesariamente hoy)
 }

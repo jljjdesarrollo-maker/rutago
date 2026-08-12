@@ -60,6 +60,7 @@ export function HomeScreenVT({ onSessionStart }: Props) {
       nombre: vt.nombre,
       ayudanteId: ayudante.id,
       ayudanteNombre: ayudante.nombre,
+      fecha: new Date().toISOString().split('T')[0], // Fecha del inicio del turno
     });
   };
 

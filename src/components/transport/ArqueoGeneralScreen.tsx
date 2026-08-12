@@ -35,6 +35,11 @@ interface GastoItem {
 
 const today = () => new Date().toISOString().split('T')[0];
 
+// Work date: use session.fecha (date when shift started, not necessarily today)
+function workDate(session: VTSession): string {
+  return session.fecha || today();
+}
+
 const GASTOS_DEFAULT: GastoItem[] = [
   { description: 'Chofer', amount: '30' },
   { description: 'Ayudante', amount: '20' },
@@ -60,7 +65,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const loadData = useCallback(async () => {
     try {
-      const fecha = today();
+      const fecha = workDate(session);
       // Load estados from localStorage (synchronous, reliable)
       const lsKey = `rg_estados_${session.vtCode}_${fecha}`;
       const raw = localStorage.getItem(lsKey);
@@ -161,7 +166,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       }));
 
       const body = {
-        date: today(),
+        date: workDate(session),
         km: km,
         conductor: '',
         ayudanteNombre: session.ayudanteNombre,
@@ -173,7 +178,10 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         photoUrl: fotoPreview,
       };
 
-      if (connection.status === 'online') {
+      const fechaTrabajo = workDate(session);
+      const isOnline = navigator.onLine;
+
+      if (isOnline) {
         const res = await fetch('/api/records', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -182,21 +190,23 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         if (res.ok) {
           setSaved(true);
         } else {
+          const result = await res.json().catch(() => ({ error: 'Error desconocido' }));
+          console.error('Error guardando arqueo en servidor:', result.error);
           // Save offline if server fails
-          localStorage.setItem(`arqueo_general_${session.vtCode}_${today()}`, JSON.stringify(body));
+          localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify(body));
           setGuardadoOffline(true);
           setSaved(true);
         }
       } else {
         // Save to localStorage for later sync
-        localStorage.setItem(`arqueo_general_${session.vtCode}_${today()}`, JSON.stringify(body));
+        localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify(body));
         setGuardadoOffline(true);
         setSaved(true);
       }
     } catch (err) {
       console.error('Error guardando arqueo:', err);
-      localStorage.setItem(`arqueo_general_${session.vtCode}_${today()}`, JSON.stringify({
-        date: today(), km, vtCode: session.vtCode, ayudanteNombre: session.ayudanteNombre,
+      localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify({
+        date: fechaTrabajo, km, vtCode: session.vtCode, ayudanteNombre: session.ayudanteNombre,
         trips: frecuencias.map(f => ({ routeFrom: 'Loja', routeTo: 'Vilcabamba', time: f.hora, income: f.totalRecaudado.toString(), boletos: '0' })),
         expenses: gastos, tickets: tickets || '0', sobrante: sobrante || '0', photoUrl: fotoPreview,
       }));
@@ -223,7 +233,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         <div className="flex-1 flex flex-col items-center justify-center px-6">
           <CheckCircle2 className="w-20 h-20 mb-4" />
           <h1 className="text-2xl font-black mb-2">ARQUEO GENERAL GUARDADO</h1>
-          <p className="text-white/80 text-sm mb-1">{session.nombre} — {today()}</p>
+          <p className="text-white/80 text-sm mb-1">{session.nombre} — {workDate(session)}</p>
           <p className="text-white/80 text-sm mb-6">{totalVentas} ventas · ${totalIngresosAuto.toFixed(2)} ingresos</p>
 
           {guardadoOffline && (
