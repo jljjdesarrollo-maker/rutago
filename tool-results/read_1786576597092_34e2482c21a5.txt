@@ -1,0 +1,600 @@
+    50→];
+    51→
+    52→export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, onSaved }: Props) {
+    53→  const [frecuencias, setFrecuencias] = useState<FrecuenciaResumen[]>([]);
+    54→  const [loading, setLoading] = useState(true);
+    55→  const [km, setKm] = useState('');
+    56→  const [gastos, setGastos] = useState<GastoItem[]>(GASTOS_DEFAULT);
+    57→  const [tickets, setTickets] = useState('');
+    58→  const [boletosCajaTotal, setBoletosCajaTotal] = useState('');
+    59→  const [sobrante, setSobrante] = useState('');
+    60→  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+    61→  const [saving, setSaving] = useState(false);
+    62→  const [confirmSave, setConfirmSave] = useState(false);
+    63→  const [saved, setSaved] = useState(false);
+    64→  const [errors, setErrors] = useState<string[]>([]);
+    65→  const [guardadoOffline, setGuardadoOffline] = useState(false);
+    66→
+    67→  const fileInputRef = useRef<HTMLInputElement>(null);
+    68→  const loadData = useCallback(async () => {
+    69→    try {
+    70→      const fecha = workDate(session);
+    71→      // Load estados from localStorage (synchronous, reliable)
+    72→      const lsKey = `rg_estados_${session.vtCode}_${fecha}`;
+    73→      const raw = localStorage.getItem(lsKey);
+    74→      if (!raw) { setLoading(false); return; }
+    75→      const estadosLS = JSON.parse(raw) as FrecuenciaEstado[];
+    76→      const cerradas = estadosLS.filter(e => e.estado === 'cerrada' || e.estado === 'no_realizada');
+    77→
+    78→      const resumenes: FrecuenciaResumen[] = await Promise.all(
+    79→        cerradas.map(async (e) => {
+    80→          const ventas = await getVentasByFrecuencia(e.estadoId);
+    81→          const sistemaTotal = ventas.reduce((s, v) => s + v.cobrado, 0);
+    82→          // Use arqueo data if available (what helper actually counted), else system total
+    83→          const efectivo = (e as any).arqueoEfectivo ?? sistemaTotal;
+    84→          const diff = efectivo - sistemaTotal;
+    85→          return {
+    86→            estadoId: e.estadoId,
+    87→            nombre: e.nombre,
+    88→            ruta: e.ruta,
+    89→            hora: e.hora,
+    90→            direccion: e.direccion,
+    91→            ventasCount: ventas.length,
+    92→            totalRecaudado: sistemaTotal,
+    93→            efectivoContado: efectivo,
+    94→            diferencia: diff,
+    95→            boletosCaja: 0,
+    96→          };
+    97→        })
+    98→      );
+    99→      setFrecuencias(resumenes);
+   100→    } catch (err) {
+   101→      console.error('Error cargando resumen:', err);
+   102→    } finally {
+   103→      setLoading(false);
+   104→    }
+   105→  }, [session.vtCode]);
+   106→
+   107→  useEffect(() => { loadData(); }, [loadData]);
+   108→
+   109→  const totalIngresosAuto = useMemo(() =>
+   110→    frecuencias.reduce((s, f) => s + f.totalRecaudado, 0),
+   111→    [frecuencias]
+   112→  );
+   113→  const totalEfectivoReal = useMemo(() =>
+   114→    frecuencias.reduce((s, f) => s + f.efectivoContado, 0),
+   115→    [frecuencias]
+   116→  );
+   117→  const totalDiferencia = useMemo(() =>
+   118→    frecuencias.reduce((s, f) => s + f.diferencia, 0),
+   119→    [frecuencias]
+   120→  );
+   121→  const totalVentas = useMemo(() =>
+   122→    frecuencias.reduce((s, f) => s + f.ventasCount, 0),
+   123→    [frecuencias]
+   124→  );
+   125→  const totalGastos = useMemo(() =>
+   126→    gastos.reduce((s, g) => s + (parseFloat(g.amount) || 0), 0),
+   127→    [gastos]
+   128→  );
+   129→  const ticketsNum = parseFloat(tickets) || 0;
+   130→  const boletosCajaNum = parseFloat(boletosCajaTotal) || 0;
+   131→  const sobranteNum = parseFloat(sobrante) || 0;
+   132→  // PRODUCCION = efectivo real contado por el ayudante + sobrante ajuste manual
+   133→  const production = totalEfectivoReal + sobranteNum;
+   134→  const entregaAyudante = production - totalGastos;
+   135→  const entregaCompania = boletosCajaNum - ticketsNum;
+   136→
+   137→  const addGasto = () => setGastos(prev => [...prev, { description: '', amount: '0' }]);
+   138→  const removeGasto = (i: number) => setGastos(prev => prev.filter((_, idx) => idx !== i));
+   139→  const updateGasto = (i: number, field: keyof GastoItem, value: string) => {
+   140→    setGastos(prev => {
+   141→      const next = [...prev];
+   142→      next[i] = { ...next[i], [field]: value };
+   143→      return next;
+   144→    });
+   145→  };
+   146→
+   147→  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+   148→    const file = e.target.files?.[0];
+   149→    if (!file || !file.type.startsWith('image/')) return;
+   150→    const reader = new FileReader();
+   151→    reader.onload = (ev) => setFotoPreview(ev.target?.result as string);
+   152→    reader.readAsDataURL(file);
+   153→    e.target.value = '';
+   154→  };
+   155→
+   156→  const handleSaveOffline = () => {
+   157→    const errs: string[] = [];
+   158→    if (!km.trim()) errs.push('Kilometraje es obligatorio');
+   159→    if (!fotoPreview) errs.push('Foto del cuaderno es obligatoria');
+   160→    if (frecuencias.length === 0) errs.push('No hay frecuencias cerradas');
+   161→    if (totalGastos <= 0) errs.push('Total de gastos debe ser mayor a 0');
+   162→    if (errs.length > 0) {
+   163→      setErrors(errs);
+   164→      return;
+   165→    }
+   166→    setErrors([]);
+   167→    setConfirmSave(true);
+   168→  };
+   169→
+   170→  const handleConfirmSave = async () => {
+   171→    setConfirmSave(false);
+   172→    setSaving(true);
+   173→
+   174→    try {
+   175→      // Build trips from frecuencias
+   176→      const trips = frecuencias.map(f => ({
+   177→        routeFrom: f.direccion === 'ida' ? 'Loja' : f.ruta.split(' - ')[1]?.trim() || 'Loja',
+   178→        routeTo: f.direccion === 'ida' ? f.ruta.split(' - ')[1]?.trim() || 'Vilcabamba' : 'Loja',
+   179→        time: f.hora,
+   180→        income: f.totalRecaudado.toString(),
+   181→        efectivoReal: f.efectivoContado.toString(),
+   182→        boletos: '0',
+   183→      }));
+   184→
+   185→      const body = {
+   186→        date: workDate(session),
+   187→        km: km,
+   188→        conductor: '',
+   189→        ayudanteNombre: session.ayudanteNombre,
+   190→        vtCode: session.vtCode,
+   191→        trips,
+   192→        expenses: gastos,
+   193→        tickets: tickets || '0',
+   194→        sobrante: sobrante || '0',
+   195→        photoUrl: fotoPreview,
+   196→      };
+   197→
+   198→      const fechaTrabajo = workDate(session);
+   199→      const isOnline = navigator.onLine;
+   200→
+   201→      if (isOnline) {
+   202→        const res = await fetch('/api/records', {
+   203→          method: 'POST',
+   204→          headers: { 'Content-Type': 'application/json' },
+   205→          body: JSON.stringify(body),
+   206→        });
+   207→        if (res.ok) {
+   208→          setSaved(true);
+   209→        } else {
+   210→          const result = await res.json().catch(() => ({ error: 'Error desconocido' }));
+   211→          console.error('Error guardando arqueo en servidor:', result.error);
+   212→          // Save offline if server fails
+   213→          localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify(body));
+   214→          setGuardadoOffline(true);
+   215→          setSaved(true);
+   216→        }
+   217→      } else {
+   218→        // Save to localStorage for later sync
+   219→        localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify(body));
+   220→        setGuardadoOffline(true);
+   221→        setSaved(true);
+   222→      }
+   223→    } catch (err) {
+   224→      console.error('Error guardando arqueo:', err);
+   225→      localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify({
+   226→        date: fechaTrabajo, km, vtCode: session.vtCode, ayudanteNombre: session.ayudanteNombre,
+   227→        trips: frecuencias.map(f => ({ routeFrom: 'Loja', routeTo: 'Vilcabamba', time: f.hora, income: f.totalRecaudado.toString(), boletos: '0' })),
+   228→        expenses: gastos, tickets: tickets || '0', sobrante: sobrante || '0', photoUrl: fotoPreview,
+   229→      }));
+   230→      setGuardadoOffline(true);
+   231→      setSaved(true);
+   232→    } finally {
+   233→      setSaving(false);
+   234→    }
+   235→  };
+   236→
+   237→  if (loading) {
+   238→    return (
+   239→      <div className="flex flex-col min-h-[100dvh] bg-gray-50 items-center justify-center">
+   240→        <Loader2 className="w-8 h-8 text-[#912D26] animate-spin mb-3" />
+   241→        <p className="text-[#3A3A3A]">Cargando arqueo general...</p>
+   242→      </div>
+   243→    );
+   244→  }
+   245→
+   246→  // Saved confirmation screen
+   247→  if (saved) {
+   248→    return (
+   249→      <div className="flex flex-col min-h-[100dvh] bg-[#912D26] text-white">
+   250→        <div className="flex-1 flex flex-col items-center justify-center px-6">
+   251→          <CheckCircle2 className="w-20 h-20 mb-4" />
+   252→          <h1 className="text-2xl font-black mb-2">ARQUEO GENERAL GUARDADO</h1>
+   253→          <p className="text-white/80 text-sm mb-1">{session.nombre} — {workDate(session)}</p>
+   254→          <p className="text-white/80 text-sm mb-6">{totalVentas} ventas · ${totalIngresosAuto.toFixed(2)} ingresos</p>
+   255→
+   256→          {guardadoOffline && (
+   257→            <div className="bg-yellow-500/20 border border-yellow-400/30 rounded-2xl px-5 py-3 mb-6 text-center">
+   258→              <p className="text-yellow-200 text-sm font-bold">Guardado local (sin internet)</p>
+   259→              <p className="text-yellow-200/70 text-xs mt-1">Se sincronizará cuando haya conexión</p>
+   260→            </div>
+   261→          )}
+   262→
+   263→          <div className="w-full max-w-xs space-y-3">
+   264→            {connection.pendingCount > 0 && connection.status !== 'offline' && (
+   265→              <button onClick={onGoToSync}
+   266→                className="w-full py-4 rounded-2xl bg-white text-[#912D26] font-black text-lg flex items-center justify-center gap-2 active:scale-95">
+   267→                <Send className="w-5 h-5" /> SINCRONIZAR {connection.pendingCount} VENTAS
+   268→              </button>
+   269→            )}
+   270→            <button onClick={onSaved}
+   271→              className="w-full py-4 rounded-2xl bg-white/20 text-white font-bold text-lg flex items-center justify-center gap-2 active:scale-95">
+   272→              FINALIZAR
+   273→            </button>
+   274→          </div>
+   275→        </div>
+   276→      </div>
+   277→    );
+   278→  }
+   279→
+   280→  // Confirm save dialog
+   281→  if (confirmSave) {
+   282→    return (
+   283→      <div className="flex flex-col min-h-[100dvh] bg-gray-50">
+   284→        <div className="flex-1 flex items-center justify-center px-4">
+   285→          <div className="bg-white rounded-2xl border border-gray-200 p-6 max-w-md w-full shadow-lg">
+   286→            <h2 className="text-lg font-bold text-[#3A3A3A] mb-4">Confirmar Arqueo General</h2>
+   287→            <div className="bg-gray-50 rounded-xl p-4 space-y-2 mb-4">
+   288→              <div className="flex justify-between text-sm">
+   289→                <span className="text-gray-500">Producción</span>
+   290→                <span className="font-bold text-[#3A3A3A]">${production.toFixed(2)}</span>
+   291→              </div>
+   292→              <div className="flex justify-between text-sm">
+   293→                <span className="text-gray-500">Total Gastos</span>
+   294→                <span className="font-bold text-red-600">${totalGastos.toFixed(2)}</span>
+   295→              </div>
+   296→              <div className="flex justify-between text-sm">
+   297→                <span className="text-gray-500">Boletos (Caja Común)</span>
+   298→                <span className="font-bold text-[#3A3A3A]">${boletosCajaNum.toFixed(2)}</span>
+   299→              </div>
+   300→              <hr className="border-gray-200" />
+   301→              <div className="flex justify-between text-sm">
+   302→                <span className="text-gray-600">Entrega Ayudante</span>
+   303→                <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+   304→                  ${entregaAyudante.toFixed(2)}
+   305→                </span>
+   306→              </div>
+   307→              <div className="flex justify-between text-sm">
+   308→                <span className="text-gray-600">Entrega Compañía</span>
+   309→                <span className={`font-bold ${entregaCompania >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+   310→                  ${entregaCompania.toFixed(2)}
+   311→                </span>
+   312→              </div>
+   313→            </div>
+   314→            <p className="text-sm text-[#912D26] mb-4">
+   315→              Entrega Ayudante: <strong>${entregaAyudante.toFixed(2)}</strong> —
+   316→              Entrega Compañía: <strong>${entregaCompania.toFixed(2)}</strong>
+   317→            </p>
+   318→            <div className="flex gap-3">
+   319→              <button onClick={() => setConfirmSave(false)}
+   320→                className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-bold active:scale-95">
+   321→                Cancelar
+   322→              </button>
+   323→              <button onClick={handleConfirmSave}
+   324→                className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-black active:scale-95">
+   325→                CONFIRMAR
+   326→              </button>
+   327→            </div>
+   328→          </div>
+   329→        </div>
+   330→      </div>
+   331→    );
+   332→  }
+   333→
+   334→  return (
+   335→    <div className="flex flex-col min-h-[100dvh] bg-gray-50">
+   336→      {/* Barra conexion */}
+   337→      <div className={`${connection.bgColor} px-4 py-1.5 flex items-center justify-center gap-2 text-xs font-medium ${connection.color}`}>
+   338→        <span>{connection.icon}</span>
+   339→        <span>{connection.label}</span>
+   340→      </div>
+   341→
+   342→      {/* Header */}
+   343→      <div className="bg-[#912D26] text-white px-4 py-3">
+   344→        <div className="flex items-center justify-between">
+   345→          <button onClick={onClose} className="text-red-100"><ChevronLeft className="w-6 h-6" /></button>
+   346→          <div className="text-center">
+   347→            <h2 className="text-lg font-bold">Arqueo General</h2>
+   348→            <p className="text-red-100 text-xs">{session.nombre} — Turno completo</p>
+   349→          </div>
+   350→          <div className="w-6" />
+   351→        </div>
+   352→      </div>
+   353→
+   354→      <div className="flex-1 px-4 py-4 space-y-4 overflow-y-auto pb-8">
+   355→        {/* Errores */}
+   356→        {errors.length > 0 && (
+   357→          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm space-y-1">
+   358→            <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Campos obligatorios:</p>
+   359→            {errors.map((e, i) => <p key={i}>- {e}</p>)}
+   360→          </div>
+   361→        )}
+   362→
+   363→        {/* 1. INGRESOS POR FRECUENCIA — Sistema vs Efectivo Real */}
+   364→        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+   365→          <h3 className="font-bold text-[#3A3A3A] mb-3 text-sm uppercase flex items-center gap-2">
+   366→            <DollarSign className="w-4 h-4 text-green-600" /> Ingresos por Frecuencia
+   367→          </h3>
+   368→          {frecuencias.length === 0 ? (
+   369→            <p className="text-gray-400 text-xs text-center py-4">No hay frecuencias cerradas</p>
+   370→          ) : (
+   371→            <div className="space-y-2">
+   372→              {/* Header row */}
+   373→              <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold text-gray-400 uppercase">
+   374→                <div className="flex-1">Frecuencia</div>
+   375→                <div className="w-20 text-right">Sistema</div>
+   376→                <div className="w-20 text-right">Real</div>
+   377→                <div className="w-16 text-right">Dif.</div>
+   378→              </div>
+   379→              {frecuencias.map((f, i) => {
+   380→                const hasDiff = Math.abs(f.diferencia) >= 0.01;
+   381→                return (
+   382→                  <div key={f.estadoId} className={`flex items-center justify-between py-2 px-3 rounded-xl ${i % 2 === 0 ? 'bg-[#912D26]/5' : 'bg-gray-50'}`}>
+   383→                    <div className="flex items-center gap-2 flex-1 min-w-0">
+   384→                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${i % 2 === 0 ? 'bg-[#912D26] text-white' : 'bg-[#3A3A3A] text-white'}`}>
+   385→                        {i + 1}
+   386→                      </span>
+   387→                      <div className="min-w-0">
+   388→                        <div className="text-sm font-semibold text-[#3A3A3A] truncate">{f.hora} — {f.nombre}</div>
+   389→                        <div className="text-[10px] text-gray-400">{f.ventasCount} ventas</div>
+   390→                      </div>
+   391→                    </div>
+   392→                    <div className="w-20 text-right">
+   393→                      <div className="font-bold text-[#3A3A3A]">${f.totalRecaudado.toFixed(2)}</div>
+   394→                    </div>
+   395→                    <div className="w-20 text-right">
+   396→                      <div className="font-black text-green-700">${f.efectivoContado.toFixed(2)}</div>
+   397→                    </div>
+   398→                    <div className="w-16 text-right">
+   399→                      {hasDiff ? (
+   400→                        <span className={`text-xs font-bold ${f.diferencia > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+   401→                          {f.diferencia > 0 ? '+' : ''}{f.diferencia.toFixed(2)}
+   402→                        </span>
+   403→                      ) : (
+   404→                        <span className="text-xs text-gray-400">—</span>
+   405→                      )}
+   406→                    </div>
+   407→                  </div>
+   408→                );
+   409→              })}
+   410→              {/* Totals row */}
+   411→              <div className="border-t-2 border-green-200 pt-2 mt-2 space-y-1">
+   412→                <div className="flex justify-between items-center">
+   413→                  <span className="font-bold text-[#3A3A3A] text-xs">Total Sistema</span>
+   414→                  <span className="font-bold text-sm text-[#3A3A3A]">${totalIngresosAuto.toFixed(2)}</span>
+   415→                </div>
+   416→                <div className="flex justify-between items-center">
+   417→                  <span className="font-bold text-green-700 text-xs">Total Efectivo Real</span>
+   418→                  <span className="font-black text-lg text-green-700">${totalEfectivoReal.toFixed(2)}</span>
+   419→                </div>
+   420→                {Math.abs(totalDiferencia) >= 0.01 && (
+   421→                  <div className="flex justify-between items-center">
+   422→                    <span className="text-xs text-gray-500">Diferencia global</span>
+   423→                    <span className={`text-xs font-bold ${totalDiferencia > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+   424→                      {totalDiferencia > 0 ? '+' : ''}{totalDiferencia.toFixed(2)}
+   425→                    </span>
+   426→                  </div>
+   427→                )}
+   428→                <div className="text-right text-[10px] text-gray-400">{totalVentas} boletos vendidos</div>
+   429→              </div>
+   430→            </div>
+   431→          )}
+   432→        </div>
+   433→
+   434→        {/* 2. KILOMETRAJE + FOTO */}
+   435→        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
+   436→          <h3 className="font-bold text-[#3A3A3A] mb-1 text-sm uppercase">Datos del Turno</h3>
+   437→          <div>
+   438→            <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+   439→              Kilometraje <span className="text-[#912D26]">*</span>
+   440→            </label>
+   441→            <input
+   442→              type="text"
+   443→              inputMode="numeric"
+   444→              placeholder="877604"
+   445→              value={km}
+   446→              onChange={e => setKm(e.target.value)}
+   447→              className="w-full mt-1 h-11 rounded-xl border border-[#D6D6D6] px-3 text-sm font-semibold text-[#3A3A3A]"
+   448→            />
+   449→          </div>
+   450→          <div>
+   451→            <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+   452→              Foto del Cuaderno <span className="text-[#912D26]">*</span>
+   453→            </label>
+   454→            <div className="mt-1">
+   455→              {fotoPreview ? (
+   456→                <div className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-[#912D26]">
+   457→                  <img src={fotoPreview} alt="Foto" className="w-full h-full object-cover" />
+   458→                  <button
+   459→                    onClick={() => setFotoPreview(null)}
+   460→                    className="absolute top-0 right-0 w-5 h-5 bg-[#912D26] text-white rounded-bl-lg flex items-center justify-center"
+   461→                  >
+   462→                    <X className="w-3 h-3" />
+   463→                  </button>
+   464→                </div>
+   465→              ) : (
+   466→                <button
+   467→                  onClick={() => fileInputRef.current?.click()}
+   468→                  className="h-10 px-4 rounded-xl text-xs border border-[#D6D6D6] text-[#3A3A3A] flex items-center gap-1 active:scale-95"
+   469→                >
+   470→                  <Camera className="w-4 h-4" /> Tomar/Adjuntar Foto
+   471→                </button>
+   472→              )}
+   473→            </div>
+   474→          </div>
+   475→        </div>
+   476→
+   477→        {/* 3. GASTOS */}
+   478→        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+   479→          <div className="flex items-center justify-between mb-3">
+   480→            <h3 className="font-bold text-red-600 text-sm uppercase">Gastos</h3>
+   481→            <button onClick={addGasto} className="text-xs text-[#912D26] font-bold flex items-center gap-1">
+   482→              <Plus className="w-3 h-3" /> Agregar
+   483→            </button>
+   484→          </div>
+   485→          <div className="space-y-2">
+   486→            {gastos.map((g, i) => (
+   487→              <div key={i} className="flex items-center gap-2">
+   488→                <input
+   489→                  placeholder="Descripcion"
+   490→                  value={g.description}
+   491→                  onChange={e => updateGasto(i, 'description', e.target.value)}
+   492→                  className="h-10 text-sm rounded-xl flex-1 border border-[#D6D6D6] px-3 text-[#3A3A3A]"
+   493→                />
+   494→                <div className="relative w-24">
+   495→                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+   496→                  <input
+   497→                    type="number"
+   498→                    inputMode="decimal"
+   499→                    value={g.amount}
+   500→                    onChange={e => updateGasto(i, 'amount', e.target.value)}
+   501→                    className="h-10 text-sm rounded-xl w-full border border-[#D6D6D6] pl-6 pr-2 text-[#3A3A3A] font-semibold"
+   502→                  />
+   503→                </div>
+   504→                {i >= 4 && (
+   505→                  <button onClick={() => removeGasto(i)} className="text-gray-400 hover:text-red-500">
+   506→                    <Trash2 className="w-4 h-4" />
+   507→                  </button>
+   508→                )}
+   509→              </div>
+   510→            ))}
+   511→          </div>
+   512→          <div className="border-t border-gray-100 pt-2 mt-3 flex justify-between text-sm font-bold text-red-600">
+   513→            <span>Total Gastos</span>
+   514→            <span>${totalGastos.toFixed(2)}</span>
+   515→          </div>
+   516→        </div>
+   517→
+   518→        {/* 4. BOLETOS CAJA COMUN + TICKETS + SOBRANTE */}
+   519→        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
+   520→          <h3 className="font-bold text-[#3A3A3A] text-sm uppercase">Ajustes</h3>
+   521→          <div>
+   522→            <label className="text-xs font-medium text-gray-500">Boletos (Caja Común)</label>
+   523→            <div className="relative mt-1">
+   524→              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+   525→              <input
+   526→                type="number"
+   527→                inputMode="decimal"
+   528→                placeholder="0.00"
+   529→                value={boletosCajaTotal}
+   530→                onChange={e => setBoletosCajaTotal(e.target.value)}
+   531→                className="w-full h-11 rounded-xl border border-[#D6D6D6] pl-7 pr-3 text-sm font-semibold text-[#3A3A3A]"
+   532→              />
+   533→            </div>
+   534→          </div>
+   535→          <div>
+   536→            <label className="text-xs font-medium text-gray-500">Tickets</label>
+   537→            <div className="grid grid-cols-3 gap-2 mt-1">
+   538→              <button onClick={() => setTickets('4.50')}
+   539→                className={`h-11 rounded-xl text-sm font-bold border-2 transition-all active:scale-95 ${tickets === '4.50' ? 'bg-[#912D26] border-[#912D26] text-white' : 'bg-white border-[#D6D6D6] text-[#3A3A3A]'}`}>
+   540→                $4.50
+   541→              </button>
+   542→              <button onClick={() => setTickets('6.00')}
+   543→                className={`h-11 rounded-xl text-sm font-bold border-2 transition-all active:scale-95 ${tickets === '6.00' ? 'bg-[#912D26] border-[#912D26] text-white' : 'bg-white border-[#D6D6D6] text-[#3A3A3A]'}`}>
+   544→                $6.00
+   545→              </button>
+   546→              <button onClick={() => setTickets('')}
+   547→                className={`h-11 rounded-xl text-sm font-bold border-2 transition-all active:scale-95 ${tickets === '' ? 'bg-[#3A3A3A] border-[#3A3A3A] text-white' : 'bg-white border-[#D6D6D6] text-gray-400'}`}>
+   548→                Ninguno
+   549→              </button>
+   550→            </div>
+   551→          </div>
+   552→          <div>
+   553→            <label className="text-xs font-medium text-gray-500">Sobrante / Ajuste</label>
+   554→            <div className="relative mt-1">
+   555→              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+   556→              <input
+   557→                type="number"
+   558→                inputMode="decimal"
+   559→                placeholder="0.00"
+   560→                value={sobrante}
+   561→                onChange={e => setSobrante(e.target.value)}
+   562→                className="w-full h-11 rounded-xl border border-[#D6D6D6] pl-7 pr-3 text-sm font-semibold text-[#3A3A3A]"
+   563→              />
+   564→            </div>
+   565→            <p className="text-[10px] text-gray-400 mt-0.5">Dinero sobrante al contar (positivo o negativo)</p>
+   566→          </div>
+   567→        </div>
+   568→
+   569→        {/* 5. RESUMEN */}
+   570→        <div className="bg-[#3A3A3A] text-white rounded-2xl p-4 space-y-2">
+   571→          <p className="text-xs font-bold uppercase tracking-wider text-white/50">Liquidación del Día</p>
+   572→          <div className="flex justify-between text-sm">
+   573→            <span className="text-white/60">Efectivo Real (Contado)</span>
+   574→            <span className="font-semibold text-green-400">${totalEfectivoReal.toFixed(2)}</span>
+   575→          </div>
+   576→          {Math.abs(totalDiferencia) >= 0.01 && (
+   577→            <div className="flex justify-between text-sm">
+   578→              <span className="text-white/60">Diferencia vs Sistema</span>
+   579→              <span className={`font-semibold ${totalDiferencia > 0 ? 'text-blue-400' : 'text-red-400'}`}>
+   580→                {totalDiferencia > 0 ? '+' : ''}{totalDiferencia.toFixed(2)}
+   581→              </span>
+   582→            </div>
+   583→          )}
+   584→          {sobranteNum !== 0 && (
+   585→            <div className="flex justify-between text-sm">
+   586→              <span className="text-white/60">Ajuste Manual</span>
+   587→              <span className="font-semibold text-green-400">${sobranteNum.toFixed(2)}</span>
+   588→            </div>
+   589→          )}
+   590→          <hr className="border-white/10" />
+   591→          <div className="flex justify-between text-sm">
+   592→            <span className="text-white/80">Producción</span>
+   593→            <span className="font-black text-lg">${production.toFixed(2)}</span>
+   594→          </div>
+   595→          <p className="text-[10px] text-white/30">Efectivo Real + Ajuste Manual</p>
+   596→          <div className="flex justify-between text-sm">
+   597→            <span className="text-white/60">Caja Común (Boletos)</span>
+   598→            <span className="font-semibold">${boletosCajaNum.toFixed(2)}</span>
+   599→          </div>
+   600→          <hr className="border-white/10" />
+   601→          <div className="flex justify-between text-sm">
+   602→            <span className="text-white/60">Total Gastos</span>
+   603→            <span className="font-semibold text-red-400">-${totalGastos.toFixed(2)}</span>
+   604→          </div>
+   605→          <div className="flex justify-between text-sm">
+   606→            <span className="text-white/60">Tickets</span>
+   607→            <span className="font-semibold">-${ticketsNum.toFixed(2)}</span>
+   608→          </div>
+   609→          <hr className="border-white/10" />
+   610→          <div className="flex justify-between">
+   611→            <span className="text-sm text-white/80">Entrega Ayudante</span>
+   612→            <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+   613→              ${entregaAyudante.toFixed(2)}
+   614→            </span>
+   615→          </div>
+   616→          <p className="text-[10px] text-white/30">Producción - Total Gastos</p>
+   617→          <div className="flex justify-between">
+   618→            <span className="text-sm text-white/80">Entrega Compañía</span>
+   619→            <span className={`font-bold ${entregaCompania >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+   620→              ${entregaCompania.toFixed(2)}
+   621→            </span>
+   622→          </div>
+   623→          <p className="text-[10px] text-white/30">Caja Común - Tickets</p>
+   624→        </div>
+   625→
+   626→        {/* BOTON GUARDAR */}
+   627→        <button
+   628→          onClick={handleSaveOffline}
+   629→          disabled={saving}
+   630→          className={`w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all ${
+   631→            saving ? 'bg-[#D6D6D6] text-gray-400' : 'bg-[#912D26] text-white shadow-red-200'
+   632→          }`}>
+   633→          {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
+   634→          {saving ? 'Guardando...' : 'GUARDAR ARQUEO GENERAL'}
+   635→        </button>
+   636→      </div>
+   637→
+   638→      {/* Hidden file input */}
+   639→      <input
+   640→        ref={fileInputRef}
+   641→        type="file"
+   642→        accept="image/*"
+   643→        className="hidden"
+   644→        onChange={handlePhotoChange}
+   645→      />
+   646→    </div>
+   647→  );
+   648→}
+   649→
