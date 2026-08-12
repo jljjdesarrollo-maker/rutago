@@ -20,6 +20,7 @@ export interface FrecuenciaEstado {
   estado: 'pendiente' | 'abierta' | 'cerrada' | 'no_realizada';
   ventasCount: number;
   totalRecaudado: number;
+  motivoNoRealizada?: string;
 }
 
 export interface VTSession {

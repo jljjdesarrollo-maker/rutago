@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { type VTSession, type FrecuenciaEstado, type FrecuenciaData } from './types-boletos';
 import { getVentasByFrecuencia, countVentasPendientes } from '@/lib/indexeddb';
-import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck } from 'lucide-react';
+import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck, AlertTriangle, Wrench, Droplets, UserX, Ban, FileText, Truck } from 'lucide-react';
 
 interface Props {
   session: VTSession;
@@ -52,6 +52,10 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   const [reassigning, setReassigning] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [noRealizadaModal, setNoRealizadaModal] = useState<FrecuenciaEstado | null>(null);
+  const [motivoSeleccionado, setMotivoSeleccionado] = useState('');
+  const [motivoPersonalizado, setMotivoPersonalizado] = useState('');
+  const [confirmNoRealizada, setConfirmNoRealizada] = useState(false);
   const fecha = today();
 
   useEffect(() => {
@@ -174,7 +178,22 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   };
 
   const handleNoRealizada = (estado: FrecuenciaEstado) => {
-    updateEstado(estado.estadoId, { estado: 'no_realizada', ventasCount: 0, totalRecaudado: 0 });
+    setNoRealizadaModal(estado);
+    setMotivoSeleccionado('');
+    setMotivoPersonalizado('');
+    setConfirmNoRealizada(false);
+  };
+
+  const confirmNoRealizadaAction = () => {
+    if (!noRealizadaModal) return;
+    const motivo = motivoSeleccionado === 'otro' ? motivoPersonalizado.trim() : motivoSeleccionado;
+    updateEstado(noRealizadaModal.estadoId, {
+      estado: 'no_realizada',
+      ventasCount: 0,
+      totalRecaudado: 0,
+      motivoNoRealizada: motivo || 'Sin especificar',
+    });
+    setNoRealizadaModal(null);
   };
 
   const handleReassign = (estado: FrecuenciaEstado) => {
@@ -211,6 +230,16 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
       default: return 'bg-gray-100 border-gray-200';
     }
   };
+
+  const MOTIVOS_NO_REALIZADA = [
+    { id: 'daño_unidad', label: 'Daño en la unidad', icon: <Truck className="w-4 h-4" />, color: 'text-red-500' },
+    { id: 'mantenimiento', label: 'Mantenimiento', icon: <Wrench className="w-4 h-4" />, color: 'text-blue-500' },
+    { id: 'clima', label: 'Clima / Lluvia', icon: <Droplets className="w-4 h-4" />, color: 'text-cyan-500' },
+    { id: 'sin_pasajeros', label: 'Sin pasajeros', icon: <UserX className="w-4 h-4" />, color: 'text-purple-500' },
+    { id: 'problema_ruta', label: 'Problema en la ruta', icon: <AlertTriangle className="w-4 h-4" />, color: 'text-yellow-500' },
+    { id: 'orden_superior', label: 'Orden superior', icon: <Ban className="w-4 h-4" />, color: 'text-gray-600' },
+    { id: 'otro', label: 'Otro motivo', icon: <FileText className="w-4 h-4" />, color: 'text-gray-500' },
+  ];
 
   const getEstadoBadge = (estado: string) => {
     switch (estado) {
@@ -332,6 +361,86 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
           </div>
         )}
 
+        {/* Modal No Realizada - Selección de motivo */}
+        {noRealizadaModal && !confirmNoRealizada && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+            <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-orange-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#3A3A3A]">No Realizada</h3>
+                  <p className="text-xs text-gray-500">{noRealizadaModal.hora} — {noRealizadaModal.nombre}</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">Selecciona el motivo por el cual no se realizó esta frecuencia:</p>
+              <div className="space-y-2">
+                {MOTIVOS_NO_REALIZADA.map(m => (
+                  <button key={m.id} onClick={() => { setMotivoSeleccionado(m.id); if (m.id !== 'otro') setMotivoPersonalizado(''); }}
+                    className={`w-full p-3 rounded-xl border-2 text-left flex items-center gap-3 transition-all active:scale-[0.98] ${
+                      motivoSeleccionado === m.id ? 'border-orange-400 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+                    }`}>
+                    <span className={m.color}>{m.icon}</span>
+                    <span className="text-sm font-semibold text-[#3A3A3A]">{m.label}</span>
+                    {motivoSeleccionado === m.id && <span className="ml-auto text-orange-500 font-bold">✓</span>}
+                  </button>
+                ))}
+              </div>
+              {/* Campo personalizado */}
+              {motivoSeleccionado === 'otro' && (
+                <div className="mt-3">
+                  <input type="text" placeholder="Escribe el motivo..." value={motivoPersonalizado}
+                    onChange={e => setMotivoPersonalizado(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm text-[#3A3A3A] focus:outline-none focus:border-orange-400"
+                    autoFocus />
+                </div>
+              )}
+              <div className="flex gap-2 mt-5">
+                <button onClick={() => setNoRealizadaModal(null)}
+                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Cancelar</button>
+                <button
+                  onClick={() => motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim()) ? setConfirmNoRealizada(true) : null}
+                  disabled={!motivoSeleccionado || (motivoSeleccionado === 'otro' && !motivoPersonalizado.trim())}
+                  className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
+                    motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim())
+                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-200'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}>
+                  <XCircle className="w-4 h-4" /> Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal No Realizada - Confirmación */}
+        {noRealizadaModal && confirmNoRealizada && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle className="w-8 h-8 text-orange-500" />
+              </div>
+              <h3 className="text-lg font-bold text-[#3A3A3A] mb-2">Confirmar No Realizada</h3>
+              <div className="bg-orange-50 rounded-xl p-3 mb-4">
+                <p className="text-sm font-semibold text-orange-700">{noRealizadaModal.hora} — {noRealizadaModal.nombre}</p>
+                <p className="text-xs text-orange-600 mt-1">
+                  Motivo: <strong>{motivoSeleccionado === 'otro' ? motivoPersonalizado.trim() : MOTIVOS_NO_REALIZADA.find(m => m.id === motivoSeleccionado)?.label}</strong>
+                </p>
+              </div>
+              <p className="text-sm text-gray-500 mb-5">Esta frecuencia se marcará como NO realizada y no podrá vender boletos. Esta acción quedará registrada.</p>
+              <div className="flex gap-2">
+                <button onClick={() => setConfirmNoRealizada(false)}
+                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Volver</button>
+                <button onClick={confirmNoRealizadaAction}
+                  className="flex-1 py-3 rounded-xl bg-orange-500 text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] shadow-lg shadow-orange-200">
+                  <XCircle className="w-4 h-4" /> Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {estados.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-400">No hay frecuencias configuradas</p>
@@ -415,7 +524,10 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
                   )}
                   {/* NO REALIZADA */}
                   {estado.estado === 'no_realizada' && (
-                    <div className="text-sm text-gray-400">No realizada</div>
+                    <div className="text-sm text-orange-600 font-semibold flex items-center gap-1">
+                      <XCircle className="w-4 h-4" />
+                      {estado.motivoNoRealizada || 'No realizada'}
+                    </div>
                   )}
                   {/* BLOQUEADA */}
                   {bloqueada && (
