@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { type VTSession, type FrecuenciaEstado } from './types-boletos';
-import { getAllEstadosFrecuencia, getVentasByFrecuencia } from '@/lib/indexeddb';
+import { getVentasByFrecuencia } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
 import {
   ChevronLeft, DollarSign, Camera, X, Save, Loader2,
@@ -61,8 +61,12 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const loadData = useCallback(async () => {
     try {
       const fecha = today();
-      const estados = await getAllEstadosFrecuencia(session.vtCode, fecha);
-      const cerradas = estados.filter(e => e.estado === 'cerrada' || e.estado === 'no_realizada');
+      // Load estados from localStorage (synchronous, reliable)
+      const lsKey = `rg_estados_${session.vtCode}_${fecha}`;
+      const raw = localStorage.getItem(lsKey);
+      if (!raw) { setLoading(false); return; }
+      const estadosLS = JSON.parse(raw) as FrecuenciaEstado[];
+      const cerradas = estadosLS.filter(e => e.estado === 'cerrada' || e.estado === 'no_realizada');
 
       const resumenes: FrecuenciaResumen[] = await Promise.all(
         cerradas.map(async (e) => {

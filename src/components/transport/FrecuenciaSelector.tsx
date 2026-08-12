@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { type VTSession, type FrecuenciaEstado, type FrecuenciaData } from './types-boletos';
-import { getVentasByFrecuencia, countVentasPendientes, getAllEstadosFrecuencia, saveEstadoFrecuencia } from '@/lib/indexeddb';
-import { type EstadoFrecuencia } from '@/lib/indexeddb';
+import { getVentasByFrecuencia, countVentasPendientes } from '@/lib/indexeddb';
 import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send } from 'lucide-react';
 
 interface Props {
@@ -16,36 +15,33 @@ interface Props {
 
 const today = () => new Date().toISOString().split('T')[0];
 
-function getOriginFromFrecuencia(frec: FrecuenciaData): string {
-  if (frec.direccion === 'ida') return 'Loja';
-  const parts = frec.ruta.split(' - ');
-  if (parts.length >= 2) return parts[1].trim();
-  return 'Loja';
+// ─── LocalStorage helpers for estados (synchronous, reliable) ───
+
+function estadosKey(vtCode: string, fecha: string) {
+  return `rg_estados_${vtCode}_${fecha}`;
 }
 
-function getLocalityFromRoute(ruta: string): string {
-  const parts = ruta.split(' - ');
-  if (parts.length >= 2) {
-    const nonLoja = parts.find(p => p.trim() !== 'Loja');
-    return nonLoja ? nonLoja.trim() : ruta;
+function saveEstadosToLS(vtCode: string, fecha: string, estados: FrecuenciaEstado[]) {
+  try {
+    localStorage.setItem(estadosKey(vtCode, fecha), JSON.stringify(estados));
+  } catch (e) { console.error('Error saving estados to LS:', e); }
+}
+
+function loadEstadosFromLS(vtCode: string, fecha: string): FrecuenciaEstado[] | null {
+  try {
+    const raw = localStorage.getItem(estadosKey(vtCode, fecha));
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function updateEstadoInLS(vtCode: string, fecha: string, estadoId: string, updates: Partial<FrecuenciaEstado>) {
+  const all = loadEstadosFromLS(vtCode, fecha);
+  if (!all) return;
+  const idx = all.findIndex(e => e.estadoId === estadoId);
+  if (idx >= 0) {
+    all[idx] = { ...all[idx], ...updates };
+    saveEstadosToLS(vtCode, fecha, all);
   }
-  return ruta;
-}
-
-// Convert EstadoFrecuencia (persisted) to FrecuenciaEstado (UI)
-function toUIEstado(ef: EstadoFrecuencia): FrecuenciaEstado {
-  return {
-    id: ef.frecuenciaId,
-    estadoId: ef.estadoId,
-    frecuenciaId: ef.frecuenciaId,
-    nombre: ef.nombre,
-    ruta: ef.ruta,
-    hora: ef.hora,
-    direccion: ef.direccion,
-    estado: ef.estado,
-    ventasCount: ef.ventasCount,
-    totalRecaudado: ef.totalRecaudado,
-  };
 }
 
 export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onBack, onGoToSync }: Props) {
@@ -55,6 +51,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
   const [reassigning, setReassigning] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const fecha = today();
 
   useEffect(() => {
     const handle = () => setIsOnline(navigator.onLine);
@@ -63,27 +60,6 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
     return () => { window.removeEventListener('online', handle); window.removeEventListener('offline', handle); };
   }, []);
 
-  // Persist an estado change to IndexedDB
-  const persistEstado = useCallback(async (e: FrecuenciaEstado) => {
-    const fecha = today();
-    const ventas = await getVentasByFrecuencia(e.estadoId);
-    const unsynced = ventas.filter(v => v.syncStatus === 'pending' || v.syncStatus === 'error');
-    const ef: EstadoFrecuencia = {
-      estadoId: e.estadoId,
-      frecuenciaId: e.frecuenciaId,
-      nombre: e.nombre,
-      ruta: e.ruta,
-      hora: e.hora,
-      direccion: e.direccion,
-      estado: e.estado,
-      ventasCount: unsynced.length,
-      totalRecaudado: unsynced.reduce((s, v) => s + v.cobrado, 0),
-      vtCode: session.vtCode,
-      fecha,
-    };
-    await saveEstadoFrecuencia(ef);
-  }, [session.vtCode]);
-
   const loadFrecuencias = useCallback(async () => {
     try {
       const res = await fetch(`/api/frecuencias?vtCode=${session.vtCode}`);
@@ -91,32 +67,37 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
         const data = await res.json();
         setFrecuencias(data);
 
-        // Load persisted estados from IndexedDB
-        const fecha = today();
-        const savedEstados = await getAllEstadosFrecuencia(session.vtCode, fecha);
-        const savedMap = new Map(savedEstados.map(e => [e.estadoId, e]));
-
-        // Build estados: use saved if exists, otherwise create as pendiente
-        const newEstados: FrecuenciaEstado[] = data.map((f: FrecuenciaData) => {
-          const estadoId = `${fecha}_${f.id}`;
-          const saved = savedMap.get(estadoId);
-          if (saved) {
-            return toUIEstado(saved);
-          }
-          return {
-            id: f.id, estadoId, frecuenciaId: f.id,
-            nombre: f.nombre, ruta: f.ruta, hora: f.hora, direccion: f.direccion,
-            estado: 'pendiente', ventasCount: 0, totalRecaudado: 0,
-          };
-        });
-        setEstados(newEstados);
+        // Try loading saved estados from localStorage first
+        const saved = loadEstadosFromLS(session.vtCode, fecha);
+        if (saved && saved.length === data.length) {
+          setEstados(saved);
+        } else {
+          // Create fresh pendiente estados
+          const newEstados: FrecuenciaEstado[] = data.map((f: FrecuenciaData) => ({
+            id: f.id,
+            estadoId: `${fecha}_${f.id}`,
+            frecuenciaId: f.id,
+            nombre: f.nombre,
+            ruta: f.ruta,
+            hora: f.hora,
+            direccion: f.direccion,
+            estado: 'pendiente' as const,
+            ventasCount: 0,
+            totalRecaudado: 0,
+          }));
+          setEstados(newEstados);
+          saveEstadosToLS(session.vtCode, fecha, newEstados);
+        }
       }
     } catch (error) {
       console.error('Error cargando frecuencias:', error);
+      // Fallback: try to restore from localStorage only
+      const saved = loadEstadosFromLS(session.vtCode, fecha);
+      if (saved) setEstados(saved);
     } finally {
       setLoading(false);
     }
-  }, [session.vtCode]);
+  }, [session.vtCode, fecha]);
 
   const loadPendingCount = useCallback(async () => {
     try {
@@ -125,29 +106,23 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
     } catch { /* ignore */ }
   }, []);
 
-  // Reload ventas counts for all estados
+  // Reload ventas counts from IndexedDB periodically
   const refreshVentasCounts = useCallback(async () => {
-    setEstados(prev => {
-      // We need to update counts asynchronously - do it in background
-      (async () => {
-        const updates: { estadoId: string; ventasCount: number; totalRecaudado: number }[] = [];
-        for (const estado of prev) {
-          const ventas = await getVentasByFrecuencia(estado.estadoId);
-          const unsynced = ventas.filter(v => v.syncStatus === 'pending' || v.syncStatus === 'error');
-          updates.push({
-            estadoId: estado.estadoId,
-            ventasCount: unsynced.length,
-            totalRecaudado: unsynced.reduce((s, v) => s + v.cobrado, 0),
-          });
+    for (const estado of estados) {
+      try {
+        const ventas = await getVentasByFrecuencia(estado.estadoId);
+        const unsynced = ventas.filter(v => v.syncStatus === 'pending' || v.syncStatus === 'error');
+        const newCount = unsynced.length;
+        const newTotal = unsynced.reduce((s, v) => s + v.cobrado, 0);
+        if (newCount !== estado.ventasCount || Math.abs(newTotal - estado.totalRecaudado) > 0.01) {
+          updateEstadoInLS(session.vtCode, fecha, estado.estadoId, { ventasCount: newCount, totalRecaudado: newTotal });
+          setEstados(prev => prev.map(e =>
+            e.estadoId === estado.estadoId ? { ...e, ventasCount: newCount, totalRecaudado: newTotal } : e
+          ));
         }
-        setEstados(prev2 => prev2.map(e => {
-          const u = updates.find(u2 => u2.estadoId === e.estadoId);
-          return u ? { ...e, ventasCount: u.ventasCount, totalRecaudado: u.totalRecaudado } : e;
-        }));
-      })();
-      return prev;
-    });
-  }, []);
+      } catch { /* ignore */ }
+    }
+  }, [estados, session.vtCode, fecha]);
 
   useEffect(() => {
     loadFrecuencias();
@@ -156,7 +131,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
     return () => clearInterval(interval);
   }, [loadFrecuencias, loadPendingCount]);
 
-  // Also refresh counts periodically
+  // Refresh counts after initial load and periodically
   useEffect(() => {
     if (!loading && estados.length > 0) {
       refreshVentasCounts();
@@ -166,18 +141,13 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
   }, [loading, estados.length, refreshVentasCounts]);
 
   const updateEstado = (estadoId: string, updates: Partial<FrecuenciaEstado>) => {
-    setEstados(prev => {
-      const next = prev.map(e => e.estadoId === estadoId ? { ...e, ...updates } : e);
-      // Persist the updated estado
-      const updated = next.find(e => e.estadoId === estadoId);
-      if (updated) persistEstado(updated);
-      return next;
-    });
+    // Update in-memory state
+    setEstados(prev => prev.map(e => e.estadoId === estadoId ? { ...e, ...updates } : e));
+    // Persist to localStorage (synchronous, always reliable)
+    updateEstadoInLS(session.vtCode, fecha, estadoId, updates);
   };
 
-  // Sequential logic: frequency available if:
-  // - Not closed or no_realizada
-  // - All previous are closed or no_realizada
+  // Sequential: frequency available if previous are all cerrada/no_realizada
   const isFrecuenciaDisponible = (index: number): boolean => {
     const estado = estados[index];
     if (!estado) return false;
@@ -192,10 +162,8 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
   };
 
   const handleOpen = (estado: FrecuenciaEstado) => {
-    // Mark as 'abierta' and persist
     updateEstado(estado.estadoId, { estado: 'abierta' });
-    const updated = { ...estado, estado: 'abierta' as const };
-    onOpenFrequency(updated);
+    onOpenFrequency({ ...estado, estado: 'abierta' });
   };
 
   const handleNoRealizada = (estado: FrecuenciaEstado) => {
@@ -204,22 +172,6 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
 
   const handleReassign = (estado: FrecuenciaEstado) => {
     setReassigning(estado.estadoId);
-  };
-
-  const getReassignmentTargets = (currentEstado: FrecuenciaEstado): FrecuenciaData[] => {
-    const currentFrec = frecuencias.find(f => f.id === currentEstado.id);
-    if (!currentFrec) return [];
-    const origin = getOriginFromFrecuencia(currentFrec);
-    if (origin === 'Loja') {
-      return frecuencias.filter(f => f.id !== currentEstado.id);
-    } else {
-      const currentLocality = getLocalityFromRoute(currentFrec.ruta);
-      return frecuencias.filter(f => {
-        if (f.id === currentEstado.id) return false;
-        const fLocality = getLocalityFromRoute(f.ruta);
-        return fLocality === currentLocality;
-      });
-    }
   };
 
   const handleSelectReassignment = (targetFrec: FrecuenciaData) => {
@@ -317,13 +269,14 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
           {new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </div>
 
+        {/* Reassign modal */}
         {reassigning && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
             <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 max-h-[80vh] overflow-y-auto">
               <h3 className="text-lg font-bold text-[#3A3A3A] mb-1">Reasignar Horario</h3>
               <p className="text-sm text-gray-500 mb-4">Selecciona la nueva frecuencia</p>
               <div className="space-y-2">
-                {getReassignmentTargets(estados.find(e => e.estadoId === reassigning)!).map(target => (
+                {frecuencias.map(target => (
                   <button key={target.id} onClick={() => handleSelectReassignment(target)}
                     className="w-full p-4 rounded-xl border border-gray-200 hover:bg-[#912D26]/5 hover:border-[#912D26]/30 transition-all text-left">
                     <div className="flex items-center justify-between">
@@ -379,7 +332,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
                 </div>
                 <div className="text-xs text-gray-500 mb-2">{estado.ruta}</div>
                 <div className="flex gap-2">
-                  {/* PENDIENTE + disponible → Vender + No Realizada + Reasignar */}
+                  {/* PENDIENTE + disponible */}
                   {estado.estado === 'pendiente' && disponible && (
                     <>
                       <button onClick={() => handleOpen(estado)} className="flex-1 py-2 rounded-xl bg-[#912D26] text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
@@ -393,7 +346,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
                       </button>
                     </>
                   )}
-                  {/* ABIERTA → Seguir Vendiendo + Arqueo */}
+                  {/* ABIERTA: Seguir Vendiendo + Arqueo */}
                   {estado.estado === 'abierta' && (
                     <>
                       <button onClick={() => onOpenFrequency(estado)} className="flex-1 py-2 rounded-xl bg-green-600 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
@@ -404,7 +357,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
                       </button>
                     </>
                   )}
-                  {/* CERRADA → resumen */}
+                  {/* CERRADA */}
                   {estado.estado === 'cerrada' && (
                     <div className="flex-1 flex items-center justify-between">
                       <div className="text-sm text-gray-500">
@@ -428,7 +381,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onB
         )}
       </div>
 
-      {/* Boton sync global fijo */}
+      {/* Sync button */}
       {pendingCount > 0 && (
         <div className="p-3 border-t border-gray-200 bg-white">
           <button onClick={onGoToSync}

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { type FrecuenciaEstado, type VTSession } from './types-boletos';
 import { getVentasByFrecuencia } from '@/lib/indexeddb';
-import { updateEstadoFrecuencia } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
 import { DollarSign, Check, ChevronLeft, AlertTriangle, TrendingDown, TrendingUp, Equal, Send, ArrowRight } from 'lucide-react';
 
@@ -40,16 +39,23 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
   const sobrante = diferencia > 0;
   const cuadra = Math.abs(diferencia) < 0.01 && efectivoNum > 0;
 
-  const handleConfirm = async () => {
+  const handleConfirm = () => {
     setSaving(true);
     try {
-      // Persist arqueo result and mark as cerrada in IndexedDB
-      await updateEstadoFrecuencia(estado.estadoId, {
-        estado: 'cerrada',
-        arqueoEfectivo: efectivoNum,
-        arqueoDiferencia: diferencia,
-        arqueoFecha: new Date().toISOString(),
-      });
+      // Mark as cerrada in localStorage (synchronous, reliable)
+      const fecha = new Date().toISOString().split('T')[0];
+      const lsKey = `rg_estados_${session.vtCode}_${fecha}`;
+      try {
+        const raw = localStorage.getItem(lsKey);
+        if (raw) {
+          const all = JSON.parse(raw);
+          const idx = all.findIndex((e: any) => e.estadoId === estado.estadoId);
+          if (idx >= 0) {
+            all[idx].estado = 'cerrada';
+            localStorage.setItem(lsKey, JSON.stringify(all));
+          }
+        }
+      } catch (e) { console.error('LS error:', e); }
       setConfirmado(true);
     } catch (err) {
       console.error('Error guardando arqueo:', err);
