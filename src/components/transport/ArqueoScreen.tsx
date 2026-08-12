@@ -39,9 +39,13 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
   const sobrante = diferencia > 0;
   const cuadra = Math.abs(diferencia) < 0.01 && efectivoNum > 0;
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     setSaving(true);
     try {
+      // GPS invisible: capture coordinates when frequency closes
+      const { getGPSPosition } = await import('@/lib/gps');
+      const gps = await getGPSPosition();
+
       // Mark as cerrada in localStorage + save arqueo data
       const fecha = session.fecha || new Date().toISOString().split('T')[0];
       const lsKey = `rg_estados_${session.vtCode}_${fecha}`;
@@ -56,6 +60,10 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
             all[idx].arqueoSistema = totalSistema;
             all[idx].arqueoDiferencia = diferencia;
             all[idx].arqueoFecha = new Date().toISOString();
+            if (gps) {
+              all[idx].gpsLatEnd = gps.lat;
+              all[idx].gpsLngEnd = gps.lng;
+            }
             localStorage.setItem(lsKey, JSON.stringify(all));
           }
         }

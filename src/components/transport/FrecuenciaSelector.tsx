@@ -162,8 +162,14 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     return true;
   };
 
-  const handleOpen = (estado: FrecuenciaEstado) => {
-    updateEstado(estado.estadoId, { estado: 'abierta' });
+  const handleOpen = async (estado: FrecuenciaEstado) => {
+    // GPS invisible: capture coordinates when frequency opens
+    const { getGPSPosition } = await import('@/lib/gps');
+    const gps = await getGPSPosition();
+    updateEstado(estado.estadoId, {
+      estado: 'abierta',
+      ...(gps ? { gpsLatStart: gps.lat, gpsLngStart: gps.lng } : {}),
+    });
     onOpenFrequency({ ...estado, estado: 'abierta' });
   };
 

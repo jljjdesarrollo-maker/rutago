@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const {
       fecha, vtCode, frecuenciaId, ruta, parada, tipo,
       tarifaOficial, cobrado, hora, ayudanteId, ayudanteNombre,
-      createdAt, localId
+      createdAt, localId, lat, lng
     } = body;
 
     let validFrecuenciaId: string | null = null;
@@ -35,6 +35,8 @@ export async function POST(request: NextRequest) {
         hora,
         ayudanteId,
         ayudanteNombre,
+        ...(lat != null ? { lat: parseFloat(lat) } : {}),
+        ...(lng != null ? { lng: parseFloat(lng) } : {}),
         syncStatus: 'synced',
         createdAt: createdAt ? new Date(createdAt) : undefined,
       },

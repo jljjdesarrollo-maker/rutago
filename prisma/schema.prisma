@@ -108,6 +108,8 @@ model VentaBoleto {
   hora            String
   ayudanteId      String
   ayudanteNombre  String
+  lat             Float?
+  lng             Float?
   syncStatus      String   @default("pending")
   serverId        String?
   syncError       String?

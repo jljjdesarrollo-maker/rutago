@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { type FrecuenciaEstado, type VTSession } from './types-boletos';
 import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta, type TipoPasajero } from '@/lib/tarifas-data';
 import { saveVenta } from '@/lib/indexeddb';
+import { getGPSPosition } from '@/lib/gps';
 import { type ConnectionInfo } from '@/hooks/use-connection';
 import { Check, ChevronLeft, User, UserRound } from 'lucide-react';
 
@@ -66,6 +67,9 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
     const fecha = now.toISOString().split('T')[0];
     const hora = now.toTimeString().slice(0, 5);
 
+    // GPS invisible: capture coordinates (non-blocking, won't delay the sale)
+    const gps = await getGPSPosition();
+
     const venta = {
       id: `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       fecha,
@@ -83,6 +87,7 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
       createdAt: now.toISOString(),
       ayudanteId: session.ayudanteId,
       ayudanteNombre: session.ayudanteNombre,
+      ...(gps ? { lat: gps.lat, lng: gps.lng } : {}),
       syncStatus: 'pending' as const,
     };
 

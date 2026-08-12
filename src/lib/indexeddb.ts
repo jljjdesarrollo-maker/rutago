@@ -16,6 +16,8 @@ export interface VentaLocal {
   createdAt: string;
   ayudanteId: string;
   ayudanteNombre: string;
+  lat?: number;
+  lng?: number;
   syncStatus: 'pending' | 'synced' | 'error';
   serverId?: string;
   syncError?: string;
@@ -228,6 +230,11 @@ export interface EstadoFrecuencia {
   arqueoFecha?: string;
   vtCode: string;
   fecha: string;
+  // GPS invisible tracking
+  gpsLatStart?: number;
+  gpsLngStart?: number;
+  gpsLatEnd?: number;
+  gpsLngEnd?: number;
 }
 
 export interface FrecuenciaCache {

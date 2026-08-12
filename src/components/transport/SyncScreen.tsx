@@ -59,6 +59,8 @@ export function SyncScreen({ session, onBack }: Props) {
             tarifaOficial: venta.tarifaOficial, cobrado: venta.cobrado,
             hora: venta.hora, ayudanteId: venta.ayudanteId, ayudanteNombre: venta.ayudanteNombre,
             createdAt: venta.createdAt, localId: venta.id,
+            ...(venta.lat != null ? { lat: venta.lat } : {}),
+            ...(venta.lng != null ? { lng: venta.lng } : {}),
           }),
         });
         if (res.ok) {
