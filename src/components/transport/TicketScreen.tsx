@@ -6,7 +6,8 @@ import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta, type Tipo
 import { saveVenta } from '@/lib/indexeddb';
 import { getGPSPosition } from '@/lib/gps';
 import { type ConnectionInfo } from '@/hooks/use-connection';
-import { Check, User, UserRound, ChevronDown, ChevronUp, Printer } from 'lucide-react';
+import { Check, User, UserRound, ChevronDown, ChevronUp, Printer, Bluetooth } from 'lucide-react';
+import { usePrinterStatus } from '@/hooks/use-printer-status';
 
 interface Props {
   session: VTSession;
@@ -44,6 +45,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
   const [showAllParadas, setShowAllParadas] = useState(false);
   const [esViajeGratis, setEsViajeGratis] = useState(false);
   const [contadorVentasFrecuencia, setContadorVentasFrecuencia] = useState(0);
+  const printer = usePrinterStatus();
 
   const tipo = estado.direccion as 'ida' | 'vuelta';
   const ruta = estado.ruta;
@@ -253,12 +255,33 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
 
   return (
     <div className="flex flex-col h-[100dvh] bg-gray-50">
-      {/* Barra de conexión */}
-      <div className={`${connection.bgColor} px-4 py-1 flex items-center justify-center gap-2 text-xs font-medium ${connection.color}`}>
-        <span>{connection.icon}</span>
-        <span>{connection.label}</span>
-        {connection.pendingCount > 0 && (
-          <span className="bg-white/60 px-1.5 py-0.5 rounded-full text-[10px] font-bold">{connection.pendingCount} ventas</span>
+      {/* Barra de conexión — internet + impresora */}
+      <div className="bg-white border-b border-gray-100 px-3 py-1.5 flex items-center justify-between">
+        {/* Internet */}
+        <div className={`flex items-center gap-1.5 text-[10px] font-semibold ${connection.color}`}>
+          <span>{connection.icon}</span>
+          <span>{connection.label}</span>
+          {connection.pendingCount > 0 && (
+            <span className="bg-[#912D26]/10 text-[#912D26] px-1.5 py-0.5 rounded-full text-[9px] font-bold">{connection.pendingCount}</span>
+          )}
+        </div>
+        {/* Impresora — tappable */}
+        {printer.status === 'connected' ? (
+          <div className="flex items-center gap-1 text-[10px] font-semibold text-green-600">
+            <Printer className="w-3 h-3" />
+            <span>{printer.name.length > 14 ? printer.name.slice(0, 12) + '...' : printer.name}</span>
+            <span className="text-green-500">✓</span>
+          </div>
+        ) : printer.status === 'unavailable' ? (
+          <div className="flex items-center gap-1 text-[10px] text-gray-400">
+            <Printer className="w-3 h-3" />
+            <span>BT off</span>
+          </div>
+        ) : (
+          <button onClick={printer.connect} className="flex items-center gap-1 text-[10px] font-semibold text-[#912D26] active:opacity-70 transition-opacity">
+            <Bluetooth className="w-3 h-3" />
+            <span>Conectar 🖨</span>
+          </button>
         )}
       </div>
 
