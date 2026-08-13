@@ -351,6 +351,8 @@ export function HomeScreenVT({ onSessionStart }: Props) {
               <p className="text-blue-400 text-[9px]">Toca para vincular la 3NStar PPT205BT</p>
             </div>
           </button>
+        )}
+
         {/* ─── Printer debug log ─── */}
         {printerLog.length > 0 && (
           <div className="mt-2">
