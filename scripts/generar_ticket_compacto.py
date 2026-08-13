@@ -1,0 +1,374 @@
+#!/usr/bin/env python3
+"""
+Ticket NORMAL ultra compacto - minimo texto, maxima legibilidad
+Impresora 58mm ~48mm imprimible ~384px a 203 DPI
+"""
+
+import asyncio, os
+
+OUTPUT_DIR = '/home/z/my-project/download'
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# ── TICKET NORMAL ULTRA COMPACTO ──
+# 48mm imprimible = 384px a 203DPI
+# Font mono a 12px = ~17 chars por linea (48mm)
+# Objetivo: ~45mm alto (minimo posible)
+
+HTML = '''
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px;
+    background: #ddd;
+    font-family: 'Courier New', monospace;
+    gap: 16px;
+  }
+  .page-title {
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+  }
+
+  .comparison {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .label {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 4px 12px;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+  .label.red { color: #912D26; border: 2px solid #912D26; }
+  .label.green { color: #16a34a; border: 2px solid #16a34a; }
+  .shadow { filter: drop-shadow(1px 3px 6px rgba(0,0,0,0.18)); }
+
+  .receipt {
+    width: 384px;  /* 48mm @ 203dpi */
+    background: #fff;
+    padding: 12px 10px;
+    font-size: 12px;
+    color: #000;
+    line-height: 1.35;
+    position: relative;
+  }
+  .receipt::before, .receipt::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 8px;
+    background: linear-gradient(135deg, #fff 33.33%, transparent 33.33%) 0 0,
+                linear-gradient(225deg, #fff 33.33%, transparent 33.33%) 0 0;
+    background-size: 10px 8px;
+  }
+  .receipt::before { bottom: -8px; }
+  .receipt::after { top: -8px; }
+
+  .c { text-align: center; }
+  .b { font-weight: bold; }
+  .ld { border-top: 2px solid #000; margin: 5px 0; }
+  .ls { border-top: 1px dashed #000; margin: 4px 0; }
+  .r { display: flex; justify-content: space-between; }
+  .l { color: #555; font-size: 11px; }
+  .v { font-weight: bold; }
+  .f8 { font-size: 8px; }
+  .f9 { font-size: 9px; }
+  .f10 { font-size: 10px; }
+  .f11 { font-size: 11px; }
+  .logo { font-size: 16px; font-weight: bold; letter-spacing: 2px; }
+  .tarifa { font-size: 24px; font-weight: bold; }
+  .boleto { font-size: 14px; font-weight: bold; }
+  .promo {
+    margin-top: 4px;
+    border: 1.5px solid #000;
+    padding: 4px 6px;
+    text-align: center;
+  }
+  .promo .pt { font-size: 8px; font-weight: bold; letter-spacing: 0.5px; }
+  .promo .pm { font-size: 9px; font-weight: bold; }
+  .ft { font-size: 7px; color: #888; text-align: center; }
+  .bc {
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    transform: scaleY(1.25);
+    padding: 2px 0;
+  }
+
+  /* ── GRATIS ── */
+  .g-head {
+    background: #16a34a;
+    color: #fff;
+    padding: 6px 10px;
+    margin: -12px -10px 0 -10px;
+    text-align: center;
+  }
+  .g-head .g-title {
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 3px;
+  }
+  .g-head .g-sub {
+    font-size: 9px;
+    opacity: 0.9;
+  }
+  .g-tarifa {
+    font-size: 22px;
+    font-weight: bold;
+    color: #16a34a;
+  }
+  .g-tarifa .gl { font-size: 8px; color: #888; font-weight: normal; }
+  .no-paga {
+    display: inline-block;
+    background: #16a34a;
+    color: #fff;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 2px;
+  }
+  .g-ft {
+    margin-top: 4px;
+    border: 2px solid #16a34a;
+    padding: 3px 4px;
+    text-align: center;
+    font-size: 8px;
+    font-weight: bold;
+    color: #16a34a;
+  }
+
+  /* ── SIZE COMPARISON ── */
+  .size-section {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #bbb;
+  }
+  .size-card {
+    background: #fff;
+    padding: 16px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    text-align: center;
+    font-family: Arial, sans-serif;
+  }
+  .size-card .title { font-size: 13px; font-weight: bold; color: #333; margin-bottom: 8px; }
+  .size-card .measurement { display: flex; align-items: center; gap: 10px; justify-content: center; }
+  .size-card .ruler {
+    width: 6px;
+    background: #912D26;
+    border-radius: 3px;
+  }
+  .size-card .info { font-size: 11px; color: #666; }
+  .size-card .info .num { font-size: 20px; font-weight: bold; color: #912D26; }
+</style>
+</head>
+<body>
+
+<div class="page-title">Ticket RutaGo - Impresora Termica 58mm</div>
+
+<div class="comparison">
+
+  <!-- ════════ NORMAL ════════ -->
+  <div class="group">
+    <div class="label red">NORMAL</div>
+    <div class="shadow">
+      <div class="receipt">
+        <div class="c">
+          <span class="logo">RUTAGO</span>
+        </div>
+        <div class="ld"></div>
+
+        <div class="r">
+          <span class="b f11">Loja - Vilcabamba</span>
+          <span class="b f10">IDA</span>
+        </div>
+
+        <div class="r">
+          <span class="l">14/08/26</span>
+          <span>08:32</span>
+          <span class="l">Carlos M.</span>
+        </div>
+
+        <div class="ls"></div>
+
+        <div class="r">
+          <span class="l">Dest:</span>
+          <span class="b">Vilcabamba</span>
+          <span class="l">Entero</span>
+        </div>
+
+        <div class="r">
+          <span class="l">Tarifa:</span>
+          <span class="tarifa">$2.50</span>
+        </div>
+
+        <div class="ls"></div>
+
+        <div class="c">
+          <span class="boleto">N.0047</span>
+        </div>
+        <div class="bc">||||| ||| || ||| |||| |</div>
+
+        <div class="promo">
+          <div class="pt">Recuerda tu boleto!</div>
+          <div class="pm">El proximo puede ser GRATIS</div>
+        </div>
+
+        <div class="ld"></div>
+        <div class="ft">RutaGo - Transporte Seguro</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ VIAJE GRATIS ════════ -->
+  <div class="group">
+    <div class="label green">VIAJE GRATIS</div>
+    <div class="shadow">
+      <div class="receipt">
+        <div class="g-head">
+          <div class="g-title">VIAJE GRATIS</div>
+          <div class="g-sub">NO DEBE PAGAR</div>
+        </div>
+        <div class="ld"></div>
+
+        <div class="r">
+          <span class="b f11">Loja - Vilcabamba</span>
+          <span class="b f10">IDA</span>
+        </div>
+        <div class="r">
+          <span class="l">14/08/26</span>
+          <span>08:35</span>
+          <span class="l">Carlos M.</span>
+        </div>
+        <div class="ls"></div>
+
+        <div class="r">
+          <span class="l">Dest:</span>
+          <span class="b">Malacatos</span>
+          <span class="l">Entero</span>
+        </div>
+
+        <div class="r">
+          <span class="l">Tarifa:</span>
+          <span class="g-tarifa">
+            <span class="gl">NO PAGA</span>
+            $0.00
+          </span>
+        </div>
+
+        <div class="c" style="margin-top:4px;">
+          <span class="no-paga">FELICIDADES!</span>
+        </div>
+
+        <div class="ls"></div>
+        <div class="c">
+          <span class="boleto" style="color:#16a34a;">N.0052</span>
+        </div>
+        <div class="bc" style="color:#16a34a;">||||| || ||| | ||| || ||</div>
+
+        <div class="g-ft">Pase libremente - Cortesia RutaGo</div>
+
+        <div class="ld"></div>
+        <div class="ft" style="color:#16a34a;">RutaGo</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Size comparison -->
+<div class="size-section">
+  <div class="size-card">
+    <div class="title">Ticket Normal</div>
+    <div class="measurement">
+      <div class="ruler" style="height: 95px;"></div>
+      <div class="info">
+        <div class="num">~55mm</div>
+        alto
+      </div>
+    </div>
+    <div style="margin-top:10px;">
+      <div class="measurement">
+        <div class="ruler" style="width: 100px; height: 6px;"></div>
+        <div class="info">48mm ancho</div>
+      </div>
+    </div>
+    <div style="margin-top:8px; font-size:10px; color:#888;">
+      ~140 tickets por rollo de 30m
+    </div>
+  </div>
+
+  <div class="size-card">
+    <div class="title">Ticket Viaje Gratis</div>
+    <div class="measurement">
+      <div class="ruler" style="height: 115px; background:#16a34a;"></div>
+      <div class="info">
+        <div class="num" style="color:#16a34a;">~65mm</div>
+        alto
+      </div>
+    </div>
+    <div style="margin-top:10px;">
+      <div class="measurement">
+        <div class="ruler" style="width: 100px; height: 6px; background:#16a34a;"></div>
+        <div class="info">48mm ancho</div>
+      </div>
+    </div>
+    <div style="margin-top:8px; font-size:10px; color:#888;">
+      Solo 1 por frecuencia
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+'''
+
+html_path = os.path.join(OUTPUT_DIR, 'ticket_compacto.html')
+with open(html_path, 'w', encoding='utf-8') as f:
+    f.write(HTML)
+
+async def screenshot():
+    from playwright.async_api import async_playwright
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={'width': 900, 'height': 1000})
+        await page.goto(f'file://{html_path}')
+        await page.wait_for_load_state('networkidle')
+        height = await page.evaluate('document.body.scrollHeight')
+        await page.set_viewport_size({'width': 900, 'height': height + 40})
+        img_path = os.path.join(OUTPUT_DIR, 'ticket_compacto.png')
+        await page.screenshot(path=img_path, full_page=True)
+        await browser.close()
+        print(f"PNG: {img_path}")
+
+try:
+    asyncio.run(screenshot())
+except Exception as e:
+    print(f"Error: {e}")
+
+print(f"HTML: {html_path}")
