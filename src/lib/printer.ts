@@ -37,41 +37,13 @@ export function isBluetoothAvailable(): boolean {
 
 // Request Bluetooth device (shows browser pairing dialog)
 // For 3NStar PPT205BT and similar 58mm BT printers.
-// Strategy: try known service UUIDs first; if that fails, use acceptAllDevices as fallback.
+// Uses acceptAllDevices FIRST to show ALL nearby devices (proven to work).
 export async function requestPrinter(): Promise<BluetoothDevice | null> {
   if (!isBluetoothAvailable()) {
     console.warn('Web Bluetooth not available');
     return null;
   }
 
-  // Attempt 1: Filter by known printer services
-  try {
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [
-        { services: ['0000ff00-0000-1000-8000-00805f9b34fb'] },  // Generic printer
-        { services: ['e7810a71-73ae-499d-8c15-faa9aef0c3f2'] },  // Some 3NStar
-        { services: ['00001101-0000-1000-8000-00805f9b34fb'] },  // SPP
-        { services: ['0000ff01-0000-1000-8000-00805f9b34fb'] },  // Another common 3NStar
-      ],
-      optionalServices: [
-        '00001101-0000-1000-8000-00805f9b34fb',
-        '0000ff00-0000-1000-8000-00805f9b34fb',
-        '0000ff01-0000-1000-8000-00805f9b34fb',
-        'battery_service',
-        '00001800-0000-1000-8000-00805f9b34fb',
-      ],
-    });
-    saveLastPrinterId(device.id);
-    return device;
-  } catch (e) {
-    // User cancelled the dialog — don't retry
-    if ((e as DOMException).name === 'NotFoundError') {
-      return null;
-    }
-    console.warn('Filter-based request failed, trying acceptAllDevices:', e);
-  }
-
-  // Attempt 2: acceptAllDevices — shows all nearby BT devices
   try {
     const device = await navigator.bluetooth.requestDevice({
       acceptAllDevices: true,
@@ -87,7 +59,8 @@ export async function requestPrinter(): Promise<BluetoothDevice | null> {
     saveLastPrinterId(device.id);
     return device;
   } catch (e) {
-    console.error('Error requesting Bluetooth device:', e);
+    // User cancelled the dialog (NotFoundError) or other error
+    console.error('Bluetooth request cancelled or failed:', e);
     return null;
   }
 }
