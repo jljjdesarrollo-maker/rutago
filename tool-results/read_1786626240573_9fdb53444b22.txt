@@ -473,204 +473,181 @@
    473→   473→                <button onClick={() => setNoRealizadaModal(null)}
    474→   474→                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Cancelar</button>
    475→   475→                <button
-   476→   476→                  onClick={() => motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim()) ? setConfirmNoRealizada(true) : null}
-   477→   477→                  disabled={!motivoSeleccionado || (motivoSeleccionado === 'otro' && !motivoPersonalizado.trim())}
-   478→   478→                  className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
-   479→   479→                    motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim())
-   480→   480→                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-200'
-   481→   481→                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-   482→   482→                  }`}>
-   483→   483→                  <XCircle className="w-4 h-4" /> Confirmar
-   484→   484→                </button>
-   485→   485→              </div>
-   486→   486→            </div>
-   487→   487→          </div>
-   488→   488→        )}
-   489→   489→
-   490→   490→        {/* Modal No Realizada - Confirmación */}
-   491→   491→        {noRealizadaModal && confirmNoRealizada && (
-   492→   492→          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-   493→   493→            <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
-   494→   494→              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-   495→   495→                <AlertTriangle className="w-8 h-8 text-orange-500" />
-   496→   496→              </div>
-   497→   497→              <h3 className="text-lg font-bold text-[#3A3A3A] mb-2">Confirmar No Realizada</h3>
-   498→   498→              <div className="bg-orange-50 rounded-xl p-3 mb-4">
-   499→   499→                <p className="text-sm font-semibold text-orange-700">{noRealizadaModal.hora} — {noRealizadaModal.nombre}</p>
-   500→   500→                <p className="text-xs text-orange-600 mt-1">
-   501→   501→                  Motivo: <strong>{motivoSeleccionado === 'otro' ? motivoPersonalizado.trim() : MOTIVOS_NO_REALIZADA.find(m => m.id === motivoSeleccionado)?.label}</strong>
-   502→   502→                </p>
-   503→   503→              </div>
-   504→   504→              <p className="text-sm text-gray-500 mb-5">Esta frecuencia se marcará como NO realizada y no podrá vender boletos. Esta acción quedará registrada.</p>
-   505→   505→              <div className="flex gap-2">
-   506→   506→                <button onClick={() => setConfirmNoRealizada(false)}
-   507→   507→                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Volver</button>
-   508→   508→                <button onClick={confirmNoRealizadaAction}
-   509→   509→                  className="flex-1 py-3 rounded-xl bg-orange-500 text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] shadow-lg shadow-orange-200">
-   510→   510→                  <XCircle className="w-4 h-4" /> Confirmar
-   511→   511→                </button>
-   512→   512→              </div>
-   513→   513→            </div>
-   514→   514→          </div>
-   515→   515→        )}
-   516→   516→
-   517→   517→        {estados.length === 0 ? (
-   518→   518→          <div className="text-center py-12">
-   519→   519→            <p className="text-gray-400">No hay frecuencias configuradas</p>
-   520→   520→          </div>
-   521→   521→        ) : (
-   522→   522→          estados.map((estado, index) => {
-   523→   523→            const disponible = isFrecuenciaDisponible(index);
-   524→   524→            const esUltimaFrec = index === estados.length - 1;
-   525→   525→            const bloqueada = !disponible && estado.estado === 'pendiente';
-   526→   526→
-   527→   527→            return (
-   528→   528→              <div key={estado.estadoId} className={`rounded-2xl border p-3 transition-all ${
-   529→   529→                bloqueada ? 'bg-gray-50 border-gray-100 opacity-50' : getStateColor(estado.estado)
-   530→   530→              }`}>
-   531→   531→                <div className="flex items-center justify-between mb-2">
-   532→   532→                  <div className="flex items-center gap-2">
-   533→   533→                    {getStateIcon(estado.estado)}
-   534→   534→                    <div>
-   535→   535→                      <span className="font-bold text-[#3A3A3A]">{estado.hora}</span>
-   536→   536→                      <span className="text-sm text-gray-500 ml-2">{estado.nombre}</span>
-   537→   537→                    </div>
-   538→   538→                  </div>
-   539→   539→                  <div className="flex items-center gap-2">
-   540→   540→                    {getEstadoBadge(estado.estado)}
-   541→   541→                    {bloqueada && <span className="text-xs text-gray-400">🔒</span>}
-   542→   542→                  </div>
-   543→   543→                </div>
-   544→   544→                <div className="text-xs text-gray-500 mb-1">{estado.ruta} · {estado.direccion}</div>
-   545→   545→                {/* Stats bar: boletos + recaudado - visible when has sales or is cerrada */}
-   546→   546→                {(estado.ventasCount > 0 || estado.estado === 'cerrada') && (
-   547→   547→                  <div className="flex gap-3 mb-2">
-   548→   548→                    <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold">
-   549→   549→                      <Ticket className="w-3 h-3" />
-   550→   550→                      <span>{estado.ventasCount} boleto{estado.ventasCount !== 1 ? 's' : ''}</span>
-   551→   551→                    </div>
-   552→   552→                    <div className="flex items-center gap-1 bg-[#912D26]/10 text-[#912D26] px-2 py-1 rounded-lg text-xs font-bold">
-   553→   553→                      <DollarSign className="w-3 h-3" />
-   554→   554→                      <span>${estado.totalRecaudado.toFixed(2)}</span>
-   555→   555→                    </div>
-   556→   556→                  </div>
-   557→   557→                )}
-   558→   558→                <div className="flex gap-2">
-   559→   559→                  {/* PENDIENTE + disponible */}
-   560→   560→                  {estado.estado === 'pendiente' && disponible && (
-   561→   561→                    <>
-   562→   562→                      <button onClick={() => handleOpen(estado)} className="flex-1 py-2 rounded-xl bg-[#912D26] text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
-   563→   563→                        <Play className="w-4 h-4" /> Vender
-   564→   564→                      </button>
-   565→   565→                      <button onClick={() => handleNoRealizada(estado)} className="py-2 px-3 rounded-xl bg-orange-100 text-orange-600 font-semibold text-sm flex items-center gap-1" title="No Realizada">
-   566→   566→                        <XCircle className="w-4 h-4" />
-   567→   567→                      </button>
-   568→   568→                      <button onClick={() => handleReassign(estado)} className="py-2 px-3 rounded-xl bg-gray-200 text-gray-600 font-semibold text-sm flex items-center gap-1" title="Reasignar">
-   569→   569→                        <RotateCcw className="w-4 h-4" />
-   570→   570→                      </button>
-   571→   571→                    </>
-   572→   572→                  )}
-   573→   573→                  {/* ABIERTA: Seguir Vendiendo + Arqueo (or SYNC if online+pending) */}
-   574→   574→                  {estado.estado === 'abierta' && (
-   575→   575→                    <>
-   576→   576→                      <button onClick={() => onOpenFrequency(estado)} className="flex-1 py-2 rounded-xl bg-green-600 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
-   577→   577→                        <ChevronRight className="w-4 h-4" /> Seguir Vendiendo
-   578→   578→                      </button>
-   579→   579→                      {mustSyncBeforeArqueo ? (
-   580→   580→                        <button onClick={onGoToSync} className="flex-1 py-2 rounded-xl bg-orange-500 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
-   581→   581→                          <Send className="w-4 h-4" /> Sync {pendingCount}
-   582→   582→                        </button>
-   583→   583→                      ) : (
-   584→   584→                        <button onClick={() => onGoToArqueo(estado, esUltimaFrec)} className="flex-1 py-2 rounded-xl bg-blue-600 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
-   585→   585→                          <CheckCircle2 className="w-4 h-4" /> Arqueo
-   586→   586→                        </button>
-   587→   587→                      )}
-   588→   588→                    </>
-   589→   589→                  )}
-   590→   590→                  {/* CERRADA */}
-   591→   591→                  {estado.estado === 'cerrada' && (
-   592→   592→                    <div className="flex-1 flex items-center justify-center">
-   593→   593→                      <span className="text-xs text-green-600 font-bold flex items-center gap-1">
-   594→   594→                        <CheckCircle2 className="w-4 h-4" /> Cerrada
-   595→   595→                      </span>
-   596→   596→                    </div>
-   597→   597→                  )}
-   598→   598→                  {/* NO REALIZADA */}
-   599→   599→                  {estado.estado === 'no_realizada' && (
-   600→   600→                    <div className="text-sm text-orange-600 font-semibold flex items-center gap-1">
-   601→   601→                      <XCircle className="w-4 h-4" />
-   602→   602→                      {estado.motivoNoRealizada || 'No realizada'}
-   603→   603→                    </div>
-   604→   604→                  )}
-   605→   605→                  {/* BLOQUEADA */}
-   606→   606→                  {bloqueada && (
-   607→   607→                    <div className="text-sm text-gray-400">Espera arqueo anterior</div>
-   608→   608→                  )}
-   609→   609→                </div>
-   610→   610→              </div>
-   611→   611→            );
-   612→   612→          })
-   613→   613→        )}
-   614→   614→      </div>
-   615→   615→
-   616→   616→      {/* ─── Arqueo General del VT ─── */}
-   617→   617→      {allFrecuenciasDone && cerradasCount > 0 && (
-   618→   618→        <div className="px-4 pb-3">
-   619→   619→          <div className="bg-gradient-to-r from-[#912D26] to-[#b33d34] rounded-2xl p-4 shadow-lg shadow-red-200/50">
-   620→   620→            <div className="flex items-center gap-2 mb-3">
-   621→   621→              <ClipboardCheck className="w-5 h-5 text-white" />
-   622→   622→              <h3 className="text-white font-bold text-sm">Todas las frecuencias completadas</h3>
-   623→   623→            </div>
-   624→   624→            <div className="flex gap-4 mb-3 text-white">
-   625→   625→              <div>
-   626→   626→                <p className="text-white/60 text-[10px]">Total Boletos</p>
-   627→   627→                <p className="font-black text-lg leading-tight">{totalVentasAll}</p>
-   628→   628→              </div>
-   629→   629→              <div>
-   630→   630→                <p className="text-white/60 text-[10px]">Total Recaudado</p>
-   631→   631→                <p className="font-black text-lg leading-tight">${totalRecaudadoAll.toFixed(2)}</p>
-   632→   632→              </div>
-   633→   633→              <div>
-   634→   634→                <p className="text-white/60 text-[10px]">Cerradas</p>
-   635→   635→                <p className="font-black text-lg leading-tight">{cerradasCount}/{estados.length}</p>
-   636→   636→              </div>
-   637→   637→            </div>
-   638→   638→            {mustSyncBeforeArqueo ? (
-   639→   639→              <button
-   640→   640→                onClick={onGoToSync}
-   641→   641→                className="w-full py-4 rounded-xl bg-orange-400 text-white font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] shadow-md">
-   642→   642→                <Send className="w-5 h-5" />
-   643→   643→                SINCRONIZAR {pendingCount} VENTAS PRIMERO
-   644→   644→              </button>
-   645→   645→            ) : (
-   646→   646→              <button
-   647→   647→                onClick={onGoToArqueoGeneral}
-   648→   648→                className="w-full py-4 rounded-xl bg-white text-[#912D26] font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] shadow-md">
-   649→   649→                <ClipboardCheck className="w-5 h-5" />
-   650→   650→                ARQUEO GENERAL DEL {session.nombre}
-   651→   651→              </button>
-   652→   652→            )}
-   653→   653→            {mustSyncBeforeArqueo && (
-   654→   654→              <p className="text-white/60 text-[10px] text-center mt-2">Debes sincronizar todas las ventas antes del arqueo general</p>
-   655→   655→            )}
-   656→   656→          </div>
-   657→   657→        </div>
-   658→   658→      )}
-   659→   659→
-   660→   660→      {/* Sync button */}
-   661→   661→      {pendingCount > 0 && (
-   662→   662→        <div className="p-3 border-t border-gray-200 bg-white">
-   663→   663→          <button onClick={onGoToSync}
-   664→   664→            className={`w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
-   665→   665→              isOnline ? 'bg-green-600 text-white shadow-lg shadow-green-200' : 'bg-gray-200 text-gray-400'
-   666→   666→            }`}
-   667→   667→            disabled={!isOnline}>
-   668→   668→            <Send className="w-5 h-5" />
-   669→   669→            {isOnline ? `SINCRONIZAR ${pendingCount} VENTAS` : `SIN INTERNET — ${pendingCount} VENTAS PENDIENTES`}
-   670→   670→          </button>
-   671→   671→        </div>
-   672→   672→      )}
-   673→   673→    </div>
-   674→   674→  );
-   675→   675→}
-   676→   676→
+   476→   476→                  onClick={() => {
+   477→   477→                    if (motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim())) {
+   478→   478→                      confirmNoRealizadaAction();
+   479→   479→                    }
+   480→   480→                  }}
+   481→   481→                  disabled={!motivoSeleccionado || (motivoSeleccionado === 'otro' && !motivoPersonalizado.trim())}
+   482→   482→                  className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
+   483→   483→                    motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim())
+   484→   484→                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-200'
+   485→   485→                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+   486→   486→                  }`}>
+   487→   487→                  <XCircle className="w-4 h-4" /> Confirmar
+   488→   488→                </button>
+   489→   489→              </div>
+   490→   490→            </div>
+   491→   491→          </div>
+   492→   492→        )}
+   493→   493→
+   494→   494→        {estados.length === 0 ? (
+   495→   495→          <div className="text-center py-12">
+   496→   496→            <p className="text-gray-400">No hay frecuencias configuradas</p>
+   497→   497→          </div>
+   498→   498→        ) : (
+   499→   499→          estados.map((estado, index) => {
+   500→   500→            const disponible = isFrecuenciaDisponible(index);
+   501→   501→            const esUltimaFrec = index === estados.length - 1;
+   502→   502→            const bloqueada = !disponible && estado.estado === 'pendiente';
+   503→   503→
+   504→   504→            return (
+   505→   505→              <div key={estado.estadoId} className={`rounded-2xl border p-3 transition-all ${
+   506→   506→                bloqueada ? 'bg-gray-50 border-gray-100 opacity-50' : getStateColor(estado.estado)
+   507→   507→              }`}>
+   508→   508→                <div className="flex items-center justify-between mb-2">
+   509→   509→                  <div className="flex items-center gap-2">
+   510→   510→                    {getStateIcon(estado.estado)}
+   511→   511→                    <div>
+   512→   512→                      <span className="font-bold text-[#3A3A3A]">{estado.hora}</span>
+   513→   513→                      <span className="text-sm text-gray-500 ml-2">{estado.nombre}</span>
+   514→   514→                    </div>
+   515→   515→                  </div>
+   516→   516→                  <div className="flex items-center gap-2">
+   517→   517→                    {getEstadoBadge(estado.estado)}
+   518→   518→                    {bloqueada && <span className="text-xs text-gray-400">🔒</span>}
+   519→   519→                  </div>
+   520→   520→                </div>
+   521→   521→                <div className="text-xs text-gray-500 mb-1">{estado.ruta} · {estado.direccion}</div>
+   522→   522→                {/* Stats bar: boletos + recaudado - visible when has sales or is cerrada */}
+   523→   523→                {(estado.ventasCount > 0 || estado.estado === 'cerrada') && (
+   524→   524→                  <div className="flex gap-3 mb-2">
+   525→   525→                    <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold">
+   526→   526→                      <Ticket className="w-3 h-3" />
+   527→   527→                      <span>{estado.ventasCount} boleto{estado.ventasCount !== 1 ? 's' : ''}</span>
+   528→   528→                    </div>
+   529→   529→                    <div className="flex items-center gap-1 bg-[#912D26]/10 text-[#912D26] px-2 py-1 rounded-lg text-xs font-bold">
+   530→   530→                      <DollarSign className="w-3 h-3" />
+   531→   531→                      <span>${estado.totalRecaudado.toFixed(2)}</span>
+   532→   532→                    </div>
+   533→   533→                  </div>
+   534→   534→                )}
+   535→   535→                <div className="flex gap-2">
+   536→   536→                  {/* PENDIENTE + disponible */}
+   537→   537→                  {estado.estado === 'pendiente' && disponible && (
+   538→   538→                    <>
+   539→   539→                      <button onClick={() => handleOpen(estado)} className="flex-1 py-3.5 rounded-xl bg-[#912D26] text-white font-bold text-sm flex items-center justify-center gap-1.5 active:scale-[0.97] shadow-md shadow-red-200">
+   540→   540→                        <Play className="w-4 h-4" /> Vender
+   541→   541→                      </button>
+   542→   542→                      <button onClick={() => handleNoRealizada(estado)} className="py-3.5 px-4 rounded-xl bg-orange-100 text-orange-600 font-bold text-sm flex items-center gap-1.5 active:scale-[0.97]" title="No Realizada">
+   543→   543→                        <XCircle className="w-4 h-4" />
+   544→   544→                      </button>
+   545→   545→                      <button onClick={() => handleReassign(estado)} className="py-3.5 px-4 rounded-xl bg-gray-200 text-gray-600 font-bold text-sm flex items-center gap-1.5 active:scale-[0.97]" title="Reasignar">
+   546→   546→                        <RotateCcw className="w-4 h-4" />
+   547→   547→                      </button>
+   548→   548→                    </>
+   549→   549→                  )}
+   550→   550→                  {/* ABIERTA: Seguir Vendiendo + Arqueo (or SYNC if online+pending) */}
+   551→   551→                  {estado.estado === 'abierta' && (
+   552→   552→                    <>
+   553→   553→                      <button onClick={() => onOpenFrequency(estado)} className="flex-1 py-2 rounded-xl bg-green-600 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
+   554→   554→                        <ChevronRight className="w-4 h-4" /> Seguir Vendiendo
+   555→   555→                      </button>
+   556→   556→                      {mustSyncBeforeArqueo ? (
+   557→   557→                        <button onClick={onGoToSync} className="flex-1 py-2 rounded-xl bg-orange-500 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
+   558→   558→                          <Send className="w-4 h-4" /> Sync {pendingCount}
+   559→   559→                        </button>
+   560→   560→                      ) : (
+   561→   561→                        <button onClick={() => onGoToArqueo(estado, esUltimaFrec)} className="flex-1 py-2 rounded-xl bg-blue-600 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
+   562→   562→                          <CheckCircle2 className="w-4 h-4" /> Arqueo
+   563→   563→                        </button>
+   564→   564→                      )}
+   565→   565→                    </>
+   566→   566→                  )}
+   567→   567→                  {/* CERRADA */}
+   568→   568→                  {estado.estado === 'cerrada' && (
+   569→   569→                    <div className="flex-1 flex items-center justify-center">
+   570→   570→                      <span className="text-xs text-green-600 font-bold flex items-center gap-1">
+   571→   571→                        <CheckCircle2 className="w-4 h-4" /> Cerrada
+   572→   572→                      </span>
+   573→   573→                    </div>
+   574→   574→                  )}
+   575→   575→                  {/* NO REALIZADA */}
+   576→   576→                  {estado.estado === 'no_realizada' && (
+   577→   577→                    <div className="text-sm text-orange-600 font-semibold flex items-center gap-1">
+   578→   578→                      <XCircle className="w-4 h-4" />
+   579→   579→                      {estado.motivoNoRealizada || 'No realizada'}
+   580→   580→                    </div>
+   581→   581→                  )}
+   582→   582→                  {/* BLOQUEADA */}
+   583→   583→                  {bloqueada && (
+   584→   584→                    <div className="text-sm text-gray-400">Espera arqueo anterior</div>
+   585→   585→                  )}
+   586→   586→                </div>
+   587→   587→              </div>
+   588→   588→            );
+   589→   589→          })
+   590→   590→        )}
+   591→   591→      </div>
+   592→   592→
+   593→   593→      {/* ─── Arqueo General del VT ─── */}
+   594→   594→      {allFrecuenciasDone && cerradasCount > 0 && (
+   595→   595→        <div className="px-4 pb-3">
+   596→   596→          <div className="bg-gradient-to-r from-[#912D26] to-[#b33d34] rounded-2xl p-4 shadow-lg shadow-red-200/50">
+   597→   597→            <div className="flex items-center gap-2 mb-3">
+   598→   598→              <ClipboardCheck className="w-5 h-5 text-white" />
+   599→   599→              <h3 className="text-white font-bold text-sm">Todas las frecuencias completadas</h3>
+   600→   600→            </div>
+   601→   601→            <div className="flex gap-4 mb-3 text-white">
+   602→   602→              <div>
+   603→   603→                <p className="text-white/60 text-[10px]">Total Boletos</p>
+   604→   604→                <p className="font-black text-lg leading-tight">{totalVentasAll}</p>
+   605→   605→              </div>
+   606→   606→              <div>
+   607→   607→                <p className="text-white/60 text-[10px]">Total Recaudado</p>
+   608→   608→                <p className="font-black text-lg leading-tight">${totalRecaudadoAll.toFixed(2)}</p>
+   609→   609→              </div>
+   610→   610→              <div>
+   611→   611→                <p className="text-white/60 text-[10px]">Cerradas</p>
+   612→   612→                <p className="font-black text-lg leading-tight">{cerradasCount}/{estados.length}</p>
+   613→   613→              </div>
+   614→   614→            </div>
+   615→   615→            {mustSyncBeforeArqueo ? (
+   616→   616→              <button
+   617→   617→                onClick={onGoToSync}
+   618→   618→                className="w-full py-4 rounded-xl bg-orange-400 text-white font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] shadow-md">
+   619→   619→                <Send className="w-5 h-5" />
+   620→   620→                SINCRONIZAR {pendingCount} VENTAS PRIMERO
+   621→   621→              </button>
+   622→   622→            ) : (
+   623→   623→              <button
+   624→   624→                onClick={onGoToArqueoGeneral}
+   625→   625→                className="w-full py-4 rounded-xl bg-white text-[#912D26] font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] shadow-md">
+   626→   626→                <ClipboardCheck className="w-5 h-5" />
+   627→   627→                ARQUEO GENERAL DEL {session.nombre}
+   628→   628→              </button>
+   629→   629→            )}
+   630→   630→            {mustSyncBeforeArqueo && (
+   631→   631→              <p className="text-white/60 text-[10px] text-center mt-2">Debes sincronizar todas las ventas antes del arqueo general</p>
+   632→   632→            )}
+   633→   633→          </div>
+   634→   634→        </div>
+   635→   635→      )}
+   636→   636→
+   637→   637→      {/* Sync button */}
+   638→   638→      {pendingCount > 0 && (
+   639→   639→        <div className="p-3 border-t border-gray-200 bg-white">
+   640→   640→          <button onClick={onGoToSync}
+   641→   641→            className={`w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
+   642→   642→              isOnline ? 'bg-green-600 text-white shadow-lg shadow-green-200' : 'bg-gray-200 text-gray-400'
+   643→   643→            }`}
+   644→   644→            disabled={!isOnline}>
+   645→   645→            <Send className="w-5 h-5" />
+   646→   646→            {isOnline ? `SINCRONIZAR ${pendingCount} VENTAS` : `SIN INTERNET — ${pendingCount} VENTAS PENDIENTES`}
+   647→   647→          </button>
+   648→   648→        </div>
+   649→   649→      )}
+   650→   650→    </div>
+   651→   651→  );
+   652→   652→}
+   653→   653→
