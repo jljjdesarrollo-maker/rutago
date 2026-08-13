@@ -36,26 +36,52 @@ export function isBluetoothAvailable(): boolean {
 }
 
 // Request Bluetooth device (shows browser pairing dialog)
-// For 58mm thermal printers: accept all services (user paired already in OS settings)
+// For 3NStar PPT205BT and similar 58mm BT printers.
+// Strategy: try known service UUIDs first; if that fails, use acceptAllDevices as fallback.
 export async function requestPrinter(): Promise<BluetoothDevice | null> {
   if (!isBluetoothAvailable()) {
     console.warn('Web Bluetooth not available');
     return null;
   }
+
+  // Attempt 1: Filter by known printer services
   try {
     const device = await navigator.bluetooth.requestDevice({
-      // acceptAllDevices: true,  // Requires user permission flag
-      // Try common printer service UUIDs first
       filters: [
-        { services: ['00001101-0000-1000-8000-00805f9b34fb'] },  // SPP (Serial Port Profile)
-        { services: ['0000ff00-0000-1000-8000-00805f9b34fb'] },  // Common printer service
-        { services: ['e7810a71-73ae-499d-8c15-faa9aef0c3f2'] },  // Another common BT printer
+        { services: ['0000ff00-0000-1000-8000-00805f9b34fb'] },  // Generic printer
+        { services: ['e7810a71-73ae-499d-8c15-faa9aef0c3f2'] },  // Some 3NStar
+        { services: ['00001101-0000-1000-8000-00805f9b34fb'] },  // SPP
+        { services: ['0000ff01-0000-1000-8000-00805f9b34fb'] },  // Another common 3NStar
       ],
       optionalServices: [
-        '00001101-0000-1000-8000-00805f9b34fb',  // SPP
-        '0000ff00-0000-1000-8000-00805f9b34fb',  // Generic printer
-        'battery_service',                          // Battery level
-        '00001800-0000-1000-8000-00805f9b34fb',   // Generic Access
+        '00001101-0000-1000-8000-00805f9b34fb',
+        '0000ff00-0000-1000-8000-00805f9b34fb',
+        '0000ff01-0000-1000-8000-00805f9b34fb',
+        'battery_service',
+        '00001800-0000-1000-8000-00805f9b34fb',
+      ],
+    });
+    saveLastPrinterId(device.id);
+    return device;
+  } catch (e) {
+    // User cancelled the dialog — don't retry
+    if ((e as DOMException).name === 'NotFoundError') {
+      return null;
+    }
+    console.warn('Filter-based request failed, trying acceptAllDevices:', e);
+  }
+
+  // Attempt 2: acceptAllDevices — shows all nearby BT devices
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [
+        '00001101-0000-1000-8000-00805f9b34fb',
+        '0000ff00-0000-1000-8000-00805f9b34fb',
+        '0000ff01-0000-1000-8000-00805f9b34fb',
+        'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+        'battery_service',
+        '00001800-0000-1000-8000-00805f9b34fb',
       ],
     });
     saveLastPrinterId(device.id);
@@ -67,6 +93,7 @@ export async function requestPrinter(): Promise<BluetoothDevice | null> {
 }
 
 // Auto-connect to last known printer (no dialog)
+// Returns the device reference. Does NOT connect GATT — that happens in printTicket().
 export async function autoConnectPrinter(): Promise<BluetoothDevice | null> {
   if (!isBluetoothAvailable()) return null;
   const lastId = getLastPrinterId();
@@ -75,12 +102,7 @@ export async function autoConnectPrinter(): Promise<BluetoothDevice | null> {
     const devices = await navigator.bluetooth.getDevices();
     const device = devices.find(d => d.id === lastId);
     if (!device) return null;
-    // Quick GATT connect check to verify it's available
-    if (device.gatt?.connected) {
-      return device;
-    }
-    await device.gatt!.connect();
-    await device.gatt!.disconnect();
+    // Just check the device was previously permitted — don't connect GATT yet
     return device;
   } catch {
     return null;
@@ -103,6 +125,7 @@ async function findPrintCharacteristic(gatt: BluetoothRemoteGATTServer): Promise
   // Try multiple known service UUIDs for different printer brands
   const serviceUUIDs = [
     '0000ff00-0000-1000-8000-00805f9b34fb',  // Generic printer (Rongta)
+    '0000ff01-0000-1000-8000-00805f9b34fb',  // 3NStar PPT205BT common
     'e7810a71-73ae-499d-8c15-faa9aef0c3f2',  // Some 3NStar models
     '00001101-0000-1000-8000-00805f9b34fb',  // SPP fallback
   ];

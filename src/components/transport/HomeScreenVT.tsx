@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { type VTSession } from './types-boletos';
-import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer } from 'lucide-react';
+
+// Version build — se actualiza con cada deploy
+const APP_VERSION = 'v3.1-aug14';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;
@@ -28,6 +31,10 @@ export function HomeScreenVT({ onSessionStart }: Props) {
   const [existingSession, setExistingSession] = useState<VTSession & { timestamp: number } | null>(null);
   const [existingUnfinished, setExistingUnfinished] = useState(false);
   const [confirmNewSession, setConfirmNewSession] = useState(false);
+  // Printer state
+  const [printerStatus, setPrinterStatus] = useState<'unknown' | 'connecting' | 'connected' | 'error' | 'unavailable'>('unknown');
+  const [printerName, setPrinterName] = useState<string>('');
+  const [printing, setPrinting] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -119,6 +126,91 @@ export function HomeScreenVT({ onSessionStart }: Props) {
     startSession(selectedVT);
   };
 
+  // ─── Printer connection ───
+  const checkPrinterStatus = useCallback(async () => {
+    try {
+      const { isBluetoothAvailable, autoConnectPrinter, clearLastPrinter } = await import('@/lib/printer');
+      if (!isBluetoothAvailable()) {
+        setPrinterStatus('unavailable');
+        return;
+      }
+      const device = await autoConnectPrinter();
+      if (device) {
+        setPrinterName(device.name || 'Impresora');
+        setPrinterStatus('connected');
+      } else {
+        setPrinterStatus('unknown');
+      }
+    } catch {
+      setPrinterStatus('error');
+    }
+  }, []);
+
+  useEffect(() => { checkPrinterStatus(); }, [checkPrinterStatus]);
+
+  const handleConnectPrinter = async () => {
+    setPrinterStatus('connecting');
+    try {
+      const { isBluetoothAvailable, requestPrinter, autoConnectPrinter } = await import('@/lib/printer');
+      if (!isBluetoothAvailable()) {
+        setPrinterStatus('unavailable');
+        return;
+      }
+      const device = await requestPrinter();
+      if (device) {
+        setPrinterName(device.name || 'Impresora');
+        setPrinterStatus('connected');
+        // Verify with a quick GATT probe
+        const verified = await autoConnectPrinter();
+        if (verified) {
+          setPrinterName(verified.name || device.name || 'Impresora');
+        }
+      } else {
+        setPrinterStatus('error');
+      }
+    } catch {
+      setPrinterStatus('error');
+    }
+  };
+
+  // ─── Test print ───
+  const handleTestPrint = async () => {
+    setPrinting(true);
+    try {
+      const { isBluetoothAvailable, autoConnectPrinter, printTicket } = await import('@/lib/printer');
+      const { generateTicketBytes } = await import('@/lib/ticket-escpos');
+      if (!isBluetoothAvailable()) {
+        setPrinterStatus('unavailable');
+        setPrinting(false);
+        return;
+      }
+      const device = await autoConnectPrinter();
+      if (!device) {
+        setPrinterStatus('error');
+        setPrinting(false);
+        return;
+      }
+      const bytes = generateTicketBytes({
+        ruta: 'Test Loja-Vilcabamba',
+        horaFrecuencia: '12:00',
+        fecha: '14/08/26',
+        hora: new Date().toTimeString().slice(0, 5),
+        ayudanteNombre: 'Test',
+        destino: 'Prueba OK',
+        tipoPasajero: 'Entero',
+        tarifa: 0.00,
+        boletoNum: 1,
+        esViajeGratis: false,
+        textoPublicidad: 'Quieres RutaGo? 0997149000',
+      });
+      const ok = await printTicket(device, bytes);
+      setPrinterStatus(ok ? 'connected' : 'error');
+    } catch {
+      setPrinterStatus('error');
+    }
+    setPrinting(false);
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col min-h-[100dvh] bg-gray-50 items-center justify-center">
@@ -137,6 +229,52 @@ export function HomeScreenVT({ onSessionStart }: Props) {
           <h1 className="text-xl font-bold">RutaGo</h1>
         </div>
         <p className="text-red-100 text-xs">TRANSPORTES VILCABAMBA</p>
+        <p className="text-red-200/60 text-[9px] mt-0.5">{APP_VERSION}</p>
+      </div>
+
+      {/* ─── Printer status bar ─── */}
+      <div className="mx-5 mt-3">
+        {printerStatus === 'connected' ? (
+          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
+            <Printer className="w-4 h-4 text-green-600 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-green-700 text-xs font-semibold truncate">{printerName}</p>
+              <p className="text-green-500 text-[9px]">Lista para imprimir</p>
+            </div>
+            <button onClick={handleTestPrint} disabled={printing}
+              className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-[10px] font-bold active:scale-95 transition-all disabled:opacity-50">
+              {printing ? 'Imprim...' : 'Probar'}
+            </button>
+          </div>
+        ) : printerStatus === 'connecting' ? (
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5">
+            <Loader2 className="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" />
+            <p className="text-blue-600 text-xs font-medium">Buscando impresora...</p>
+          </div>
+        ) : printerStatus === 'error' ? (
+          <button onClick={handleConnectPrinter}
+            className="w-full flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 active:scale-[0.98] transition-all">
+            <Printer className="w-4 h-4 text-red-500 flex-shrink-0" />
+            <div className="flex-1 text-left">
+              <p className="text-red-600 text-xs font-semibold">Reconectar impresora</p>
+              <p className="text-red-400 text-[9px]">Toca para seleccionar la impresora Bluetooth</p>
+            </div>
+          </button>
+        ) : printerStatus === 'unavailable' ? (
+          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
+            <Printer className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <p className="text-gray-500 text-[10px]">Bluetooth no disponible en este navegador</p>
+          </div>
+        ) : (
+          <button onClick={handleConnectPrinter}
+            className="w-full flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 active:scale-[0.98] transition-all">
+            <Printer className="w-4 h-4 text-blue-500 flex-shrink-0" />
+            <div className="flex-1 text-left">
+              <p className="text-blue-600 text-xs font-semibold">Conectar impresora</p>
+              <p className="text-blue-400 text-[9px]">Toca para vincular la 3NStar PPT205BT</p>
+            </div>
+          </button>
+        )}
       </div>
 
       <div className="flex-1 px-5 py-5 space-y-4">
