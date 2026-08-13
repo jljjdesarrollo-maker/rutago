@@ -1,5 +1,6 @@
 // RutaGo - Bluetooth Thermal Printer Module
-// Supports Rongta RPP02N (58mm, 203 DPI, Bluetooth 4.0, ESC/POS)
+// Supports 3nStar PPT205BT (58mm, 203 DPI, Bluetooth SPP, ESC/POS)
+// Also compatible with Rongta RPP02N and similar 58mm BT printers
 
 export interface PrinterDevice {
   id: string;
@@ -35,6 +36,7 @@ export function isBluetoothAvailable(): boolean {
 }
 
 // Request Bluetooth device (shows browser pairing dialog)
+// For 58mm thermal printers: accept all services (user paired already in OS settings)
 export async function requestPrinter(): Promise<BluetoothDevice | null> {
   if (!isBluetoothAvailable()) {
     console.warn('Web Bluetooth not available');
@@ -42,8 +44,19 @@ export async function requestPrinter(): Promise<BluetoothDevice | null> {
   }
   try {
     const device = await navigator.bluetooth.requestDevice({
-      filters: [{ services: ['0000ff00-0000-1000-8000-00805f9b34fb'] }], // Generic printer service
-      optionalServices: ['0000ff00-0000-1000-8000-00805f9b34fb'],
+      // acceptAllDevices: true,  // Requires user permission flag
+      // Try common printer service UUIDs first
+      filters: [
+        { services: ['00001101-0000-1000-8000-00805f9b34fb'] },  // SPP (Serial Port Profile)
+        { services: ['0000ff00-0000-1000-8000-00805f9b34fb'] },  // Common printer service
+        { services: ['e7810a71-73ae-499d-8c15-faa9aef0c3f2'] },  // Another common BT printer
+      ],
+      optionalServices: [
+        '00001101-0000-1000-8000-00805f9b34fb',  // SPP
+        '0000ff00-0000-1000-8000-00805f9b34fb',  // Generic printer
+        'battery_service',                          // Battery level
+        '00001800-0000-1000-8000-00805f9b34fb',   // Generic Access
+      ],
     });
     saveLastPrinterId(device.id);
     return device;
@@ -62,9 +75,11 @@ export async function autoConnectPrinter(): Promise<BluetoothDevice | null> {
     const devices = await navigator.bluetooth.getDevices();
     const device = devices.find(d => d.id === lastId);
     if (!device) return null;
-    // Try to connect to GATT server to verify it's still available
+    // Quick GATT connect check to verify it's available
+    if (device.gatt?.connected) {
+      return device;
+    }
     await device.gatt!.connect();
-    // Disconnect immediately - we'll connect properly when printing
     await device.gatt!.disconnect();
     return device;
   } catch {
@@ -85,27 +100,83 @@ async function connectGATT(device: BluetoothDevice): Promise<BluetoothRemoteGATT
 
 // Find the print characteristic (write to this to send data)
 async function findPrintCharacteristic(gatt: BluetoothRemoteGATTServer): Promise<BluetoothRemoteGATTCharacteristic | null> {
-  try {
-    const service = await gatt.getPrimaryService('0000ff00-0000-1000-8000-00805f9b34fb');
-    if (!service) return null;
-    const characteristics = await service.getCharacteristics();
-    // Find writable characteristic
-    return characteristics.find(c => 
-      c.properties.write || c.properties.writeWithoutResponse
-    ) || null;
-  } catch (e) {
-    console.error('Error finding print characteristic:', e);
-    return null;
+  // Try multiple known service UUIDs for different printer brands
+  const serviceUUIDs = [
+    '0000ff00-0000-1000-8000-00805f9b34fb',  // Generic printer (Rongta)
+    'e7810a71-73ae-499d-8c15-faa9aef0c3f2',  // Some 3NStar models
+    '00001101-0000-1000-8000-00805f9b34fb',  // SPP fallback
+  ];
+
+  for (const serviceUuid of serviceUUIDs) {
+    try {
+      const service = await gatt.getPrimaryService(serviceUuid);
+      if (!service) continue;
+      const characteristics = await service.getCharacteristics();
+      // Find writable characteristic
+      const writable = characteristics.find(c =>
+        c.properties.write || c.properties.writeWithoutResponse
+      );
+      if (writable) {
+        console.log(`Found writable characteristic on service ${serviceUuid}`);
+        return writable;
+      }
+    } catch {
+      continue; // Try next service
+    }
   }
+
+  // Fallback: enumerate all services and find any writable characteristic
+  try {
+    const services = await gatt.getPrimaryServices();
+    for (const service of services) {
+      try {
+        const characteristics = await service.getCharacteristics();
+        const writable = characteristics.find(c =>
+          c.properties.write || c.properties.writeWithoutResponse
+        );
+        if (writable) {
+          console.log(`Found writable characteristic on service ${service.uuid}`);
+          return writable;
+        }
+      } catch {
+        continue;
+      }
+    }
+  } catch (e) {
+    console.error('Error enumerating services:', e);
+  }
+
+  return null;
 }
 
 // Send raw bytes to printer
 async function sendBytes(characteristic: BluetoothRemoteGATTCharacteristic, data: ArrayBuffer): Promise<boolean> {
   try {
-    if (characteristic.properties.writeWithoutResponse) {
-      await characteristic.writeValueWithoutResponse(data);
+    // Split into chunks if needed (BLE max is ~512 bytes, SPP can handle more)
+    const MAX_CHUNK = 512;
+    const bytes = new Uint8Array(data);
+
+    if (bytes.length <= MAX_CHUNK) {
+      if (characteristic.properties.writeWithoutResponse) {
+        await characteristic.writeValueWithoutResponse(data);
+      } else {
+        await characteristic.writeValue(data);
+      }
     } else {
-      await characteristic.writeValue(data);
+      // Send in chunks
+      for (let offset = 0; offset < bytes.length; offset += MAX_CHUNK) {
+        const chunk = bytes.slice(offset, offset + MAX_CHUNK);
+        const chunkBuffer = chunk.buffer as ArrayBuffer;
+        if (characteristic.properties.writeWithoutResponse) {
+          await characteristic.writeValueWithoutResponse(chunkBuffer);
+        } else {
+          await characteristic.writeValue(chunkBuffer);
+        }
+        // Small delay between chunks to prevent buffer overflow
+        if (offset + MAX_CHUNK < bytes.length) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      }
     }
     return true;
   } catch (e) {
@@ -133,13 +204,14 @@ export async function printTicket(device: BluetoothDevice, commands: Uint8Array)
   try {
     const gatt = await connectGATT(device);
     if (!gatt) return false;
-    
+
     const char = await findPrintCharacteristic(gatt);
     if (!char) {
+      console.error('No writable characteristic found');
       await gatt.disconnect();
       return false;
     }
-    
+
     const success = await sendBytes(char, commands.buffer);
     await gatt.disconnect();
     return success;
