@@ -35,6 +35,13 @@ export function HomeScreenVT({ onSessionStart }: Props) {
   const [printerStatus, setPrinterStatus] = useState<'unknown' | 'connecting' | 'connected' | 'error' | 'unavailable'>('unknown');
   const [printerName, setPrinterName] = useState<string>('');
   const [printing, setPrinting] = useState(false);
+  const [printerLog, setPrinterLog] = useState<string[]>([]);
+
+  const pLog = (msg: string) => {
+    const t = new Date().toLocaleTimeString();
+    setPrinterLog(prev => [...prev, `${t} ${msg}`]);
+    console.log('[Printer]', msg);
+  };
 
   useEffect(() => {
     Promise.all([
@@ -173,39 +180,103 @@ export function HomeScreenVT({ onSessionStart }: Props) {
     }
   };
 
-  // ─── Test print ───
+  // ─── Test print (with detailed logging) ───
   const handleTestPrint = async () => {
     setPrinting(true);
+    setPrinterLog([]);
+    pLog('Iniciando prueba de impresion...');
     try {
-      const { isBluetoothAvailable, autoConnectPrinter, printTicket } = await import('@/lib/printer');
+      const { isBluetoothAvailable, autoConnectPrinter, printTicket, getLastPrinterId } = await import('@/lib/printer');
       const { generateTicketBytes } = await import('@/lib/ticket-escpos');
       if (!isBluetoothAvailable()) {
-        setPrinterStatus('unavailable');
-        setPrinting(false);
-        return;
+        pLog('ERROR: Web Bluetooth no disponible');
+        setPrinterStatus('unavailable'); setPrinting(false); return;
       }
+      const savedId = getLastPrinterId();
+      pLog(`Printer saved ID: ${savedId ? savedId.slice(0,12) + '...' : 'NINGUNO'}`);
       const device = await autoConnectPrinter();
       if (!device) {
-        setPrinterStatus('error');
-        setPrinting(false);
-        return;
+        pLog('ERROR: autoConnectPrinter devolvio null');
+        pLog('La impresora no fue guardada. Conectala primero.');
+        setPrinterStatus('error'); setPrinting(false); return;
       }
+      pLog(`Device: ${device.name || 'sin nombre'} ID:${device.id.slice(0,12)}`);
+
+      // GATT connect
+      pLog('Conectando GATT...');
+      if (!device.gatt) {
+        pLog('ERROR: device.gatt es null');
+        setPrinterStatus('error'); setPrinting(false); return;
+      }
+      const gatt = device.gatt.connected ? device.gatt : await device.gatt.connect();
+      pLog('GATT conectado!');
+
+      // Find writable characteristic
+      pLog('Buscando servicio de impresion...');
+      const uuids = ['0000ff00-0000-1000-8000-00805f9b34fb','0000ff01-0000-1000-8000-00805f9b34fb','e7810a71-73ae-499d-8c15-faa9aef0c3f2','00001101-0000-1000-8000-00805f9b34fb'];
+      let writableChar: BluetoothRemoteGATTCharacteristic | null = null;
+      for (const uuid of uuids) {
+        try {
+          const svc = await gatt.getPrimaryService(uuid);
+          const chars = await svc.getCharacteristics();
+          for (const c of chars) {
+            if (c.properties.write || c.properties.writeWithoutResponse) {
+              writableChar = c;
+              pLog(`Char OK en servicio ${uuid.slice(4,8)}`);
+              break;
+            }
+          }
+          if (writableChar) break;
+        } catch { pLog(`Servicio ${uuid.slice(4,8)}: NO`); }
+      }
+      if (!writableChar) {
+        pLog('Fallo UUIDs. Enumerando todos los servicios...');
+        const svcs = await gatt.getPrimaryServices();
+        pLog(`${svcs.length} servicios encontrados`);
+        for (const s of svcs) {
+          try {
+            const cs = await s.getCharacteristics();
+            for (const c of cs) {
+              if ((c.properties.write || c.properties.writeWithoutResponse) && !writableChar) {
+                writableChar = c;
+                pLog(`Char encontrado en ${s.uuid.slice(4,8)}`);
+              }
+            }
+          } catch { /* skip */ }
+        }
+      }
+      if (!writableChar) {
+        pLog('ERROR: No se encontro char escribible');
+        await gatt.disconnect();
+        setPrinterStatus('error'); setPrinting(false); return;
+      }
+      pLog(`Char: writeNR=${writableChar.properties.writeWithoutResponse} write=${writableChar.properties.write}`);
+
+      // Send ticket
       const bytes = generateTicketBytes({
-        ruta: 'Test Loja-Vilcabamba',
-        horaFrecuencia: '12:00',
-        fecha: '14/08/26',
-        hora: new Date().toTimeString().slice(0, 5),
-        ayudanteNombre: 'Test',
-        destino: 'Prueba OK',
-        tipoPasajero: 'Entero',
-        tarifa: 0.00,
-        boletoNum: 1,
-        esViajeGratis: false,
-        textoPublicidad: 'Quieres RutaGo? 0997149000',
+        ruta: 'Test Loja-Vilcabamba', horaFrecuencia: '12:00', fecha: '14/08/26',
+        hora: new Date().toTimeString().slice(0, 5), ayudanteNombre: 'Test',
+        destino: 'Prueba OK', tipoPasajero: 'Entero', tarifa: 0.00, boletoNum: 1,
+        esViajeGratis: false, textoPublicidad: 'Quieres RutaGo? 0997149000',
       });
-      const ok = await printTicket(device, bytes);
-      setPrinterStatus(ok ? 'connected' : 'error');
-    } catch {
+      pLog(`Enviando ${bytes.length} bytes...`);
+      try {
+        if (writableChar.properties.writeWithoutResponse) {
+          await writableChar.writeValueWithoutResponse(bytes.buffer);
+        } else {
+          await writableChar.writeValue(bytes.buffer);
+        }
+        pLog('Datos enviados OK!');
+      } catch (sendErr) {
+        pLog(`ERROR al enviar: ${(sendErr as Error).message}`);
+        await gatt.disconnect();
+        setPrinterStatus('error'); setPrinting(false); return;
+      }
+      await gatt.disconnect();
+      pLog('Prueba completada!');
+      setPrinterStatus('connected');
+    } catch (e) {
+      pLog(`ERROR: ${(e as Error).message}`);
       setPrinterStatus('error');
     }
     setPrinting(false);
@@ -251,7 +322,7 @@ export function HomeScreenVT({ onSessionStart }: Props) {
             <Loader2 className="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" />
             <p className="text-blue-600 text-xs font-medium">Buscando impresora...</p>
           </div>
-        ) : printerStatus === 'error' ? (
+        {printerStatus === 'error' ? (
           <button onClick={handleConnectPrinter}
             className="w-full flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 active:scale-[0.98] transition-all">
             <Printer className="w-4 h-4 text-red-500 flex-shrink-0" />
@@ -274,6 +345,20 @@ export function HomeScreenVT({ onSessionStart }: Props) {
               <p className="text-blue-400 text-[9px]">Toca para vincular la 3NStar PPT205BT</p>
             </div>
           </button>
+        {/* ─── Printer debug log ─── */}
+        {printerLog.length > 0 && (
+          <div className="mt-2">
+            <button onClick={() => setPrinterLog([])} className="text-[9px] text-gray-400 mb-1">Limpiar log</button>
+            <div className="bg-gray-900 rounded-xl p-2.5 max-h-[140px] overflow-y-auto">
+              {printerLog.map((l, i) => (
+                <p key={i} className={`text-[9px] font-mono leading-relaxed ${
+                  l.includes('ERROR') ? 'text-red-400' :
+                  l.includes('OK') || l.includes('completada') ? 'text-green-400' :
+                  'text-gray-400'
+                }`}>{l}</p>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
