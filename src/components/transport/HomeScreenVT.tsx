@@ -155,28 +155,30 @@ export function HomeScreenVT({ onSessionStart }: Props) {
 
   useEffect(() => { checkPrinterStatus(); }, [checkPrinterStatus]);
 
+  const [printerError, setPrinterError] = useState('');
+
   const handleConnectPrinter = async () => {
     setPrinterStatus('connecting');
+    setPrinterError('');
     try {
-      const { isBluetoothAvailable, requestPrinter, autoConnectPrinter } = await import('@/lib/printer');
+      const { isBluetoothAvailable, requestPrinter } = await import('@/lib/printer');
       if (!isBluetoothAvailable()) {
         setPrinterStatus('unavailable');
+        setPrinterError('Bluetooth no disponible en este navegador');
         return;
       }
       const device = await requestPrinter();
       if (device) {
         setPrinterName(device.name || 'Impresora');
         setPrinterStatus('connected');
-        // Verify with a quick GATT probe
-        const verified = await autoConnectPrinter();
-        if (verified) {
-          setPrinterName(verified.name || device.name || 'Impresora');
-        }
+        pLog(`Conectada: ${device.name || 'Impresora'}`);
       } else {
         setPrinterStatus('error');
+        setPrinterError('No se selecciono ninguna impresora');
       }
-    } catch {
+    } catch (e) {
       setPrinterStatus('error');
+      setPrinterError((e as Error).message || 'Error al conectar');
     }
   };
 
@@ -328,7 +330,11 @@ export function HomeScreenVT({ onSessionStart }: Props) {
             <Printer className="w-4 h-4 text-red-500 flex-shrink-0" />
             <div className="flex-1 text-left">
               <p className="text-red-600 text-xs font-semibold">Reconectar impresora</p>
-              <p className="text-red-400 text-[9px]">Toca para seleccionar la impresora Bluetooth</p>
+              {printerError ? (
+                <p className="text-red-500 text-[9px] break-all mt-0.5">{printerError}</p>
+              ) : (
+                <p className="text-red-400 text-[9px]">Toca para seleccionar la impresora Bluetooth</p>
+              )}
             </div>
           </button>
         ) : printerStatus === 'unavailable' ? (
