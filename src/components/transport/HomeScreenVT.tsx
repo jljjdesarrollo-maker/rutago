@@ -36,6 +36,7 @@ export function HomeScreenVT({ onSessionStart }: Props) {
   const [printerName, setPrinterName] = useState<string>('');
   const [printing, setPrinting] = useState(false);
   const [printerLog, setPrinterLog] = useState<string[]>([]);
+  const printerDeviceRef = useRef<BluetoothDevice | null>(null);
 
   const pLog = (msg: string) => {
     const t = new Date().toLocaleTimeString();
@@ -169,9 +170,10 @@ export function HomeScreenVT({ onSessionStart }: Props) {
       }
       const device = await requestPrinter();
       if (device) {
+        printerDeviceRef.current = device;
         setPrinterName(device.name || 'Impresora');
         setPrinterStatus('connected');
-        pLog(`Conectada: ${device.name || 'Impresora'}`);
+        pLog(`Guardada referencia directa: ${device.name}`);
       } else {
         setPrinterStatus('error');
         setPrinterError('No se selecciono ninguna impresora');
@@ -188,21 +190,20 @@ export function HomeScreenVT({ onSessionStart }: Props) {
     setPrinterLog([]);
     pLog('Iniciando prueba de impresion...');
     try {
-      const { isBluetoothAvailable, autoConnectPrinter, printTicket, getLastPrinterId } = await import('@/lib/printer');
+      const { isBluetoothAvailable } = await import('@/lib/printer');
       const { generateTicketBytes } = await import('@/lib/ticket-escpos');
       if (!isBluetoothAvailable()) {
         pLog('ERROR: Web Bluetooth no disponible');
         setPrinterStatus('unavailable'); setPrinting(false); return;
       }
-      const savedId = getLastPrinterId();
-      pLog(`Printer saved ID: ${savedId ? savedId.slice(0,12) + '...' : 'NINGUNO'}`);
-      const device = await autoConnectPrinter();
+
+      // Use device reference directly (no getDevices lookup)
+      const device = printerDeviceRef.current;
       if (!device) {
-        pLog('ERROR: autoConnectPrinter devolvio null');
-        pLog('La impresora no fue guardada. Conectala primero.');
+        pLog('ERROR: No hay impresora guardada. Conectala primero.');
         setPrinterStatus('error'); setPrinting(false); return;
       }
-      pLog(`Device: ${device.name || 'sin nombre'} ID:${device.id.slice(0,12)}`);
+      pLog(`Device: ${device.name || 'sin nombre'}`);
 
       // GATT connect
       pLog('Conectando GATT...');
