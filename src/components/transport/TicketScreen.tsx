@@ -6,7 +6,7 @@ import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta, type Tipo
 import { saveVenta } from '@/lib/indexeddb';
 import { getGPSPosition } from '@/lib/gps';
 import { type ConnectionInfo } from '@/hooks/use-connection';
-import { Check, User, UserRound, ChevronDown, ChevronUp, Printer, PrinterOff } from 'lucide-react';
+import { Check, User, UserRound, ChevronDown, ChevronUp, Printer } from 'lucide-react';
 
 interface Props {
   session: VTSession;

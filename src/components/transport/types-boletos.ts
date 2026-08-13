@@ -46,7 +46,7 @@ export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
   activa: true,
   rangoMin: 3,
   rangoMax: 30,
-  textoPublicidad: 'Usa RutaGo en tu bus\n0997149000',
+  textoPublicidad: 'Quieres RutaGo? 0997149000',
   sonidoGanador: true,
 };
 
