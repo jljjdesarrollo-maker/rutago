@@ -61,3 +61,27 @@ Stage Summary:
 - Timeout 5s para no bloquear, acepta cache de 30s
 - Datos almacenados en IndexedDB (offline) + Prisma DB (online)
 - Flujo: venta → IndexedDB con GPS → sync → API → DB con GPS
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Implementar "Viaje Gratis" (promoción) + impresión Bluetooth ESC/POS + diseño boleto para impresora térmica 58mm
+
+Work Log:
+- Created promo config types in types-boletos.ts (PromoViajeGratisConfig, loadPromoConfig, savePromoConfig)
+- Added VIAJE GRATIS config section in VTConfigScreen.tsx (ADMIN only) with Switch, number inputs, textarea
+- Modified FrecuenciaSelector.tsx: generates random ganadorPosicion when frequency opens
+- Modified TicketScreen.tsx: checks if current passenger is winner, shows special animation + sound, sets cobrado=0
+- Created src/lib/printer.ts: Web Bluetooth module (connect, disconnect, send ESC/POS)
+- Created src/lib/ticket-escpos.ts: ESC/POS ticket generator for normal and VIAJE GRATIS tickets
+- Integrated fire-and-forget printing in TicketScreen after each venta
+- Added Printer/PrinterOff icon imports
+
+Stage Summary:
+- All 4 phases implemented: config, logic, printing, UX animation+sound+publicity
+- TypeScript compiles cleanly (no new errors in main source)
+- Promo config stored in localStorage (offline, lightweight)
+- 1 winner per frequency (random position between 3-30, configurable)
+- Printing is non-blocking: venta registers even if printer fails
+- Publicity Usa RutaGo en tu bus 0997149000 included in ticket template
+

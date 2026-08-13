@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Plus, Trash2, ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, ChevronDown, ChevronUp, Settings, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { type PromoViajeGratisConfig, loadPromoConfig, savePromoConfig, DEFAULT_PROMO_CONFIG } from './types-boletos';
 
 interface VTItem {
   id: string;
@@ -27,6 +30,10 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
   const [expandedVt, setExpandedVt] = useState<string | null>(null);
   const [editFrecuencias, setEditFrecuencias] = useState<Record<string, Array<{ routeFrom: string; routeTo: string; time: string }>>>({});
   const { toast } = useToast();
+
+  // Viaje Gratis promo config
+  const [promoConfig, setPromoConfig] = useState<PromoViajeGratisConfig>(DEFAULT_PROMO_CONFIG);
+  useEffect(() => { setPromoConfig(loadPromoConfig()); }, []);
 
   useEffect(() => {
     // Seed + fetch VTs (seed runs here to ensure data is current)
@@ -226,6 +233,87 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
             </Card>
           );
         })}
+        {/* ─── VIAJE GRATIS Config ─── */}
+        <Card className="rounded-2xl border border-[#D6D6D6] bg-white overflow-hidden">
+          <CardContent className="p-0">
+            <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-[#912D26]/5 to-transparent">
+              <div className="w-10 h-10 rounded-xl bg-[#912D26] text-white flex items-center justify-center">
+                <Gift className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="font-bold text-[#3A3A3A]">VIAJE GRATIS</p>
+                <p className="text-xs text-[#3A3A3A]/60">Promoción de pasaje gratuito por frecuencia</p>
+              </div>
+            </div>
+            <div className="p-4 space-y-4">
+              {/* Activar toggle */}
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-[#3A3A3A]">Promoción activa</Label>
+                <Switch
+                  checked={promoConfig.activa}
+                  onCheckedChange={(checked) => setPromoConfig(prev => ({ ...prev, activa: checked }))}
+                />
+              </div>
+
+              {/* Rango de posición ganadora */}
+              {promoConfig.activa && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium text-[#3A3A3A]/60">Posición mínima</Label>
+                      <Input
+                        type="number"
+                        min={3}
+                        value={promoConfig.rangoMin}
+                        onChange={e => setPromoConfig(prev => ({ ...prev, rangoMin: parseInt(e.target.value) || 3 }))}
+                        className="h-10 rounded-lg text-sm border-[#D6D6D6]"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium text-[#3A3A3A]/60">Posición máxima</Label>
+                      <Input
+                        type="number"
+                        min={3}
+                        value={promoConfig.rangoMax}
+                        onChange={e => setPromoConfig(prev => ({ ...prev, rangoMax: parseInt(e.target.value) || 30 }))}
+                        className="h-10 rounded-lg text-sm border-[#D6D6D6]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Texto publicidad */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium text-[#3A3A3A]/60">Texto publicidad (en boleto)</Label>
+                    <Textarea
+                      value={promoConfig.textoPublicidad}
+                      onChange={e => setPromoConfig(prev => ({ ...prev, textoPublicidad: e.target.value }))}
+                      className="rounded-lg text-sm border-[#D6D6D6] min-h-[60px]"
+                      rows={2}
+                    />
+                  </div>
+
+                  {/* Sonido ganador */}
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium text-[#3A3A3A]">Sonido al ganar</Label>
+                    <Switch
+                      checked={promoConfig.sonidoGanador}
+                      onCheckedChange={(checked) => setPromoConfig(prev => ({ ...prev, sonidoGanador: checked }))}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Guardar */}
+              <Button
+                onClick={() => { savePromoConfig(promoConfig); toast({ title: 'Guardado', description: 'Configuración de Viaje Gratis actualizada' }); }}
+                className="w-full h-10 rounded-xl bg-[#912D26] hover:bg-[#7A2520] text-white text-sm font-semibold"
+              >
+                <Save className="w-4 h-4 mr-1" />
+                GUARDAR
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

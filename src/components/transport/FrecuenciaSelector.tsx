@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { type VTSession, type FrecuenciaEstado, type FrecuenciaData } from './types-boletos';
+import { type VTSession, type FrecuenciaEstado, type FrecuenciaData, loadPromoConfig } from './types-boletos';
 import { getVentasByFrecuencia, countVentasPendientes } from '@/lib/indexeddb';
 import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck, AlertTriangle, Wrench, Droplets, UserX, Ban, FileText, Truck } from 'lucide-react';
 
@@ -172,11 +172,23 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     // GPS invisible: capture coordinates when frequency opens
     const { getGPSPosition } = await import('@/lib/gps');
     const gps = await getGPSPosition();
+
+    // Generate random winner position for Viaje Gratis
+    const promoConfig = loadPromoConfig();
+    let ganadorPosicion: number | null = null;
+    if (promoConfig.activa) {
+      const min = promoConfig.rangoMin || 3;
+      const max = promoConfig.rangoMax || 30;
+      ganadorPosicion = Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    const updatedEstado = { ...estado, estado: 'abierta' as const, ganadorPosicion };
     updateEstado(estado.estadoId, {
       estado: 'abierta',
+      ganadorPosicion,
       ...(gps ? { gpsLatStart: gps.lat, gpsLngStart: gps.lng } : {}),
     });
-    onOpenFrequency({ ...estado, estado: 'abierta' });
+    onOpenFrequency(updatedEstado);
   };
 
   const handleNoRealizada = (estado: FrecuenciaEstado) => {

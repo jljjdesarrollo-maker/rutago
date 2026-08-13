@@ -249,7 +249,7 @@ export default function Home() {
     );
   }
   if (view === 'boletos_tickets' && vtSession && currentEstado) {
-    return <TicketScreen session={vtSession} estado={currentEstado} connection={connection.info} onClose={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} />;
+    return <TicketScreen session={vtSession} estado={currentEstado} connection={connection.info} onClose={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }} ganadorPosicion={currentEstado.ganadorPosicion} />;
   }
   if (view === 'boletos_arqueo' && vtSession && currentEstado) {
     return (

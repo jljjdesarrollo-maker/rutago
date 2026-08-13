@@ -1,18 +1,19 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { type FrecuenciaEstado, type VTSession } from './types-boletos';
+import { type FrecuenciaEstado, type VTSession, loadPromoConfig } from './types-boletos';
 import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta, type TipoPasajero } from '@/lib/tarifas-data';
 import { saveVenta } from '@/lib/indexeddb';
 import { getGPSPosition } from '@/lib/gps';
 import { type ConnectionInfo } from '@/hooks/use-connection';
-import { Check, User, UserRound, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, User, UserRound, ChevronDown, ChevronUp, Printer, PrinterOff } from 'lucide-react';
 
 interface Props {
   session: VTSession;
   estado: FrecuenciaEstado;
   connection: ConnectionInfo;
   onClose: () => void;
+  ganadorPosicion?: number | null;  // random position for free trip winner
 }
 
 // ─── Helpers for paradas frecuentes (localStorage) ───
@@ -31,7 +32,7 @@ function incrementParadaFrec(vtCode: string, parada: string) {
   } catch { /* ignore */ }
 }
 
-export function TicketScreen({ session, estado, connection, onClose }: Props) {
+export function TicketScreen({ session, estado, connection, onClose, ganadorPosicion }: Props) {
   const [parada, setParada] = useState('');
   const [cobrado, setCobrado] = useState('');
   const [pasajeroTipo, setPasajeroTipo] = useState<TipoPasajero>('normal');
@@ -41,6 +42,8 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
   const [ventasHoy, setVentasHoy] = useState(0);
   const [totalHoy, setTotalHoy] = useState(0);
   const [showAllParadas, setShowAllParadas] = useState(false);
+  const [esViajeGratis, setEsViajeGratis] = useState(false);
+  const [contadorVentasFrecuencia, setContadorVentasFrecuencia] = useState(0);
 
   const tipo = estado.direccion as 'ida' | 'vuelta';
   const ruta = estado.ruta;
@@ -55,6 +58,17 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
   const resto = sortedParadas.slice(4);
   const hasFrecuentes = frecCounts && Object.values(frecCounts).some(c => c > 0);
 
+  // Load existing ventas count to determine position for Viaje Gratis
+  useEffect(() => {
+    (async () => {
+      try {
+        const { getVentasByFrecuencia } = await import('@/lib/indexeddb');
+        const ventas = await getVentasByFrecuencia(estado.estadoId);
+        setContadorVentasFrecuencia(ventas.length);
+      } catch { /* ignore */ }
+    })();
+  }, [estado.estadoId]);
+
   const loadStats = useCallback(async () => {
     try {
       const { getVentasByFrecuencia } = await import('@/lib/indexeddb');
@@ -62,6 +76,7 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
       const unsynced = ventas.filter(v => v.syncStatus === 'pending' || v.syncStatus === 'error');
       setVentasHoy(unsynced.length);
       setTotalHoy(unsynced.reduce((sum, v) => sum + v.cobrado, 0));
+      setContadorVentasFrecuencia(ventas.length);
     } catch { /* ignore */ }
   }, [estado.estadoId]);
 
@@ -101,6 +116,15 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
     const cobradoNum = parseFloat(cobrado) || 0;
     if (cobradoNum < TARIFA_MINIMA) return;
 
+    // ─── Viaje Gratis: check if this passenger is the winner ───
+    const promoConfig = loadPromoConfig();
+    const nuevaPosicion = contadorVentasFrecuencia + 1;
+    const esGanador = promoConfig.activa && ganadorPosicion != null && nuevaPosicion === ganadorPosicion;
+
+    if (esGanador) {
+      setEsViajeGratis(true);
+    }
+
     const now = new Date();
     const fecha = now.toISOString().split('T')[0];
     const hora = now.toTimeString().slice(0, 5);
@@ -119,7 +143,9 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
       tipo,
       pasajeroTipo,
       tarifaOficial: tarifaAuto || cobradoNum,
-      cobrado: cobradoNum,
+      esViajeGratis: esGanador,
+      tarifaOriginal: esGanador ? tarifaAuto || cobradoNum : cobradoNum,
+      cobrado: esGanador ? 0 : cobradoNum,
       hora,
       createdAt: now.toISOString(),
       ayudanteId: session.ayudanteId,
@@ -132,11 +158,63 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
     // Track parada frequency
     incrementParadaFrec(session.vtCode, parada.trim());
 
-    setLastSale({ parada: parada.trim(), monto: cobradoNum, tipo: pasajeroTipo === 'normal' ? 'ENTERO' : 'MEDIA' });
+    // ─── Imprimir boleto (no bloquea la venta) ───
+    const imprimirBoleto = async () => {
+      try {
+        const { isBluetoothAvailable, autoConnectPrinter, printTicket } = await import('@/lib/printer');
+        const { generateTicketBytes } = await import('@/lib/ticket-escpos');
+        if (!isBluetoothAvailable()) return;
+        const device = await autoConnectPrinter();
+        if (!device) return;
+        const dateParts = fecha.split('-');
+        const fechaImp = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : fecha;
+        const bytes = generateTicketBytes({
+          ruta: rutaMatched,
+          horaFrecuencia: estado.hora,
+          fecha: fechaImp,
+          hora: hora,
+          ayudanteNombre: session.ayudanteNombre,
+          destino: parada.trim(),
+          tipoPasajero: pasajeroTipo === 'normal' ? 'Entero' : 'Media',
+          tarifa: tarifaAuto || cobradoNum,
+          boletoNum: contadorVentasFrecuencia + 1,
+          esViajeGratis: esGanador,
+          tarifaOriginal: esGanador ? tarifaAuto || cobradoNum : undefined,
+          textoPublicidad: promoConfig.textoPublicidad,
+        });
+        await printTicket(device, bytes);
+      } catch (e) {
+        console.error('Error imprimiendo boleto:', e);
+      }
+    };
+    imprimirBoleto(); // fire and forget
+
+    if (esGanador) {
+      // Play winner sound if enabled
+      if (promoConfig.sonidoGanador) {
+        try {
+          const audioCtx = new AudioContext();
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.frequency.value = 880;
+          gain.gain.value = 0.3;
+          osc.start();
+          setTimeout(() => { osc.frequency.value = 1100; }, 150);
+          setTimeout(() => { osc.frequency.value = 1320; }, 300);
+          setTimeout(() => { osc.stop(); audioCtx.close(); }, 500);
+        } catch { /* ignore audio errors */ }
+      }
+      setLastSale({ parada: parada.trim(), monto: 0, tipo: 'VIAJE GRATIS!' });
+      setTimeout(() => setEsViajeGratis(false), 3000);
+    } else {
+      setLastSale({ parada: parada.trim(), monto: cobradoNum, tipo: pasajeroTipo === 'normal' ? 'ENTERO' : 'MEDIA' });
+    }
     setParada('');
     setCobrado('');
     loadStats();
-    setTimeout(() => setLastSale(null), 1200);
+    setTimeout(() => setLastSale(null), esGanador ? 2500 : 1200);
   };
 
   const direccionLabel = tipo === 'ida' ? 'IDA' : 'VUELTA';
@@ -227,13 +305,22 @@ export function TicketScreen({ session, estado, connection, onClose }: Props) {
 
       {/* Zona scrolleable — paradas */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
-        {/* Flash de confirmación */}
-        {lastSale && (
+        {/* Flash de confirmación normal */}
+        {lastSale && lastSale.tipo !== 'VIAJE GRATIS!' && (
           <div className="bg-green-500 text-white rounded-2xl px-4 py-2.5 flex items-center gap-3 animate-pulse">
             <Check className="w-5 h-5 flex-shrink-0" />
             <div className="text-sm">
               <span className="font-bold">✓</span> {lastSale.parada} — ${lastSale.monto.toFixed(2)} ({lastSale.tipo})
             </div>
+          </div>
+        )}
+
+        {/* Flash de VIAJE GRATIS */}
+        {lastSale && lastSale.tipo === 'VIAJE GRATIS!' && esViajeGratis && (
+          <div className="bg-gradient-to-r from-green-500 via-emerald-400 to-green-500 text-white rounded-2xl px-4 py-4 flex flex-col items-center gap-2 animate-bounce shadow-lg shadow-green-300">
+            <div className="text-2xl font-black tracking-wide">🎉 VIAJE GRATIS 🎉</div>
+            <div className="text-base font-bold">FELICIDADES! — {lastSale.parada}</div>
+            <div className="text-xs font-medium bg-white/20 px-3 py-1 rounded-full">NO DEBE PAGAR</div>
           </div>
         )}
 
