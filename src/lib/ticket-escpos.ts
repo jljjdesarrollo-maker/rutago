@@ -1,6 +1,7 @@
 // RutaGo - ESC/POS Ticket Generator
-// Generates thermal printer commands for 58mm (Rongta RPP02N, monochrome)
-// Design: NO separator lines. Differentiate by font size, bold, and characters only.
+// Generates thermal printer commands for 58mm (3NStar PPT205BT / Rongta RPP02N)
+// ULTRA-COMPACT: minimum lines, maximum speed. No decorative chars.
+// Differentiation by font size + bold only.
 
 import { ESC, GS, LF, textToBytes } from './printer';
 
@@ -32,143 +33,144 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
     p.push(typeof data === 'string' ? textToBytes(data) : data);
   };
 
+  // ESC/POS shortcuts
+  const INIT = new Uint8Array([ESC, 0x40]);           // Initialize printer
+  const BOLD_ON = new Uint8Array([ESC, 0x45, 0x01]);   // Emphasized ON
+  const BOLD_OFF = new Uint8Array([ESC, 0x45, 0x00]);  // Emphasized OFF
+  const DBL = new Uint8Array([GS, 0x21, 0x11]);       // Double height + width
+  const DBL_H = new Uint8Array([GS, 0x21, 0x01]);      // Double height only
+  const NORM = new Uint8Array([GS, 0x21, 0x00]);        // Normal size
+  const NEWLINE = new Uint8Array([LF]);
+  const NEWLINE2 = new Uint8Array([LF, LF]);
+  const CUT = new Uint8Array([GS, 0x56, 0x01]);        // Partial cut
+
   if (t.esViajeGratis) {
-    // ══════════════════════════════════════════
-    // ── VIAJE GRATIS (monocromatic, emphasis by size/bold) ──
-    // ══════════════════════════════════════════
+    // ══════════════════════════════════════
+    // VIAJE GRATIS — 10 lines, ~3 sec print
+    // ══════════════════════════════════════
 
-    // Initialize printer
-    push(new Uint8Array([ESC, 0x40])); // ESC @
+    push(INIT);
 
-    // *** VIAJE GRATIS *** — double size + emphasized
-    push(new Uint8Array([ESC, 0x45, 0x01])); // Emphasized ON
-    push(new Uint8Array([GS, 0x21, 0x11])); // Double height + double width
-    push(center('*** VIAJE GRATIS ***'));
-    push(new Uint8Array([LF]));
-    push(new Uint8Array([GS, 0x21, 0x00])); // Normal size
-    push(new Uint8Array([ESC, 0x45, 0x00])); // Emphasized OFF
+    // Line 1: VIAJE GRATIS — double size + bold
+    push(BOLD_ON);
+    push(DBL);
+    push(center('VIAJE GRATIS'));
+    push(NEWLINE);
+    push(NORM);
+    push(BOLD_OFF);
 
-    // NO DEBE PAGAR — emphasized, normal size
-    push(new Uint8Array([ESC, 0x45, 0x01])); // Emphasized ON
+    // Line 2: NO DEBE PAGAR — bold
+    push(BOLD_ON);
     push(center('NO DEBE PAGAR'));
-    push(new Uint8Array([ESC, 0x45, 0x00])); // Emphasized OFF
-    push(new Uint8Array([LF, LF]));
+    push(BOLD_OFF);
+    push(NEWLINE);
 
-    // Route + time
+    // Line 3: Route + frequency time
     push(`${t.ruta} ${t.horaFrecuencia}`);
-    push(new Uint8Array([LF]));
+    push(NEWLINE);
+
+    // Line 4: Date + time + ayudante
     push(`${t.fecha} ${t.hora} ${t.ayudanteNombre}`);
-    push(new Uint8Array([LF]));
+    push(NEWLINE);
 
-    // Destination + type
+    // Line 5: Destination + type
     push(`Dest: ${t.destino}  ${t.tipoPasajero}`);
-    push(new Uint8Array([LF, LF]));
+    push(NEWLINE);
 
-    // Tarifa breakdown
+    // Line 6: Tarifa + descuento en una linea
     if (t.tarifaOriginal != null) {
-      push(`Tarifa normal: $${t.tarifaOriginal.toFixed(2)}`);
-      push(new Uint8Array([LF]));
-      push(`DESCUENTO:    -$${t.tarifaOriginal.toFixed(2)}`);
-      push(new Uint8Array([LF]));
+      push(`Normal: $${t.tarifaOriginal.toFixed(2)} Desc: -$${t.tarifaOriginal.toFixed(2)}`);
+    } else {
+      push(`Normal: $${t.tarifa.toFixed(2)} Desc: -$${t.tarifa.toFixed(2)}`);
     }
+    push(NEWLINE);
 
-    // Usted paga: $0.00 — emphasized + double height
-    push(new Uint8Array([ESC, 0x45, 0x01])); // Emphasized ON
-    push(new Uint8Array([GS, 0x21, 0x11])); // Double size
-    push(center('Usted paga: $0.00'));
-    push(new Uint8Array([GS, 0x21, 0x00])); // Normal
-    push(new Uint8Array([ESC, 0x45, 0x00])); // Emphasized OFF
-    push(new Uint8Array([LF, LF]));
+    // Line 7: Paga: $0.00 — double size + bold
+    push(BOLD_ON);
+    push(DBL);
+    push(center('Paga: $0.00'));
+    push(NORM);
+    push(BOLD_OFF);
+    push(NEWLINE);
 
-    // >>> FELICIDADES! <<< — double height + emphasized
-    push(new Uint8Array([ESC, 0x45, 0x01])); // Emphasized ON
-    push(new Uint8Array([GS, 0x21, 0x01])); // Double height only
-    push(center('>>> FELICIDADES! <<<'));
-    push(new Uint8Array([GS, 0x21, 0x00])); // Normal
-    push(new Uint8Array([ESC, 0x45, 0x00])); // Emphasized OFF
-    push(new Uint8Array([LF]));
+    // Line 8: FELICIDADES! — double height + bold
+    push(BOLD_ON);
+    push(DBL_H);
+    push(center('FELICIDADES!'));
+    push(NORM);
+    push(BOLD_OFF);
+    push(NEWLINE);
 
-    // Boleto number — double height
-    push(new Uint8Array([GS, 0x21, 0x01])); // Double height
+    // Line 9: Boleto number — double height
+    push(DBL_H);
     push(center(`Boleto ${String(t.boletoNum).padStart(4, '0')}`));
-    push(new Uint8Array([GS, 0x21, 0x00])); // Normal
-    push(new Uint8Array([LF, LF]));
+    push(NORM);
+    push(NEWLINE);
 
-    // Footer
-    push(center('-- Pase libremente --'));
-    push(new Uint8Array([LF]));
-    push(center('Cortesia RutaGo'));
-    push(new Uint8Array([LF, LF]));
+    // Line 10: Pase libre
+    push(center('Pase libre - Cortesia RutaGo'));
+    push(NEWLINE);
 
-    // Publicity line
+    // Publicity
     if (t.textoPublicidad) {
       push(center(t.textoPublicidad));
-      push(new Uint8Array([LF, LF]));
+      push(NEWLINE);
     }
 
-    // Cut paper
-    push(new Uint8Array([GS, 0x56, 0x01])); // Partial cut
+    push(CUT);
 
   } else {
-    // ══════════════════════════════════════════
-    // ── NORMAL TICKET (monocromatic, compact) ──
-    // ══════════════════════════════════════════
+    // ══════════════════════════════════════
+    // NORMAL — 8 lines, ~2 sec print
+    // ══════════════════════════════════════
 
-    // Initialize printer
-    push(new Uint8Array([ESC, 0x40])); // ESC @
+    push(INIT);
 
-    // RUTAGO — double height + double width + emphasized
-    push(new Uint8Array([ESC, 0x45, 0x01])); // Emphasized ON
-    push(new Uint8Array([GS, 0x21, 0x11])); // Double height + width
+    // Line 1: RUTAGO — double size + bold
+    push(BOLD_ON);
+    push(DBL);
     push(center('RUTAGO'));
-    push(new Uint8Array([GS, 0x21, 0x00])); // Normal
-    push(new Uint8Array([ESC, 0x45, 0x00])); // Emphasized OFF
-    push(new Uint8Array([LF]));
+    push(NORM);
+    push(BOLD_OFF);
+    push(NEWLINE);
 
-    // Route + frequency time — normal
+    // Line 2: Route + frequency time
     push(`${t.ruta} ${t.horaFrecuencia}`);
-    push(new Uint8Array([LF]));
+    push(NEWLINE);
 
-    // Date + time + ayudante — normal
+    // Line 3: Date + time + ayudante
     push(`${t.fecha} ${t.hora} ${t.ayudanteNombre}`);
-    push(new Uint8Array([LF]));
+    push(NEWLINE);
 
-    // Destination + type — normal
+    // Line 4: Destination + type
     push(`Dest: ${t.destino}  ${t.tipoPasajero}`);
-    push(new Uint8Array([LF]));
+    push(NEWLINE);
 
-    // Tarifa — double height + double width
-    push(new Uint8Array([GS, 0x21, 0x11])); // Double size
+    // Line 5: Tarifa — double size
+    push(DBL);
     push(center(`$${t.tarifa.toFixed(2)}`));
-    push(new Uint8Array([GS, 0x21, 0x00])); // Normal
-    push(new Uint8Array([LF]));
+    push(NORM);
+    push(NEWLINE);
 
-    // Boleto number — double height
-    push(new Uint8Array([GS, 0x21, 0x01])); // Double height
+    // Line 6: Boleto number — double height
+    push(DBL_H);
     push(center(`Boleto ${String(t.boletoNum).padStart(4, '0')}`));
-    push(new Uint8Array([GS, 0x21, 0x00])); // Normal
-    push(new Uint8Array([LF, LF]));
+    push(NORM);
+    push(NEWLINE);
 
-    // Promo reminder box — differentiated by emphasized text
-    push(new Uint8Array([ESC, 0x45, 0x01])); // Emphasized ON
-    push(center('Recuerda tu boleto'));
-    push(new Uint8Array([ESC, 0x45, 0x00])); // Emphasized OFF
-    push(new Uint8Array([LF]));
-    push(center('Proximo puede ser'));
-    push(new Uint8Array([LF]));
-    push(new Uint8Array([ESC, 0x45, 0x01])); // Emphasized ON
-    push(center('     GRATIS'));
-    push(new Uint8Array([ESC, 0x45, 0x00])); // Emphasized OFF
-    push(new Uint8Array([LF, LF]));
+    // Line 7: Promo reminder — bold
+    push(BOLD_ON);
+    push(center('Proximo puede ser GRATIS'));
+    push(BOLD_OFF);
+    push(NEWLINE);
 
-    // Publicity line
+    // Line 8: Publicity
     if (t.textoPublicidad) {
       push(center(t.textoPublicidad));
-      push(new Uint8Array([LF, LF]));
+      push(NEWLINE);
     }
 
-    // Cut paper
-    push(new Uint8Array([GS, 0x56, 0x01])); // Partial cut
+    push(CUT);
   }
 
   // Combine all byte arrays
