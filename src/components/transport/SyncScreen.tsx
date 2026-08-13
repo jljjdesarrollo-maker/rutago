@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { type VTSession } from './types-boletos';
 import { getVentasPendientes, markVentaSynced, markVentaError, resetErroredToPending } from '@/lib/indexeddb';
 import { ArrowLeft, RefreshCw, CheckCircle2, Wifi, WifiOff, AlertTriangle, Clock } from 'lucide-react';
@@ -17,6 +17,7 @@ export function SyncScreen({ session, onBack }: Props) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [autoSyncDone, setAutoSyncDone] = useState(false);
   const [autoReturned, setAutoReturned] = useState(false);
+  const syncingRef = useRef(false);
 
   useEffect(() => {
     const handle = () => setIsOnline(navigator.onLine);
@@ -26,29 +27,18 @@ export function SyncScreen({ session, onBack }: Props) {
   }, []);
 
   const loadVentas = useCallback(async () => {
-    const all = await getVentasPendientes();
-    setVentas(all);
+    try {
+      const all = await getVentasPendientes();
+      // Safety: filter out corrupt entries
+      const valid = all.filter(v => v && v.id && typeof v.cobrado === 'number');
+      setVentas(valid);
+    } catch (err) {
+      console.error('Error loading ventas:', err);
+      setVentas([]);
+    }
   }, []);
 
   useEffect(() => { loadVentas(); }, [loadVentas]);
-
-  // Auto-sync when screen opens (if online + pending)
-  useEffect(() => {
-    if (isOnline && !autoSyncDone && totalPending > 0) {
-      setAutoSyncDone(true);
-      const timer = setTimeout(() => handleSyncAll(), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isOnline, autoSyncDone, totalPending]);
-
-  // Auto-return after successful sync
-  useEffect(() => {
-    if (autoSyncDone && !syncing && syncResults.ok > 0 && syncResults.fail === 0 && totalPending === 0 && !autoReturned) {
-      setAutoReturned(true);
-      const timer = setTimeout(() => onBack(), 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [autoSyncDone, syncing, syncResults, totalPending, autoReturned, onBack]);
 
   const pendingCount = ventas.filter(v => v.syncStatus === 'pending').length;
   const errorCount = ventas.filter(v => v.syncStatus === 'error').length;
@@ -60,15 +50,17 @@ export function SyncScreen({ session, onBack }: Props) {
   };
 
   const handleSyncAll = async () => {
-    if (!isOnline || syncing || totalPending === 0) return;
+    if (!isOnline || syncingRef.current || totalPending === 0) return;
+    syncingRef.current = true;
     setSyncing(true);
     setSyncResults({ ok: 0, fail: 0, total: totalPending });
 
     await resetErroredToPending();
-    await loadVentas();
     const freshVentas = await getVentasPendientes();
 
     for (const venta of freshVentas) {
+      // Safety: skip corrupt entries
+      if (!venta || !venta.id || typeof venta.cobrado !== 'number') continue;
       try {
         const res = await fetch('/api/ventas', {
           method: 'POST',
@@ -99,8 +91,31 @@ export function SyncScreen({ session, onBack }: Props) {
       }
     }
     setSyncing(false);
+    syncingRef.current = false;
     await loadVentas();
   };
+
+  // Ref to always have latest handleSyncAll available
+  const handleSyncAllRef = useRef(handleSyncAll);
+  handleSyncAllRef.current = handleSyncAll;
+
+  // Auto-sync when screen opens (if online + pending)
+  useEffect(() => {
+    if (isOnline && !autoSyncDone && totalPending > 0) {
+      setAutoSyncDone(true);
+      const timer = setTimeout(() => handleSyncAllRef.current(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isOnline, autoSyncDone, totalPending]);
+
+  // Auto-return after successful sync
+  useEffect(() => {
+    if (autoSyncDone && !syncing && syncResults.ok > 0 && syncResults.fail === 0 && totalPending === 0 && !autoReturned) {
+      setAutoReturned(true);
+      const timer = setTimeout(() => onBack(), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [autoSyncDone, syncing, syncResults, totalPending, autoReturned, onBack]);
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-gray-50">
@@ -148,8 +163,8 @@ export function SyncScreen({ session, onBack }: Props) {
               {ventas.map((v) => (
                 <div key={v.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
                   <div>
-                    <div className="text-sm font-medium text-[#3A3A3A]">{v.parada} - ${v.cobrado.toFixed(2)}</div>
-                    <div className="text-xs text-gray-400">{v.fecha} {v.hora} - {v.frecuenciaNombre}</div>
+                    <div className="text-sm font-medium text-[#3A3A3A]">{v.parada || 'Sin parada'} - ${(v.cobrado ?? 0).toFixed(2)}</div>
+                    <div className="text-xs text-gray-400">{v.fecha || ''} {v.hora || ''} - {v.frecuenciaNombre || v.frecuenciaId || ''}</div>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${v.syncStatus === 'error' ? 'bg-red-100 text-red-600' : 'bg-yellow-100 text-yellow-600'}`}>
                     {v.syncStatus === 'error' ? 'Error' : 'Pend.'}
