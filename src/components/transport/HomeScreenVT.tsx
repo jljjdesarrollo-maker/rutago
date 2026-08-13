@@ -324,7 +324,7 @@ export function HomeScreenVT({ onSessionStart }: Props) {
             <Loader2 className="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" />
             <p className="text-blue-600 text-xs font-medium">Buscando impresora...</p>
           </div>
-        {printerStatus === 'error' ? (
+        ) : printerStatus === 'error' ? (
           <button onClick={handleConnectPrinter}
             className="w-full flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 active:scale-[0.98] transition-all">
             <Printer className="w-4 h-4 text-red-500 flex-shrink-0" />
