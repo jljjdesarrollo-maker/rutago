@@ -117,6 +117,10 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
       push(NEWLINE);
     }
 
+    // Margin before cut
+    push(NEWLINE);
+    push(NEWLINE);
+    push(NEWLINE);
     push(CUT);
 
   } else {
@@ -170,6 +174,10 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
       push(NEWLINE);
     }
 
+    // Margin before cut
+    push(NEWLINE);
+    push(NEWLINE);
+    push(NEWLINE);
     push(CUT);
   }
 
