@@ -10,17 +10,18 @@ interface UsePrinterStatusReturn {
   connect: () => Promise<void>;
 }
 
-// Lightweight hook — no GATT connection, just checks if device was previously permitted.
-// autoConnectPrinter() is a simple device lookup (~10ms), zero impact on ticket speed.
+// Lightweight hook — checks cached device first, then getDevices fallback.
+// Uses getPrinterDevice() which checks in-memory cache (instant if device was
+// connected in HomeScreen earlier in the session).
 export function usePrinterStatus(): UsePrinterStatusReturn {
   const [status, setStatus] = useState<PrinterStatus>('disconnected');
   const [name, setName] = useState('');
 
   const check = useCallback(async () => {
     try {
-      const { isBluetoothAvailable, autoConnectPrinter } = await import('@/lib/printer');
+      const { isBluetoothAvailable, getPrinterDevice } = await import('@/lib/printer');
       if (!isBluetoothAvailable()) { setStatus('unavailable'); return; }
-      const device = await autoConnectPrinter();
+      const device = await getPrinterDevice();
       if (device) {
         setName(device.name || 'Impresora');
         setStatus('connected');

@@ -5,7 +5,7 @@ import { type VTSession } from './types-boletos';
 import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.3-aug14';
+const APP_VERSION = 'v3.4-aug14';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;
@@ -162,7 +162,7 @@ export function HomeScreenVT({ onSessionStart }: Props) {
     setPrinterStatus('connecting');
     setPrinterError('');
     try {
-      const { isBluetoothAvailable, requestPrinter } = await import('@/lib/printer');
+      const { isBluetoothAvailable, requestPrinter, setCachedDevice } = await import('@/lib/printer');
       if (!isBluetoothAvailable()) {
         setPrinterStatus('unavailable');
         setPrinterError('Bluetooth no disponible en este navegador');
@@ -170,6 +170,7 @@ export function HomeScreenVT({ onSessionStart }: Props) {
       }
       const device = await requestPrinter();
       if (device) {
+        setCachedDevice(device);
         printerDeviceRef.current = device;
         setPrinterName(device.name || 'Impresora');
         setPrinterStatus('connected');
@@ -190,15 +191,15 @@ export function HomeScreenVT({ onSessionStart }: Props) {
     setPrinterLog([]);
     pLog('Iniciando prueba de impresion...');
     try {
-      const { isBluetoothAvailable } = await import('@/lib/printer');
+      const { isBluetoothAvailable, getPrinterDevice } = await import('@/lib/printer');
       const { generateTicketBytes } = await import('@/lib/ticket-escpos');
       if (!isBluetoothAvailable()) {
         pLog('ERROR: Web Bluetooth no disponible');
         setPrinterStatus('unavailable'); setPrinting(false); return;
       }
 
-      // Use device reference directly (no getDevices lookup)
-      const device = printerDeviceRef.current;
+      // Use cached device (fast, no getDevices lookup needed)
+      const device = printerDeviceRef.current || await getPrinterDevice();
       if (!device) {
         pLog('ERROR: No hay impresora guardada. Conectala primero.');
         setPrinterStatus('error'); setPrinting(false); return;

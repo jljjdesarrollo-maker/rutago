@@ -9,6 +9,17 @@ export interface PrinterDevice {
 
 const PRINTER_STORAGE_KEY = 'rg_printer_last';
 
+// ─── In-memory device cache (survives across screens within same session) ───
+let cachedDevice: BluetoothDevice | null = null;
+
+export function getCachedDevice(): BluetoothDevice | null {
+  return cachedDevice;
+}
+
+export function setCachedDevice(device: BluetoothDevice | null): void {
+  cachedDevice = device;
+}
+
 // Get last connected printer ID from localStorage
 export function getLastPrinterId(): string | null {
   try {
@@ -28,6 +39,7 @@ export function clearLastPrinter(): void {
   try {
     localStorage.removeItem(PRINTER_STORAGE_KEY);
   } catch { /* ignore */ }
+  cachedDevice = null;
 }
 
 // Check if Web Bluetooth API is available
@@ -57,6 +69,7 @@ export async function requestPrinter(): Promise<BluetoothDevice | null> {
       ],
     });
     saveLastPrinterId(device.id);
+    cachedDevice = device; // Cache the device object in memory
     return device;
   } catch (e) {
     // User cancelled the dialog (NotFoundError) or other error
@@ -65,21 +78,29 @@ export async function requestPrinter(): Promise<BluetoothDevice | null> {
   }
 }
 
-// Auto-connect to last known printer (no dialog)
-// Returns the device reference. Does NOT connect GATT — that happens in printTicket().
-export async function autoConnectPrinter(): Promise<BluetoothDevice | null> {
+// Get the printer device for printing.
+// Priority: 1) in-memory cache, 2) getDevices() lookup by saved ID
+export async function getPrinterDevice(): Promise<BluetoothDevice | null> {
   if (!isBluetoothAvailable()) return null;
+
+  // 1. Check in-memory cache first (fastest, most reliable)
+  if (cachedDevice) {
+    return cachedDevice;
+  }
+
+  // 2. Fallback: try getDevices() with saved ID
   const lastId = getLastPrinterId();
   if (!lastId) return null;
   try {
     const devices = await navigator.bluetooth.getDevices();
     const device = devices.find(d => d.id === lastId);
-    if (!device) return null;
-    // Just check the device was previously permitted — don't connect GATT yet
-    return device;
-  } catch {
-    return null;
-  }
+    if (device) {
+      cachedDevice = device; // Cache for next time
+      return device;
+    }
+  } catch { /* ignore */ }
+
+  return null;
 }
 
 // Connect to a Bluetooth device's GATT server

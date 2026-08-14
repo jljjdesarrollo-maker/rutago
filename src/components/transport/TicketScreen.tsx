@@ -163,10 +163,10 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     // ─── Imprimir boleto (no bloquea la venta) ───
     const imprimirBoleto = async () => {
       try {
-        const { isBluetoothAvailable, autoConnectPrinter, printTicket } = await import('@/lib/printer');
+        const { isBluetoothAvailable, getPrinterDevice, printTicket } = await import('@/lib/printer');
         const { generateTicketBytes } = await import('@/lib/ticket-escpos');
         if (!isBluetoothAvailable()) return;
-        const device = await autoConnectPrinter();
+        const device = await getPrinterDevice();
         if (!device) return;
         const dateParts = fecha.split('-');
         const fechaImp = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : fecha;
