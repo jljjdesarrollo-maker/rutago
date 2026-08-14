@@ -281,6 +281,10 @@ export default function Home() {
         onGoToSync={() => setView('boletos_sync')}
         onSaved={() => {
           // Limpiar sesión VT persistida al completar arqueo general
+          const estadosKey = `rg_estados_${vtSession.vtCode}_${vtSession.fecha}`;
+          const arqueoKey = `arqueo_general_${vtSession.vtCode}_${vtSession.fecha}`;
+          localStorage.removeItem(estadosKey);
+          localStorage.removeItem(arqueoKey);
           localStorage.removeItem('rg_vt_session');
           setVtSession(null);
           setView('home');

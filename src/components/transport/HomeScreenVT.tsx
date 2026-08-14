@@ -107,6 +107,10 @@ export function HomeScreenVT({ onSessionStart }: Props) {
       ayudanteNombre: ayudante.nombre,
       fecha: new Date().toISOString().split('T')[0],
     };
+    const today = newSession.fecha;
+    // Limpiar estados previos del mismo VT/fecha por si quedaron huérfanos
+    localStorage.removeItem(`rg_estados_${vtCode}_${today}`);
+    localStorage.removeItem(`arqueo_general_${vtCode}_${today}`);
     localStorage.setItem('rg_vt_session', JSON.stringify({
       ...newSession,
       timestamp: Date.now(),
