@@ -117,6 +117,15 @@ export function SyncScreen({ session, onBack }: Props) {
     }
   }, [autoSyncDone, syncing, syncResults, totalPending, autoReturned, onBack]);
 
+  // Auto-return when nothing to sync (no pending from the start)
+  useEffect(() => {
+    if (!autoReturned && !autoSyncDone && !syncing && ventas.length === 0 && totalPending === 0) {
+      setAutoReturned(true);
+      const timer = setTimeout(() => onBack(), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [autoReturned, autoSyncDone, syncing, ventas.length, totalPending, onBack]);
+
   return (
     <div className="flex flex-col min-h-[100dvh] bg-gray-50">
       <div className="bg-[#912D26] text-white px-6 py-5">
