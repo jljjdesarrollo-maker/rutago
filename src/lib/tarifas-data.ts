@@ -90,6 +90,10 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'Dos Puentes':  { normal: 2.00, media: 1.00 },
   'Capulí':       { normal: 2.50, media: 1.25 },
   'Loja':         { normal: 2.50, media: 1.25 },
+  // Tramos intermedios desde Malacatos (vuelta hacia Loja)
+  'Mal→Rumi':     { normal: 1.10, media: 0.60 },
+  'Mal→Nango':    { normal: 0.75, media: 0.40 },
+  'Mal→Porv':     { normal: 0.75, media: 0.40 },
   // Rutas que pasan por Vilcabamba (Zahuayco, La Elvira, Yangana) comparten mismos precios
   'Vilcabamba':   { normal: 2.50, media: 1.25 },
   'Masanamaca':   { normal: 3.00, media: 1.50 },
@@ -131,7 +135,8 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
     vuelta: ['San Pedro', 'Cararango', 'Cavianga',
             'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
             'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí'],
+            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
+            'Mal→Rumi', 'Mal→Nango', 'Mal→Porv'],
   },
   'Loja - Zahuayco': {
     ida: ['Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
@@ -142,7 +147,8 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
             'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
             'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
             'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí'],
+            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
+            'Mal→Rumi', 'Mal→Nango', 'Mal→Porv'],
   },
   'Loja - El Tambo': {
     ida: ['Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
@@ -167,7 +173,8 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
             'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
             'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
             'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí'],
+            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
+            'Mal→Rumi', 'Mal→Nango', 'Mal→Porv'],
   },
   'Loja - Yangana': {
     ida: ['Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
@@ -178,7 +185,8 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
             'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
             'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
             'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí'],
+            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
+            'Mal→Rumi', 'Mal→Nango', 'Mal→Porv'],
   },
   // Rutas inversas para frecuencias tipo "Vilcabamba-Loja"
   'Vilcabamba - Loja': {
