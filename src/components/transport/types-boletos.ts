@@ -22,6 +22,8 @@ export interface FrecuenciaEstado {
   totalRecaudado: number;
   motivoNoRealizada?: string;
   ganadorPosicion?: number | null;  // random position for free trip winner
+  cajaComunCount?: number;          // boletos vendidos en oficina Loja (caja común)
+  cajaComunMonto?: number;         // monto total de boletos caja común (suma manual)
 }
 
 export interface VTSession {

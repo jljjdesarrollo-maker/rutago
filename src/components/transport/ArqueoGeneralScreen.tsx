@@ -28,6 +28,7 @@ interface FrecuenciaResumen {
   efectivoContado: number;        // What the helper actually counted
   diferencia: number;             // efectivoContado - totalRecaudado
   boletosCaja: number;
+  cajaComunMonto?: number;
 }
 
 interface GastoItem {
@@ -82,6 +83,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           // Use arqueo data if available (what helper actually counted), else system total
           const efectivo = (e as any).arqueoEfectivo ?? sistemaTotal;
           const diff = efectivo - sistemaTotal;
+          const ccCount = (e as any).cajaComunCount || 0;
+          const ccMonto = (e as any).cajaComunMonto || 0;
           return {
             estadoId: e.estadoId,
             nombre: e.nombre,
@@ -92,7 +95,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
             totalRecaudado: sistemaTotal,
             efectivoContado: efectivo,
             diferencia: diff,
-            boletosCaja: 0,
+            boletosCaja: ccCount,
+            cajaComunMonto: ccMonto,
           };
         })
       );
@@ -122,6 +126,14 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     frecuencias.reduce((s, f) => s + f.ventasCount, 0),
     [frecuencias]
   );
+  const totalCajaComunPasajeros = useMemo(() =>
+    frecuencias.reduce((s, f) => s + f.boletosCaja, 0),
+    [frecuencias]
+  );
+  const totalCajaComunMonto = useMemo(() =>
+    frecuencias.reduce((s, f) => s + (f.cajaComunMonto || 0), 0),
+    [frecuencias]
+  );
   const totalGastos = useMemo(() =>
     gastos.reduce((s, g) => s + (parseFloat(g.amount) || 0), 0),
     [gastos]
@@ -129,8 +141,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const ticketsNum = parseFloat(tickets) || 0;
   const boletosCajaNum = parseFloat(boletosCajaTotal) || 0;
   const sobranteNum = parseFloat(sobrante) || 0;
-  // PRODUCCION = efectivo real contado por el ayudante + sobrante ajuste manual
-  const production = totalEfectivoReal + sobranteNum;
+  // PRODUCCION = efectivo real contado por el ayudante + caja comun + sobrante ajuste manual
+  const production = totalEfectivoReal + totalCajaComunMonto + sobranteNum;
   const entregaAyudante = production - totalGastos;
   const entregaCompania = boletosCajaNum - ticketsNum;
 
@@ -180,6 +192,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         income: f.totalRecaudado.toString(),
         efectivoReal: f.efectivoContado.toString(),
         boletos: '0',
+        cajaComunPasajeros: f.boletosCaja.toString(),
+        cajaComunMonto: (f.cajaComunMonto || 0).toString(),
       }));
 
       const body = {
@@ -289,6 +303,12 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                 <span className="text-gray-500">Producción</span>
                 <span className="font-bold text-[#3A3A3A]">${production.toFixed(2)}</span>
               </div>
+              {totalCajaComunPasajeros > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-purple-700">Caja Comun (Ofi.Loja): {totalCajaComunPasajeros} boletos</span>
+                  <span className="font-bold text-purple-700">${totalCajaComunMonto.toFixed(2)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Total Gastos</span>
                 <span className="font-bold text-red-600">${totalGastos.toFixed(2)}</span>
@@ -386,7 +406,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                       </span>
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-[#3A3A3A] truncate">{f.hora} — {f.nombre}</div>
-                        <div className="text-[10px] text-gray-400">{f.ventasCount} ventas</div>
+                        <div className="text-[10px] text-gray-400">{f.ventasCount} ventas{f.boletosCaja > 0 ? ` + ${f.boletosCaja} c.comun` : ''}</div>
                       </div>
                     </div>
                     <div className="w-20 text-right">
@@ -423,6 +443,12 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                     <span className={`text-xs font-bold ${totalDiferencia > 0 ? 'text-blue-600' : 'text-red-600'}`}>
                       {totalDiferencia > 0 ? '+' : ''}{totalDiferencia.toFixed(2)}
                     </span>
+                  </div>
+                )}
+                {totalCajaComunPasajeros > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-purple-700">Caja Comun (Ofi.Loja): {totalCajaComunPasajeros} boletos</span>
+                    <span className="font-bold text-sm text-purple-700">${totalCajaComunMonto.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="text-right text-[10px] text-gray-400">{totalVentas} boletos vendidos</div>
@@ -592,7 +618,13 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
             <span className="text-white/80">Producción</span>
             <span className="font-black text-lg">${production.toFixed(2)}</span>
           </div>
-          <p className="text-[10px] text-white/30">Efectivo Real + Ajuste Manual</p>
+          <p className="text-[10px] text-white/30">Efectivo Real + Caja Común + Ajuste Manual</p>
+          {totalCajaComunPasajeros > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-purple-300">Caja Comun (Ofi.Loja): {totalCajaComunPasajeros} boletos</span>
+              <span className="font-semibold text-purple-300">${totalCajaComunMonto.toFixed(2)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-sm">
             <span className="text-white/60">Caja Común (Boletos)</span>
             <span className="font-semibold">${boletosCajaNum.toFixed(2)}</span>

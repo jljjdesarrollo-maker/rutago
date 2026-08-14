@@ -58,6 +58,10 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   const [confirmNoRealizada, setConfirmNoRealizada] = useState(false);
   const [allFrecuencias, setAllFrecuencias] = useState<FrecuenciaData[]>([]);
   const [exitModal, setExitModal] = useState(false);
+  const [cajaComunModal, setCajaComunModal] = useState<FrecuenciaEstado | null>(null);
+  const [cajaComunCount, setCajaComunCount] = useState(0);
+  const [cajaComunMonto, setCajaComunMonto] = useState('');
+  const [cajaComunEsUltima, setCajaComunEsUltima] = useState(false);
   const fecha = today();
 
   useEffect(() => {
@@ -208,6 +212,30 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
       motivoNoRealizada: motivo || 'Sin especificar',
     });
     setNoRealizadaModal(null);
+  };
+
+  // ─── Caja Común (Oficina Loja) ───
+  const handleGoToArqueo = (estado: FrecuenciaEstado, esUltima: boolean) => {
+    // Open caja común modal first, then proceed to arqueo
+    setCajaComunModal(estado);
+    setCajaComunEsUltima(esUltima);
+    // Restore previous values if reopening
+    setCajaComunCount(estado.cajaComunCount || 0);
+    setCajaComunMonto(estado.cajaComunMonto ? estado.cajaComunMonto.toString() : '');
+  };
+
+  const confirmCajaComun = () => {
+    if (!cajaComunModal) return;
+    const montoNum = parseFloat(cajaComunMonto) || 0;
+    // Save caja común data to the estado
+    updateEstado(cajaComunModal.estadoId, {
+      cajaComunCount: cajaComunCount,
+      cajaComunMonto: montoNum,
+    });
+    setCajaComunModal(null);
+    // Proceed to arqueo with the updated estado
+    const updatedEstado = { ...cajaComunModal, cajaComunCount: cajaComunCount, cajaComunMonto: montoNum };
+    onGoToArqueo(updatedEstado, cajaComunEsUltima);
   };
 
   // Filtrar frecuencias por origen para reasignación (usa TODAS las frecuencias del sistema)
@@ -503,6 +531,64 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
           </div>
         )}
 
+        {/* ─── Modal Caja Común (Oficina Loja) ─── */}
+        {cajaComunModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+            <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <DollarSign className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#3A3A3A]">Arqueo: {cajaComunModal.hora}</h3>
+                  <p className="text-xs text-gray-500">{cajaComunModal.nombre}</p>
+                </div>
+              </div>
+
+              <p className="text-sm font-bold text-[#3A3A3A] mb-3">Caja Comun (Ofi. Loja)</p>
+              <p className="text-xs text-gray-500 mb-3">Boletos fisicos recogidos de oficina Loja</p>
+
+              {/* Contador de pasajeros */}
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-sm text-gray-600 font-medium w-24">Pasajeros:</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setCajaComunCount(Math.max(0, cajaComunCount - 1))}
+                    className="w-12 h-12 rounded-xl bg-gray-100 text-gray-600 font-black text-xl flex items-center justify-center active:scale-95 border-2 border-gray-200">-</button>
+                  <span className="w-12 text-center font-black text-2xl text-[#3A3A3A]">{cajaComunCount}</span>
+                  <button onClick={() => setCajaComunCount(cajaComunCount + 1)}
+                    className="w-12 h-12 rounded-xl bg-purple-100 text-purple-700 font-black text-xl flex items-center justify-center active:scale-95 border-2 border-purple-200">+</button>
+                </div>
+              </div>
+
+              {/* Monto manual */}
+              <div className="mb-5">
+                <span className="text-sm text-gray-600 font-medium">Total (suma de boletos fisicos):</span>
+                <div className="relative mt-1">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-black text-xl">$</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.05"
+                    placeholder="0.00"
+                    value={cajaComunMonto}
+                    onChange={e => setCajaComunMonto(e.target.value)}
+                    className="w-full pl-10 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-xl font-black text-[#3A3A3A] text-center focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button onClick={() => { setCajaComunModal(null); /* Skip caja comun, go directly to arqueo */ onGoToArqueo(cajaComunModal, cajaComunEsUltima); }}
+                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Sin boletos</button>
+                <button onClick={confirmCajaComun}
+                  className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-black active:scale-[0.98] shadow-lg shadow-red-200">
+                  Continuar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {estados.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-400">No hay frecuencias configuradas</p>
@@ -570,7 +656,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
                           <Send className="w-4 h-4" /> Sync {pendingCount}
                         </button>
                       ) : (
-                        <button onClick={() => onGoToArqueo(estado, esUltimaFrec)} className="flex-1 py-2 rounded-xl bg-blue-600 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
+                        <button onClick={() => handleGoToArqueo(estado, esUltimaFrec)} className="flex-1 py-2 rounded-xl bg-blue-600 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
                           <CheckCircle2 className="w-4 h-4" /> Arqueo
                         </button>
                       )}

@@ -36,6 +36,10 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
   const medias = ventas.filter(v => v.pasajeroTipo === 'media').length;
   const efectivoNum = parseFloat(efectivo) || 0;
   const diferencia = efectivoNum - totalSistema;
+  // Caja Común (Oficina Loja)
+  const cajaComunCount = (estado as any).cajaComunCount || 0;
+  const cajaComunMonto = (estado as any).cajaComunMonto || 0;
+  const produccionTotal = totalSistema + cajaComunMonto;
   const faltante = diferencia < 0;
   const sobrante = diferencia > 0;
   const cuadra = Math.abs(diferencia) < 0.01 && efectivoNum > 0;
@@ -61,6 +65,9 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
             all[idx].arqueoSistema = totalSistema;
             all[idx].arqueoDiferencia = diferencia;
             all[idx].arqueoFecha = new Date().toISOString();
+            // Preserve caja común data
+            all[idx].cajaComunCount = cajaComunCount;
+            all[idx].cajaComunMonto = cajaComunMonto;
             if (gps) {
               all[idx].gpsLatEnd = gps.lat;
               all[idx].gpsLngEnd = gps.lng;
@@ -88,7 +95,11 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
           <Check className="w-16 h-16 mb-4" />
           <h1 className="text-2xl font-black mb-2">{esUltima ? 'TURNO COMPLETADO' : 'ARQUEO CONFIRMADO'}</h1>
           <p className="text-white/80 text-sm mb-1">{estado.hora} — {estado.nombre}</p>
-          <p className="text-white/80 text-sm mb-6">{ventas.length} ventas · ${totalSistema.toFixed(2)} sistema · ${efectivoNum.toFixed(2)} efectivo</p>
+          <p className="text-white/80 text-sm mb-2">{ventas.length} ventas en ruta · ${totalSistema.toFixed(2)}</p>
+          {cajaComunCount > 0 && cajaComunMonto > 0 && (
+            <p className="text-white/80 text-sm mb-2">{cajaComunCount} boletos caja comun · ${cajaComunMonto.toFixed(2)}</p>
+          )}
+          <p className="text-white/80 text-sm mb-6">Produccion total: ${produccionTotal.toFixed(2)} · Efectivo: ${efectivoNum.toFixed(2)}</p>
 
           {cuadra && <p className="text-green-200 font-bold text-lg">CAJA CUADRADA</p>}
           {sobrante && <p className="text-green-200 font-bold text-lg">SOBRANTE: ${diferencia.toFixed(2)}</p>}
@@ -182,6 +193,36 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
             </div>
           </div>
         </div>
+
+        {/* Caja Común (Oficina Loja) — solo si hay boletos */}
+        {cajaComunCount > 0 && cajaComunMonto > 0 && (
+          <div className="bg-purple-50 rounded-2xl border border-purple-200 p-4 shadow-sm">
+            <h3 className="font-bold text-purple-800 mb-2 text-sm uppercase">Caja Comun (Ofi. Loja)</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center py-1">
+                <span className="text-sm text-purple-700">Boletos fisicos</span>
+                <span className="font-bold text-purple-800">{cajaComunCount}</span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="text-sm text-purple-700 font-semibold">Monto</span>
+                <span className="font-black text-lg text-purple-800">${cajaComunMonto.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Produccion total (solo si hay caja comun) */}
+        {cajaComunCount > 0 && cajaComunMonto > 0 && (
+          <div className="bg-green-50 rounded-2xl border border-green-200 p-3 shadow-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-bold text-green-800">PRODUCCION TOTAL</span>
+              <div className="text-right">
+                <span className="font-black text-lg text-green-700">${produccionTotal.toFixed(2)}</span>
+                <span className="text-xs text-green-600 ml-2">({ventas.length + cajaComunCount} pasajeros)</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Efectivo en mano */}
         <div className="bg-white rounded-2xl border-2 border-[#912D26]/20 p-4 shadow-sm">
