@@ -5,7 +5,7 @@ import { type VTSession } from './types-boletos';
 import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.6-aug14';
+const APP_VERSION = 'v3.7-aug14';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;

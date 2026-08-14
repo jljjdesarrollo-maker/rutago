@@ -131,8 +131,6 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     const fecha = now.toISOString().split('T')[0];
     const hora = now.toTimeString().slice(0, 5);
 
-    const gps = await getGPSPosition();
-
     const venta = {
       id: `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       fecha,
@@ -152,7 +150,8 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
       createdAt: now.toISOString(),
       ayudanteId: session.ayudanteId,
       ayudanteNombre: session.ayudanteNombre,
-      ...(gps ? { lat: gps.lat, lng: gps.lng } : {}),
+      // GPS desactivado temporalmente — se reactiva desde 16/08
+      // ...(gps ? { lat: gps.lat, lng: gps.lng } : {}),
       syncStatus: 'pending' as const,
     };
 
