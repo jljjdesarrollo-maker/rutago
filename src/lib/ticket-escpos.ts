@@ -20,10 +20,15 @@ export interface TicketData {
   textoPublicidad: string; // "Quieres RutaGo? 0997149000"
 }
 
-// Center text (32 chars max for 58mm)
+// Center text for 58mm printer
+// Normal mode: 32 cols. Double-width mode: 16 cols.
 function center(text: string, max: number = 32): string {
   const pad = Math.max(0, Math.floor((max - text.length) / 2));
   return ' '.repeat(pad) + text;
+}
+// Center for double-width text (16 cols on 58mm)
+function centerDbl(text: string): string {
+  return center(text, 16);
 }
 
 // Build ESC/POS byte array for a ticket
@@ -54,7 +59,7 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
     // Line 1: VIAJE GRATIS — double size + bold
     push(BOLD_ON);
     push(DBL);
-    push(center('VIAJE GRATIS'));
+    push(centerDbl('VIAJE GRATIS'));
     push(NEWLINE);
     push(NORM);
     push(BOLD_OFF);
@@ -88,7 +93,7 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
     // Line 7: Paga: $0.00 — double size + bold
     push(BOLD_ON);
     push(DBL);
-    push(center('Paga: $0.00'));
+    push(centerDbl('Paga: $0.00'));
     push(NORM);
     push(BOLD_OFF);
     push(NEWLINE);
@@ -133,7 +138,7 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
     // Line 1: RUTAGO — double size + bold
     push(BOLD_ON);
     push(DBL);
-    push(center('RUTAGO'));
+    push(centerDbl('RUTAGO'));
     push(NORM);
     push(BOLD_OFF);
     push(NEWLINE);
@@ -152,7 +157,7 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
 
     // Line 5: Tarifa — double size
     push(DBL);
-    push(center(`$${t.tarifa.toFixed(2)}`));
+    push(centerDbl(`$${t.tarifa.toFixed(2)}`));
     push(NORM);
     push(NEWLINE);
 
