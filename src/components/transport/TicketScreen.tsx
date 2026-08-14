@@ -177,7 +177,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           ayudanteNombre: session.ayudanteNombre,
           destino: parada.trim(),
           tipoPasajero: pasajeroTipo === 'normal' ? 'Entero' : 'Media',
-          tarifa: tarifaAuto || cobradoNum,
+          tarifa: cobradoNum,
           boletoNum: contadorVentasFrecuencia + 1,
           esViajeGratis: esGanador,
           tarifaOriginal: esGanador ? tarifaAuto || cobradoNum : undefined,
