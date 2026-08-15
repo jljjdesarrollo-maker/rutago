@@ -14,92 +14,6 @@ export interface TarifaItem {
 
 export const TARIFA_MINIMA = 0.40; // Media tarifa más baja
 
-// ─── Zonas por parada (para cuadrícula coloreada) ───
-// green  = cerca de Loja (inicio del recorrido)
-// yellow = zona media
-// blue   = cerca de Vilcabamba (final del recorrido)
-export type ZonaColor = 'green' | 'yellow' | 'blue';
-
-export const PARADA_ZONA: Record<string, ZonaColor> = {
-  // Zona cercana a Loja
-  'Dos Puentes': 'green',
-  'Cajánuma': 'green',
-  'Pueblo Nuevo': 'green',
-  'Capulí': 'green',
-  'Loja': 'green',
-  // Zona media
-  'Tres Leguas': 'yellow',
-  'Rumizhitana': 'yellow',
-  'Yamba': 'yellow',
-  'Granadillo': 'yellow',
-  'Porvenir': 'yellow',
-  'Nangora': 'yellow',
-  'Chorrillos': 'yellow',
-  'Landangui': 'yellow',
-  'La Peña': 'yellow',
-  'Malacatos': 'yellow',
-  'Taxiche': 'yellow',
-  // Zona cercana a Vilcabamba
-  'Cavianga': 'blue',
-  'Cararango': 'blue',
-  'San Pedro': 'blue',
-  'Vilcabamba': 'blue',
-  // Tramos intermedios → se asignan por origen
-  'Rumi→Prv': 'yellow',
-  'Rumi→Mal': 'yellow',
-  'Rumi→Vilc': 'yellow',
-  'Nango→Mal': 'yellow',
-  'Nango→Vilc': 'yellow',
-  'Nango→Carar': 'yellow',
-  'Land→Mal': 'yellow',
-  'Land→Vilc': 'yellow',
-  'Mal→Vilc': 'yellow',
-  'T.Leguas→Mal': 'yellow',
-  'Taxiche→Vilc': 'blue',
-  'Cararango→Vilc': 'blue',
-  'S.Pedro→Vilc': 'blue',
-  // Vuelta intermedios
-  'Mal→Rumi': 'yellow',
-  'Mal→Nango': 'yellow',
-  'Mal→Porv': 'yellow',
-};
-
-export const ZONA_COLORS: Record<ZonaColor, { bg: string; bgSelected: string; text: string; border: string; price: string; sub: string }> = {
-  green: {
-    bg: 'bg-green-50',
-    bgSelected: 'bg-green-600',
-    text: 'text-green-900',
-    border: 'border-green-200',
-    price: 'text-green-700',
-    sub: 'text-green-400',
-  },
-  yellow: {
-    bg: 'bg-amber-50',
-    bgSelected: 'bg-amber-500',
-    text: 'text-amber-900',
-    border: 'border-amber-200',
-    price: 'text-amber-700',
-    sub: 'text-amber-400',
-  },
-  blue: {
-    bg: 'bg-blue-50',
-    bgSelected: 'bg-blue-600',
-    text: 'text-blue-900',
-    border: 'border-blue-200',
-    price: 'text-blue-700',
-    sub: 'text-blue-400',
-  },
-};
-
-export function getZonaParada(parada: string): ZonaColor {
-  return PARADA_ZONA[parada] || 'yellow';
-}
-
-export function isParadaPrincipal(parada: string): boolean {
-  // Paradas principales: no contienen → en el nombre
-  return !parada.includes('→');
-}
-
 // ─── Precios IDA (desde Loja hacia el destino) ───
 const preciosIda: Record<string, { normal: number; media: number }> = {
   // ═══ LOJA - VILCABAMBA ═══
@@ -130,11 +44,6 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'Land→Vilc':    { normal: 1.10, media: 0.55 },
   'Land→Mal':     { normal: 0.75, media: 0.40 },
   'Mal→Vilc':     { normal: 1.10, media: 0.55 },
-  'T.Leguas→Mal': { normal: 1.10, media: 0.55 },
-  'Nango→Carar':  { normal: 1.00, media: 0.50 },
-  'Taxiche→Vilc': { normal: 0.75, media: 0.40 },
-  'Cararango→Vilc': { normal: 0.75, media: 0.40 },
-  'S.Pedro→Vilc': { normal: 0.75, media: 0.40 },
   // ═══ LOJA - ZAHUAYCO (pasa por Vilcabamba) ═══
   'Masanamaca': { normal: 3.00, media: 1.50 },
   'Quinara':    { normal: 3.50, media: 1.75 },
@@ -231,8 +140,7 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
     ida: ['Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
           'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
           'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba',
-          'Rumi→Vilc', 'Rumi→Mal', 'Rumi→Prv', 'Nango→Vilc', 'Nango→Mal', 'Nango→Carar', 'Land→Vilc', 'Land→Mal', 'Mal→Vilc',
-          'T.Leguas→Mal', 'Taxiche→Vilc', 'Cararango→Vilc', 'S.Pedro→Vilc'],
+          'Rumi→Vilc', 'Rumi→Mal', 'Rumi→Prv', 'Nango→Vilc', 'Nango→Mal', 'Land→Vilc', 'Land→Mal', 'Mal→Vilc'],
     vuelta: ['San Pedro', 'Cararango', 'Cavianga',
             'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
             'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',

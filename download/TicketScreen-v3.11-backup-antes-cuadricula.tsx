@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { type FrecuenciaEstado, type VTSession, loadPromoConfig } from './types-boletos';
-import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta, type TipoPasajero,
-         getZonaParada, isParadaPrincipal, ZONA_COLORS, type ZonaColor } from '@/lib/tarifas-data';
+import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta, type TipoPasajero } from '@/lib/tarifas-data';
 import { saveVenta } from '@/lib/indexeddb';
+import { getGPSPosition } from '@/lib/gps';
 import { type ConnectionInfo } from '@/hooks/use-connection';
-import { Check, User, UserRound, Printer, Bluetooth } from 'lucide-react';
+import { Check, User, UserRound, ChevronDown, ChevronUp, Printer, Bluetooth } from 'lucide-react';
 import { usePrinterStatus } from '@/hooks/use-printer-status';
 
 interface Props {
@@ -14,7 +14,7 @@ interface Props {
   estado: FrecuenciaEstado;
   connection: ConnectionInfo;
   onClose: () => void;
-  ganadorPosicion?: number | null;
+  ganadorPosicion?: number | null;  // random position for free trip winner
 }
 
 // ─── Helpers for paradas frecuentes (localStorage) ───
@@ -37,13 +37,14 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
   const [parada, setParada] = useState('');
   const [cobrado, setCobrado] = useState('');
   const [pasajeroTipo, setPasajeroTipo] = useState<TipoPasajero>('normal');
+  const paradaInputRef = useRef<HTMLInputElement>(null);
   const montoInputRef = useRef<HTMLInputElement>(null);
   const [lastSale, setLastSale] = useState<{ parada: string; monto: number; tipo: string } | null>(null);
   const [ventasHoy, setVentasHoy] = useState(0);
   const [totalHoy, setTotalHoy] = useState(0);
+  const [showAllParadas, setShowAllParadas] = useState(false);
   const [esViajeGratis, setEsViajeGratis] = useState(false);
   const [contadorVentasFrecuencia, setContadorVentasFrecuencia] = useState(0);
-  const [tab, setTab] = useState<'principal' | 'intermedia'>('principal');
   const printer = usePrinterStatus();
 
   const tipo = estado.direccion as 'ida' | 'vuelta';
@@ -52,15 +53,11 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
   const allParadas = getParadasByRutaAndTipo(rutaMatched, tipo);
   const tarifaAuto = parada ? getTarifa(rutaMatched, parada, tipo, pasajeroTipo) : 0;
 
-  // ─── Separar paradas principales de intermedias ───
-  const principales = allParadas.filter(p => isParadaPrincipal(p.parada));
-  const intermedias = allParadas.filter(p => !isParadaPrincipal(p.parada));
-
-  // ─── Paradas frecuentes: top 3 por uso (solo principales) ───
+  // ─── Paradas frecuentes: top 4 por uso ───
   const frecCounts = getParadasFrecCount(session.vtCode);
-  const frecuentes = [...principales]
-    .sort((a, b) => (frecCounts[b.parada] || 0) - (frecCounts[a.parada] || 0))
-    .slice(0, 3);
+  const sortedParadas = [...allParadas].sort((a, b) => (frecCounts[b.parada] || 0) - (frecCounts[a.parada] || 0));
+  const frecuentes = sortedParadas.slice(0, 4);
+  const resto = sortedParadas.slice(4);
   const hasFrecuentes = frecCounts && Object.values(frecCounts).some(c => c > 0);
 
   // Load existing ventas count to determine position for Viaje Gratis
@@ -153,10 +150,13 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
       createdAt: now.toISOString(),
       ayudanteId: session.ayudanteId,
       ayudanteNombre: session.ayudanteNombre,
+      // GPS desactivado temporalmente — se reactiva desde 16/08
+      // ...(gps ? { lat: gps.lat, lng: gps.lng } : {}),
       syncStatus: 'pending' as const,
     };
 
     await saveVenta(venta);
+    // Track parada frequency
     incrementParadaFrec(session.vtCode, parada.trim());
 
     // ─── Imprimir boleto (no bloquea la venta) ───
@@ -188,9 +188,10 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
         console.error('Error imprimiendo boleto:', e);
       }
     };
-    imprimirBoleto();
+    imprimirBoleto(); // fire and forget
 
     if (esGanador) {
+      // Play winner sound if enabled
       if (promoConfig.sonidoGanador) {
         try {
           const audioCtx = new AudioContext();
@@ -220,29 +221,31 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
   const direccionLabel = tipo === 'ida' ? 'IDA' : 'VUELTA';
   const direccionColor = tipo === 'ida' ? 'bg-[#912D26]' : 'bg-[#3A3A3A]';
 
-  // ─── Botón de parada compacto para cuadrícula 3 columnas ───
-  const ParadaGridBtn = ({ p }: { p: { parada: string; normal: number; media: number } }) => {
+  // Render parada button
+  const ParadaBtn = ({ p, size = 'normal' }: { p: { parada: string; normal: number; media: number }; size?: 'normal' | 'big' }) => {
     const isSelected = parada === p.parada;
     const precio = pasajeroTipo === 'media' ? p.media : p.normal;
-    const zona = getZonaParada(p.parada);
-    const colors = ZONA_COLORS[zona];
-    const isIntermedia = !isParadaPrincipal(p.parada);
-
+    const isBig = size === 'big';
     return (
       <button
         onClick={() => handleQuickSelect(p.parada, p.normal, p.media)}
-        className={`rounded-xl text-left transition-all active:scale-95 px-2 py-2 min-h-[52px] flex flex-col justify-center ${
+        className={`rounded-2xl text-left transition-all active:scale-95 ${
+          isBig ? 'p-4' : 'p-3'
+        } ${
           isSelected
-            ? `${colors.bgSelected} text-white shadow-lg ring-2 ring-white/50`
-            : `${colors.bg} ${colors.text} ${colors.border} border shadow-sm`
+            ? 'bg-[#912D26] text-white shadow-lg shadow-red-200 ring-2 ring-red-400'
+            : 'bg-white text-[#3A3A3A] border border-gray-100 shadow-sm hover:shadow-md'
         }`}
       >
-        <div className="text-[11px] font-bold leading-tight truncate">
-          {isIntermedia ? p.parada.replace('→', '→') : p.parada}
-        </div>
-        <div className={`font-black text-sm mt-0.5 ${isSelected ? 'text-white/90' : colors.price}`}>
+        <div className={`${isBig ? 'text-base' : 'text-sm'} font-bold leading-tight`}>{p.parada}</div>
+        <div className={`font-black mt-1 ${isBig ? 'text-2xl' : 'text-lg'} ${isSelected ? 'text-red-100' : 'text-[#912D26]'}`}>
           ${precio.toFixed(2)}
         </div>
+        {!isBig && (
+          <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-red-200' : 'text-gray-400'}`}>
+            N:{p.normal.toFixed(2)} M:{p.media.toFixed(2)}
+          </div>
+        )}
       </button>
     );
   };
@@ -253,6 +256,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     <div className="flex flex-col h-[100dvh] bg-gray-50">
       {/* Barra de conexión — internet + impresora */}
       <div className="bg-white border-b border-gray-100 px-3 py-1.5 flex items-center justify-between">
+        {/* Internet */}
         <div className={`flex items-center gap-1.5 text-[10px] font-semibold ${connection.color}`}>
           <span>{connection.icon}</span>
           <span>{connection.label}</span>
@@ -260,6 +264,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
             <span className="bg-[#912D26]/10 text-[#912D26] px-1.5 py-0.5 rounded-full text-[9px] font-bold">{connection.pendingCount}</span>
           )}
         </div>
+        {/* Impresora — tappable */}
         {printer.status === 'connected' ? (
           <div className="flex items-center gap-1 text-[10px] font-semibold text-green-600">
             <Printer className="w-3 h-3" />
@@ -300,7 +305,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
       <div className="flex gap-2 px-3 py-2 bg-white border-b border-gray-100">
         <button
           onClick={() => handleTipoChange('normal')}
-          className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 font-bold text-sm transition-all active:scale-95 ${
+          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 font-bold text-sm transition-all active:scale-95 ${
             pasajeroTipo === 'normal'
               ? 'bg-[#912D26] text-white shadow-lg shadow-red-200'
               : 'bg-gray-100 text-[#3A3A3A]'
@@ -310,7 +315,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
         </button>
         <button
           onClick={() => handleTipoChange('media')}
-          className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 font-bold text-sm transition-all active:scale-95 ${
+          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 font-bold text-sm transition-all active:scale-95 ${
             pasajeroTipo === 'media'
               ? 'bg-[#912D26] text-white shadow-lg shadow-red-200'
               : 'bg-gray-100 text-[#3A3A3A]'
@@ -320,104 +325,67 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
         </button>
       </div>
 
-      {/* ─── PESTAÑAS: PRINCIPAL / INTERMEDIA ─── */}
-      <div className="flex bg-white border-b border-gray-100">
-        <button
-          onClick={() => setTab('principal')}
-          className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
-            tab === 'principal'
-              ? 'border-[#912D26] text-[#912D26]'
-              : 'border-transparent text-gray-400'
-          }`}
-        >
-          Paradas ({principales.length})
-        </button>
-        <button
-          onClick={() => setTab('intermedia')}
-          className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
-            tab === 'intermedia'
-              ? 'border-[#912D26] text-[#912D26]'
-              : 'border-transparent text-gray-400'
-          }`}
-        >
-          Intermedios ({intermedias.length})
-        </button>
-      </div>
-
-      {/* ─── ZONA SCROLLEABLE: Cuadrícula de paradas ─── */}
-      <div className="flex-1 overflow-y-auto px-2 py-2">
+      {/* Zona scrolleable — paradas */}
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
         {/* Flash de confirmación normal */}
         {lastSale && lastSale.tipo !== 'VIAJE GRATIS!' && (
-          <div className="bg-green-500 text-white rounded-xl px-3 py-2 flex items-center gap-2 mb-2 animate-pulse">
-            <Check className="w-4 h-4 flex-shrink-0" />
-            <div className="text-xs font-bold">
-              ✓ {lastSale.parada} — ${lastSale.monto.toFixed(2)} ({lastSale.tipo})
+          <div className="bg-green-500 text-white rounded-2xl px-4 py-2.5 flex items-center gap-3 animate-pulse">
+            <Check className="w-5 h-5 flex-shrink-0" />
+            <div className="text-sm">
+              <span className="font-bold">✓</span> {lastSale.parada} — ${lastSale.monto.toFixed(2)} ({lastSale.tipo})
             </div>
           </div>
         )}
 
         {/* Flash de VIAJE GRATIS */}
         {lastSale && lastSale.tipo === 'VIAJE GRATIS!' && esViajeGratis && (
-          <div className="bg-gradient-to-r from-green-500 via-emerald-400 to-green-500 text-white rounded-xl px-3 py-3 flex flex-col items-center gap-1 mb-2 animate-bounce shadow-lg shadow-green-300">
-            <div className="text-lg font-black">🎉 VIAJE GRATIS 🎉</div>
-            <div className="text-xs font-bold">{lastSale.parada}</div>
+          <div className="bg-gradient-to-r from-green-500 via-emerald-400 to-green-500 text-white rounded-2xl px-4 py-4 flex flex-col items-center gap-2 animate-bounce shadow-lg shadow-green-300">
+            <div className="text-2xl font-black tracking-wide">🎉 VIAJE GRATIS 🎉</div>
+            <div className="text-base font-bold">FELICIDADES! — {lastSale.parada}</div>
+            <div className="text-xs font-medium bg-white/20 px-3 py-1 rounded-full">NO DEBE PAGAR</div>
           </div>
         )}
 
-        {/* ═══ TAB PRINCIPAL ═══ */}
-        {tab === 'principal' && (
-          <div className="space-y-2">
-            {/* Frecuentes: 3 columnas, 1 fila */}
-            {hasFrecuentes && (
-              <div>
-                <div className="flex items-center gap-1 mb-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#912D26]" />
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Frecuentes</span>
-                </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {frecuentes.map(p => (
-                    <ParadaGridBtn key={`f-${p.parada}`} p={p} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Todas las principales: cuadrícula 3 columnas con colores de zona */}
-            <div>
-              <div className="flex items-center gap-1 mb-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider ml-0.5">Por zona</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {principales.map(p => (
-                  <ParadaGridBtn key={p.parada} p={p} />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ═══ TAB INTERMEDIA ═══ */}
-        {tab === 'intermedia' && (
+        {/* Paradas frecuentes — grandes, siempre visibles */}
+        {hasFrecuentes && (
           <div>
-            <div className="flex items-center gap-1 mb-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Tramos intermedios</span>
-            </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              {intermedias.map(p => (
-                <ParadaGridBtn key={p.parada} p={p} />
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1 mb-1">Frecuentes</div>
+            <div className="grid grid-cols-2 gap-2">
+              {frecuentes.map(p => (
+                <ParadaBtn key={`f-${p.parada}`} p={p} size="big" />
               ))}
             </div>
           </div>
         )}
 
-        {/* Parada manual (siempre visible al final) */}
-        <div className="mt-2 bg-white rounded-xl border border-gray-100 p-2 shadow-sm">
+        {/* Todas las paradas (colapsable) */}
+        <div>
+          <button
+            onClick={() => setShowAllParadas(!showAllParadas)}
+            className="w-full flex items-center justify-between px-1 py-1"
+          >
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              Todas las paradas ({allParadas.length})
+            </span>
+            {showAllParadas
+              ? <ChevronUp className="w-3 h-3 text-gray-400" />
+              : <ChevronDown className="w-3 h-3 text-gray-400" />
+            }
+          </button>
+          {showAllParadas && (
+            <div className="grid grid-cols-2 gap-2">
+              {allParadas.map(p => (
+                <ParadaBtn key={p.parada} p={p} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Parada manual */}
+        <div className="bg-white rounded-xl border border-gray-100 p-2 shadow-sm">
           <div className="flex gap-2">
             <input
+              ref={paradaInputRef}
               type="text"
               placeholder="Otra parada..."
               value={parada}
@@ -437,7 +405,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
 
         {/* Advertencia tarifa */}
         {parada && allParadas.some(p => p.parada === parada) && tarifaAuto > 0 && cobrado && parseFloat(cobrado) !== tarifaAuto && (
-          <div className="text-center text-[11px] text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5 mt-1.5">
+          <div className="text-center text-[11px] text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5">
             Oficial: ${tarifaAuto.toFixed(2)} — Diff: ${Math.abs(parseFloat(cobrado || '0') - tarifaAuto).toFixed(2)}
           </div>
         )}
@@ -445,6 +413,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
 
       {/* ─── BARRA FIJA INFERIOR: Monto + REGISTRAR ─── */}
       <div className="bg-white border-t-2 border-gray-100 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+        {/* Monto */}
         <div className="relative mb-2">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-lg">$</span>
           <input
@@ -460,6 +429,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           />
         </div>
 
+        {/* Botón REGISTRAR — SIEMPRE VISIBLE */}
         <button
           onClick={handleVenta}
           disabled={!canRegister}
