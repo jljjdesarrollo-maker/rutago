@@ -11,6 +11,7 @@ import { PersonalScreen } from '@/components/transport/PersonalScreen';
 import { ReportsScreen } from '@/components/transport/ReportsScreen';
 import { VTConfigScreen } from '@/components/transport/VTConfigScreen';
 import { CompareFrequenciesScreen } from '@/components/transport/CompareFrequenciesScreen';
+import { VentasReviewScreen } from '@/components/transport/VentasReviewScreen';
 import { HomeScreenVT } from '@/components/transport/HomeScreenVT';
 import { FrecuenciaSelector } from '@/components/transport/FrecuenciaSelector';
 import { TicketScreen } from '@/components/transport/TicketScreen';
@@ -232,6 +233,15 @@ export default function Home() {
     );
   }
 
+  // Ventas Review screen (admin)
+  if (view === 'ventas_review') {
+    return (
+      <VentasReviewScreen
+        onBack={() => setView('home')}
+      />
+    );
+  }
+
   // ─── Boletos views ───
   if (view === 'boletos_home') {
     return <HomeScreenVT onSessionStart={(s) => { setVtSession(s); setView('boletos_frecuencias'); }} />;
@@ -326,6 +336,7 @@ export default function Home() {
           onGoToVtConfig={() => setView('vtconfig')}
           onGoToCompare={() => setView('compare')}
           onGoToBoletos={() => setView('boletos_home')}
+          onGoToVentasReview={() => setView('ventas_review')}
           onLogout={handleLogout}
           recordCount={recordCount}
         />

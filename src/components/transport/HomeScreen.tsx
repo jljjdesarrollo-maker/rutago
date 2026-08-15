@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { History, Pencil, Truck, Users, LogOut, User, FileText, Database, Loader2, Share2, Settings, ArrowLeftRight, Ticket } from 'lucide-react';
+import { History, Pencil, Truck, Users, LogOut, User, FileText, Database, Loader2, Share2, Settings, ArrowLeftRight, Ticket, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { UserSession } from './types';
@@ -16,11 +16,12 @@ interface HomeScreenProps {
   onGoToVtConfig: () => void;
   onGoToCompare: () => void;
   onGoToBoletos: () => void;
+  onGoToVentasReview: () => void;
   onLogout: () => void;
   recordCount: number;
 }
 
-export function HomeScreen({ user, isAdmin, onGoToForm, onGoToHistory, onGoToPersonal, onGoToReports, onGoToVtConfig, onGoToCompare, onGoToBoletos, onLogout, recordCount }: HomeScreenProps) {
+export function HomeScreen({ user, isAdmin, onGoToForm, onGoToHistory, onGoToPersonal, onGoToReports, onGoToVtConfig, onGoToCompare, onGoToBoletos, onGoToVentasReview, onLogout, recordCount }: HomeScreenProps) {
   const [backupLoading, setBackupLoading] = useState(false);
 
   const handleBackup = async () => {
@@ -181,6 +182,22 @@ export function HomeScreen({ user, isAdmin, onGoToForm, onGoToHistory, onGoToPer
                 <div>
                   <p className="font-semibold text-[#3A3A3A]">Reportes</p>
                   <p className="text-xs text-[#3A3A3A]/60">Reportes consolidados PDF</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Revision de Ventas */}
+            <Card
+              onClick={onGoToVentasReview}
+              className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-[#D6D6D6] bg-white"
+            >
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                  <Eye className="w-5 h-5 text-green-700" />
+                </div>
+                <div>
+                  <p className="font-semibold text-[#3A3A3A]">Revision de Ventas</p>
+                  <p className="text-xs text-[#3A3A3A]/60">Boletos vendidos por fecha y frecuencia</p>
                 </div>
               </CardContent>
             </Card>
