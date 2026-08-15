@@ -38,12 +38,13 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
   const [cobrado, setCobrado] = useState('');
   const [pasajeroTipo, setPasajeroTipo] = useState<TipoPasajero>('normal');
   const montoInputRef = useRef<HTMLInputElement>(null);
-  const [lastSale, setLastSale] = useState<{ parada: string; monto: number; tipo: string } | null>(null);
+  const [lastSale, setLastSale] = useState<{ parada: string; monto: number; tipo: string; cantidad?: number } | null>(null);
   const [ventasHoy, setVentasHoy] = useState(0);
   const [totalHoy, setTotalHoy] = useState(0);
   const [esViajeGratis, setEsViajeGratis] = useState(false);
   const [contadorVentasFrecuencia, setContadorVentasFrecuencia] = useState(0);
   const [tab, setTab] = useState<'principal' | 'intermedia'>('principal');
+  const [cantidad, setCantidad] = useState(1);
   const printer = usePrinterStatus();
 
   const tipo = estado.direccion as 'ida' | 'vuelta';
@@ -125,6 +126,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     const promoConfig = loadPromoConfig();
     const nuevaPosicion = contadorVentasFrecuencia + 1;
     const esGanador = promoConfig.activa && ganadorPosicion != null && nuevaPosicion === ganadorPosicion;
+    const cantidadEfectiva = esGanador ? 1 : cantidad; // Viaje gratis siempre es 1
 
     if (esGanador) {
       setEsViajeGratis(true);
@@ -134,29 +136,32 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     const fecha = now.toISOString().split('T')[0];
     const hora = now.toTimeString().slice(0, 5);
 
-    const venta = {
-      id: `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      fecha,
-      vtCode: session.vtCode,
-      frecuenciaId: estado.id,
-      frecuenciaNombre: estado.nombre,
-      estadoId: estado.estadoId,
-      ruta: rutaMatched,
-      parada: parada.trim(),
-      tipo,
-      pasajeroTipo,
-      tarifaOficial: tarifaAuto || cobradoNum,
-      esViajeGratis: esGanador,
-      tarifaOriginal: esGanador ? tarifaAuto || cobradoNum : cobradoNum,
-      cobrado: esGanador ? 0 : cobradoNum,
-      hora,
-      createdAt: now.toISOString(),
-      ayudanteId: session.ayudanteId,
-      ayudanteNombre: session.ayudanteNombre,
-      syncStatus: 'pending' as const,
-    };
-
-    await saveVenta(venta);
+    // ─── Crear N registros (uno por pasajero) ───
+    const baseId = Date.now();
+    for (let i = 0; i < cantidadEfectiva; i++) {
+      const venta = {
+        id: `local_${baseId}_${i}_${Math.random().toString(36).slice(2, 8)}`,
+        fecha,
+        vtCode: session.vtCode,
+        frecuenciaId: estado.id,
+        frecuenciaNombre: estado.nombre,
+        estadoId: estado.estadoId,
+        ruta: rutaMatched,
+        parada: parada.trim(),
+        tipo,
+        pasajeroTipo,
+        tarifaOficial: tarifaAuto || cobradoNum,
+        esViajeGratis: esGanador,
+        tarifaOriginal: esGanador ? tarifaAuto || cobradoNum : cobradoNum,
+        cobrado: esGanador ? 0 : cobradoNum,
+        hora,
+        createdAt: now.toISOString(),
+        ayudanteId: session.ayudanteId,
+        ayudanteNombre: session.ayudanteNombre,
+        syncStatus: 'pending' as const,
+      };
+      await saveVenta(venta);
+    }
     incrementParadaFrec(session.vtCode, parada.trim());
 
     // ─── Imprimir boleto (no bloquea la venta) ───
@@ -178,6 +183,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           destino: parada.trim(),
           tipoPasajero: pasajeroTipo === 'normal' ? 'Entero' : 'Media',
           tarifa: cobradoNum,
+          cantidad: cantidadEfectiva,
           boletoNum: contadorVentasFrecuencia + 1,
           esViajeGratis: esGanador,
           tarifaOriginal: esGanador ? tarifaAuto || cobradoNum : undefined,
@@ -209,10 +215,11 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
       setLastSale({ parada: parada.trim(), monto: 0, tipo: 'VIAJE GRATIS!' });
       setTimeout(() => setEsViajeGratis(false), 3000);
     } else {
-      setLastSale({ parada: parada.trim(), monto: cobradoNum, tipo: pasajeroTipo === 'normal' ? 'ENTERO' : 'MEDIA' });
+      setLastSale({ parada: parada.trim(), monto: cobradoNum * cantidadEfectiva, tipo: pasajeroTipo === 'normal' ? 'ENTERO' : 'MEDIA', cantidad: cantidadEfectiva });
     }
     setParada('');
     setCobrado('');
+    setCantidad(1);
     loadStats();
     setTimeout(() => setLastSale(null), esGanador ? 2500 : 1200);
   };
@@ -247,7 +254,9 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     );
   };
 
-  const canRegister = parada.trim() && cobrado.trim() && parseFloat(cobrado) >= TARIFA_MINIMA;
+  const cobradoNum = cobrado ? parseFloat(cobrado) : 0;
+  const totalCobrado = cobradoNum * cantidad;
+  const canRegister = parada.trim() && cobrado.trim() && cobradoNum >= TARIFA_MINIMA;
 
   return (
     <div className="flex flex-col h-[100dvh] bg-gray-50">
@@ -296,28 +305,46 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
         </div>
       </div>
 
-      {/* ENTERO / MEDIA toggle compacto */}
-      <div className="flex gap-2 px-3 py-2 bg-white border-b border-gray-100">
-        <button
-          onClick={() => handleTipoChange('normal')}
-          className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 font-bold text-sm transition-all active:scale-95 ${
-            pasajeroTipo === 'normal'
-              ? 'bg-[#912D26] text-white shadow-lg shadow-red-200'
-              : 'bg-gray-100 text-[#3A3A3A]'
-          }`}
-        >
-          <User className="w-4 h-4" /> ENTERO
-        </button>
-        <button
-          onClick={() => handleTipoChange('media')}
-          className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 font-bold text-sm transition-all active:scale-95 ${
-            pasajeroTipo === 'media'
-              ? 'bg-[#912D26] text-white shadow-lg shadow-red-200'
-              : 'bg-gray-100 text-[#3A3A3A]'
-          }`}
-        >
-          <UserRound className="w-4 h-4" /> MEDIA
-        </button>
+      {/* ENTERO / MEDIA toggle + CANTIDAD */}
+      <div className="bg-white border-b border-gray-100 px-3 py-2 space-y-2">
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleTipoChange('normal')}
+            className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 font-bold text-sm transition-all active:scale-95 ${
+              pasajeroTipo === 'normal'
+                ? 'bg-[#912D26] text-white shadow-lg shadow-red-200'
+                : 'bg-gray-100 text-[#3A3A3A]'
+            }`}
+          >
+            <User className="w-4 h-4" /> ENTERO
+          </button>
+          <button
+            onClick={() => handleTipoChange('media')}
+            className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 font-bold text-sm transition-all active:scale-95 ${
+              pasajeroTipo === 'media'
+                ? 'bg-[#912D26] text-white shadow-lg shadow-red-200'
+                : 'bg-gray-100 text-[#3A3A3A]'
+            }`}
+          >
+            <UserRound className="w-4 h-4" /> MEDIA
+          </button>
+        </div>
+        {/* Selector de cantidad: [1] [2] [3] [4] */}
+        <div className="flex gap-1.5">
+          {[1, 2, 3, 4].map(n => (
+            <button
+              key={n}
+              onClick={() => setCantidad(n)}
+              className={`flex-1 py-1.5 rounded-lg font-black text-sm transition-all active:scale-95 ${
+                cantidad === n
+                  ? 'bg-[#912D26] text-white shadow-md'
+                  : 'bg-gray-100 text-[#3A3A3A]'
+              }`}
+            >
+              {n === 1 ? '1' : n}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ─── PESTAÑAS: PRINCIPAL / INTERMEDIA ─── */}
@@ -351,7 +378,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           <div className="bg-green-500 text-white rounded-xl px-3 py-2 flex items-center gap-2 mb-2 animate-pulse">
             <Check className="w-4 h-4 flex-shrink-0" />
             <div className="text-xs font-bold">
-              ✓ {lastSale.parada} — ${lastSale.monto.toFixed(2)} ({lastSale.tipo})
+              ✓ {lastSale.parada}{lastSale.cantidad && lastSale.cantidad > 1 ? ` x${lastSale.cantidad}` : ''} — ${lastSale.monto.toFixed(2)} ({lastSale.tipo})
             </div>
           </div>
         )}
@@ -470,7 +497,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           }`}
         >
           <Check className="w-5 h-5" />
-          REGISTRAR ${cobrado ? parseFloat(cobrado).toFixed(2) : '0.00'}
+          REGISTRAR {cantidad > 1 ? `${cantidad}x $${cobrado ? parseFloat(cobrado).toFixed(2) : '0.00'} = $${totalCobrado.toFixed(2)}` : `$${cobrado ? parseFloat(cobrado).toFixed(2) : '0.00'}`}
         </button>
       </div>
     </div>

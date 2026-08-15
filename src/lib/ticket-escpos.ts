@@ -14,6 +14,7 @@ export interface TicketData {
   destino: string;       // "Vilcabamba"
   tipoPasajero: string;   // "Entero" or "Media"
   tarifa: number;        // 2.50
+  cantidad?: number;     // 1-4 pasajeros (default 1)
   boletoNum: number;     // 47
   esViajeGratis: boolean;
   tarifaOriginal?: number; // what they would have paid
@@ -153,19 +154,29 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
     push(`${t.fecha} ${t.hora} ${t.ayudanteNombre}`);
     push(NEWLINE);
 
-    // Line 4: Destination + type
-    push(`Dest: ${t.destino}  ${t.tipoPasajero}`);
+    // Line 4: Destination + type + cantidad
+    const cant = t.cantidad && t.cantidad > 1 ? ` (${t.cantidad} pax)` : '';
+    push(`Dest: ${t.destino}  ${t.tipoPasajero}${cant}`);
     push(NEWLINE);
 
-    // Line 5: Tarifa — double size
-    push(DBL);
-    push(centerDbl(`$${t.tarifa.toFixed(2)}`));
-    push(NORM);
-    push(NEWLINE);
+    // Line 5: Tarifa (o total si multiple)
+    if (t.cantidad && t.cantidad > 1) {
+      push(`${t.tarifa.toFixed(2)} x${t.cantidad}`);
+      push(NEWLINE);
+      push(DBL);
+      push(centerDbl(`$${(t.tarifa * t.cantidad).toFixed(2)}`));
+      push(NORM);
+      push(NEWLINE);
+    } else {
+      push(DBL);
+      push(centerDbl(`$${t.tarifa.toFixed(2)}`));
+      push(NORM);
+      push(NEWLINE);
+    }
 
     // Line 6: Boleto number — double height
     push(DBL_H);
-    push(center(`Boleto ${String(t.boletoNum).padStart(4, '0')}`));
+    push(center(`Boleto ${String(t.boletoNum).padStart(4, '0')}${t.cantidad && t.cantidad > 1 ? `-${String(t.boletoNum + t.cantidad - 1).padStart(4, '0')}` : ''}`));
     push(NORM);
     push(NEWLINE);
 
