@@ -499,6 +499,35 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           <Check className="w-5 h-5" />
           REGISTRAR {cantidad > 1 ? `${cantidad}x $${cobrado ? parseFloat(cobrado).toFixed(2) : '0.00'} = $${totalCobrado.toFixed(2)}` : `$${cobrado ? parseFloat(cobrado).toFixed(2) : '0.00'}`}
         </button>
+
+        {/* ─── Guía visual de vuelto (zero toques) ─── */}
+        {canRegister && totalCobrado > 0 && (() => {
+          const total = totalCobrado;
+          const redondeo = Math.ceil(total);
+          const billetes = [5, 10, 20].filter(b => b > total);
+          const opciones: { paga: number; vuelto: number }[] = [];
+
+          // Redondeo al dólar superior (si tiene decimales)
+          if (redondeo > total) {
+            opciones.push({ paga: redondeo, vuelto: parseFloat((redondeo - total).toFixed(2)) });
+          }
+          // Billetes estándar
+          for (const b of billetes) {
+            opciones.push({ paga: b, vuelto: parseFloat((b - total).toFixed(2)) });
+          }
+
+          if (opciones.length === 0) return null;
+          return (
+            <div className="mt-2 flex gap-1.5 justify-center">
+              {opciones.map(o => (
+                <div key={o.paga} className="bg-[#912D26]/10 rounded-lg px-2 py-1 flex flex-col items-center min-w-[60px]">
+                  <span className="text-[10px] text-[#912D26] font-bold">${o.paga}</span>
+                  <span className="text-sm font-black text-[#912D26]">${o.vuelto.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
