@@ -318,6 +318,24 @@ const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = 
   'Cajánuma':     { normal: 3.50, media: 1.75 },
   'Dos Puentes':  { normal: 3.50, media: 1.75 },
   'Capulí':       { normal: 4.00, media: 2.00 },
+  // Tramos intermedios El Tambo (vuelta)
+  'Era→Merc':     { normal: 0.75, media: 0.40 },
+  'Era→Malac':    { normal: 2.00, media: 1.00 },
+  'Merc→Ceibop':  { normal: 1.50, media: 0.75 },
+  'Merc→Malac':   { normal: 1.75, media: 0.90 },
+  'Merc→Land':    { normal: 2.00, media: 1.00 },
+  'Zhot→Malac':   { normal: 1.50, media: 0.75 },
+  'Zhot→Merc':    { normal: 0.75, media: 0.40 },
+  'Zhot→Ceibop':  { normal: 1.00, media: 0.50 },
+  'Mal→Peña':     { normal: 0.75, media: 0.40 },
+  'Mal→Chorri':    { normal: 0.75, media: 0.40 },
+  'Mal→Nango2':    { normal: 0.75, media: 0.40 },
+  'Mal→Porv2':     { normal: 0.75, media: 0.40 },
+  'Mal→T.Leguas':  { normal: 1.10, media: 0.55 },
+  'Mal→P.Nuevo':   { normal: 1.10, media: 0.55 },
+  'Mal→Rumi2':     { normal: 1.10, media: 0.55 },
+  'Mal→Caja':      { normal: 1.50, media: 0.75 },
+  'Mal→D.Puen':    { normal: 1.50, media: 0.75 },
 };
 
 // ─── Paradas por ruta según dirección ───
@@ -366,7 +384,11 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
             'San José', 'Ceibopamba', 'Malacatos',
             'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
             'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
-            'Mal→Rumi', 'Mal→Nango', 'Mal→Porv'],
+            'Mal→Rumi', 'Mal→Nango', 'Mal→Porv',
+            'Era→Merc', 'Era→Malac', 'Merc→Ceibop', 'Merc→Malac', 'Merc→Land',
+            'Zhot→Malac', 'Zhot→Merc', 'Zhot→Ceibop',
+            'Mal→Peña', 'Mal→Chorri', 'Mal→Nango2', 'Mal→Porv2',
+            'Mal→T.Leguas', 'Mal→P.Nuevo', 'Mal→Rumi2', 'Mal→Caja', 'Mal→D.Puen'],
   },
   'Loja - La Elvira': {
     ida: ['Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
