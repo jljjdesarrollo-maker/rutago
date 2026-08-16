@@ -88,25 +88,25 @@ export const PARADA_ZONA: Record<string, ZonaColor> = {
   'Mal→Rumi': 'yellow',
   'Mal→Nango': 'yellow',
   'Mal→Porv': 'yellow',
-  // Intermedios El Tambo (desde paradas intermedias)
-  'Era→Merc': 'yellow',
-  'Era→Malac': 'yellow',
-  'Merc→Ceibop': 'yellow',
-  'Merc→Malac': 'yellow',
+  // Intermedios El Tambo (desde zona El Tambo - blue)
+  'Era→Merc': 'blue',
+  'Era→Malac': 'blue',
+  'Merc→Ceibop': 'blue',
+  'Merc→Malac': 'blue',
   'Merc→Land': 'yellow',
-  'Zhot→Malac': 'yellow',
-  'Zhot→Merc': 'yellow',
-  'Zhot→Ceibop': 'yellow',
-  // Intermedios El Tambo desde Malacatos hacia Loja
+  'Zhot→Malac': 'blue',
+  'Zhot→Merc': 'blue',
+  'Zhot→Ceibop': 'blue',
+  // Intermedios El Tambo desde Malacatos hacia Loja (yellow/green)
   'Mal→Peña': 'yellow',
   'Mal→Chorri': 'yellow',
   'Mal→Nango2': 'yellow',
   'Mal→Porv2': 'yellow',
-  'Mal→T.Leguas': 'yellow',
-  'Mal→P.Nuevo': 'yellow',
-  'Mal→Rumi2': 'yellow',
-  'Mal→Caja': 'yellow',
-  'Mal→D.Puen': 'yellow',
+  'Mal→T.Leguas': 'green',
+  'Mal→P.Nuevo': 'green',
+  'Mal→Rumi2': 'green',
+  'Mal→Caja': 'green',
+  'Mal→D.Puen': 'green',
 };
 
 export const ZONA_COLORS: Record<ZonaColor, { bg: string; bgSelected: string; text: string; border: string; price: string; sub: string }> = {
