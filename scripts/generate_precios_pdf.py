@@ -77,13 +77,13 @@ precios = [
     (2, 'La Capilla',    '$0.75', '$0.40', False),
     (3, 'La Era',        '$0.75', '$0.40', True),   # was $1.25/$0.65
     (4, 'San Agustin',   '$0.75', '$0.40', True),   # was $1.25/$0.65
-    (5, 'La Merced',     '$1.00', '$0.50', True),   # was $1.25/$0.65
-    (6, 'Zhotahuayco',   '$1.25', '$0.65', False),
-    (7, 'Naranjo Dulce', '$1.25', '$0.65', True),   # was $1.40/$0.70
-    (8, 'Santo Domingo', '$1.40', '$0.70', False),
+    (5, 'La Merced',     '$0.75', '$0.40', True),   # was $1.00/$0.50
+    (6, 'Zhotahuayco',   '$0.75', '$0.40', True),   # was $1.25/$0.65
+    (7, 'Naranjo Dulce', '$1.00', '$0.50', True),   # was $1.25/$0.65
+    (8, 'Santo Domingo', '$1.25', '$0.65', True),   # was $1.40/$0.70
     (9, 'San Jose',      '$1.50', '$0.75', False),
     (10, 'Ceibopamba',   '$1.50', '$0.75', False),
-    (11, 'Malacatos',    '$1.75', '$0.90', False),
+    (11, 'Malacatos',    '$2.25', '$1.15', True),   # was $1.75/$0.90
     (12, 'La Pena',      '$1.75', '$0.90', False),
     (13, 'Landangui',    '$2.00', '$1.00', False),
     (14, 'Chorrillos',   '$2.25', '$1.15', False),
@@ -273,7 +273,7 @@ footer_style = ParagraphStyle(
     textColor=TEXT_MUTED,
     alignment=1,
 )
-story.append(Paragraph('24 paradas principales | 8 precios actualizados', footer_style))
+story.append(Paragraph('24 paradas principales | 10 precios actualizados', footer_style))
 
 doc.build(story)
 print(f'PDF generado: {OUTPUT_PATH}')
