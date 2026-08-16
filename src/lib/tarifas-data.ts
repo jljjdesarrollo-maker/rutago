@@ -97,6 +97,16 @@ export const PARADA_ZONA: Record<string, ZonaColor> = {
   'Zhot→Malac': 'yellow',
   'Zhot→Merc': 'yellow',
   'Zhot→Ceibop': 'yellow',
+  // Intermedios El Tambo desde Malacatos hacia Loja
+  'Mal→Peña': 'yellow',
+  'Mal→Chorri': 'yellow',
+  'Mal→Nango2': 'yellow',
+  'Mal→Porv2': 'yellow',
+  'Mal→T.Leguas': 'yellow',
+  'Mal→P.Nuevo': 'yellow',
+  'Mal→Rumi2': 'yellow',
+  'Mal→Caja': 'yellow',
+  'Mal→D.Puen': 'yellow',
 };
 
 export const ZONA_COLORS: Record<ZonaColor, { bg: string; bgSelected: string; text: string; border: string; price: string; sub: string }> = {
@@ -179,6 +189,16 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'Zhot→Malac':    { normal: 1.50, media: 0.75 },
   'Zhot→Merc':     { normal: 0.75, media: 0.40 },
   'Zhot→Ceibop':   { normal: 1.00, media: 0.50 },
+  // Intermedios El Tambo desde Malacatos hacia Loja
+  'Mal→Peña':      { normal: 0.75, media: 0.40 },
+  'Mal→Chorri':     { normal: 0.75, media: 0.40 },
+  'Mal→Nango2':     { normal: 0.75, media: 0.40 },
+  'Mal→Porv2':      { normal: 0.75, media: 0.40 },
+  'Mal→T.Leguas':   { normal: 1.10, media: 0.55 },
+  'Mal→P.Nuevo':    { normal: 1.10, media: 0.55 },
+  'Mal→Rumi2':      { normal: 1.10, media: 0.55 },
+  'Mal→Caja':       { normal: 1.50, media: 0.75 },
+  'Mal→D.Puen':     { normal: 1.50, media: 0.75 },
   // ═══ LOJA - ZAHUAYCO (pasa por Vilcabamba) ═══
   'Masanamaca': { normal: 3.00, media: 1.50 },
   'Quinara':    { normal: 3.50, media: 1.75 },
@@ -338,7 +358,9 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'La Capilla', 'San Bernardo', 'El Tambo',
           'Rumi→Prv', 'Rumi→Mal', 'Nango→Mal', 'Land→Mal', 'T.Leguas→Mal',
           'Era→Merc', 'Era→Malac', 'Merc→Ceibop', 'Merc→Malac', 'Merc→Land',
-          'Zhot→Malac', 'Zhot→Merc', 'Zhot→Ceibop'],
+          'Zhot→Malac', 'Zhot→Merc', 'Zhot→Ceibop',
+          'Mal→Peña', 'Mal→Chorri', 'Mal→Nango2', 'Mal→Porv2',
+          'Mal→T.Leguas', 'Mal→P.Nuevo', 'Mal→Rumi2', 'Mal→Caja', 'Mal→D.Puen'],
     vuelta: ['El Tambo', 'San Bernardo', 'La Capilla', 'La Era', 'San Agustín',
             'La Merced', 'Zhotahuayco', 'Naranjo Dulce', 'Santo Domingo',
             'San José', 'Ceibopamba', 'Malacatos',
