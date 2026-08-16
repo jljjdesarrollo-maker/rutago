@@ -250,7 +250,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'La Elvira':    { normal: 3.75, media: 1.90 },
   'Suro':         { normal: 3.25, media: 1.65 },
   'Yangana':      { normal: 3.60, media: 1.80 },
-  // El Tambo: mismos precios ida para vuelta (no hay lista diferenciada)
+  // El Tambo ida: compartidos con Vilcabamba (Ceibopamba→El Tambo NO aparecen en vuelta Vilcabamba)
   'Ceibopamba':    { normal: 2.25, media: 1.15 },
   'San José':      { normal: 2.25, media: 1.15 },
   'Santo Domingo': { normal: 2.50, media: 1.25 },
@@ -262,6 +262,40 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'La Capilla':    { normal: 4.00, media: 2.00 },
   'San Bernardo':  { normal: 4.00, media: 2.00 },
   'El Tambo':      { normal: 4.00, media: 2.00 },
+  'La Peña':       { normal: 1.75, media: 0.90 },
+};
+
+// ─── Precios VUELTA específicos: EL TAMBO → LOJA ───
+// Precios invertidos: los más cercanos a El Tambo son baratos, los más cercanos a Loja son caros.
+// Se usan SOLO cuando ruta='Loja - El Tambo' y tipo='vuelta' para NO afectar Vilcabamba.
+const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = {
+  // Zona El Tambo (cerca del origen)
+  'San Bernardo':  { normal: 0.75, media: 0.40 },
+  'La Capilla':    { normal: 0.75, media: 0.40 },
+  'La Era':        { normal: 0.75, media: 0.40 },
+  'San Agustín':   { normal: 1.00, media: 0.50 },
+  'La Merced':     { normal: 1.00, media: 0.50 },
+  'Zhotahuayco':   { normal: 1.00, media: 0.50 },
+  'Naranjo Dulce': { normal: 1.00, media: 0.50 },
+  // Zona media (hacia Malacatos)
+  'Santo Domingo': { normal: 1.50, media: 0.75 },
+  'San José':      { normal: 1.75, media: 0.90 },
+  'Ceibopamba':    { normal: 1.75, media: 0.90 },
+  'Malacatos':    { normal: 2.25, media: 1.15 },
+  // Troncal hacia Loja (desde Malacatos)
+  'La Peña':      { normal: 1.75, media: 0.90 },
+  'Landangui':    { normal: 2.00, media: 1.00 },
+  'Chorrillos':   { normal: 2.25, media: 1.15 },
+  'Nangora':      { normal: 2.25, media: 1.15 },
+  'Porvenir':     { normal: 2.50, media: 1.25 },
+  'Granadillo':   { normal: 2.75, media: 1.40 },
+  'Yamba':        { normal: 2.75, media: 1.40 },
+  'Rumizhitana':  { normal: 2.75, media: 1.40 },
+  'Tres Leguas':  { normal: 3.50, media: 1.75 },
+  'Pueblo Nuevo': { normal: 3.50, media: 1.75 },
+  'Cajánuma':     { normal: 3.50, media: 1.75 },
+  'Dos Puentes':  { normal: 4.00, media: 2.00 },
+  'Capulí':       { normal: 4.00, media: 2.00 },
 };
 
 // ─── Paradas por ruta según dirección ───
@@ -408,6 +442,11 @@ function viajaHaciaLoja(ruta: string, tipo: string): boolean {
 // Obtener precio considerando la dirección del viaje
 function getPrecio(parada: string, ruta: string, tipo: string): { normal: number; media: number } | null {
   if (viajaHaciaLoja(ruta, tipo)) {
+    // Ruta El Tambo tiene precios de vuelta propios (no comparte troncal con Vilcabamba)
+    if (ruta === 'Loja - El Tambo') {
+      const tamboVuelta = preciosVueltaElTambo[parada];
+      if (tamboVuelta) return tamboVuelta;
+    }
     const vuelta = preciosVuelta[parada];
     if (vuelta) return vuelta;
     // Si la parada no tiene precio de vuelta, buscar en precios base
