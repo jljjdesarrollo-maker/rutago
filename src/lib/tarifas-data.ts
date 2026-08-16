@@ -88,6 +88,14 @@ export const PARADA_ZONA: Record<string, ZonaColor> = {
   'Mal→Rumi': 'yellow',
   'Mal→Nango': 'yellow',
   'Mal→Porv': 'yellow',
+  // Intermedios El Tambo (desde Malacatos)
+  'Mal→Ceibop': 'blue',
+  'Mal→Trinidad': 'blue',
+  'Mal→S.Jose': 'blue',
+  'Mal→StoDom': 'blue',
+  'Mal→N.Dulce': 'blue',
+  'Mal→Zhotahu': 'blue',
+  'Mal→LaMerc': 'blue',
 };
 
 export const ZONA_COLORS: Record<ZonaColor, { bg: string; bgSelected: string; text: string; border: string; price: string; sub: string }> = {
@@ -161,6 +169,14 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'Taxiche→Vilc': { normal: 0.75, media: 0.40 },
   'Cararango→Vilc': { normal: 0.75, media: 0.40 },
   'S.Pedro→Vilc': { normal: 0.75, media: 0.40 },
+  // Intermedios El Tambo (desde Malacatos)
+  'Mal→Ceibop':   { normal: 0.75, media: 0.40 },
+  'Mal→Trinidad': { normal: 0.75, media: 0.40 },
+  'Mal→S.Jose':    { normal: 0.75, media: 0.40 },
+  'Mal→StoDom':    { normal: 1.00, media: 0.50 },
+  'Mal→N.Dulce':   { normal: 1.25, media: 0.65 },
+  'Mal→Zhotahu':   { normal: 1.50, media: 0.75 },
+  'Mal→LaMerc':    { normal: 1.75, media: 0.90 },
   // ═══ LOJA - ZAHUAYCO (pasa por Vilcabamba) ═══
   'Masanamaca': { normal: 3.00, media: 1.50 },
   'Quinara':    { normal: 3.50, media: 1.75 },
@@ -284,7 +300,8 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'Malacatos', 'Ceibopamba', 'San José', 'Santo Domingo',
           'Naranjo Dulce', 'Zhotahuayco', 'La Merced', 'San Agustín', 'La Era',
           'La Capilla', 'San Bernardo', 'El Tambo',
-          'Rumi→Prv', 'Rumi→Mal', 'Nango→Mal', 'Land→Mal', 'T.Leguas→Mal'],
+          'Rumi→Prv', 'Rumi→Mal', 'Nango→Mal', 'Land→Mal', 'T.Leguas→Mal',
+          'Mal→Ceibop', 'Mal→Trinidad', 'Mal→S.Jose', 'Mal→StoDom', 'Mal→N.Dulce', 'Mal→Zhotahu', 'Mal→LaMerc'],
     vuelta: ['El Tambo', 'San Bernardo', 'La Capilla', 'La Era', 'San Agustín',
             'La Merced', 'Zhotahuayco', 'Naranjo Dulce', 'Santo Domingo',
             'San José', 'Ceibopamba', 'Malacatos',
