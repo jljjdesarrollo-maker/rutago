@@ -294,7 +294,7 @@ const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = 
   'Tres Leguas':  { normal: 3.50, media: 1.75 },
   'Pueblo Nuevo': { normal: 3.50, media: 1.75 },
   'Cajánuma':     { normal: 3.50, media: 1.75 },
-  'Dos Puentes':  { normal: 4.00, media: 2.00 },
+  'Dos Puentes':  { normal: 3.50, media: 1.75 },
   'Capulí':       { normal: 4.00, media: 2.00 },
 };
 
