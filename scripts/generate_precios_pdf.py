@@ -75,7 +75,7 @@ subtitle_style = ParagraphStyle(
 precios = [
     (1, 'San Bernardo',  '$0.75', '$0.40', False),
     (2, 'La Capilla',    '$0.75', '$0.40', False),
-    (3, 'La Era',        '$1.25', '$0.65', False),
+    (3, 'La Era',        '$0.75', '$0.40', True),   # was $1.25/$0.65
     (4, 'San Agustin',   '$0.75', '$0.40', True),   # was $1.25/$0.65
     (5, 'La Merced',     '$1.00', '$0.50', True),   # was $1.25/$0.65
     (6, 'Zhotahuayco',   '$1.25', '$0.65', False),
@@ -273,7 +273,7 @@ footer_style = ParagraphStyle(
     textColor=TEXT_MUTED,
     alignment=1,
 )
-story.append(Paragraph('24 paradas principales | 7 precios actualizados', footer_style))
+story.append(Paragraph('24 paradas principales | 8 precios actualizados', footer_style))
 
 doc.build(story)
 print(f'PDF generado: {OUTPUT_PATH}')
