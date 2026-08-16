@@ -84,11 +84,11 @@ precios = [
     (9, 'San Jose',      '$1.75', '$0.90', True),   # was $1.50/$0.75
     (10, 'Ceibopamba',   '$1.75', '$0.90', True),   # was $1.50/$0.75
     (11, 'Malacatos',    '$2.25', '$1.15', True),   # was $1.75/$0.90
-    (12, 'La Pena',      '$1.75', '$0.90', False),
-    (13, 'Landangui',    '$2.00', '$1.00', False),
-    (14, 'Chorrillos',   '$2.25', '$1.15', False),
-    (15, 'Nangora',      '$2.25', '$1.15', False),
-    (16, 'Porvenir',     '$2.50', '$1.25', False),
+    (12, 'La Pena',      '$2.25', '$1.15', True),   # was $1.75/$0.90
+    (13, 'Landangui',    '$2.50', '$1.25', True),   # was $2.00/$1.00
+    (14, 'Chorrillos',   '$2.50', '$1.25', True),   # was $2.25/$1.15
+    (15, 'Nangora',      '$2.50', '$1.25', True),   # was $2.25/$1.15
+    (16, 'Porvenir',     '$2.75', '$1.40', True),   # was $2.50/$1.25
     (17, 'Granadillo',   '$2.75', '$1.40', False),
     (18, 'Yamba',        '$2.75', '$1.40', True),   # was $3.00/$1.50
     (19, 'Rumizhitana',  '$2.75', '$1.40', True),   # was $3.25/$1.65
@@ -273,7 +273,7 @@ footer_style = ParagraphStyle(
     textColor=TEXT_MUTED,
     alignment=1,
 )
-story.append(Paragraph('24 paradas principales | 13 precios actualizados', footer_style))
+story.append(Paragraph('24 paradas principales | 18 precios actualizados', footer_style))
 
 doc.build(story)
 print(f'PDF generado: {OUTPUT_PATH}')
