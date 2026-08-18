@@ -85,3 +85,27 @@ Stage Summary:
 - Printing is non-blocking: venta registers even if printer fails
 - Publicity Usa RutaGo en tu bus 0997149000 included in ticket template
 
+---
+Task ID: 1
+Agent: main
+Task: Aplicar precios del tarifario oficial XLSX al sistema RutaGo
+
+Work Log:
+- Analizó imagen adjunta (mapa de rutas - sin precios)
+- Leyó XLSX 'Tarifario Completo de Rutas Loja (1).xlsx' con 107 filas de tarifas IDA/RETORNO
+- Mapeó todas las claves del XLSX a las claves del sistema (preciosIda, preciosVuelta, preciosVueltaElTambo)
+- Escribió script Python update_precios_final.py para actualización completa
+- Aplicó 240 precios directos e intermedios (0 precios en $0.00 restantes)
+- Agregó 'Trinidad' como nueva parada directa (entre Ceibopamba y San José)
+- Eliminó 29 intermediarios antiguos no en XLSX (Vilc-directed y El Tambo vuelta-specific)
+- Agregó 24 nuevas entradas PARADA_ZONA para nuevos intermediarios
+- Reescribió RUTA_PARADAS completo sin keys inválidos
+- Vuelta = Ida (misma distancia, confirmado por usuario)
+- Verificación: TypeScript compila sin errores, 0 duplicados, 0 precios en cero
+
+Stage Summary:
+- tarifas-data.ts: 240 precios actualizados, 100 en ida, 100 en vuelta, 36 en El Tambo vuelta
+- Nueva parada: Trinidad ($2.25/$1.15)
+- Paradas eliminadas (sin precio en XLSX): Capulí directo, Loja (solo origen)
+- Intermediarios Zahuayco y Yangana agregados (Vilc→Masan, Mal→Masan, Vilc→Suro, etc.)
+- Script guardado en: scripts/update_precios_final.py
