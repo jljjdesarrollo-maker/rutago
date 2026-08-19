@@ -457,10 +457,9 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
     ida: [
           'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
           'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
-          'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Peña→Mal', 'Land→Mal',
-          'Chorri→Mal', 'Nango→Mal', 'Porv→Mal', 'Gran→Mal', 'Yamba→Mal', 'Rumi→Mal', 'T.Leguas→Mal',
-          'P.Nuevo→Mal', 'Caja→Mal', 'D.Puen→Mal', 'Capulí→Mal',
-          'SPed→Vilc', 'Carar→Vilc', 'Cavi→Vilc', 'Tax→Vilc', 'Mal→Vilc', 'Land→Vilc', 'Chorri→Vilc', 'Nango→Vilc', 'Porv→Vilc', 'Gran→Vilc', 'Yamba→Vilc', 'Rumi→Vilc', 'T.Leguas→Vilc', 'P.Nuevo→Vilc', 'Caja→Vilc', 'D.Puen→Vilc', 'Capulí→Vilc',
+          'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba',
+          'Capulí→Mal', 'D.Puen→Mal', 'Caja→Mal', 'P.Nuevo→Mal', 'T.Leguas→Mal', 'Rumi→Mal', 'Yamba→Mal', 'Gran→Mal', 'Porv→Mal', 'Nango→Mal', 'Chorri→Mal', 'Land→Mal', 'Peña→Mal',
+          'Capulí→Vilc', 'D.Puen→Vilc', 'Caja→Vilc', 'P.Nuevo→Vilc', 'T.Leguas→Vilc', 'Rumi→Vilc', 'Yamba→Vilc', 'Gran→Vilc', 'Porv→Vilc', 'Nango→Vilc', 'Chorri→Vilc', 'Land→Vilc', 'Mal→Vilc', 'Tax→Vilc', 'Cavi→Vilc', 'Carar→Vilc', 'SPed→Vilc',
     ],
     vuelta: [
           'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
