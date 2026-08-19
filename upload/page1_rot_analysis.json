@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes el análisis detallado de la imagen, extrayendo la información exactamente como se muestra en las celdas:\n\n### 1) Encabezados de Columna (Literal)\n\n**Sección IDA (Amarillo):**\n*   `Ruta Ida`\n*   `tipo`\n*   `Origen Ida`\n*   `Destino Ida`\n*   `Tarifa Ida (Norm)`\n*   `Tarifa Ida (Medio)`\n\n**Sección RETORNO (Naranja):**\n*   `Ruta Retorno`\n*   `Tipo`\n*   `Origen Retorno`\n*   `Destino Retorno`\n*   `Tarifa Retorno (Normal)`\n*   `Tarifa Retorno (Medio)`\n\n---\n\n### 2) Primeras 5 Filas de Datos Exactos\n\n**Sección IDA:**\n\n| Fila | Ruta Ida | tipo | Origen Ida | Destino Ida | Tarifa Ida (Norm) | Tarifa Ida (Medio) |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n| **1** | Loja – Vilcabamba | DIRECTO | Loja | Dos Puentes | $0.75 | $0.40 |\n| **2** | Loja – Vilcabamba | DIRECTO | Loja | Cajanuma | $1.25 | $0.55 |\n| **3** | Loja – Vilcabamba | DIRECTO | Loja | Pueblo Nuevo | $1.25 | $0.55 |\n| **4** | Loja – Vilcabamba | DIRECTO | Loja | Tres Leguas | $1.25 | $0.55 |\n| **5** | Loja – Vilcabamba | DIRECTO | Loja | Rumizhitana | $1.25 | $0.55 |\n\n**Sección RETORNO:**\n\n| Fila | Ruta Retorno | Tipo | Origen Retorno | Destino Retorno | Tarifa Retorno (Normal) | Tarifa Retorno (Medio) |\n| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n| **1** | Vilcabamba – Loja | DIRECTO | Vilcabamba | SAN PEDRO | $0.75 | $0.40 |\n| **2** | Vilcabamba – Loja | DIRECTO | Vilcabamba | CARARANGO | $0.75 | $0.40 |\n| **3** | Vilcabamba – Loja | DIRECTO | Vilcabamba | CAVIANGA | $0.75 | $0.40 |\n| **4** | Vilcabamba – Loja | DIRECTO | Vilcabamba | TAXICHE | $0.75 | $0.40 |\n| **5** | Vilcabamba – Loja | DIRECTO | Vilcabamba | MALACATOS | $1.10 | $0.55 |\n\n---\n\n### 3) Límite entre Secciones\n\nLa sección **IDA termina** en la fila donde:\n*   **Ruta Ida:** `Loja – Vilcabamba`\n*   **tipo:** `ITERMEDIO` *(Nota: así aparece escrito en la celda)*\n*   **Origen Ida:** `CAPULI`\n*   **Destino Ida:** `Vilcabamba`\n*   **Valores:** `$2,50` y `$1,25`\n\nInmediatamente después empieza la sección **RETORNO** con la primera fila de datos que tiene:\n*   **Ruta Retorno:** `Vilcabamba – Loja`\n*   **Tipo:** `DIRECTO`\n*   **Origen Retorno:** `Vilcabamba`\n*   **Destino Retorno:** `SAN PEDRO`\n\n*(Visualmente, hay una columna vacía o separadora entre las dos tablas).*\n\n---\n\n### 4) Conteo Total de Filas\n\nContando las filas de datos (excluyendo los encabezados):\n\n*   **Filas en la sección IDA:** **50 filas exactas**\n    *   Las primeras 18 son de tipo \"DIRECTO\" (desde Dos Puentes hasta Vilcabamba).\n    *   Las siguientes 32 son de tipo \"ITERMEDIO\" (desde La Peña/Malacatos hasta Capulí/Vilcabamba).\n\n*   **Filas en la sección RETORNO:** **50 filas exactas**\n    *   Las primeras 18 son de tipo \"DIRECTO\" (desde San Pedro hasta Loja).\n    *   Las siguientes 32 son de tipo \"ITERMEDIO\" (desde Dos Puentes/Loja hasta Malacatos/Capuli).\n\n**Nota sobre ortografía observada:** En la columna `tipo`, para las rutas intermedias, la hoja de cálculo escribe literalmente **\"ITERMEDIO\"** (con una 'E' adicional), tanto en la sección Ida como en la de Retorno.",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1787107054,
+  "id": "20260819103713e220ba8d1c624e5e",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260819103713e220ba8d1c624e5e",
+  "usage": {
+    "completion_tokens": 1087,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 6117,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 7204
+  }
+}

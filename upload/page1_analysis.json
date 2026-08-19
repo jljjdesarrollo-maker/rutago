@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "Aquí tienes la extracción completa de los precios del tarifario de la ruta **Loja - Vilcabamba**, organizada por secciones (Ida y Retorno) y en formato de tabla clara.\n\n### **SECCIÓN 1: IDA (Loja → Vilcabamba)**\n\n| Ruta / Tramo | Precio Normal | Precio Media Tarifa |\n| :--- | :---: | :---: |\n| **Loja – Vilcabamba** | $0.75 | $0.40 |\n| **Loja – Vilcabamba** (a Dos Puentes) | $1.25 | $0.55 |\n| **Loja – Vilcabamba** (a Cajanuma) | $1.25 | $0.55 |\n| **Loja – Vilcabamba** (a Pueblo Nuevo) | $1.25 | $0.55 |\n| **Loja – Vilcabamba** (a Tres Leguas) | $1.25 | $0.55 |\n| **Loja – Vilcabamba** (a Rumizhítana) | $1.25 | $0.55 |\n| **Loja – Vilcabamba** (a Yambá) | $1.40 | $0.65 |\n| **Loja – Vilcabamba** (a Grandillo) | $1.40 | $0.65 |\n| **Loja – Vilcabamba** (a Porvenir) | $1.50 | $0.65 |\n| **Loja – Vilcabamba** (a Nangora) | $1.50 | $0.75 |\n| **Loja – Vilcabamba** (a Chorrillos) | $1.75 | $0.90 |\n| **Loja – Vilcabamba** (a Landangui) | $1.75 | $0.75 |\n| **Loja – Vilcabamba** (a La Peña) | $2.00 | $0.90 |\n| **Loja – Vilcabamba** (a Malacatos) | $2.00 | $1.00 |\n| **Loja – Vilcabamba** (a Taxiche) | $2.25 | $1.15 |\n| **Loja – Vilcabamba** (a Cavanga) | $2.25 | $1.15 |\n| **Loja – Vilcabamba** (a Carango) | $2.50 | $1.25 |\n| **Loja – Vilcabamba** (a San Pedro) | $2.50 | $1.25 |\n| **Loja – La Peña** | $0.75 | $0.40 |\n| **Loja – Landangui** | $0.75 | $0.40 |\n| **Loja – Chorrillos** | $0.75 | $0.40 |\n| **Loja – Nangora** | $0.75 | $0.40 |\n| **Loja – Porvenir** | $1.10 | $0.55 |\n| **Loja – Grandillo** | $1.10 | $0.55 |\n| **Loja – Yambá** | $1.10 | $0.55 |\n| **Loja – Rumizhítana** | $1.10 | $0.55 |\n| **Loja – Tres Leguas** | $1.10 | $0.55 |\n| **Loja – Pueblo Nuevo** | $1.50 | $0.75 |\n| **Loja – Cajanuma** | $1.50 | $0.75 |\n| **Loja – Dos Puentes** | $2.00 | $1.00 |\n| **Loja – Capulí** | $2.50 | $1.25 |\n\n---\n\n### **SECCIÓN 2: RETORNO (Vilcabamba → Loja)**\n\n| Ruta / Tramo | Precio Normal | Precio Media Tarifa |\n| :--- | :---: | :---: |\n| **Vilcabamba – Loja** | $0.75 | $0.40 |\n| **Vilcabamba – Loja** (a San Pedro) | $0.75 | $0.40 |\n| **Vilcabamba – Loja** (a Caparanga) | $0.75 | $0.40 |\n| **Vilcabamba – Loja** (a Cavanga) | $0.75 | $0.40 |\n| **Vilcabamba – Loja** (a Taxiche) | $1.10 | $0.55 |\n| **Vilcabamba – Loja** (a Malacatos) | $1.10 | $0.55 |\n| **Vilcabamba – Loja** (a Landangui) | $1.25 | $0.65 |\n| **Vilcabamba – Loja** (a Chorrillos) | $1.25 | $0.65 |\n| **Vilcabamba – Loja** (a Nangora) | $1.25 | $0.65 |\n| **Vilcabamba – Loja** (a Porvenir) | $1.50 | $0.75 |\n| **Vilcabamba – Loja** (a Grandillo) | $1.50 | $0.75 |\n| **Vilcabamba – Loja** (a Yambá) | $1.50 | $0.75 |\n| **Vilcabamba – Loja** (a Rumizhítana) | $1.50 | $0.75 |\n| **Vilcabamba – Loja** (a Tres Leguas) | $1.50 | $0.75 |\n| **Vilcabamba – Loja** (a Pueblo Nuevo) | $2.00 | $1.00 |\n| **Vilcabamba – Loja** (a Cajanuma) | $2.00 | $1.00 |\n| **Vilcabamba – Loja** (a Dos Puentes) | $2.50 | $1.25 |\n| **Vilcabamba – Loja** (a Capulí) | $2.50 | $1.25 |\n| **Loja – Dos Puentes** | $0.75 | $0.40 |\n| **Loja – Cajanuma** | $1.25 | $0.55 |\n| **Loja – Pueblo Nuevo** | $1.25 | $0.55 |\n| **Loja – Tres Leguas** | $1.25 | $0.55 |\n| **Loja – Rumizhítana** | $1.25 | $0.55 |\n| **Loja – Yambá** | $1.25 | $0.55 |\n| **Loja – Grandillo** | $1.40 | $0.65 |\n| **Loja – Porvenir** | $1.40 | $0.65 |\n| **Loja – Nangora** | $1.50 | $0.75 |\n| **Loja – Chorrillos** | $1.50 | $0.75 |\n| **Loja – Landangui** | $1.75 | $0.90 |\n| **Loja – La Peña** | $1.75 | $0.90 |\n| **Loja – Malacatos** | $2.00 | $1.00 |\n| **Loja – Taxiche** | $2.00 | $1.00 |\n| **Loja – Cavanga** | $2.25 | $1.15 |\n| **Loja – Carango** | $2.25 | $1.15 |\n| **Loja – San Pedro** | $2.25 | $1.15 |\n| **Loja – La Peña** | $0.75 | $0.40 |\n| **Loja – Landangui** | $0.75 | $0.40 |\n| **Loja – Chorrillos** | $0.75 | $0.40 |\n| **Loja – Nangora** | $0.75 | $0.40 |\n| **Loja – Porvenir** | $1.10 | $0.55 |\n| **Loja – Grandillo** | $1.10 | $0.55 |\n| **Loja – Yambá** | $1.10 | $0.55 |\n| **Loja – Rumizhítana** | $1.10 | $0.55 |\n| **Loja – Tres Leguas** | $1.10 | $0.55 |\n| **Loja – Pueblo Nuevo** | $1.50 | $0.75 |\n| **Loja – Cajanuma** | $1.50 | $0.75 |\n| **Loja – Dos Puentes** | $2.00 | $1.00 |\n| **Loja – Capulí** | $2.00 | $1.00 |\n\n**Notas de la imagen:**\n*   Las columnas \"Tipo\" indican si el servicio es **DIRECTO** o **TERMEDIO**.\n*   Los precios están expresados en dólares estadounidenses ($).",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1787106674,
+  "id": "20260819103042223d9804a91048f1",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260819103042223d9804a91048f1",
+  "usage": {
+    "completion_tokens": 1991,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 6128,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 8119
+  }
+}
