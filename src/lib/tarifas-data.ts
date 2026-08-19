@@ -465,6 +465,7 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
           'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas',
           'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
+          'Peña→Mal', 'Land→Mal', 'Chorri→Mal', 'Nango→Mal', 'Porv→Mal', 'Gran→Mal', 'Yamba→Mal', 'Rumi→Mal', 'T.Leguas→Mal', 'P.Nuevo→Mal', 'Caja→Mal', 'D.Puen→Mal', 'Capulí→Mal',
     ],
   },
   'Loja - Zahuayco': {
