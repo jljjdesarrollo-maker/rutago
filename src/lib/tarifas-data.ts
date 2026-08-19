@@ -122,6 +122,24 @@ export const PARADA_ZONA: Record<string, ZonaColor> = {
   'Caja→Vilc': 'blue',
   'D.Puen→Vilc': 'blue',
   'Capulí→Vilc': 'blue',
+  // Intermedios RETORNO desde parada hasta Loja
+  'D.Puen→Loja': 'green',
+  'Caja→Loja': 'green',
+  'P.Nuevo→Loja': 'green',
+  'T.Leguas→Loja': 'yellow',
+  'Rumi→Loja': 'yellow',
+  'Yamba→Loja': 'yellow',
+  'Gran→Loja': 'yellow',
+  'Porv→Loja': 'yellow',
+  'Nango→Loja': 'yellow',
+  'Chorri→Loja': 'yellow',
+  'Land→Loja': 'yellow',
+  'Peña→Loja': 'yellow',
+  'Mal→Loja': 'yellow',
+  'Tax→Loja': 'yellow',
+  'Cavi→Loja': 'blue',
+  'Carar→Loja': 'blue',
+  'SPed→Loja': 'blue',
 };
 
 export const ZONA_COLORS: Record<ZonaColor, { bg: string; bgSelected: string; text: string; border: string; price: string; sub: string }> = {
@@ -345,7 +363,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'La Elvira': { normal: 0, media: 0 },
   'Suro': { normal: 0, media: 0 },
   'Yangana': { normal: 0, media: 0 },
-  // Intermedios RETORNO desde Malacatos hacia Loja (mismo precio que IDA)
+  // Intermedios RETORNO desde Malacatos hacia paradas intermedias
   'Peña→Mal': { normal: 0.75, media: 0.40 },
   'Land→Mal': { normal: 0.75, media: 0.40 },
   'Chorri→Mal': { normal: 0.75, media: 0.40 },
@@ -359,6 +377,24 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'Caja→Mal': { normal: 1.50, media: 0.75 },
   'D.Puen→Mal': { normal: 1.50, media: 0.75 },
   'Capulí→Mal': { normal: 2.00, media: 1.00 },
+  // Intermedios RETORNO desde parada hasta Loja
+  'D.Puen→Loja': { normal: 0.75, media: 0.40 },
+  'Caja→Loja': { normal: 1.25, media: 0.55 },
+  'P.Nuevo→Loja': { normal: 1.25, media: 0.55 },
+  'T.Leguas→Loja': { normal: 1.25, media: 0.55 },
+  'Rumi→Loja': { normal: 1.25, media: 0.55 },
+  'Yamba→Loja': { normal: 1.25, media: 0.55 },
+  'Gran→Loja': { normal: 1.40, media: 0.65 },
+  'Porv→Loja': { normal: 1.40, media: 0.65 },
+  'Nango→Loja': { normal: 1.50, media: 0.75 },
+  'Chorri→Loja': { normal: 1.50, media: 0.75 },
+  'Land→Loja': { normal: 1.75, media: 0.90 },
+  'Peña→Loja': { normal: 1.75, media: 0.90 },
+  'Mal→Loja': { normal: 2.00, media: 1.00 },
+  'Tax→Loja': { normal: 2.00, media: 1.00 },
+  'Cavi→Loja': { normal: 2.25, media: 1.15 },
+  'Carar→Loja': { normal: 2.25, media: 1.15 },
+  'SPed→Loja': { normal: 2.25, media: 1.15 },
   // ═══ Intermedios El Tambo (sin precios aún) ═══
   'Mal→Ceibop': { normal: 0, media: 0 },
   'Mal→Trinidad': { normal: 0, media: 0 },
@@ -466,6 +502,7 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas',
           'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
           'Peña→Mal', 'Land→Mal', 'Chorri→Mal', 'Nango→Mal', 'Porv→Mal', 'Gran→Mal', 'Yamba→Mal', 'Rumi→Mal', 'T.Leguas→Mal', 'P.Nuevo→Mal', 'Caja→Mal', 'D.Puen→Mal', 'Capulí→Mal',
+          'D.Puen→Loja', 'Caja→Loja', 'P.Nuevo→Loja', 'T.Leguas→Loja', 'Rumi→Loja', 'Yamba→Loja', 'Gran→Loja', 'Porv→Loja', 'Nango→Loja', 'Chorri→Loja', 'Land→Loja', 'Peña→Loja', 'Mal→Loja', 'Tax→Loja', 'Cavi→Loja', 'Carar→Loja', 'SPed→Loja',
     ],
   },
   'Loja - Zahuayco': {
