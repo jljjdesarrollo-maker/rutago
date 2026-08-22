@@ -283,7 +283,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'San Bernaved': { normal: 4.00, media: 2.00 },          // ⏳ TEMPORAL
   'El Tambo': { normal: 4.00, media: 2.00 },              // ⏳ TEMPORAL
   // Zona Zahuayco
-  'Masanamaca': { normal: 3.00, media: 1.50 },           // ⏳ TEMPORAL
+  'Masanamaca': { normal: 0, media: 0 },                // ⏳ SIN PRECIO OFICIAL - pendiente
   'Quinara': { normal: 3.25, media: 1.65 },              // ⏳ TEMPORAL
   'Chumberos': { normal: 3.75, media: 1.90 },            // ⏳ TEMPORAL
   'Palmira': { normal: 3.75, media: 1.90 },              // ⏳ TEMPORAL
@@ -298,8 +298,8 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'Comunidades': { normal: 3.50, media: 1.65 },          // ⏳ TEMPORAL
   'La Elvira': { normal: 3.75, media: 1.90 },            // ✅
   // Zona Yangana
-  'Suro': { normal: 3.25, media: 1.65 },                 // ⏳ TEMPORAL
-  'Yangana': { normal: 3.75, media: 1.90 },              // ✅
+  'Suro': { normal: 0, media: 0 },                         // ⏳ SIN PRECIO OFICIAL - pendiente
+  'Yangana': { normal: 0, media: 0 },                      // ⏳ SIN PRECIO OFICIAL - pendiente
   // Intermedios Vilcabamba vuelta (desde parada hacia Malacatos)
   'Peña→Mal': { normal: 0.75, media: 0.40 },
   'Land→Mal': { normal: 0.75, media: 0.40 },
