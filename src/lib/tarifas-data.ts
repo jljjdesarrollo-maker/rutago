@@ -532,6 +532,41 @@ const preciosVueltaVilcabamba: Record<string, { normal: number; media: number }>
   'Capulí': { normal: 2.50, media: 1.25 },
 };
 
+// ─── Precios VUELTA específicos: LA ELVIRA → LOJA ───
+// Directos desde La Elvira hacia cada parada
+// Los que están en $0.00 = no se vende directo desde La Elvira a esa parada
+const preciosVueltaLaElvira: Record<string, { normal: number; media: number }> = {
+  'La Elvira': { normal: 3.75, media: 1.90 },
+  'Dos Puentes': { normal: 3.75, media: 1.90 },
+  'Comunidades': { normal: 0.75, media: 0.40 },
+  'Cajánuma': { normal: 0, media: 0 },
+  'Pueblo Nuevo': { normal: 0, media: 0 },
+  'Tres Leguas': { normal: 0, media: 0 },
+  'Rumizhitana': { normal: 0, media: 0 },
+  'Yamba': { normal: 0, media: 0 },
+  'Granadillo': { normal: 0, media: 0 },
+  'Porvenir': { normal: 0, media: 0 },
+  'Nangora': { normal: 0, media: 0 },
+  'Chorrillos': { normal: 0, media: 0 },
+  'Landangui': { normal: 0, media: 0 },
+  'La Peña': { normal: 0, media: 0 },
+  'Malacatos': { normal: 0, media: 0 },
+  'Taxiche': { normal: 0, media: 0 },
+  'Cavianga': { normal: 0, media: 0 },
+  'Cararango': { normal: 0, media: 0 },
+  'San Pedro': { normal: 0, media: 0 },
+  'Vilcabamba': { normal: 0, media: 0 },
+  'Cucanama': { normal: 0, media: 0 },
+  'Linderos': { normal: 0, media: 0 },
+  'Santorum': { normal: 0, media: 0 },
+  'Solanda': { normal: 0, media: 0 },
+  'Moyococha': { normal: 0, media: 0 },
+  'Tumianuma': { normal: 0, media: 0 },
+  // Intermedios: se buscan en preciosVuelta compartido (Vilc→X, Mal→X, X→Loja)
+  // Vilc→Loja es específico de La Elvira ($2.25 vs $2.50 troncal)
+  'Vilc→Loja': { normal: 2.25, media: 1.15 },
+};
+
 // ─── Paradas por ruta según dirección ───
 // "ida" = desde el origen de la ruta hacia el destino
 // "vuelta" = desde el destino de vuelta al origen
@@ -619,7 +654,19 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'Linderos', 'Cucanama', 'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche',
           'Malacatos', 'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
           'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes',
-          'Capulí', 'Mal→Cucan', 'Mal→Lind', 'Mal→Santo', 'Mal→Solan', 'Mal→Moyoc', 'Mal→Tumia',
+          'Capulí',
+          // Intermedios desde Malacatos hacia Loja (orange, cerca→lejos)
+          'Mal→LaPeña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
+          'Mal→Gran', 'Mal→Yamba', 'Mal→Rumi', 'Mal→T.Leguas', 'Mal→P.Nuevo',
+          'Mal→Caja', 'Mal→D.Puen', 'Mal→Capulí',
+          // Intermedios desde parada hacia Loja (troncal)
+          'D.Puen→Loja', 'Caja→Loja', 'P.Nuevo→Loja', 'T.Leguas→Loja',
+          'Rumi→Loja', 'Yamba→Loja', 'Gran→Loja', 'Porv→Loja',
+          'Nango→Loja', 'Chorri→Loja', 'Land→Loja', 'Peña→Loja',
+          'Mal→Loja', 'Taxich→Loja', 'Cavian→Loja', 'Carar→Loja', 'S.Pedro→Loja',
+          'Vilc→Loja',
+          // Intermedios La Elvira: X → Malacatos (orange) y X → Vilcabamba (purple)
+          'Mal→Cucan', 'Mal→Lind', 'Mal→Santo', 'Mal→Solan', 'Mal→Moyoc', 'Mal→Tumia',
           'Mal→Quina', 'Mal→Comun', 'Mal→Elvira', 'Vilc→Cucan', 'Vilc→Lind', 'Vilc→Santo',
           'Vilc→Solan', 'Vilc→Moyoc', 'Vilc→Tumia', 'Vilc→Quina', 'Vilc→Comun', 'Vilc→Elvira',
     ],
@@ -741,6 +788,11 @@ function getPrecio(parada: string, ruta: string, tipo: string): { normal: number
     if (ruta === 'Loja - Vilcabamba') {
       const vilcVuelta = preciosVueltaVilcabamba[parada];
       if (vilcVuelta) return vilcVuelta;
+    }
+    // Ruta La Elvira tiene precios de vuelta propios (directos desde La Elvira)
+    if (ruta === 'Loja - La Elvira') {
+      const elviraVuelta = preciosVueltaLaElvira[parada];
+      if (elviraVuelta) return elviraVuelta;
     }
     const vuelta = preciosVuelta[parada];
     if (vuelta) return vuelta;
