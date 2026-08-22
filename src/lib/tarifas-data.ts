@@ -447,7 +447,7 @@ const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = 
   'San José': { normal: 2.25, media: 1.15 },
   'Ceibopamba': { normal: 2.25, media: 1.15 },
   'Trinidad': { normal: 2.25, media: 1.15 },
-  'Malacatos': { normal: 2.00, media: 2.00 },       // ⚠️ media = $2.00?
+  'Malacatos': { normal: 2.00, media: 1.00 },
   'La Peña': { normal: 2.25, media: 1.15 },
   'Landangui': { normal: 2.25, media: 1.15 },
   'Chorrillos': { normal: 2.50, media: 1.25 },
