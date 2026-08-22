@@ -412,6 +412,24 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'Mal→Caja': { normal: 1.50, media: 0.75 },
   'Mal→D.Puen': { normal: 1.50, media: 0.75 },
   'Mal→Capulí': { normal: 2.00, media: 1.00 },
+  // Intermedios troncal vuelta: desde parada hacia Loja
+  'D.Puen→Loja': { normal: 0.75, media: 0.40 },
+  'Caja→Loja': { normal: 1.25, media: 0.55 },
+  'P.Nuevo→Loja': { normal: 1.25, media: 0.55 },
+  'T.Leguas→Loja': { normal: 1.25, media: 0.55 },
+  'Rumi→Loja': { normal: 1.25, media: 0.55 },
+  'Yamba→Loja': { normal: 1.25, media: 0.55 },
+  'Gran→Loja': { normal: 1.40, media: 0.65 },
+  'Porv→Loja': { normal: 1.40, media: 0.65 },
+  'Nango→Loja': { normal: 1.50, media: 0.75 },
+  'Chorri→Loja': { normal: 1.50, media: 0.75 },
+  'Land→Loja': { normal: 1.75, media: 0.90 },
+  'Peña→Loja': { normal: 1.75, media: 0.90 },
+  'Mal→Loja': { normal: 2.00, media: 1.00 },
+  'Taxich→Loja': { normal: 2.00, media: 1.00 },
+  'Cavian→Loja': { normal: 2.25, media: 1.15 },
+  'Carar→Loja': { normal: 2.25, media: 1.15 },
+  'S.Pedro→Loja': { normal: 2.25, media: 1.15 },
 };
 
 // ─── Precios VUELTA específicos: EL TAMBO → LOJA ───
@@ -487,6 +505,30 @@ const preciosVueltaYangana: Record<string, { normal: number; media: number }> = 
   // Intermedios: se buscan en preciosVuelta compartido (Vilc→X, Mal→X)
 };
 
+// ─── Precios VUELTA específicos: VILCABAMBA → LOJA ───
+// Directos desde Vilcabamba hacia cada parada
+const preciosVueltaVilcabamba: Record<string, { normal: number; media: number }> = {
+  'Vilcabamba': { normal: 2.50, media: 1.25 },
+  'San Pedro': { normal: 0.75, media: 0.40 },
+  'Cararango': { normal: 0.75, media: 0.40 },
+  'Cavianga': { normal: 0.75, media: 0.40 },
+  'Taxiche': { normal: 0.75, media: 0.40 },
+  'Malacatos': { normal: 1.10, media: 0.55 },
+  'Landangui': { normal: 1.10, media: 0.55 },
+  'La Peña': { normal: 0, media: 0 },
+  'Chorrillos': { normal: 1.25, media: 0.65 },
+  'Nangora': { normal: 1.25, media: 0.65 },
+  'Porvenir': { normal: 1.25, media: 0.65 },
+  'Granadillo': { normal: 1.50, media: 0.75 },
+  'Yamba': { normal: 1.50, media: 0.75 },
+  'Rumizhitana': { normal: 1.50, media: 0.75 },
+  'Tres Leguas': { normal: 1.50, media: 0.75 },
+  'Pueblo Nuevo': { normal: 1.50, media: 0.75 },
+  'Cajánuma': { normal: 2.00, media: 1.00 },
+  'Dos Puentes': { normal: 2.00, media: 1.00 },
+  'Capulí': { normal: 2.50, media: 1.25 },
+};
+
 // ─── Paradas por ruta según dirección ───
 // "ida" = desde el origen de la ruta hacia el destino
 // "vuelta" = desde el destino de vuelta al origen
@@ -504,9 +546,23 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'P.Nuevo→Vilc', 'Caja→Vilc', 'D.Puen→Vilc', 'Capulí→Vilc',
     ],
     vuelta: [
-          'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
+          'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
           'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas',
           'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
+          // Intermedios desde Vilcabamba hacia Loja (purple, cerca→lejos)
+          'Vilc→S.Pedro', 'Vilc→Carar', 'Vilc→Cavian', 'Vilc→Taxich', 'Vilc→Malac',
+          'Vilc→Land', 'Vilc→Chorri', 'Vilc→Nango', 'Vilc→Porv', 'Vilc→Gran',
+          'Vilc→Yamba', 'Vilc→Rumi', 'Vilc→T.Leguas', 'Vilc→P.Nuevo', 'Vilc→Caja',
+          'Vilc→D.Puen', 'Vilc→Capulí',
+          // Intermedios desde Malacatos hacia Loja (orange, cerca→lejos)
+          'Mal→LaPeña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
+          'Mal→Gran', 'Mal→Yamba', 'Mal→Rumi', 'Mal→T.Leguas', 'Mal→P.Nuevo',
+          'Mal→Caja', 'Mal→D.Puen', 'Mal→Capulí',
+          // Intermedios desde parada hacia Loja (cerca→lejos desde Loja)
+          'D.Puen→Loja', 'Caja→Loja', 'P.Nuevo→Loja', 'T.Leguas→Loja',
+          'Rumi→Loja', 'Yamba→Loja', 'Gran→Loja', 'Porv→Loja',
+          'Nango→Loja', 'Chorri→Loja', 'Land→Loja', 'Peña→Loja',
+          'Mal→Loja', 'Taxich→Loja', 'Cavian→Loja', 'Carar→Loja', 'S.Pedro→Loja',
     ],
   },
   'Loja - Zahuayco': {
@@ -672,6 +728,11 @@ function getPrecio(parada: string, ruta: string, tipo: string): { normal: number
     if (ruta === 'Loja - Yangana') {
       const yangVuelta = preciosVueltaYangana[parada];
       if (yangVuelta) return yangVuelta;
+    }
+    // Ruta Vilcabamba tiene precios de vuelta propios (directos desde Vilcabamba)
+    if (ruta === 'Loja - Vilcabamba') {
+      const vilcVuelta = preciosVueltaVilcabamba[parada];
+      if (vilcVuelta) return vilcVuelta;
     }
     const vuelta = preciosVuelta[parada];
     if (vuelta) return vuelta;
