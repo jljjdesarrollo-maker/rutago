@@ -54,7 +54,7 @@ export const PARADA_ZONA: Record<string, ZonaColor> = {
   'San Agustín': 'blue',
   'La Era': 'blue',
   'La Capilla': 'blue',
-  'San Bernardo': 'blue',
+  'San Bernaved': 'blue',
   'El Tambo': 'blue',
   // Zona Lejana (Zahuayco, La Elvira, Yangana)
   'Masanamaca': 'blue',
@@ -189,7 +189,7 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'San Agustín': { normal: 3.75, media: 1.90 },
   'La Era': { normal: 3.75, media: 1.90 },
   'La Capilla': { normal: 4.00, media: 2.00 },
-  'San Bernardo': { normal: 4.00, media: 2.00 },
+  'San Bernaved': { normal: 4.00, media: 2.00 },
   'El Tambo': { normal: 4.00, media: 2.00 },
   // Intermedios El Tambo IDA (desde Malacatos hacia El Tambo)
   'Mal→Ceibop': { normal: 0.75, media: 0.40 },
@@ -289,7 +289,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'San Agustín': { normal: 3.75, media: 1.90 },
   'La Era': { normal: 3.75, media: 1.90 },
   'La Capilla': { normal: 4.00, media: 2.00 },
-  'San Bernardo': { normal: 4.00, media: 2.00 },
+  'San Bernaved': { normal: 4.00, media: 2.00 },
   'El Tambo': { normal: 4.00, media: 2.00 },
   'Masanamaca': { normal: 3.00, media: 1.50 },
   'Quinara': { normal: 3.25, media: 1.65 },
@@ -370,7 +370,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
 // ─── Precios VUELTA específicos: EL TAMBO → LOJA ───
 // Vuelta El Tambo = Ida (misma distancia)
 const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = {
-  'San Bernardo': { normal: 4.00, media: 2.00 },
+  'San Bernaved': { normal: 4.00, media: 2.00 },
   'La Capilla': { normal: 4.00, media: 2.00 },
   'La Era': { normal: 3.75, media: 1.90 },
   'San Agustín': { normal: 3.75, media: 1.90 },
@@ -448,12 +448,12 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
           'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
           'Ceibopamba', 'Trinidad', 'San José', 'Santo Domingo', 'Naranjo Dulce', 'Zhotahuayco',
-          'La Merced', 'San Agustín', 'La Era', 'La Capilla', 'San Bernardo', 'El Tambo', 'Mal→Ceibop',
+          'La Merced', 'San Agustín', 'La Era', 'La Capilla', 'San Bernaved', 'El Tambo', 'Mal→Ceibop',
           'Mal→Trinidad', 'Mal→S.Jose', 'Mal→StoDom', 'Mal→N.Dulce', 'Mal→Zhotahu', 'Mal→LaMerc',
           'Mal→S.Agust', 'Mal→LaEra', 'Mal→LaCap', 'Mal→S.Bern', 'Mal→ElTambo',
     ],
     vuelta: [
-          'El Tambo', 'San Bernardo', 'La Capilla', 'La Era', 'San Agustín', 'La Merced', 'Zhotahuayco',
+          'El Tambo', 'San Bernaved', 'La Capilla', 'La Era', 'San Agustín', 'La Merced', 'Zhotahuayco',
           'Naranjo Dulce', 'Santo Domingo', 'San José', 'Ceibopamba', 'Trinidad', 'Malacatos',
           'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba',
           'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
