@@ -368,33 +368,35 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
 };
 
 // ─── Precios VUELTA específicos: EL TAMBO → LOJA ───
-// Vuelta El Tambo = Ida (misma distancia)
+// ✅ = precio oficial del PDF retorno
+// ⏳ TEMPORAL = usa precio IDA hasta recibir oficial
 const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = {
-  'San Bernaved': { normal: 4.00, media: 2.00 },
-  'La Capilla': { normal: 4.00, media: 2.00 },
-  'La Era': { normal: 3.75, media: 1.90 },
-  'San Agustín': { normal: 3.75, media: 1.90 },
-  'La Merced': { normal: 3.25, media: 1.65 },
-  'Zhotahuayco': { normal: 3.00, media: 1.50 },
-  'Naranjo Dulce': { normal: 2.75, media: 1.40 },
-  'Santo Domingo': { normal: 2.50, media: 1.25 },
-  'San José': { normal: 2.25, media: 1.15 },
-  'Ceibopamba': { normal: 2.25, media: 1.15 },
-  'Trinidad': { normal: 2.25, media: 1.15 },
-  'Malacatos': { normal: 2.00, media: 1.00 },
-  'La Peña': { normal: 1.75, media: 0.90 },
-  'Landangui': { normal: 1.75, media: 0.90 },
-  'Chorrillos': { normal: 1.50, media: 0.75 },
-  'Nangora': { normal: 1.50, media: 0.75 },
-  'Porvenir': { normal: 1.40, media: 0.65 },
-  'Granadillo': { normal: 1.40, media: 0.65 },
-  'Yamba': { normal: 1.25, media: 0.55 },
-  'Rumizhitana': { normal: 1.25, media: 0.55 },
-  'Tres Leguas': { normal: 1.25, media: 0.55 },
-  'Pueblo Nuevo': { normal: 1.25, media: 0.55 },
-  'Cajánuma': { normal: 1.25, media: 0.55 },
-  'Dos Puentes': { normal: 0.75, media: 0.40 },
-  // Intermedios El Tambo vuelta (vuelta = ida)
+  'El Tambo': { normal: 4.00, media: 2.00 },       // ✅
+  'San Bernaved': { normal: 4.00, media: 2.00 },   // ✅
+  'La Capilla': { normal: 4.00, media: 2.00 },     // ✅
+  'La Era': { normal: 3.75, media: 1.90 },          // ⏳ TEMPORAL
+  'San Agustín': { normal: 3.75, media: 1.90 },     // ⏳ TEMPORAL
+  'La Merced': { normal: 3.25, media: 1.65 },        // ⏳ TEMPORAL
+  'Zhotahuayco': { normal: 3.00, media: 1.50 },     // ⏳ TEMPORAL
+  'Naranjo Dulce': { normal: 2.75, media: 1.40 },    // ⏳ TEMPORAL
+  'Santo Domingo': { normal: 2.50, media: 1.25 },    // ⏳ TEMPORAL
+  'San José': { normal: 2.25, media: 1.15 },         // ⏳ TEMPORAL
+  'Ceibopamba': { normal: 2.25, media: 1.15 },       // ⏳ TEMPORAL
+  'Trinidad': { normal: 2.25, media: 1.15 },         // ⏳ TEMPORAL
+  'Malacatos': { normal: 2.00, media: 1.00 },       // ✅
+  'La Peña': { normal: 1.75, media: 0.90 },           // ✅
+  'Landangui': { normal: 1.75, media: 0.90 },        // ✅
+  'Chorrillos': { normal: 1.50, media: 0.75 },       // ✅
+  'Nangora': { normal: 1.50, media: 0.75 },          // ✅
+  'Porvenir': { normal: 1.40, media: 0.65 },         // ✅
+  'Granadillo': { normal: 1.40, media: 0.65 },       // ✅
+  'Yamba': { normal: 1.25, media: 0.55 },            // ✅
+  'Rumizhitana': { normal: 1.25, media: 0.55 },      // ✅
+  'Tres Leguas': { normal: 1.25, media: 0.55 },      // ✅
+  'Pueblo Nuevo': { normal: 1.25, media: 0.55 },     // ✅
+  'Cajánuma': { normal: 1.25, media: 0.55 },        // ✅
+  'Dos Puentes': { normal: 0.75, media: 0.40 },      // ✅
+  // Intermedios El Tambo vuelta (desde Malacatos)
   'Mal→Ceibop': { normal: 0.75, media: 0.40 },
   'Mal→Trinidad': { normal: 0.75, media: 0.40 },
   'Mal→S.Jose': { normal: 0.75, media: 0.40 },
