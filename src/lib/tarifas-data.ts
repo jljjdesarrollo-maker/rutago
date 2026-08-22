@@ -310,7 +310,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'La Elvira': { normal: 3.75, media: 1.90 },            // ✅
   // Zona Yangana
   'Suro': { normal: 3.25, media: 1.65 },                 // ⏳ TEMPORAL
-  'Yangana': { normal: 3.75, media: 1.90 },              // ⏳ TEMPORAL
+  'Yangana': { normal: 3.75, media: 1.90 },              // ✅
   // Intermedios Vilcabamba vuelta (desde parada hacia Malacatos)
   'Peña→Mal': { normal: 0.75, media: 0.40 },
   'Land→Mal': { normal: 0.75, media: 0.40 },
