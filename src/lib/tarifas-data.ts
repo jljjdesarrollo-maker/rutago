@@ -283,7 +283,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'San Bernaved': { normal: 4.00, media: 2.00 },          // ⏳ TEMPORAL
   'El Tambo': { normal: 4.00, media: 2.00 },              // ⏳ TEMPORAL
   // Zona Zahuayco
-  'Masanamaca': { normal: 0, media: 0 },                // ⏳ SIN PRECIO OFICIAL - pendiente
+  'Masanamaca': { normal: 3.00, media: 1.50 },           // ⏳ TEMPORAL
   'Quinara': { normal: 3.25, media: 1.65 },              // ⏳ TEMPORAL
   'Chumberos': { normal: 3.75, media: 1.90 },            // ⏳ TEMPORAL
   'Palmira': { normal: 3.75, media: 1.90 },              // ⏳ TEMPORAL
@@ -297,9 +297,9 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'Tumianuma': { normal: 3.25, media: 1.65 },            // ⏳ TEMPORAL
   'Comunidades': { normal: 3.50, media: 1.65 },          // ⏳ TEMPORAL
   'La Elvira': { normal: 3.75, media: 1.90 },            // ✅
-  // Zona Yangana
-  'Suro': { normal: 0, media: 0 },                         // ⏳ SIN PRECIO OFICIAL - pendiente
-  'Yangana': { normal: 0, media: 0 },                      // ⏳ SIN PRECIO OFICIAL - pendiente
+  // Zona Yangana (precios vuelta específicos en preciosVueltaYangana)
+  'Suro': { normal: 3.25, media: 1.65 },                 // ⏳ TEMPORAL (Zahuayco usa este)
+  'Yangana': { normal: 3.75, media: 1.90 },              // ⏳ TEMPORAL (respaldo, Yangana usa preciosVueltaYangana)
   // Intermedios Vilcabamba vuelta (desde parada hacia Malacatos)
   'Peña→Mal': { normal: 0.75, media: 0.40 },
   'Land→Mal': { normal: 0.75, media: 0.40 },
@@ -436,6 +436,35 @@ const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = 
   'Mal→LaCap': { normal: 2.25, media: 1.15 },
   'Mal→S.Bern': { normal: 2.25, media: 1.15 },
   'Mal→ElTambo': { normal: 2.25, media: 1.15 },
+};
+
+// ─── Precios VUELTA específicos: YANGANA → LOJA ───
+// Directos desde Yangana hacia cada parada
+// Los que están en $0.00 = no se vende directo desde Yangana a esa parada
+const preciosVueltaYangana: Record<string, { normal: number; media: number }> = {
+  'Yangana': { normal: 3.75, media: 1.90 },
+  'Suro': { normal: 0.75, media: 0.40 },
+  'Dos Puentes': { normal: 3.75, media: 1.90 },
+  'Cajánuma': { normal: 0, media: 0 },
+  'Pueblo Nuevo': { normal: 0, media: 0 },
+  'Tres Leguas': { normal: 0, media: 0 },
+  'Rumizhitana': { normal: 0, media: 0 },
+  'Yamba': { normal: 0, media: 0 },
+  'Granadillo': { normal: 0, media: 0 },
+  'Porvenir': { normal: 0, media: 0 },
+  'Nangora': { normal: 0, media: 0 },
+  'Chorrillos': { normal: 0, media: 0 },
+  'Landangui': { normal: 0, media: 0 },
+  'La Peña': { normal: 0, media: 0 },
+  'Malacatos': { normal: 0, media: 0 },
+  'Taxiche': { normal: 0, media: 0 },
+  'Cavianga': { normal: 0, media: 0 },
+  'Cararango': { normal: 0, media: 0 },
+  'San Pedro': { normal: 0, media: 0 },
+  'Vilcabamba': { normal: 0, media: 0 },
+  'Masanamaca': { normal: 0, media: 0 },
+  'Capulí': { normal: 0, media: 0 },
+  // Intermedios: se buscan en preciosVuelta compartido (Vilc→X, Mal→X)
 };
 
 // ─── Paradas por ruta según dirección ───
@@ -615,6 +644,11 @@ function getPrecio(parada: string, ruta: string, tipo: string): { normal: number
     if (ruta === 'Loja - El Tambo') {
       const tamboVuelta = preciosVueltaElTambo[parada];
       if (tamboVuelta) return tamboVuelta;
+    }
+    // Ruta Yangana tiene precios de vuelta propios (directos desde Yangana)
+    if (ruta === 'Loja - Yangana') {
+      const yangVuelta = preciosVueltaYangana[parada];
+      if (yangVuelta) return yangVuelta;
     }
     const vuelta = preciosVuelta[parada];
     if (vuelta) return vuelta;
