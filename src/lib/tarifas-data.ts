@@ -307,7 +307,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'Moyococha': { normal: 3.00, media: 1.50 },            // ⏳ TEMPORAL
   'Tumianuma': { normal: 3.25, media: 1.65 },            // ⏳ TEMPORAL
   'Comunidades': { normal: 3.50, media: 1.65 },          // ⏳ TEMPORAL
-  'La Elvira': { normal: 3.75, media: 1.90 },            // ⏳ TEMPORAL
+  'La Elvira': { normal: 3.75, media: 1.90 },            // ✅
   // Zona Yangana
   'Suro': { normal: 3.25, media: 1.65 },                 // ⏳ TEMPORAL
   'Yangana': { normal: 3.75, media: 1.90 },              // ⏳ TEMPORAL
