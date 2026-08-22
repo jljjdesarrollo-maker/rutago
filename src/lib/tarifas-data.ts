@@ -433,35 +433,35 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
 };
 
 // ─── Precios VUELTA específicos: EL TAMBO → LOJA ───
-// ✅ = precio oficial del PDF retorno
-// ⏳ TEMPORAL = usa precio IDA hasta recibir oficial
+// Directos desde El Tambo hacia cada parada
 const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = {
-  'El Tambo': { normal: 4.00, media: 2.00 },       // ✅
-  'San Bernaved': { normal: 4.00, media: 2.00 },   // ✅
-  'La Capilla': { normal: 4.00, media: 2.00 },     // ✅
-  'La Era': { normal: 3.75, media: 1.90 },          // ⏳ TEMPORAL
-  'San Agustín': { normal: 3.75, media: 1.90 },     // ⏳ TEMPORAL
-  'La Merced': { normal: 3.25, media: 1.65 },        // ⏳ TEMPORAL
-  'Zhotahuayco': { normal: 3.00, media: 1.50 },     // ⏳ TEMPORAL
-  'Naranjo Dulce': { normal: 2.75, media: 1.40 },    // ⏳ TEMPORAL
-  'Santo Domingo': { normal: 2.50, media: 1.25 },    // ⏳ TEMPORAL
-  'San José': { normal: 2.25, media: 1.15 },         // ⏳ TEMPORAL
-  'Ceibopamba': { normal: 2.25, media: 1.15 },       // ⏳ TEMPORAL
-  'Trinidad': { normal: 2.25, media: 1.15 },         // ⏳ TEMPORAL
-  'Malacatos': { normal: 2.00, media: 1.00 },       // ✅
-  'La Peña': { normal: 1.75, media: 0.90 },           // ✅
-  'Landangui': { normal: 1.75, media: 0.90 },        // ✅
-  'Chorrillos': { normal: 1.50, media: 0.75 },       // ✅
-  'Nangora': { normal: 1.50, media: 0.75 },          // ✅
-  'Porvenir': { normal: 1.40, media: 0.65 },         // ✅
-  'Granadillo': { normal: 1.40, media: 0.65 },       // ✅
-  'Yamba': { normal: 1.25, media: 0.55 },            // ✅
-  'Rumizhitana': { normal: 1.25, media: 0.55 },      // ✅
-  'Tres Leguas': { normal: 1.25, media: 0.55 },      // ✅
-  'Pueblo Nuevo': { normal: 1.25, media: 0.55 },     // ✅
-  'Cajánuma': { normal: 1.25, media: 0.55 },        // ✅
-  'Dos Puentes': { normal: 0.75, media: 0.40 },      // ✅
-  // Intermedios El Tambo vuelta (desde Malacatos)
+  'El Tambo': { normal: 4.00, media: 2.00 },
+  'San Bernaved': { normal: 0.75, media: 0.40 },
+  'La Capilla': { normal: 0.75, media: 0.40 },
+  'La Era': { normal: 1.00, media: 0.50 },
+  'San Agustín': { normal: 1.25, media: 0.65 },
+  'La Merced': { normal: 1.50, media: 0.75 },
+  'Zhotahuayco': { normal: 1.75, media: 0.90 },
+  'Naranjo Dulce': { normal: 1.75, media: 0.90 },
+  'Santo Domingo': { normal: 2.00, media: 1.00 },
+  'San José': { normal: 2.25, media: 1.15 },
+  'Ceibopamba': { normal: 2.25, media: 1.15 },
+  'Trinidad': { normal: 2.25, media: 1.15 },
+  'Malacatos': { normal: 2.00, media: 2.00 },       // ⚠️ media = $2.00?
+  'La Peña': { normal: 2.25, media: 1.15 },
+  'Landangui': { normal: 2.25, media: 1.15 },
+  'Chorrillos': { normal: 2.50, media: 1.25 },
+  'Nangora': { normal: 2.50, media: 1.25 },
+  'Porvenir': { normal: 2.50, media: 1.25 },
+  'Granadillo': { normal: 2.50, media: 1.25 },
+  'Yamba': { normal: 2.50, media: 1.25 },
+  'Rumizhitana': { normal: 2.50, media: 1.25 },
+  'Tres Leguas': { normal: 3.00, media: 1.50 },
+  'Pueblo Nuevo': { normal: 3.00, media: 1.50 },
+  'Cajánuma': { normal: 3.00, media: 1.50 },
+  'Dos Puentes': { normal: 4.00, media: 2.00 },
+  'Capulí': { normal: 4.00, media: 2.00 },
+  // Intermedios El Tambo IDA (desde Malacatos hacia El Tambo)
   'Mal→Ceibop': { normal: 0.75, media: 0.40 },
   'Mal→Trinidad': { normal: 0.75, media: 0.40 },
   'Mal→S.Jose': { normal: 0.75, media: 0.40 },
@@ -474,6 +474,9 @@ const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = 
   'Mal→LaCap': { normal: 2.25, media: 1.15 },
   'Mal→S.Bern': { normal: 2.25, media: 1.15 },
   'Mal→ElTambo': { normal: 2.25, media: 1.15 },
+  // Intermedios El Tambo vuelta: X → Loja (troncal usa preciosVuelta compartido)
+  'LaCap→Loja': { normal: 4.00, media: 2.00 },
+  'S.Bern→Loja': { normal: 4.00, media: 2.00 },
 };
 
 // ─── Precios VUELTA específicos: YANGANA → LOJA ───
@@ -589,6 +592,16 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'Naranjo Dulce', 'Santo Domingo', 'San José', 'Ceibopamba', 'Trinidad', 'Malacatos',
           'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba',
           'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
+          // Intermedios desde Malacatos hacia Loja (orange, cerca→lejos)
+          'Mal→LaPeña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
+          'Mal→Gran', 'Mal→Yamba', 'Mal→Rumi', 'Mal→T.Leguas', 'Mal→P.Nuevo',
+          'Mal→Caja', 'Mal→D.Puen', 'Mal→Capulí',
+          // Intermedios desde parada hacia Loja (troncal)
+          'D.Puen→Loja', 'Caja→Loja', 'P.Nuevo→Loja', 'T.Leguas→Loja',
+          'Rumi→Loja', 'Yamba→Loja', 'Gran→Loja', 'Porv→Loja',
+          'Nango→Loja', 'Chorri→Loja', 'Land→Loja', 'Peña→Loja', 'Mal→Loja',
+          // Intermedios desde parada hacia Loja (rama El Tambo)
+          'LaCap→Loja', 'S.Bern→Loja',
     ],
   },
   'Loja - La Elvira': {
