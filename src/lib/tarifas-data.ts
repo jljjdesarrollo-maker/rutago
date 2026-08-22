@@ -122,6 +122,7 @@ export function getZonaParada(parada: string): ZonaColor {
   if (PARADA_ZONA[parada]) return PARADA_ZONA[parada];
   // Intermedios: color por hub de origen
   if (parada.startsWith('Vilc→')) return 'purple';
+  if (parada.endsWith('→Vilc')) return 'purple';
   if (parada.startsWith('Mal→') || parada.endsWith('→Mal')) return 'orange';
   return 'yellow';
 }
@@ -167,6 +168,25 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'Caja→Mal': { normal: 1.50, media: 0.75 },
   'D.Puen→Mal': { normal: 1.50, media: 0.75 },
   'Capulí→Mal': { normal: 2.00, media: 1.00 },
+  // Tramos intermedios ida (desde parada hacia Vilcabamba)
+  'S.Pedro→Vilc': { normal: 0.75, media: 0.40 },
+  'Carar→Vilc': { normal: 0.75, media: 0.40 },
+  'Cavian→Vilc': { normal: 0.75, media: 0.40 },
+  'Taxich→Vilc': { normal: 0.75, media: 0.40 },
+  'Mal→Vilc': { normal: 1.10, media: 0.55 },
+  'Land→Vilc': { normal: 1.10, media: 0.55 },
+  'Peña→Vilc': { normal: 1.10, media: 0.55 },
+  'Chorri→Vilc': { normal: 1.25, media: 0.65 },
+  'Nango→Vilc': { normal: 1.25, media: 0.65 },
+  'Porv→Vilc': { normal: 1.25, media: 0.65 },
+  'Gran→Vilc': { normal: 1.50, media: 0.75 },
+  'Yamba→Vilc': { normal: 1.50, media: 0.75 },
+  'Rumi→Vilc': { normal: 1.50, media: 0.75 },
+  'T.Leguas→Vilc': { normal: 1.50, media: 0.75 },
+  'P.Nuevo→Vilc': { normal: 1.50, media: 0.75 },
+  'Caja→Vilc': { normal: 2.00, media: 1.00 },
+  'D.Puen→Vilc': { normal: 2.00, media: 1.00 },
+  'Capulí→Vilc': { normal: 2.50, media: 1.25 },
   // ═══ LOJA - EL TAMBO (ramifica en Malacatos, NO pasa Vilcabamba) ═══
   'Ceibopamba': { normal: 2.25, media: 1.15 },
   'Trinidad': { normal: 2.25, media: 1.15 },
@@ -479,6 +499,9 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Peña→Mal', 'Land→Mal',
           'Chorri→Mal', 'Nango→Mal', 'Porv→Mal', 'Gran→Mal', 'Yamba→Mal', 'Rumi→Mal', 'T.Leguas→Mal',
           'P.Nuevo→Mal', 'Caja→Mal', 'D.Puen→Mal', 'Capulí→Mal',
+          'S.Pedro→Vilc', 'Carar→Vilc', 'Cavian→Vilc', 'Taxich→Vilc', 'Mal→Vilc', 'Land→Vilc', 'Peña→Vilc',
+          'Chorri→Vilc', 'Nango→Vilc', 'Porv→Vilc', 'Gran→Vilc', 'Yamba→Vilc', 'Rumi→Vilc', 'T.Leguas→Vilc',
+          'P.Nuevo→Vilc', 'Caja→Vilc', 'D.Puen→Vilc', 'Capulí→Vilc',
     ],
     vuelta: [
           'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
