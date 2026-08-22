@@ -370,6 +370,39 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'Vilc→Tumia': { normal: 2.00, media: 1.00 },
   'Vilc→Comun': { normal: 2.00, media: 1.00 },
   'Vilc→Elvira': { normal: 2.40, media: 1.20 },
+  // Intermedios troncal vuelta (desde hub hacia Loja)
+  // Desde Vilcabamba hacia Loja (cerca→lejos)
+  'Vilc→S.Pedro': { normal: 0.75, media: 0.40 },
+  'Vilc→Carar': { normal: 0.75, media: 0.40 },
+  'Vilc→Cavian': { normal: 0.75, media: 0.40 },
+  'Vilc→Taxich': { normal: 0.75, media: 0.40 },
+  'Vilc→Malac': { normal: 1.10, media: 0.55 },
+  'Vilc→Land': { normal: 1.10, media: 0.55 },
+  'Vilc→Chorri': { normal: 1.25, media: 0.65 },
+  'Vilc→Nango': { normal: 1.25, media: 0.65 },
+  'Vilc→Porv': { normal: 1.25, media: 0.65 },
+  'Vilc→Gran': { normal: 1.50, media: 0.75 },
+  'Vilc→Yamba': { normal: 1.50, media: 0.75 },
+  'Vilc→Rumi': { normal: 1.50, media: 0.75 },
+  'Vilc→T.Leguas': { normal: 1.50, media: 0.75 },
+  'Vilc→P.Nuevo': { normal: 1.50, media: 0.75 },
+  'Vilc→Caja': { normal: 2.00, media: 1.00 },
+  'Vilc→D.Puen': { normal: 2.00, media: 1.00 },
+  'Vilc→Capulí': { normal: 2.50, media: 1.25 },
+  // Desde Malacatos hacia Loja (cerca→lejos)
+  'Mal→LaPeña': { normal: 0.75, media: 0.40 },
+  'Mal→Land': { normal: 0.75, media: 0.40 },
+  'Mal→Chorri': { normal: 0.75, media: 0.40 },
+  'Mal→Nango': { normal: 0.75, media: 0.40 },
+  'Mal→Porv': { normal: 1.10, media: 0.55 },
+  'Mal→Gran': { normal: 1.10, media: 0.55 },
+  'Mal→Yamba': { normal: 1.10, media: 0.55 },
+  'Mal→Rumi': { normal: 1.10, media: 0.55 },
+  'Mal→T.Leguas': { normal: 1.10, media: 0.55 },
+  'Mal→P.Nuevo': { normal: 1.10, media: 0.55 },
+  'Mal→Caja': { normal: 1.50, media: 0.75 },
+  'Mal→D.Puen': { normal: 1.50, media: 0.75 },
+  'Mal→Capulí': { normal: 2.00, media: 1.00 },
 };
 
 // ─── Precios VUELTA específicos: EL TAMBO → LOJA ───
@@ -498,6 +531,15 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'Taxiche', 'Malacatos', 'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir',
           'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma',
           'Dos Puentes', 'Capulí',
+          // Intermedios desde Vilcabamba hacia Loja
+          'Vilc→S.Pedro', 'Vilc→Carar', 'Vilc→Cavian', 'Vilc→Taxich', 'Vilc→Malac',
+          'Vilc→Land', 'Vilc→Chorri', 'Vilc→Nango', 'Vilc→Porv', 'Vilc→Gran',
+          'Vilc→Yamba', 'Vilc→Rumi', 'Vilc→T.Leguas', 'Vilc→P.Nuevo', 'Vilc→Caja',
+          'Vilc→D.Puen', 'Vilc→Capulí',
+          // Intermedios desde Malacatos hacia Loja
+          'Mal→LaPeña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
+          'Mal→Gran', 'Mal→Yamba', 'Mal→Rumi', 'Mal→T.Leguas', 'Mal→P.Nuevo',
+          'Mal→Caja', 'Mal→D.Puen', 'Mal→Capulí',
     ],
   },
   'Vilcabamba - Loja': {
