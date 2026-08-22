@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "```json\n[\n  {\n    \"Tipo\": \"IDA\",\n    \"Origen\": \"Santiago\",\n    \"Destino\": \"Valdivia\",\n    \"Normal\": \"$29.990\",\n    \"Media\": \"$24.990\"\n  },\n  {\n    \"Tipo\": \"IDA\",\n    \"Origen\": \"Santiago\",\n    \"Destino\": \"Osorno\",\n    \"Normal\": \"$28.990\",\n    \"Media\": \"$23.990\"\n  },\n  {\n    \"Tipo\": \"IDA\",\n    \"Origen\": \"Santiago\",\n    \"Destino\": \"Puerto Montt\",\n    \"Normal\": \"$32.990\",\n    \"Media\": \"$26.990\"\n  }\n]\n```",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1787419980,
+  "id": "202608230132578adca5f52a604644",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "202608230132578adca5f52a604644",
+  "usage": {
+    "completion_tokens": 157,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 4850,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 5007
+  }
+}

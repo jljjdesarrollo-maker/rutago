@@ -1,0 +1,28 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "```json\n[\n  {\n    \"Tipo\": \"INTERMEDIO\",\n    \"Origen\": \"DOS PUENTES\",\n    \"Destino\": \"Vilcabamba\",\n    \"Normal\": \"$2,00\",\n    \"Media\": \"$1,00\"\n  },\n  {\n    \"Tipo\": \"INTERMEDIO\",\n    \"Origen\": \"CAPULI\",\n    \"Destino\": \"Vilcabamba\",\n    \"Normal\": \"$2,50\",\n    \"Media\": \"$1,25\"\n  },\n  {\n    \"Tipo\": \"INTERMEDIO\",\n    \"Origen\": \"Malacatos\",\n    \"Destino\": \"MASANAMACA\",\n    \"Normal\": \"$2,00\",\n    \"Media\": \"$1,00\"\n  },\n  {\n    \"Tipo\": \"INTERMEDIO\",\n    \"Origen\": \"Malacatos\",\n    \"Destino\": \"QUINARA\",\n    \"Normal\": \"$2,00\",\n    \"Media\": \"$1,00\"\n  },\n  {\n    \"Tipo\": \"INTERMEDIO\",\n    \"Origen\": \"Malacatos\",\n    \"Destino\": \"CHUMBEROS\",\n    \"Normal\": \"$2,50\",\n    \"Media\": \"$1,25\"\n  },\n  {\n    \"Tipo\": \"INTERMEDIO\",\n    \"Origen\": \"Malacatos\",\n    \"Destino\": \"PALMIRA\",\n    \"Normal\": \"$2,90\",\n    \"Media\": \"$1,45\"\n  },\n  {\n    \"Tipo\": \"INTERMEDIO\",\n    \"Origen\": \"Malacatos\",\n    \"Destino\": \"ZAHUAYCO\",\n    \"Normal\": \"$3,15\",\n    \"Media\": \"$1,60\"\n  },\n  {\n    \"Tipo\": \"INTERMEDIO\",\n    \"Origen\": \"Vilcabamba\",\n    \"Destino\": \"MASANAMACA\",\n    \"Normal\": \"$1,10\",\n    \"Media\": \"$0,55\"\n  },\n  {\n    \"Tipo\": \"INTERMEDIO\",\n    \"Origen\": \"Vilcabamba\",\n    \"Destino\": \"QUINARA\",\n    \"Normal\": \"$2,00\",\n    \"Media\": \"$0,80\"\n  },\n  {\n    \"Tipo\": \"INTERMEDIO\",\n    \"Origen\": \"Vilcabamba\",\n    \"Destino\": \"CHUMBEROS\",\n    \"Normal\": \"$2,00\",\n    \"Media\": \"$1,00\"\n  },\n  {\n    \"Tipo\": \"INTERMEDIO\",\n    \"Origen\": \"Vilcabamba\",\n    \"Destino\": \"PALMIRA\",\n    \"Normal\": \"$2,25\",\n    \"Media\": \"$1,15\"\n  },\n  {\n    \"Tipo\": \"INTERMEDIO\",\n    \"Origen\": \"Vilcabamba\",\n    \"Destino\": \"ZAHUAYCO\",\n    \"Normal\": \"$2,50\",\n    \"Media\": \"$1,25\"\n  }\n]\n```",
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1787419969,
+  "id": "20260823013243076dc09b77744bbd",
+  "model": "glm-5v-turbo",
+  "object": "chat.completion",
+  "request_id": "20260823013243076dc09b77744bbd",
+  "usage": {
+    "completion_tokens": 636,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens": 4850,
+    "prompt_tokens_details": {
+      "cached_tokens": 2
+    },
+    "total_tokens": 5486
+  }
+}
