@@ -18,7 +18,7 @@ export const TARIFA_MINIMA = 0.40; // Media tarifa más baja
 // green  = cerca de Loja (inicio del recorrido)
 // yellow = zona media
 // blue   = cerca de Vilcabamba (final del recorrido)
-export type ZonaColor = 'green' | 'yellow' | 'blue';
+export type ZonaColor = 'green' | 'yellow' | 'blue' | 'orange' | 'purple';
 
 export const PARADA_ZONA: Record<string, ZonaColor> = {
   // Zona cercana a Loja
@@ -71,39 +71,8 @@ export const PARADA_ZONA: Record<string, ZonaColor> = {
   'La Elvira': 'blue',
   'Suro': 'blue',
   'Yangana': 'blue',
-  // Tramos intermedios → se asignan por origen  'Rumi→Mal': 'yellow',  'Nango→Mal': 'yellow',  'Land→Mal': 'yellow',  'T.Leguas→Mal': 'yellow',  // Vuelta intermedios  // Intermedios El Tambo IDA (Loja → El Tambo)
-  'Mal→Ceibop': 'blue',
-  'Mal→Trinidad': 'blue',
-  'Mal→S.Jose': 'blue',
-  'Mal→StoDom': 'blue',
-  'Mal→N.Dulce': 'blue',
-  'Mal→Zhotahu': 'blue',
-  'Mal→LaMerc': 'blue',
-  'Mal→S.Agust': 'blue',
-  'Mal→LaEra': 'blue',
-  'Mal→LaCap': 'blue',
-  'Mal→S.Bern': 'blue',
-  'Mal→ElTambo': 'blue',
-  // Intermedios El Tambo VUELTA (El Tambo → Loja, desde zona El Tambo)  // Intermedios El Tambo VUELTA (desde Malacatos hacia Loja)  // Intermedios La Elvira IDA (desde Malacatos hacia La Elvira)
-  'Mal→Cucan': 'blue',
-  'Mal→Lind': 'blue',
-  'Mal→Santo': 'blue',
-  'Mal→Solan': 'blue',
-  'Mal→Moyoc': 'blue',
-  'Mal→Tumia': 'blue',
-  'Mal→Quina': 'blue',
-  'Mal→Comun': 'blue',
-  'Mal→Elvira': 'blue',
-  // Intermedios La Elvira IDA (desde Vilcabamba hacia La Elvira)
-  'Vilc→Cucan': 'blue',
-  'Vilc→Lind': 'blue',
-  'Vilc→Santo': 'blue',
-  'Vilc→Solan': 'blue',
-  'Vilc→Moyoc': 'blue',
-  'Vilc→Tumia': 'blue',
-  'Vilc→Quina': 'blue',
-  'Vilc→Comun': 'blue',
-  'Vilc→Elvira': 'blue',
+  // Intermedios se asignan dinámicamente por prefix en getZonaParada()
+  // Mal→X y X→Mal → orange | Vilc→X → purple
 };
 
 export const ZONA_COLORS: Record<ZonaColor, { bg: string; bgSelected: string; text: string; border: string; price: string; sub: string }> = {
@@ -131,10 +100,30 @@ export const ZONA_COLORS: Record<ZonaColor, { bg: string; bgSelected: string; te
     price: 'text-blue-700',
     sub: 'text-blue-400',
   },
+  orange: {
+    bg: 'bg-orange-50',
+    bgSelected: 'bg-orange-500',
+    text: 'text-orange-900',
+    border: 'border-orange-200',
+    price: 'text-orange-700',
+    sub: 'text-orange-400',
+  },
+  purple: {
+    bg: 'bg-purple-50',
+    bgSelected: 'bg-purple-600',
+    text: 'text-purple-900',
+    border: 'border-purple-200',
+    price: 'text-purple-700',
+    sub: 'text-purple-400',
+  },
 };
 
 export function getZonaParada(parada: string): ZonaColor {
-  return PARADA_ZONA[parada] || 'yellow';
+  if (PARADA_ZONA[parada]) return PARADA_ZONA[parada];
+  // Intermedios: color por hub de origen
+  if (parada.startsWith('Vilc→')) return 'purple';
+  if (parada.startsWith('Mal→') || parada.endsWith('→Mal')) return 'orange';
+  return 'yellow';
 }
 
 export function isParadaPrincipal(parada: string): boolean {
