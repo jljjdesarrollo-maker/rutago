@@ -562,6 +562,7 @@ const preciosVueltaLaElvira: Record<string, { normal: number; media: number }> =
   'Solanda': { normal: 0, media: 0 },
   'Moyococha': { normal: 0, media: 0 },
   'Tumianuma': { normal: 0, media: 0 },
+  'Quinara': { normal: 0, media: 0 },
   // Intermedios: se buscan en preciosVuelta compartido (Vilc→X, Mal→X, X→Loja)
   // Vilc→Loja es específico de La Elvira ($2.25 vs $2.50 troncal)
   'Vilc→Loja': { normal: 2.25, media: 1.15 },
