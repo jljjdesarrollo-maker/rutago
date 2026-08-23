@@ -1,66 +1,29 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { generateTicketBytes, TicketData } from '@/lib/ticket-escpos';
 
 type Step = 'idle' | 'scanning' | 'found' | 'connecting' | 'printing' | 'done' | 'error';
 
-// ESC/POS commands
-const ESC = 0x1B;
-const GS = 0x1D;
-const LF = 0x0A;
-
-function center(text: string, max: number = 32): string {
-  const pad = Math.max(0, Math.floor((max - text.length) / 2));
-  return ' '.repeat(pad) + text;
-}
-
 function buildTestTicket(): Uint8Array {
-  const parts: Uint8Array[] = [];
-  const push = (data: Uint8Array | string) => {
-    parts.push(typeof data === 'string' ? new TextEncoder().encode(data) : data);
-  };
-
-  const INIT = new Uint8Array([ESC, 0x40]);
-  const BOLD_ON = new Uint8Array([ESC, 0x45, 0x01]);
-  const BOLD_OFF = new Uint8Array([ESC, 0x45, 0x00]);
-  const DBL = new Uint8Array([GS, 0x21, 0x11]);
-  const DBL_H = new Uint8Array([GS, 0x21, 0x01]);
-  const NORM = new Uint8Array([GS, 0x21, 0x00]);
-  const NL = new Uint8Array([LF]);
-  const CUT = new Uint8Array([GS, 0x56, 0x01]);
-
   const now = new Date();
   const fecha = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getFullYear()).slice(2)}`;
   const hora = now.toTimeString().slice(0, 5);
 
-  push(INIT);
-  push(BOLD_ON); push(DBL);
-  push(center('RUTAGO')); push(NL);
-  push(NORM); push(BOLD_OFF);
-  push(center('PRUEBA DE IMPRESION')); push(NL);
-  push(`${fecha} ${hora}`); push(NL);
-  push(NL);
-  push('Impresora: OK'); push(NL);
-  push('Bluetooth: OK'); push(NL);
-  push(NL);
-  push(BOLD_ON); push(center('-- Normal Bold --')); push(BOLD_OFF); push(NL);
-  push(DBL); push(center('-- Doble Tam --')); push(NORM); push(NL);
-  push(DBL_H); push(center('-- Doble Alto --')); push(NORM); push(NL);
-  push(NL);
-  push(DBL); push(center('$2.50')); push(NORM); push(NL);
-  push(NL);
-  push(BOLD_ON); push(center('PRUEBA EXITOSA!')); push(BOLD_OFF); push(NL);
-  push(center('Quieres RutaGo? 0997149000')); push(NL);
-  push(CUT);
-
-  const totalLen = parts.reduce((s, b) => s + b.length, 0);
-  const result = new Uint8Array(totalLen);
-  let off = 0;
-  for (const part of parts) {
-    result.set(part, off);
-    off += part.length;
-  }
-  return result;
+  const data: TicketData = {
+    ruta: 'Loja - Vilcabamba',
+    horaFrecuencia: '08:15',
+    fecha,
+    hora,
+    ayudanteNombre: 'Carlos M.',
+    destino: 'Vilcabamba',
+    tipoPasajero: 'Entero',
+    tarifa: 2.50,
+    boletoNum: 47,
+    esViajeGratis: false,
+    textoPublicidad: 'Quieres RutaGo? 0997149000',
+  };
+  return generateTicketBytes(data);
 }
 
 export default function PrintTestPage() {
@@ -190,7 +153,7 @@ export default function PrintTestPage() {
       setStep('printing');
       log('Enviando ticket de prueba...');
       const ticket = buildTestTicket();
-      log(`Tamano: ${ticket.length} bytes`);
+      log(`Tamano: ${ticket.length} bytes (precio 3 lineas)`);
 
       if (writableChar.properties.writeWithoutResponse) {
         await writableChar.writeValueWithoutResponse(ticket.buffer);
