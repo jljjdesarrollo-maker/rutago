@@ -115,6 +115,9 @@ RUTAS = {
             'La Merced', 'San Agust\u00edn', 'La Era', 'La Capilla', 'San Bernaved', 'El Tambo', 'Mal\u2192Ceibop',
             'Mal\u2192Trinidad', 'Mal\u2192S.Jose', 'Mal\u2192StoDom', 'Mal\u2192N.Dulce', 'Mal\u2192Zhotahu', 'Mal\u2192LaMerc',
             'Mal\u2192S.Agust', 'Mal\u2192LaEra', 'Mal\u2192LaCap', 'Mal\u2192S.Bern', 'Mal\u2192ElTambo',
+            'Caja\u2192ElTambo', 'P.Nuevo\u2192ElTambo', 'T.Leguas\u2192ElTambo',
+            'Rumi\u2192ElTambo', 'Yamba\u2192ElTambo', 'Gran\u2192ElTambo', 'Porv\u2192ElTambo',
+            'Nango\u2192ElTambo', 'Chorri\u2192ElTambo', 'Land\u2192ElTambo', 'Pe\u00f1a\u2192ElTambo',
         ],
         'vuelta': [
             'El Tambo', 'San Bernaved', 'La Capilla', 'La Era', 'San Agust\u00edn', 'La Merced', 'Zhotahuayco',
