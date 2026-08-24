@@ -209,14 +209,19 @@ ROUTE_MAP_KEYS = {
 }
 
 def get_price_vuelta(parada, ruta_name=None):
+    # Route-specific override first, but skip $0.00 placeholders
     if ruta_name and ruta_name in ROUTE_MAP_KEYS:
         map_name = ROUTE_MAP_KEYS[ruta_name]
         if map_name in vuelta_maps and parada in vuelta_maps[map_name]:
-            return vuelta_maps[map_name][parada]
+            val = vuelta_maps[map_name][parada]
+            if val != (0, 0):
+                return val
+    # Shared fallback
     if parada in precios_vuelta:
         return precios_vuelta[parada]
+    # Other override maps as last resort (skip $0.00)
     for name, pm in vuelta_maps.items():
-        if parada in pm:
+        if parada in pm and pm[parada] != (0, 0):
             return pm[parada]
     return (0, 0)
 
