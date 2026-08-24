@@ -12,7 +12,7 @@ export interface TarifaItem {
   media: number;
 }
 
-export const TARIFA_MINIMA = 0.40; // Media tarifa más baja
+export const TARIFA_MINIMA = 0; // Media tarifa más baja
 
 // ─── Zonas por parada (para cuadrícula coloreada) ───
 // green  = cerca de Loja (inicio del recorrido)
@@ -136,356 +136,356 @@ export function isParadaPrincipal(parada: string): boolean {
 // ─── Precios IDA (desde Loja hacia el destino) ───
 const preciosIda: Record<string, { normal: number; media: number }> = {
   // ═══ LOJA - VILCABAMBA ═══
-  'Dos Puentes': { normal: 0.75, media: 0.40 },
-  'Cajánuma': { normal: 1.25, media: 0.55 },
-  'Pueblo Nuevo': { normal: 1.25, media: 0.55 },
-  'Tres Leguas': { normal: 1.25, media: 0.55 },
-  'Rumizhitana': { normal: 1.25, media: 0.55 },
-  'Yamba': { normal: 1.25, media: 0.55 },
-  'Granadillo': { normal: 1.40, media: 0.65 },
-  'Porvenir': { normal: 1.40, media: 0.65 },
-  'Nangora': { normal: 1.50, media: 0.75 },
-  'Chorrillos': { normal: 1.50, media: 0.75 },
-  'Landangui': { normal: 1.75, media: 0.90 },
-  'La Peña': { normal: 1.75, media: 0.90 },
-  'Malacatos': { normal: 2.00, media: 1.00 },
-  'Taxiche': { normal: 2.00, media: 1.00 },
-  'Cavianga': { normal: 2.25, media: 1.15 },
-  'Cararango': { normal: 2.25, media: 1.15 },
-  'San Pedro': { normal: 2.25, media: 1.15 },
-  'Vilcabamba': { normal: 2.50, media: 1.25 },
+  'Dos Puentes': { normal: 0, media: 0 },
+  'Cajánuma': { normal: 0, media: 0 },
+  'Pueblo Nuevo': { normal: 0, media: 0 },
+  'Tres Leguas': { normal: 0, media: 0 },
+  'Rumizhitana': { normal: 0, media: 0 },
+  'Yamba': { normal: 0, media: 0 },
+  'Granadillo': { normal: 0, media: 0 },
+  'Porvenir': { normal: 0, media: 0 },
+  'Nangora': { normal: 0, media: 0 },
+  'Chorrillos': { normal: 0, media: 0 },
+  'Landangui': { normal: 0, media: 0 },
+  'La Peña': { normal: 0, media: 0 },
+  'Malacatos': { normal: 0, media: 0 },
+  'Taxiche': { normal: 0, media: 0 },
+  'Cavianga': { normal: 0, media: 0 },
+  'Cararango': { normal: 0, media: 0 },
+  'San Pedro': { normal: 0, media: 0 },
+  'Vilcabamba': { normal: 0, media: 0 },
   // Tramos intermedios ida (desde parada hacia Malacatos)
-  'Peña→Mal': { normal: 0.75, media: 0.40 },
-  'Land→Mal': { normal: 0.75, media: 0.40 },
-  'Chorri→Mal': { normal: 0.75, media: 0.40 },
-  'Nango→Mal': { normal: 0.75, media: 0.40 },
-  'Porv→Mal': { normal: 1.10, media: 0.55 },
-  'Gran→Mal': { normal: 1.10, media: 0.55 },
-  'Yamba→Mal': { normal: 1.10, media: 0.55 },
-  'Rumi→Mal': { normal: 1.10, media: 0.55 },
-  'T.Leguas→Mal': { normal: 1.10, media: 0.55 },
-  'P.Nuevo→Mal': { normal: 1.10, media: 0.55 },
-  'Caja→Mal': { normal: 1.50, media: 0.75 },
-  'D.Puen→Mal': { normal: 1.50, media: 0.75 },
-  'Capulí→Mal': { normal: 2.00, media: 1.00 },
+  'Peña→Mal': { normal: 0, media: 0 },
+  'Land→Mal': { normal: 0, media: 0 },
+  'Chorri→Mal': { normal: 0, media: 0 },
+  'Nango→Mal': { normal: 0, media: 0 },
+  'Porv→Mal': { normal: 0, media: 0 },
+  'Gran→Mal': { normal: 0, media: 0 },
+  'Yamba→Mal': { normal: 0, media: 0 },
+  'Rumi→Mal': { normal: 0, media: 0 },
+  'T.Leguas→Mal': { normal: 0, media: 0 },
+  'P.Nuevo→Mal': { normal: 0, media: 0 },
+  'Caja→Mal': { normal: 0, media: 0 },
+  'D.Puen→Mal': { normal: 0, media: 0 },
+  'Capulí→Mal': { normal: 0, media: 0 },
   // Tramos intermedios ida (desde parada hacia Vilcabamba)
-  'S.Pedro→Vilc': { normal: 0.75, media: 0.40 },
-  'Carar→Vilc': { normal: 0.75, media: 0.40 },
-  'Cavian→Vilc': { normal: 0.75, media: 0.40 },
-  'Taxich→Vilc': { normal: 0.75, media: 0.40 },
-  'Mal→Vilc': { normal: 1.10, media: 0.55 },
-  'Land→Vilc': { normal: 1.10, media: 0.55 },
-  'Peña→Vilc': { normal: 1.10, media: 0.55 },
-  'Chorri→Vilc': { normal: 1.25, media: 0.65 },
-  'Nango→Vilc': { normal: 1.25, media: 0.65 },
-  'Porv→Vilc': { normal: 1.25, media: 0.65 },
-  'Gran→Vilc': { normal: 1.50, media: 0.75 },
-  'Yamba→Vilc': { normal: 1.50, media: 0.75 },
-  'Rumi→Vilc': { normal: 1.50, media: 0.75 },
-  'T.Leguas→Vilc': { normal: 1.50, media: 0.75 },
-  'P.Nuevo→Vilc': { normal: 1.50, media: 0.75 },
-  'Caja→Vilc': { normal: 2.00, media: 1.00 },
-  'D.Puen→Vilc': { normal: 2.00, media: 1.00 },
-  'Capulí→Vilc': { normal: 2.50, media: 1.25 },
+  'S.Pedro→Vilc': { normal: 0, media: 0 },
+  'Carar→Vilc': { normal: 0, media: 0 },
+  'Cavian→Vilc': { normal: 0, media: 0 },
+  'Taxich→Vilc': { normal: 0, media: 0 },
+  'Mal→Vilc': { normal: 0, media: 0 },
+  'Land→Vilc': { normal: 0, media: 0 },
+  'Peña→Vilc': { normal: 0, media: 0 },
+  'Chorri→Vilc': { normal: 0, media: 0 },
+  'Nango→Vilc': { normal: 0, media: 0 },
+  'Porv→Vilc': { normal: 0, media: 0 },
+  'Gran→Vilc': { normal: 0, media: 0 },
+  'Yamba→Vilc': { normal: 0, media: 0 },
+  'Rumi→Vilc': { normal: 0, media: 0 },
+  'T.Leguas→Vilc': { normal: 0, media: 0 },
+  'P.Nuevo→Vilc': { normal: 0, media: 0 },
+  'Caja→Vilc': { normal: 0, media: 0 },
+  'D.Puen→Vilc': { normal: 0, media: 0 },
+  'Capulí→Vilc': { normal: 0, media: 0 },
   // ═══ LOJA - EL TAMBO (ramifica en Malacatos, NO pasa Vilcabamba) ═══
-  'Ceibopamba': { normal: 2.25, media: 1.15 },
-  'Trinidad': { normal: 2.25, media: 1.15 },
-  'San José': { normal: 2.25, media: 1.15 },
-  'Santo Domingo': { normal: 2.50, media: 1.25 },
-  'Naranjo Dulce': { normal: 2.75, media: 1.40 },
-  'Zhotahuayco': { normal: 3.00, media: 1.50 },
-  'La Merced': { normal: 3.25, media: 1.65 },
-  'San Agustín': { normal: 3.75, media: 1.90 },
-  'La Era': { normal: 3.75, media: 1.90 },
-  'La Capilla': { normal: 4.00, media: 2.00 },
-  'San Bernaved': { normal: 4.00, media: 2.00 },
-  'El Tambo': { normal: 4.00, media: 2.00 },
+  'Ceibopamba': { normal: 0, media: 0 },
+  'Trinidad': { normal: 0, media: 0 },
+  'San José': { normal: 0, media: 0 },
+  'Santo Domingo': { normal: 0, media: 0 },
+  'Naranjo Dulce': { normal: 0, media: 0 },
+  'Zhotahuayco': { normal: 0, media: 0 },
+  'La Merced': { normal: 0, media: 0 },
+  'San Agustín': { normal: 0, media: 0 },
+  'La Era': { normal: 0, media: 0 },
+  'La Capilla': { normal: 0, media: 0 },
+  'San Bernaved': { normal: 0, media: 0 },
+  'El Tambo': { normal: 0, media: 0 },
   // Intermedios El Tambo IDA (desde Malacatos hacia El Tambo)
-  'Mal→Ceibop': { normal: 0.75, media: 0.40 },
-  'Mal→Trinidad': { normal: 0.75, media: 0.40 },
-  'Mal→S.Jose': { normal: 0.75, media: 0.40 },
-  'Mal→StoDom': { normal: 1.00, media: 0.50 },
-  'Mal→N.Dulce': { normal: 1.25, media: 0.65 },
-  'Mal→Zhotahu': { normal: 1.50, media: 0.75 },
-  'Mal→LaMerc': { normal: 1.75, media: 0.90 },
-  'Mal→S.Agust': { normal: 1.75, media: 0.90 },
-  'Mal→LaEra': { normal: 2.00, media: 1.00 },
-  'Mal→LaCap': { normal: 2.25, media: 1.15 },
-  'Mal→S.Bern': { normal: 2.25, media: 1.15 },
-  'Mal→ElTambo': { normal: 2.25, media: 1.15 },
+  'Mal→Ceibop': { normal: 0, media: 0 },
+  'Mal→Trinidad': { normal: 0, media: 0 },
+  'Mal→S.Jose': { normal: 0, media: 0 },
+  'Mal→StoDom': { normal: 0, media: 0 },
+  'Mal→N.Dulce': { normal: 0, media: 0 },
+  'Mal→Zhotahu': { normal: 0, media: 0 },
+  'Mal→LaMerc': { normal: 0, media: 0 },
+  'Mal→S.Agust': { normal: 0, media: 0 },
+  'Mal→LaEra': { normal: 0, media: 0 },
+  'Mal→LaCap': { normal: 0, media: 0 },
+  'Mal→S.Bern': { normal: 0, media: 0 },
+  'Mal→ElTambo': { normal: 0, media: 0 },
   // ═══ LOJA - ZAHUAYCO (pasa por Vilcabamba) ═══
-  'Masanamaca': { normal: 3.00, media: 1.50 },
-  'Quinara': { normal: 3.25, media: 1.65 },
-  'Chumberos': { normal: 3.75, media: 1.90 },
-  'Palmira': { normal: 3.75, media: 1.90 },
-  'Zahuayco': { normal: 4.00, media: 2.00 },
+  'Masanamaca': { normal: 0, media: 0 },
+  'Quinara': { normal: 0, media: 0 },
+  'Chumberos': { normal: 0, media: 0 },
+  'Palmira': { normal: 0, media: 0 },
+  'Zahuayco': { normal: 0, media: 0 },
   // Intermedios Zahuayco/Yangana IDA (desde Vilcabamba)
-  'Vilc→Masan': { normal: 1.10, media: 0.55 },
-  'Vilc→Quina': { normal: 2.00, media: 1.00 },
-  'Vilc→Chumb': { normal: 2.00, media: 1.00 },
-  'Vilc→Palm': { normal: 2.25, media: 1.15 },
-  'Vilc→Zahua': { normal: 2.50, media: 1.25 },
-  'Vilc→Suro': { normal: 1.60, media: 0.80 },
-  'Vilc→Yangana': { normal: 2.00, media: 1.00 },
+  'Vilc→Masan': { normal: 0, media: 0 },
+  'Vilc→Quina': { normal: 0, media: 0 },
+  'Vilc→Chumb': { normal: 0, media: 0 },
+  'Vilc→Palm': { normal: 0, media: 0 },
+  'Vilc→Zahua': { normal: 0, media: 0 },
+  'Vilc→Suro': { normal: 0, media: 0 },
+  'Vilc→Yangana': { normal: 0, media: 0 },
   // Intermedios Zahuayco/Yangana IDA (desde Malacatos)
-  'Mal→Masan': { normal: 2.00, media: 1.00 },
-  'Mal→Quina': { normal: 2.50, media: 1.25 },
-  'Mal→Chumb': { normal: 2.50, media: 1.25 },
-  'Mal→Palm': { normal: 2.90, media: 1.45 },
-  'Mal→Zahua': { normal: 3.15, media: 1.60 },
-  'Mal→Suro': { normal: 2.00, media: 1.00 },
-  'Mal→Yangana': { normal: 2.50, media: 1.25 },
+  'Mal→Masan': { normal: 0, media: 0 },
+  'Mal→Quina': { normal: 0, media: 0 },
+  'Mal→Chumb': { normal: 0, media: 0 },
+  'Mal→Palm': { normal: 0, media: 0 },
+  'Mal→Zahua': { normal: 0, media: 0 },
+  'Mal→Suro': { normal: 0, media: 0 },
+  'Mal→Yangana': { normal: 0, media: 0 },
   // ═══ LOJA - LA ELVIRA (pasa por Vilcabamba) ═══
-  'Cucanama': { normal: 2.50, media: 1.25 },
-  'Linderos': { normal: 2.75, media: 1.40 },
-  'Santorum': { normal: 3.00, media: 1.50 },
-  'Solanda': { normal: 3.00, media: 1.50 },
-  'Moyococha': { normal: 3.00, media: 1.50 },
-  'Tumianuma': { normal: 3.25, media: 1.65 },
-  'Comunidades': { normal: 3.50, media: 1.65 },
-  'La Elvira': { normal: 3.75, media: 1.90 },
+  'Cucanama': { normal: 0, media: 0 },
+  'Linderos': { normal: 0, media: 0 },
+  'Santorum': { normal: 0, media: 0 },
+  'Solanda': { normal: 0, media: 0 },
+  'Moyococha': { normal: 0, media: 0 },
+  'Tumianuma': { normal: 0, media: 0 },
+  'Comunidades': { normal: 0, media: 0 },
+  'La Elvira': { normal: 0, media: 0 },
   // Intermedios La Elvira IDA (desde Malacatos hacia La Elvira)
-  'Mal→Cucan': { normal: 1.60, media: 0.80 },
-  'Mal→Lind': { normal: 2.00, media: 1.00 },
-  'Mal→Santo': { normal: 2.00, media: 1.00 },
-  'Mal→Solan': { normal: 2.00, media: 1.00 },
-  'Mal→Moyoc': { normal: 2.00, media: 1.00 },
-  'Mal→Tumia': { normal: 2.50, media: 1.25 },
-  'Mal→Comun': { normal: 2.50, media: 1.25 },
-  'Mal→Elvira': { normal: 3.00, media: 1.50 },
+  'Mal→Cucan': { normal: 0, media: 0 },
+  'Mal→Lind': { normal: 0, media: 0 },
+  'Mal→Santo': { normal: 0, media: 0 },
+  'Mal→Solan': { normal: 0, media: 0 },
+  'Mal→Moyoc': { normal: 0, media: 0 },
+  'Mal→Tumia': { normal: 0, media: 0 },
+  'Mal→Comun': { normal: 0, media: 0 },
+  'Mal→Elvira': { normal: 0, media: 0 },
   // Intermedios La Elvira IDA (desde Vilcabamba hacia La Elvira)
-  'Vilc→Cucan': { normal: 0.75, media: 0.40 },
-  'Vilc→Lind': { normal: 1.10, media: 0.55 },
-  'Vilc→Santo': { normal: 1.50, media: 0.65 },
-  'Vilc→Solan': { normal: 1.50, media: 0.65 },
-  'Vilc→Moyoc': { normal: 1.50, media: 0.65 },
-  'Vilc→Tumia': { normal: 2.00, media: 1.00 },
-  'Vilc→Comun': { normal: 2.00, media: 1.00 },
-  'Vilc→Elvira': { normal: 2.40, media: 1.20 },
+  'Vilc→Cucan': { normal: 0, media: 0 },
+  'Vilc→Lind': { normal: 0, media: 0 },
+  'Vilc→Santo': { normal: 0, media: 0 },
+  'Vilc→Solan': { normal: 0, media: 0 },
+  'Vilc→Moyoc': { normal: 0, media: 0 },
+  'Vilc→Tumia': { normal: 0, media: 0 },
+  'Vilc→Comun': { normal: 0, media: 0 },
+  'Vilc→Elvira': { normal: 0, media: 0 },
   // ═══ LOJA - YANGANA (pasa por Vilcabamba) ═══
-  'Suro': { normal: 3.25, media: 1.65 },
-  'Yangana': { normal: 3.75, media: 1.90 },
+  'Suro': { normal: 0, media: 0 },
+  'Yangana': { normal: 0, media: 0 },
 };
 
 // ─── Precios VUELTA (desde el destino hacia Loja) ───
 // ✅ = oficial del PDF retorno  |  ⏳ TEMPORAL = precio IDA hasta recibir oficial
 const preciosVuelta: Record<string, { normal: number; media: number }> = {
   // Troncal Loja ↔ Vilcabamba (compartida por Zahuayco, La Elvira, Yangana)
-  'Dos Puentes': { normal: 0.75, media: 0.40 },       // ✅
-  'Cajánuma': { normal: 1.25, media: 0.55 },          // ✅
-  'Pueblo Nuevo': { normal: 1.25, media: 0.55 },       // ✅
-  'Tres Leguas': { normal: 1.25, media: 0.55 },         // ✅
-  'Rumizhitana': { normal: 1.25, media: 0.55 },        // ✅
-  'Yamba': { normal: 1.25, media: 0.55 },               // ✅
-  'Granadillo': { normal: 1.40, media: 0.65 },           // ✅
-  'Porvenir': { normal: 1.40, media: 0.65 },             // ✅
-  'Nangora': { normal: 1.50, media: 0.75 },              // ✅
-  'Chorrillos': { normal: 1.50, media: 0.75 },           // ✅
-  'Landangui': { normal: 1.75, media: 0.90 },            // ✅
-  'La Peña': { normal: 1.75, media: 0.90 },              // ✅
-  'Malacatos': { normal: 2.00, media: 1.00 },            // ✅
-  'Taxiche': { normal: 2.00, media: 1.00 },              // ✅
-  'Cavianga': { normal: 2.25, media: 1.15 },             // ✅
-  'Cararango': { normal: 2.25, media: 1.15 },            // ✅
-  'San Pedro': { normal: 2.25, media: 1.15 },            // ✅
-  'Vilcabamba': { normal: 2.50, media: 1.25 },          // ✅
+  'Dos Puentes': { normal: 0, media: 0 },       // ✅
+  'Cajánuma': { normal: 0, media: 0 },          // ✅
+  'Pueblo Nuevo': { normal: 0, media: 0 },       // ✅
+  'Tres Leguas': { normal: 0, media: 0 },         // ✅
+  'Rumizhitana': { normal: 0, media: 0 },        // ✅
+  'Yamba': { normal: 0, media: 0 },               // ✅
+  'Granadillo': { normal: 0, media: 0 },           // ✅
+  'Porvenir': { normal: 0, media: 0 },             // ✅
+  'Nangora': { normal: 0, media: 0 },              // ✅
+  'Chorrillos': { normal: 0, media: 0 },           // ✅
+  'Landangui': { normal: 0, media: 0 },            // ✅
+  'La Peña': { normal: 0, media: 0 },              // ✅
+  'Malacatos': { normal: 0, media: 0 },            // ✅
+  'Taxiche': { normal: 0, media: 0 },              // ✅
+  'Cavianga': { normal: 0, media: 0 },             // ✅
+  'Cararango': { normal: 0, media: 0 },            // ✅
+  'San Pedro': { normal: 0, media: 0 },            // ✅
+  'Vilcabamba': { normal: 0, media: 0 },          // ✅
   // Zona El Tambo (solo usada si no encuentra en preciosVueltaElTambo)
-  'Ceibopamba': { normal: 2.25, media: 1.15 },          // ⏳ TEMPORAL
-  'Trinidad': { normal: 2.25, media: 1.15 },            // ⏳ TEMPORAL
-  'San José': { normal: 2.25, media: 1.15 },             // ⏳ TEMPORAL
-  'Santo Domingo': { normal: 2.50, media: 1.25 },        // ⏳ TEMPORAL
-  'Naranjo Dulce': { normal: 2.75, media: 1.40 },        // ⏳ TEMPORAL
-  'Zhotahuayco': { normal: 3.00, media: 1.50 },         // ⏳ TEMPORAL
-  'La Merced': { normal: 3.25, media: 1.65 },            // ⏳ TEMPORAL
-  'San Agustín': { normal: 3.75, media: 1.90 },          // ⏳ TEMPORAL
-  'La Era': { normal: 3.75, media: 1.90 },               // ⏳ TEMPORAL
-  'La Capilla': { normal: 4.00, media: 2.00 },            // ⏳ TEMPORAL
-  'San Bernaved': { normal: 4.00, media: 2.00 },          // ⏳ TEMPORAL
-  'El Tambo': { normal: 4.00, media: 2.00 },              // ⏳ TEMPORAL
+  'Ceibopamba': { normal: 0, media: 0 },          // ⏳ TEMPORAL
+  'Trinidad': { normal: 0, media: 0 },            // ⏳ TEMPORAL
+  'San José': { normal: 0, media: 0 },             // ⏳ TEMPORAL
+  'Santo Domingo': { normal: 0, media: 0 },        // ⏳ TEMPORAL
+  'Naranjo Dulce': { normal: 0, media: 0 },        // ⏳ TEMPORAL
+  'Zhotahuayco': { normal: 0, media: 0 },         // ⏳ TEMPORAL
+  'La Merced': { normal: 0, media: 0 },            // ⏳ TEMPORAL
+  'San Agustín': { normal: 0, media: 0 },          // ⏳ TEMPORAL
+  'La Era': { normal: 0, media: 0 },               // ⏳ TEMPORAL
+  'La Capilla': { normal: 0, media: 0 },            // ⏳ TEMPORAL
+  'San Bernaved': { normal: 0, media: 0 },          // ⏳ TEMPORAL
+  'El Tambo': { normal: 0, media: 0 },              // ⏳ TEMPORAL
   // Zona Zahuayco
-  'Masanamaca': { normal: 3.00, media: 1.50 },           // ⏳ TEMPORAL
-  'Quinara': { normal: 3.25, media: 1.65 },              // ⏳ TEMPORAL
-  'Chumberos': { normal: 3.75, media: 1.90 },            // ⏳ TEMPORAL
-  'Palmira': { normal: 3.75, media: 1.90 },              // ⏳ TEMPORAL
-  'Zahuayco': { normal: 4.00, media: 2.00 },            // ⏳ TEMPORAL
+  'Masanamaca': { normal: 0, media: 0 },           // ⏳ TEMPORAL
+  'Quinara': { normal: 0, media: 0 },              // ⏳ TEMPORAL
+  'Chumberos': { normal: 0, media: 0 },            // ⏳ TEMPORAL
+  'Palmira': { normal: 0, media: 0 },              // ⏳ TEMPORAL
+  'Zahuayco': { normal: 0, media: 0 },            // ⏳ TEMPORAL
   // Zona La Elvira
-  'Cucanama': { normal: 2.50, media: 1.25 },             // ⏳ TEMPORAL
-  'Linderos': { normal: 2.75, media: 1.40 },              // ⏳ TEMPORAL
-  'Santorum': { normal: 3.00, media: 1.50 },             // ⏳ TEMPORAL
-  'Solanda': { normal: 3.00, media: 1.50 },               // ⏳ TEMPORAL
-  'Moyococha': { normal: 3.00, media: 1.50 },            // ⏳ TEMPORAL
-  'Tumianuma': { normal: 3.25, media: 1.65 },            // ⏳ TEMPORAL
-  'Comunidades': { normal: 3.50, media: 1.65 },          // ⏳ TEMPORAL
-  'La Elvira': { normal: 3.75, media: 1.90 },            // ✅
+  'Cucanama': { normal: 0, media: 0 },             // ⏳ TEMPORAL
+  'Linderos': { normal: 0, media: 0 },              // ⏳ TEMPORAL
+  'Santorum': { normal: 0, media: 0 },             // ⏳ TEMPORAL
+  'Solanda': { normal: 0, media: 0 },               // ⏳ TEMPORAL
+  'Moyococha': { normal: 0, media: 0 },            // ⏳ TEMPORAL
+  'Tumianuma': { normal: 0, media: 0 },            // ⏳ TEMPORAL
+  'Comunidades': { normal: 0, media: 0 },          // ⏳ TEMPORAL
+  'La Elvira': { normal: 0, media: 0 },            // ✅
   // Zona Yangana (precios vuelta específicos en preciosVueltaYangana)
-  'Suro': { normal: 3.25, media: 1.65 },                 // ⏳ TEMPORAL (Zahuayco usa este)
-  'Yangana': { normal: 3.75, media: 1.90 },              // ⏳ TEMPORAL (respaldo, Yangana usa preciosVueltaYangana)
+  'Suro': { normal: 0, media: 0 },                 // ⏳ TEMPORAL (Zahuayco usa este)
+  'Yangana': { normal: 0, media: 0 },              // ⏳ TEMPORAL (respaldo, Yangana usa preciosVueltaYangana)
   // Intermedios Vilcabamba vuelta (desde parada hacia Malacatos)
-  'Peña→Mal': { normal: 0.75, media: 0.40 },
-  'Land→Mal': { normal: 0.75, media: 0.40 },
-  'Chorri→Mal': { normal: 0.75, media: 0.40 },
-  'Nango→Mal': { normal: 0.75, media: 0.40 },
-  'Porv→Mal': { normal: 1.10, media: 0.55 },
-  'Gran→Mal': { normal: 1.10, media: 0.55 },
-  'Yamba→Mal': { normal: 1.10, media: 0.55 },
-  'Rumi→Mal': { normal: 1.10, media: 0.55 },
-  'T.Leguas→Mal': { normal: 1.10, media: 0.55 },
-  'P.Nuevo→Mal': { normal: 1.10, media: 0.55 },
-  'Caja→Mal': { normal: 1.50, media: 0.75 },
-  'D.Puen→Mal': { normal: 1.50, media: 0.75 },
-  'Capulí→Mal': { normal: 2.00, media: 1.00 },
+  'Peña→Mal': { normal: 0, media: 0 },
+  'Land→Mal': { normal: 0, media: 0 },
+  'Chorri→Mal': { normal: 0, media: 0 },
+  'Nango→Mal': { normal: 0, media: 0 },
+  'Porv→Mal': { normal: 0, media: 0 },
+  'Gran→Mal': { normal: 0, media: 0 },
+  'Yamba→Mal': { normal: 0, media: 0 },
+  'Rumi→Mal': { normal: 0, media: 0 },
+  'T.Leguas→Mal': { normal: 0, media: 0 },
+  'P.Nuevo→Mal': { normal: 0, media: 0 },
+  'Caja→Mal': { normal: 0, media: 0 },
+  'D.Puen→Mal': { normal: 0, media: 0 },
+  'Capulí→Mal': { normal: 0, media: 0 },
   // Intermedios El Tambo vuelta (desde Malacatos hacia El Tambo)
-  'Mal→Ceibop': { normal: 0.75, media: 0.40 },
-  'Mal→Trinidad': { normal: 0.75, media: 0.40 },
-  'Mal→S.Jose': { normal: 0.75, media: 0.40 },
-  'Mal→StoDom': { normal: 1.00, media: 0.50 },
-  'Mal→N.Dulce': { normal: 1.25, media: 0.65 },
-  'Mal→Zhotahu': { normal: 1.50, media: 0.75 },
-  'Mal→LaMerc': { normal: 1.75, media: 0.90 },
-  'Mal→S.Agust': { normal: 1.75, media: 0.90 },
-  'Mal→LaEra': { normal: 2.00, media: 1.00 },
-  'Mal→LaCap': { normal: 2.25, media: 1.15 },
-  'Mal→S.Bern': { normal: 2.25, media: 1.15 },
-  'Mal→ElTambo': { normal: 2.25, media: 1.15 },
+  'Mal→Ceibop': { normal: 0, media: 0 },
+  'Mal→Trinidad': { normal: 0, media: 0 },
+  'Mal→S.Jose': { normal: 0, media: 0 },
+  'Mal→StoDom': { normal: 0, media: 0 },
+  'Mal→N.Dulce': { normal: 0, media: 0 },
+  'Mal→Zhotahu': { normal: 0, media: 0 },
+  'Mal→LaMerc': { normal: 0, media: 0 },
+  'Mal→S.Agust': { normal: 0, media: 0 },
+  'Mal→LaEra': { normal: 0, media: 0 },
+  'Mal→LaCap': { normal: 0, media: 0 },
+  'Mal→S.Bern': { normal: 0, media: 0 },
+  'Mal→ElTambo': { normal: 0, media: 0 },
   // Intermedios Zahuayco/Yangana vuelta (desde Vilcabamba/Malacatos)
-  'Vilc→Masan': { normal: 1.10, media: 0.55 },
-  'Vilc→Quina': { normal: 2.00, media: 1.00 },
-  'Vilc→Chumb': { normal: 2.00, media: 1.00 },
-  'Vilc→Palm': { normal: 2.25, media: 1.15 },
-  'Vilc→Zahua': { normal: 2.50, media: 1.25 },
-  'Vilc→Suro': { normal: 1.60, media: 0.80 },
-  'Vilc→Yangana': { normal: 2.00, media: 1.00 },
-  'Mal→Masan': { normal: 2.00, media: 1.00 },
-  'Mal→Quina': { normal: 2.50, media: 1.25 },
-  'Mal→Chumb': { normal: 2.50, media: 1.25 },
-  'Mal→Palm': { normal: 2.90, media: 1.45 },
-  'Mal→Zahua': { normal: 3.15, media: 1.60 },
-  'Mal→Suro': { normal: 2.00, media: 1.00 },
-  'Mal→Yangana': { normal: 2.50, media: 1.25 },
+  'Vilc→Masan': { normal: 0, media: 0 },
+  'Vilc→Quina': { normal: 0, media: 0 },
+  'Vilc→Chumb': { normal: 0, media: 0 },
+  'Vilc→Palm': { normal: 0, media: 0 },
+  'Vilc→Zahua': { normal: 0, media: 0 },
+  'Vilc→Suro': { normal: 0, media: 0 },
+  'Vilc→Yangana': { normal: 0, media: 0 },
+  'Mal→Masan': { normal: 0, media: 0 },
+  'Mal→Quina': { normal: 0, media: 0 },
+  'Mal→Chumb': { normal: 0, media: 0 },
+  'Mal→Palm': { normal: 0, media: 0 },
+  'Mal→Zahua': { normal: 0, media: 0 },
+  'Mal→Suro': { normal: 0, media: 0 },
+  'Mal→Yangana': { normal: 0, media: 0 },
   // Intermedios La Elvira vuelta (desde Vilcabamba/Malacatos)
-  'Mal→Cucan': { normal: 1.60, media: 0.80 },
-  'Mal→Lind': { normal: 2.00, media: 1.00 },
-  'Mal→Santo': { normal: 2.00, media: 1.00 },
-  'Mal→Solan': { normal: 2.00, media: 1.00 },
-  'Mal→Moyoc': { normal: 2.00, media: 1.00 },
-  'Mal→Tumia': { normal: 2.50, media: 1.25 },
-  'Mal→Comun': { normal: 2.50, media: 1.25 },
-  'Mal→Elvira': { normal: 3.00, media: 1.50 },
-  'Vilc→Cucan': { normal: 0.75, media: 0.40 },
-  'Vilc→Lind': { normal: 1.10, media: 0.55 },
-  'Vilc→Santo': { normal: 1.50, media: 0.65 },
-  'Vilc→Solan': { normal: 1.50, media: 0.65 },
-  'Vilc→Moyoc': { normal: 1.50, media: 0.65 },
-  'Vilc→Tumia': { normal: 2.00, media: 1.00 },
-  'Vilc→Comun': { normal: 2.00, media: 1.00 },
-  'Vilc→Elvira': { normal: 2.40, media: 1.20 },
+  'Mal→Cucan': { normal: 0, media: 0 },
+  'Mal→Lind': { normal: 0, media: 0 },
+  'Mal→Santo': { normal: 0, media: 0 },
+  'Mal→Solan': { normal: 0, media: 0 },
+  'Mal→Moyoc': { normal: 0, media: 0 },
+  'Mal→Tumia': { normal: 0, media: 0 },
+  'Mal→Comun': { normal: 0, media: 0 },
+  'Mal→Elvira': { normal: 0, media: 0 },
+  'Vilc→Cucan': { normal: 0, media: 0 },
+  'Vilc→Lind': { normal: 0, media: 0 },
+  'Vilc→Santo': { normal: 0, media: 0 },
+  'Vilc→Solan': { normal: 0, media: 0 },
+  'Vilc→Moyoc': { normal: 0, media: 0 },
+  'Vilc→Tumia': { normal: 0, media: 0 },
+  'Vilc→Comun': { normal: 0, media: 0 },
+  'Vilc→Elvira': { normal: 0, media: 0 },
   // Intermedios troncal vuelta (desde hub hacia Loja)
   // Desde Vilcabamba hacia Loja (cerca→lejos)
-  'Vilc→S.Pedro': { normal: 0.75, media: 0.40 },
-  'Vilc→Carar': { normal: 0.75, media: 0.40 },
-  'Vilc→Cavian': { normal: 0.75, media: 0.40 },
-  'Vilc→Taxich': { normal: 0.75, media: 0.40 },
-  'Vilc→Malac': { normal: 1.10, media: 0.55 },
-  'Vilc→Land': { normal: 1.10, media: 0.55 },
-  'Vilc→Chorri': { normal: 1.25, media: 0.65 },
-  'Vilc→Nango': { normal: 1.25, media: 0.65 },
-  'Vilc→Porv': { normal: 1.25, media: 0.65 },
-  'Vilc→Gran': { normal: 1.50, media: 0.75 },
-  'Vilc→Yamba': { normal: 1.50, media: 0.75 },
-  'Vilc→Rumi': { normal: 1.50, media: 0.75 },
-  'Vilc→T.Leguas': { normal: 1.50, media: 0.75 },
-  'Vilc→P.Nuevo': { normal: 1.50, media: 0.75 },
-  'Vilc→Caja': { normal: 2.00, media: 1.00 },
-  'Vilc→D.Puen': { normal: 2.00, media: 1.00 },
-  'Vilc→Capulí': { normal: 2.50, media: 1.25 },
+  'Vilc→S.Pedro': { normal: 0, media: 0 },
+  'Vilc→Carar': { normal: 0, media: 0 },
+  'Vilc→Cavian': { normal: 0, media: 0 },
+  'Vilc→Taxich': { normal: 0, media: 0 },
+  'Vilc→Malac': { normal: 0, media: 0 },
+  'Vilc→Land': { normal: 0, media: 0 },
+  'Vilc→Chorri': { normal: 0, media: 0 },
+  'Vilc→Nango': { normal: 0, media: 0 },
+  'Vilc→Porv': { normal: 0, media: 0 },
+  'Vilc→Gran': { normal: 0, media: 0 },
+  'Vilc→Yamba': { normal: 0, media: 0 },
+  'Vilc→Rumi': { normal: 0, media: 0 },
+  'Vilc→T.Leguas': { normal: 0, media: 0 },
+  'Vilc→P.Nuevo': { normal: 0, media: 0 },
+  'Vilc→Caja': { normal: 0, media: 0 },
+  'Vilc→D.Puen': { normal: 0, media: 0 },
+  'Vilc→Capulí': { normal: 0, media: 0 },
   // Desde Malacatos hacia Loja (cerca→lejos)
-  'Mal→LaPeña': { normal: 0.75, media: 0.40 },
-  'Mal→Land': { normal: 0.75, media: 0.40 },
-  'Mal→Chorri': { normal: 0.75, media: 0.40 },
-  'Mal→Nango': { normal: 0.75, media: 0.40 },
-  'Mal→Porv': { normal: 1.10, media: 0.55 },
-  'Mal→Gran': { normal: 1.10, media: 0.55 },
-  'Mal→Yamba': { normal: 1.10, media: 0.55 },
-  'Mal→Rumi': { normal: 1.10, media: 0.55 },
-  'Mal→T.Leguas': { normal: 1.10, media: 0.55 },
-  'Mal→P.Nuevo': { normal: 1.10, media: 0.55 },
-  'Mal→Caja': { normal: 1.50, media: 0.75 },
-  'Mal→D.Puen': { normal: 1.50, media: 0.75 },
-  'Mal→Capulí': { normal: 2.00, media: 1.00 },
+  'Mal→LaPeña': { normal: 0, media: 0 },
+  'Mal→Land': { normal: 0, media: 0 },
+  'Mal→Chorri': { normal: 0, media: 0 },
+  'Mal→Nango': { normal: 0, media: 0 },
+  'Mal→Porv': { normal: 0, media: 0 },
+  'Mal→Gran': { normal: 0, media: 0 },
+  'Mal→Yamba': { normal: 0, media: 0 },
+  'Mal→Rumi': { normal: 0, media: 0 },
+  'Mal→T.Leguas': { normal: 0, media: 0 },
+  'Mal→P.Nuevo': { normal: 0, media: 0 },
+  'Mal→Caja': { normal: 0, media: 0 },
+  'Mal→D.Puen': { normal: 0, media: 0 },
+  'Mal→Capulí': { normal: 0, media: 0 },
   // Intermedios troncal vuelta: desde parada hacia Loja
-  'D.Puen→Loja': { normal: 0.75, media: 0.40 },
-  'Caja→Loja': { normal: 1.25, media: 0.55 },
-  'P.Nuevo→Loja': { normal: 1.25, media: 0.55 },
-  'T.Leguas→Loja': { normal: 1.25, media: 0.55 },
-  'Rumi→Loja': { normal: 1.25, media: 0.55 },
-  'Yamba→Loja': { normal: 1.25, media: 0.55 },
-  'Gran→Loja': { normal: 1.40, media: 0.65 },
-  'Porv→Loja': { normal: 1.40, media: 0.65 },
-  'Nango→Loja': { normal: 1.50, media: 0.75 },
-  'Chorri→Loja': { normal: 1.50, media: 0.75 },
-  'Land→Loja': { normal: 1.75, media: 0.90 },
-  'Peña→Loja': { normal: 1.75, media: 0.90 },
-  'Mal→Loja': { normal: 2.00, media: 1.00 },
-  'Taxich→Loja': { normal: 2.00, media: 1.00 },
-  'Cavian→Loja': { normal: 2.25, media: 1.15 },
-  'Carar→Loja': { normal: 2.25, media: 1.15 },
-  'S.Pedro→Loja': { normal: 2.25, media: 1.15 },
+  'D.Puen→Loja': { normal: 0, media: 0 },
+  'Caja→Loja': { normal: 0, media: 0 },
+  'P.Nuevo→Loja': { normal: 0, media: 0 },
+  'T.Leguas→Loja': { normal: 0, media: 0 },
+  'Rumi→Loja': { normal: 0, media: 0 },
+  'Yamba→Loja': { normal: 0, media: 0 },
+  'Gran→Loja': { normal: 0, media: 0 },
+  'Porv→Loja': { normal: 0, media: 0 },
+  'Nango→Loja': { normal: 0, media: 0 },
+  'Chorri→Loja': { normal: 0, media: 0 },
+  'Land→Loja': { normal: 0, media: 0 },
+  'Peña→Loja': { normal: 0, media: 0 },
+  'Mal→Loja': { normal: 0, media: 0 },
+  'Taxich→Loja': { normal: 0, media: 0 },
+  'Cavian→Loja': { normal: 0, media: 0 },
+  'Carar→Loja': { normal: 0, media: 0 },
+  'S.Pedro→Loja': { normal: 0, media: 0 },
 };
 
 // ─── Precios VUELTA específicos: EL TAMBO → LOJA ───
 // Directos desde El Tambo hacia cada parada
 const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = {
-  'El Tambo': { normal: 4.00, media: 2.00 },
-  'San Bernaved': { normal: 0.75, media: 0.40 },
-  'La Capilla': { normal: 0.75, media: 0.40 },
-  'La Era': { normal: 1.00, media: 0.50 },
-  'San Agustín': { normal: 1.25, media: 0.65 },
-  'La Merced': { normal: 1.50, media: 0.75 },
-  'Zhotahuayco': { normal: 1.75, media: 0.90 },
-  'Naranjo Dulce': { normal: 1.75, media: 0.90 },
-  'Santo Domingo': { normal: 2.00, media: 1.00 },
-  'San José': { normal: 2.25, media: 1.15 },
-  'Ceibopamba': { normal: 2.25, media: 1.15 },
-  'Trinidad': { normal: 2.25, media: 1.15 },
-  'Malacatos': { normal: 2.00, media: 1.00 },
-  'La Peña': { normal: 2.25, media: 1.15 },
-  'Landangui': { normal: 2.25, media: 1.15 },
-  'Chorrillos': { normal: 2.50, media: 1.25 },
-  'Nangora': { normal: 2.50, media: 1.25 },
-  'Porvenir': { normal: 2.50, media: 1.25 },
-  'Granadillo': { normal: 2.50, media: 1.25 },
-  'Yamba': { normal: 2.50, media: 1.25 },
-  'Rumizhitana': { normal: 2.50, media: 1.25 },
-  'Tres Leguas': { normal: 3.00, media: 1.50 },
-  'Pueblo Nuevo': { normal: 3.00, media: 1.50 },
-  'Cajánuma': { normal: 3.00, media: 1.50 },
-  'Dos Puentes': { normal: 4.00, media: 2.00 },
-  'Capulí': { normal: 4.00, media: 2.00 },
+  'El Tambo': { normal: 0, media: 0 },
+  'San Bernaved': { normal: 0, media: 0 },
+  'La Capilla': { normal: 0, media: 0 },
+  'La Era': { normal: 0, media: 0 },
+  'San Agustín': { normal: 0, media: 0 },
+  'La Merced': { normal: 0, media: 0 },
+  'Zhotahuayco': { normal: 0, media: 0 },
+  'Naranjo Dulce': { normal: 0, media: 0 },
+  'Santo Domingo': { normal: 0, media: 0 },
+  'San José': { normal: 0, media: 0 },
+  'Ceibopamba': { normal: 0, media: 0 },
+  'Trinidad': { normal: 0, media: 0 },
+  'Malacatos': { normal: 0, media: 0 },
+  'La Peña': { normal: 0, media: 0 },
+  'Landangui': { normal: 0, media: 0 },
+  'Chorrillos': { normal: 0, media: 0 },
+  'Nangora': { normal: 0, media: 0 },
+  'Porvenir': { normal: 0, media: 0 },
+  'Granadillo': { normal: 0, media: 0 },
+  'Yamba': { normal: 0, media: 0 },
+  'Rumizhitana': { normal: 0, media: 0 },
+  'Tres Leguas': { normal: 0, media: 0 },
+  'Pueblo Nuevo': { normal: 0, media: 0 },
+  'Cajánuma': { normal: 0, media: 0 },
+  'Dos Puentes': { normal: 0, media: 0 },
+  'Capulí': { normal: 0, media: 0 },
   // Intermedios El Tambo IDA (desde Malacatos hacia El Tambo)
-  'Mal→Ceibop': { normal: 0.75, media: 0.40 },
-  'Mal→Trinidad': { normal: 0.75, media: 0.40 },
-  'Mal→S.Jose': { normal: 0.75, media: 0.40 },
-  'Mal→StoDom': { normal: 1.00, media: 0.50 },
-  'Mal→N.Dulce': { normal: 1.25, media: 0.65 },
-  'Mal→Zhotahu': { normal: 1.50, media: 0.75 },
-  'Mal→LaMerc': { normal: 1.75, media: 0.90 },
-  'Mal→S.Agust': { normal: 1.75, media: 0.90 },
-  'Mal→LaEra': { normal: 2.00, media: 1.00 },
-  'Mal→LaCap': { normal: 2.25, media: 1.15 },
-  'Mal→S.Bern': { normal: 2.25, media: 1.15 },
-  'Mal→ElTambo': { normal: 2.25, media: 1.15 },
+  'Mal→Ceibop': { normal: 0, media: 0 },
+  'Mal→Trinidad': { normal: 0, media: 0 },
+  'Mal→S.Jose': { normal: 0, media: 0 },
+  'Mal→StoDom': { normal: 0, media: 0 },
+  'Mal→N.Dulce': { normal: 0, media: 0 },
+  'Mal→Zhotahu': { normal: 0, media: 0 },
+  'Mal→LaMerc': { normal: 0, media: 0 },
+  'Mal→S.Agust': { normal: 0, media: 0 },
+  'Mal→LaEra': { normal: 0, media: 0 },
+  'Mal→LaCap': { normal: 0, media: 0 },
+  'Mal→S.Bern': { normal: 0, media: 0 },
+  'Mal→ElTambo': { normal: 0, media: 0 },
   // Intermedios El Tambo vuelta: X → Loja (troncal usa preciosVuelta compartido)
-  'LaCap→Loja': { normal: 4.00, media: 2.00 },
-  'S.Bern→Loja': { normal: 4.00, media: 2.00 },
+  'LaCap→Loja': { normal: 0, media: 0 },
+  'S.Bern→Loja': { normal: 0, media: 0 },
 };
 
 // ─── Precios VUELTA específicos: YANGANA → LOJA ───
 // Directos desde Yangana hacia cada parada
 // Los que están en $0.00 = no se vende directo desde Yangana a esa parada
 const preciosVueltaYangana: Record<string, { normal: number; media: number }> = {
-  'Yangana': { normal: 3.75, media: 1.90 },
-  'Suro': { normal: 0.75, media: 0.40 },
-  'Dos Puentes': { normal: 3.75, media: 1.90 },
+  'Yangana': { normal: 0, media: 0 },
+  'Suro': { normal: 0, media: 0 },
+  'Dos Puentes': { normal: 0, media: 0 },
   'Cajánuma': { normal: 0, media: 0 },
   'Pueblo Nuevo': { normal: 0, media: 0 },
   'Tres Leguas': { normal: 0, media: 0 },
@@ -511,34 +511,34 @@ const preciosVueltaYangana: Record<string, { normal: number; media: number }> = 
 // ─── Precios VUELTA específicos: VILCABAMBA → LOJA ───
 // Directos desde Vilcabamba hacia cada parada
 const preciosVueltaVilcabamba: Record<string, { normal: number; media: number }> = {
-  'Vilcabamba': { normal: 2.50, media: 1.25 },
-  'San Pedro': { normal: 0.75, media: 0.40 },
-  'Cararango': { normal: 0.75, media: 0.40 },
-  'Cavianga': { normal: 0.75, media: 0.40 },
-  'Taxiche': { normal: 0.75, media: 0.40 },
-  'Malacatos': { normal: 1.10, media: 0.55 },
-  'Landangui': { normal: 1.10, media: 0.55 },
+  'Vilcabamba': { normal: 0, media: 0 },
+  'San Pedro': { normal: 0, media: 0 },
+  'Cararango': { normal: 0, media: 0 },
+  'Cavianga': { normal: 0, media: 0 },
+  'Taxiche': { normal: 0, media: 0 },
+  'Malacatos': { normal: 0, media: 0 },
+  'Landangui': { normal: 0, media: 0 },
   'La Peña': { normal: 0, media: 0 },
-  'Chorrillos': { normal: 1.25, media: 0.65 },
-  'Nangora': { normal: 1.25, media: 0.65 },
-  'Porvenir': { normal: 1.25, media: 0.65 },
-  'Granadillo': { normal: 1.50, media: 0.75 },
-  'Yamba': { normal: 1.50, media: 0.75 },
-  'Rumizhitana': { normal: 1.50, media: 0.75 },
-  'Tres Leguas': { normal: 1.50, media: 0.75 },
-  'Pueblo Nuevo': { normal: 1.50, media: 0.75 },
-  'Cajánuma': { normal: 2.00, media: 1.00 },
-  'Dos Puentes': { normal: 2.00, media: 1.00 },
-  'Capulí': { normal: 2.50, media: 1.25 },
+  'Chorrillos': { normal: 0, media: 0 },
+  'Nangora': { normal: 0, media: 0 },
+  'Porvenir': { normal: 0, media: 0 },
+  'Granadillo': { normal: 0, media: 0 },
+  'Yamba': { normal: 0, media: 0 },
+  'Rumizhitana': { normal: 0, media: 0 },
+  'Tres Leguas': { normal: 0, media: 0 },
+  'Pueblo Nuevo': { normal: 0, media: 0 },
+  'Cajánuma': { normal: 0, media: 0 },
+  'Dos Puentes': { normal: 0, media: 0 },
+  'Capulí': { normal: 0, media: 0 },
 };
 
 // ─── Precios VUELTA específicos: LA ELVIRA → LOJA ───
 // Directos desde La Elvira hacia cada parada
 // Los que están en $0.00 = no se vende directo desde La Elvira a esa parada
 const preciosVueltaLaElvira: Record<string, { normal: number; media: number }> = {
-  'La Elvira': { normal: 3.75, media: 1.90 },
-  'Dos Puentes': { normal: 3.75, media: 1.90 },
-  'Comunidades': { normal: 0.75, media: 0.40 },
+  'La Elvira': { normal: 0, media: 0 },
+  'Dos Puentes': { normal: 0, media: 0 },
+  'Comunidades': { normal: 0, media: 0 },
   'Cajánuma': { normal: 0, media: 0 },
   'Pueblo Nuevo': { normal: 0, media: 0 },
   'Tres Leguas': { normal: 0, media: 0 },
@@ -565,7 +565,7 @@ const preciosVueltaLaElvira: Record<string, { normal: number; media: number }> =
   'Quinara': { normal: 0, media: 0 },
   // Intermedios: se buscan en preciosVuelta compartido (Vilc→X, Mal→X, X→Loja)
   // Vilc→Loja es específico de La Elvira ($2.25 vs $2.50 troncal)
-  'Vilc→Loja': { normal: 2.25, media: 1.15 },
+  'Vilc→Loja': { normal: 0, media: 0 },
 };
 
 // ─── Paradas por ruta según dirección ───
