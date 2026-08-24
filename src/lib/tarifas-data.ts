@@ -176,7 +176,7 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'Taxich→Vilc': { normal: 0.75, media: 0.40 },
   'Mal→Vilc': { normal: 1.10, media: 0.55 },
   'Land→Vilc': { normal: 1.10, media: 0.55 },
-  'Peña→Vilc': { normal: 0, media: 0 },
+  'Peña→Vilc': { normal: 1.10, media: 0.55 },
   'Chorri→Vilc': { normal: 1.25, media: 0.65 },
   'Nango→Vilc': { normal: 1.25, media: 0.65 },
   'Porv→Vilc': { normal: 1.25, media: 0.65 },
