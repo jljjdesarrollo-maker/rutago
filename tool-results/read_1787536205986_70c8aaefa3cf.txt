@@ -1,0 +1,904 @@
+    39→    39→COMMENT ON TABLE "Parada" IS 'Todas las paradas: principales e intermedias';
+    40→    40→COMMENT ON COLUMN "Parada"."nombre" IS 'Nombre clave: Vilcabamba (principal) o Vilc->Mal (intermedia, usa -> como separador)';
+    41→    41→COMMENT ON COLUMN "Parada"."esPrincipal" IS 'true si no contiene -> en el nombre';
+    42→    42→COMMENT ON COLUMN "Parada"."hub" IS 'Hub de referencia: Vilcabamba, Malacatos, Loja, El Tambo';
+    43→    43→COMMENT ON COLUMN "Parada"."zona" IS 'green=cerca Loja | yellow=media | blue=lejos | orange=intermedio Mal | purple=intermedio Vilc';
+    44→    44→COMMENT ON COLUMN "Parada"."ordenTroncal" IS 'Orden en la ruta troncal Loja-Vilcabamba (solo principales)';
+    45→    45→
+    46→    46→CREATE INDEX idx_parada_es_principal ON "Parada"("esPrincipal");
+    47→    47→CREATE INDEX idx_parada_hub ON "Parada"("hub");
+    48→    48→CREATE INDEX idx_parada_zona ON "Parada"("zona");
+    49→    49→
+    50→    50→-- ═══════════════════════════════════════════════
+    51→    51→-- 3. TARIFAS (precios por ruta, dirección y parada)
+    52→    52→-- ═══════════════════════════════════════════════
+    53→    53→-- Lógica de lookup:
+    54→    54→--   1. Buscar Tarifa WHERE rutaId = [ruta específica] AND parada = X AND direccion = 'vuelta'
+    55→    55→--   2. Si no existe, buscar WHERE rutaId IS NULL (troncal compartido) AND parada = X AND direccion = 'vuelta'
+    56→    56→--   Esto replica: preciosVueltaLaElvira -> preciosVuelta (fallback)
+    57→    57→
+    58→    58→CREATE TABLE "Tarifa" (
+    59→    59→    "id"          TEXT NOT NULL PRIMARY KEY,
+    60→    60→    "rutaId"      TEXT,
+    61→    61→    "parada"      TEXT NOT NULL,
+    62→    62→    "direccion"   TEXT NOT NULL,
+    63→    63→    "normal"      DOUBLE PRECISION NOT NULL DEFAULT 0,
+    64→    64→    "media"       DOUBLE PRECISION NOT NULL DEFAULT 0,
+    65→    65→    "esTemporal"  BOOLEAN NOT NULL DEFAULT false,
+    66→    66→    "prioridad"   INTEGER NOT NULL DEFAULT 1,
+    67→    67→    "createdAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    68→    68→    "updatedAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    69→    69→
+    70→    70→    CONSTRAINT fk_tarifa_ruta
+    71→    71→        FOREIGN KEY ("rutaId") REFERENCES "Ruta"("id")
+    72→    72→        ON DELETE CASCADE ON UPDATE CASCADE,
+    73→    73→    CONSTRAINT chk_tarifa_direccion CHECK ("direccion" IN ('ida', 'vuelta')),
+    74→    74→    CONSTRAINT uq_tarifa_ruta_parada_dir UNIQUE ("rutaId", "parada", "direccion")
+    75→    75→);
+    76→    76→
+    77→    77→COMMENT ON TABLE "Tarifa" IS 'Precios por parada. rutaId=NULL = precio troncal compartido. rutaId=X = precio específico de ruta (prioridad)';
+    78→    78→COMMENT ON COLUMN "Tarifa"."rutaId" IS 'NULL = precio troncal compartido entre rutas. FK a Ruta.id = override específico para esa ruta';
+    79→    79→COMMENT ON COLUMN "Tarifa"."parada" IS 'Nombre de parada (debe existir en tabla Parada). Se usa como lookup key, no FK para permitir flexibilidad';
+    80→    80→COMMENT ON COLUMN "Tarifa"."esTemporal" IS 'true = precio IDA usado como respaldo hasta recibir oficial de retorno';
+    81→    81→COMMENT ON COLUMN "Tarifa"."prioridad" IS '0 = precio específico de ruta (se usa primero). 1 = troncal compartido (fallback)';
+    82→    82→
+    83→    83→CREATE INDEX idx_tarifa_ruta_dir ON "Tarifa"("rutaId", "direccion");
+    84→    84→CREATE INDEX idx_tarifa_parada_dir ON "Tarifa"("parada", "direccion");
+    85→    85→CREATE INDEX idx_tarifa_lookup ON "Tarifa"("rutaId", "parada", "direccion");
+    86→    86→CREATE INDEX idx_tarifa_troncal ON "Tarifa"("parada", "direccion") WHERE "rutaId" IS NULL;
+    87→    87→
+    88→    88→-- ═══════════════════════════════════════════════
+    89→    89→-- 4. RUTA_PARADAS (qué paradas muestra cada ruta)
+    90→    90→-- ═══════════════════════════════════════════════
+    91→    91→CREATE TABLE "RutaParada" (
+    92→    92→    "id"          TEXT NOT NULL PRIMARY KEY,
+    93→    93→    "rutaId"      TEXT NOT NULL,
+    94→    94→    "parada"      TEXT NOT NULL,
+    95→    95→    "direccion"   TEXT NOT NULL,
+    96→    96→    "orden"       INTEGER NOT NULL DEFAULT 0,
+    97→    97→
+    98→    98→    CONSTRAINT fk_rutaparada_ruta
+    99→    99→        FOREIGN KEY ("rutaId") REFERENCES "Ruta"("id")
+   100→   100→        ON DELETE CASCADE ON UPDATE CASCADE,
+   101→   101→    CONSTRAINT chk_rutaparada_dir CHECK ("direccion" IN ('ida', 'vuelta')),
+   102→   102→    CONSTRAINT uq_rutaparada UNIQUE ("rutaId", "parada", "direccion")
+   103→   103→);
+   104→   104→
+   105→   105→COMMENT ON TABLE "RutaParada" IS 'Define qué paradas se muestran en cada ruta y dirección, y en qué orden';
+   106→   106→
+   107→   107→CREATE INDEX idx_rutaparada_ruta_dir ON "RutaParada"("rutaId", "direccion", "orden");
+   108→   108→
+   109→   109→-- ═══════════════════════════════════════════════
+   110→   110→-- 5. PERSONAL
+   111→   111→-- ═══════════════════════════════════════════════
+   112→   112→CREATE TABLE "Persona" (
+   113→   113→    "id"            TEXT NOT NULL PRIMARY KEY,
+   114→   114→    "nombre"        TEXT NOT NULL,
+   115→   115→    "cedula"        TEXT,
+   116→   116→    "telefono"      TEXT,
+   117→   117→    "rol"           TEXT NOT NULL DEFAULT 'CONDUCTOR',
+   118→   118→    "pin"           TEXT NOT NULL UNIQUE,
+   119→   119→    "esActual"      BOOLEAN NOT NULL DEFAULT false,
+   120→   120→    "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   121→   121→    "updatedAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   122→   122→);
+   123→   123→
+   124→   124→COMMENT ON TABLE "Persona" IS 'Personal: conductores, ayudantes y administradores';
+   125→   125→COMMENT ON COLUMN "Persona"."rol" IS 'CONDUCTOR | AYUDANTE | ADMIN';
+   126→   126→
+   127→   127→CREATE INDEX idx_persona_rol ON "Persona"("rol");
+   128→   128→CREATE INDEX idx_persona_es_actual ON "Persona"("esActual");
+   129→   129→
+   130→   130→-- ═══════════════════════════════════════════════
+   131→   131→-- 6. BUSES
+   132→   132→-- ═══════════════════════════════════════════════
+   133→   133→CREATE TABLE "BusVT" (
+   134→   134→    "id"            TEXT NOT NULL PRIMARY KEY,
+   135→   135→    "codigo"        TEXT NOT NULL UNIQUE,
+   136→   136→    "nombre"        TEXT NOT NULL,
+   137→   137→    "frecuencias"   JSONB NOT NULL DEFAULT '[]'::jsonb,
+   138→   138→    "activo"        BOOLEAN NOT NULL DEFAULT true,
+   139→   139→    "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   140→   140→    "updatedAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   141→   141→);
+   142→   142→
+   143→   143→-- ═══════════════════════════════════════════════
+   144→   144→-- 7. FRECUENCIAS
+   145→   145→-- ═══════════════════════════════════════════════
+   146→   146→CREATE TABLE "Frecuencia" (
+   147→   147→    "id"            TEXT NOT NULL PRIMARY KEY,
+   148→   148→    "vtCode"        TEXT NOT NULL,
+   149→   149→    "nombre"        TEXT NOT NULL,
+   150→   150→    "ruta"          TEXT NOT NULL,
+   151→   151→    "hora"          TEXT NOT NULL,
+   152→   152→    "direccion"     TEXT NOT NULL,
+   153→   153→    "activo"        BOOLEAN NOT NULL DEFAULT true,
+   154→   154→    "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   155→   155→    "updatedAt"     TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   156→   156→
+   157→   157→    CONSTRAINT fk_frecuencia_bus
+   158→   158→        FOREIGN KEY ("vtCode") REFERENCES "BusVT"("codigo")
+   159→   159→        ON DELETE RESTRICT ON UPDATE CASCADE
+   160→   160→);
+   161→   161→
+   162→   162→CREATE INDEX idx_frecuencia_vtcode ON "Frecuencia"("vtCode");
+   163→   163→CREATE INDEX idx_frecuencia_ruta ON "Frecuencia"("ruta");
+   164→   164→
+   165→   165→-- ═══════════════════════════════════════════════
+   166→   166→-- 8. VENTAS DE BOLETOS
+   167→   167→-- ═══════════════════════════════════════════════
+   168→   168→CREATE TABLE "VentaBoleto" (
+   169→   169→    "id"              TEXT NOT NULL PRIMARY KEY,
+   170→   170→    "fecha"           TEXT NOT NULL,
+   171→   171→    "vtCode"          TEXT NOT NULL,
+   172→   172→    "frecuenciaId"    TEXT,
+   173→   173→    "ruta"            TEXT NOT NULL,
+   174→   174→    "parada"          TEXT NOT NULL,
+   175→   175→    "tipo"            TEXT NOT NULL,
+   176→   176→    "tarifaOficial"   DOUBLE PRECISION NOT NULL DEFAULT 0,
+   177→   177→    "cobrado"         DOUBLE PRECISION NOT NULL DEFAULT 0,
+   178→   178→    "hora"            TEXT NOT NULL,
+   179→   179→    "ayudanteId"      TEXT NOT NULL,
+   180→   180→    "ayudanteNombre"  TEXT NOT NULL,
+   181→   181→    "lat"             DOUBLE PRECISION,
+   182→   182→    "lng"             DOUBLE PRECISION,
+   183→   183→    "syncStatus"      TEXT NOT NULL DEFAULT 'pending',
+   184→   184→    "serverId"        TEXT,
+   185→   185→    "syncError"       TEXT,
+   186→   186→    "createdAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   187→   187→    "updatedAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   188→   188→
+   189→   189→    CONSTRAINT fk_venta_frecuencia
+   190→   190→        FOREIGN KEY ("frecuenciaId") REFERENCES "Frecuencia"("id")
+   191→   191→        ON DELETE SET NULL ON UPDATE CASCADE,
+   192→   192→    CONSTRAINT fk_venta_bus
+   193→   193→        FOREIGN KEY ("vtCode") REFERENCES "BusVT"("codigo")
+   194→   194→        ON DELETE RESTRICT ON UPDATE CASCADE
+   195→   195→);
+   196→   196→
+   197→   197→CREATE INDEX idx_venta_fecha ON "VentaBoleto"("fecha");
+   198→   198→CREATE INDEX idx_venta_vtcode ON "VentaBoleto"("vtCode");
+   199→   199→CREATE INDEX idx_venta_frecuencia ON "VentaBoleto"("frecuenciaId");
+   200→   200→CREATE INDEX idx_venta_sync ON "VentaBoleto"("syncStatus");
+   201→   201→CREATE INDEX idx_venta_ruta_tipo ON "VentaBoleto"("ruta", "tipo");
+   202→   202→
+   203→   203→-- ═══════════════════════════════════════════════
+   204→   204→-- 9. REGISTROS DIARIOS (arqueo)
+   205→   205→-- ═══════════════════════════════════════════════
+   206→   206→CREATE TABLE "DailyRecord" (
+   207→   207→    "id"              TEXT NOT NULL PRIMARY KEY,
+   208→   208→    "date"            TEXT NOT NULL,
+   209→   209→    "km"              TEXT,
+   210→   210→    "conductor"       TEXT,
+   211→   211→    "ayudanteNombre"  TEXT,
+   212→   212→    "vtCode"          TEXT,
+   213→   213→    "production"      DOUBLE PRECISION NOT NULL DEFAULT 0,
+   214→   214→    "cajaComun"       DOUBLE PRECISION NOT NULL DEFAULT 0,
+   215→   215→    "sobrante"        DOUBLE PRECISION NOT NULL DEFAULT 0,
+   216→   216→    "tickets"         DOUBLE PRECISION NOT NULL DEFAULT 0,
+   217→   217→    "entregaAyudante" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   218→   218→    "entregaCompania" DOUBLE PRECISION NOT NULL DEFAULT 0,
+   219→   219→    "totalGastos"     DOUBLE PRECISION NOT NULL DEFAULT 0,
+   220→   220→    "photoUrl"        TEXT,
+   221→   221→    "createdAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+   222→   222→    "updatedAt"       TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+   223→   223→);
+   224→   224→
+   225→   225→CREATE INDEX idx_dailyrecord_date ON "DailyRecord"("date");
+   226→   226→
+   227→   227→-- ═══════════════════════════════════════════════
+   228→   228→-- 10. VIAJES
+   229→   229→-- ═══════════════════════════════════════════════
+   230→   230→CREATE TABLE "Trip" (
+   231→   231→    "id"            TEXT NOT NULL PRIMARY KEY,
+   232→   232→    "recordId"      TEXT NOT NULL,
+   233→   233→    "order"         INTEGER NOT NULL,
+   234→   234→    "routeFrom"     TEXT NOT NULL,
+   235→   235→    "routeTo"       TEXT NOT NULL,
+   236→   236→    "time"          TEXT,
+   237→   237→    "income"        DOUBLE PRECISION NOT NULL DEFAULT 0,
+   238→   238→    "efectivoReal"  DOUBLE PRECISION NOT NULL DEFAULT 0,
+   239→   239→    "boletos"       DOUBLE PRECISION NOT NULL DEFAULT 0,
+   240→   240→
+   241→   241→    CONSTRAINT fk_trip_record
+   242→   242→        FOREIGN KEY ("recordId") REFERENCES "DailyRecord"("id")
+   243→   243→        ON DELETE CASCADE ON UPDATE CASCADE
+   244→   244→);
+   245→   245→
+   246→   246→-- ═══════════════════════════════════════════════
+   247→   247→-- 11. GASTOS
+   248→   248→-- ═══════════════════════════════════════════════
+   249→   249→CREATE TABLE "Expense" (
+   250→   250→    "id"            TEXT NOT NULL PRIMARY KEY,
+   251→   251→    "recordId"      TEXT NOT NULL,
+   252→   252→    "order"         INTEGER NOT NULL,
+   253→   253→    "description"   TEXT NOT NULL,
+   254→   254→    "amount"        DOUBLE PRECISION NOT NULL DEFAULT 0,
+   255→   255→
+   256→   256→    CONSTRAINT fk_expense_record
+   257→   257→        FOREIGN KEY ("recordId") REFERENCES "DailyRecord"("id")
+   258→   258→        ON DELETE CASCADE ON UPDATE CASCADE
+   259→   259→);
+   260→   260→
+   261→   261→-- ═════════════════════════════════════════════════════════
+   262→   262→-- TRIGGER: updatedAt automático
+   263→   263→-- ═════════════════════════════════════════════════════════
+   264→   264→CREATE OR REPLACE FUNCTION update_updated_at()
+   265→   265→RETURNS TRIGGER AS $$
+   266→   266→BEGIN
+   267→   267→    NEW."updatedAt" = CURRENT_TIMESTAMP;
+   268→   268→    RETURN NEW;
+   269→   269→END;
+   270→   270→$$ LANGUAGE plpgsql;
+   271→   271→
+   272→   272→CREATE TRIGGER trg_ruta_updated BEFORE UPDATE ON "Ruta" FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+   273→   273→CREATE TRIGGER trg_parada_updated BEFORE UPDATE ON "Parada" FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+   274→   274→CREATE TRIGGER trg_tarifa_updated BEFORE UPDATE ON "Tarifa" FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+   275→   275→CREATE TRIGGER trg_persona_updated BEFORE UPDATE ON "Persona" FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+   276→   276→CREATE TRIGGER trg_busvt_updated BEFORE UPDATE ON "BusVT" FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+   277→   277→CREATE TRIGGER trg_frecuencia_updated BEFORE UPDATE ON "Frecuencia" FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+   278→   278→CREATE TRIGGER trg_venta_updated BEFORE UPDATE ON "VentaBoleto" FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+   279→   279→CREATE TRIGGER trg_dailyrecord_updated BEFORE UPDATE ON "DailyRecord" FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+   280→   280→
+   281→   281→-- ═════════════════════════════════════════════════════════
+   282→   282→-- SEED: RUTAS
+   283→   283→-- ═════════════════════════════════════════════
+   284→   284→INSERT INTO "Ruta" (id, nombre, descripcion, "pasaPorVilcabamba", "ramificaEnMalacatos") VALUES
+   285→   285→('ruta_001', 'Loja - Vilcabamba', 'Ruta troncal Loja a Vilcabamba', true, false),
+   286→   286→('ruta_002', 'Loja - El Tambo', 'Ramal desde Malacatos a El Tambo (no pasa Vilcabamba)', false, true),
+   287→   287→('ruta_003', 'Loja - Zahuayco', 'Pasa por Vilcabamba hasta Zahuayco', true, false),
+   288→   288→('ruta_004', 'Loja - La Elvira', 'Pasa por Vilcabamba hasta La Elvira', true, false),
+   289→   289→('ruta_005', 'Loja - Yangana', 'Pasa por Vilcabamba hasta Yangana', true, false);
+   290→   290→
+   291→   291→-- ═════════════════════════════════════════════════════════
+   292→   292→-- SEED: PARADAS PRINCIPALES (orden troncal)
+   293→   293→-- ═════════════════════════════════════════════════════════
+   294→   294→INSERT INTO "Parada" (id, nombre, "nombreCompleto", "esPrincipal", hub, zona, "ordenTroncal") VALUES
+   295→   295→-- Troncal Loja - Vilcabamba
+   296→   296→('par_001', 'Dos Puentes', 'Dos Puentes', true, 'Loja', 'green', 1),
+   297→   297→('par_002', 'Cajánuma', 'Cajánuma', true, 'Loja', 'green', 2),
+   298→   298→('par_003', 'Pueblo Nuevo', 'Pueblo Nuevo', true, 'Loja', 'green', 3),
+   299→   299→('par_004', 'Capulí', 'Capulí (terminal Loja)', true, 'Loja', 'green', 0),
+   300→   300→('par_005', 'Tres Leguas', 'Tres Leguas', true, 'Loja', 'yellow', 4),
+   301→   301→('par_006', 'Rumizhitana', 'Rumizhitana', true, 'Loja', 'yellow', 5),
+   302→   302→('par_007', 'Yamba', 'Yamba', true, 'Loja', 'yellow', 6),
+   303→   303→('par_008', 'Granadillo', 'Granadillo', true, 'Loja', 'yellow', 7),
+   304→   304→('par_009', 'Porvenir', 'Porvenir', true, 'Loja', 'yellow', 8),
+   305→   305→('par_010', 'Nangora', 'Nangora', true, 'Loja', 'yellow', 9),
+   306→   306→('par_011', 'Chorrillos', 'Chorrillos', true, 'Loja', 'yellow', 10),
+   307→   307→('par_012', 'Landangui', 'Landangui', true, 'Loja', 'yellow', 11),
+   308→   308→('par_013', 'La Peña', 'La Peña', true, 'Malacatos', 'yellow', 12),
+   309→   309→('par_014', 'Malacatos', 'Malacatos (hub)', true, 'Malacatos', 'yellow', 13),
+   310→   310→('par_015', 'Taxiche', 'Taxiche', true, 'Malacatos', 'yellow', 14),
+   311→   311→('par_016', 'Cavianga', 'Cavianga', true, 'Vilcabamba', 'blue', 15),
+   312→   312→('par_017', 'Cararango', 'Cararango', true, 'Vilcabamba', 'blue', 16),
+   313→   313→('par_018', 'San Pedro', 'San Pedro', true, 'Vilcabamba', 'blue', 17),
+   314→   314→('par_019', 'Vilcabamba', 'Vilcabamba (terminal)', true, 'Vilcabamba', 'blue', 18),
+   315→   315→-- Rama El Tambo
+   316→   316→('par_020', 'Ceibopamba', 'Ceibopamba', true, 'El Tambo', 'blue', NULL),
+   317→   317→('par_021', 'Trinidad', 'Trinidad', true, 'El Tambo', 'blue', NULL),
+   318→   318→('par_022', 'San José', 'San José', true, 'El Tambo', 'blue', NULL),
+   319→   319→('par_023', 'Santo Domingo', 'Santo Domingo', true, 'El Tambo', 'blue', NULL),
+   320→   320→('par_024', 'Naranjo Dulce', 'Naranjo Dulce', true, 'El Tambo', 'blue', NULL),
+   321→   321→('par_025', 'Zhotahuayco', 'Zhotahuayco', true, 'El Tambo', 'blue', NULL),
+   322→   322→('par_026', 'La Merced', 'La Merced', true, 'El Tambo', 'blue', NULL),
+   323→   323→('par_027', 'San Agustín', 'San Agustín', true, 'El Tambo', 'blue', NULL),
+   324→   324→('par_028', 'La Era', 'La Era', true, 'El Tambo', 'blue', NULL),
+   325→   325→('par_029', 'La Capilla', 'La Capilla', true, 'El Tambo', 'blue', NULL),
+   326→   326→('par_030', 'San Bernaved', 'San Bernaved', true, 'El Tambo', 'blue', NULL),
+   327→   327→('par_031', 'El Tambo', 'El Tambo (terminal)', true, 'El Tambo', 'blue', NULL),
+   328→   328→-- Ruta Zahuayco
+   329→   329→('par_032', 'Masanamaca', 'Masanamaca', true, 'Vilcabamba', 'blue', NULL),
+   330→   330→('par_033', 'Quinara', 'Quinara', true, 'Vilcabamba', 'blue', NULL),
+   331→   331→('par_034', 'Chumberos', 'Chumberos', true, 'Vilcabamba', 'blue', NULL),
+   332→   332→('par_035', 'Palmira', 'Palmira', true, 'Vilcabamba', 'blue', NULL),
+   333→   333→('par_036', 'Zahuayco', 'Zahuayco (terminal)', true, 'Vilcabamba', 'blue', NULL),
+   334→   334→-- Ruta La Elvira
+   335→   335→('par_037', 'Cucanama', 'Cucanama', true, 'Vilcabamba', 'blue', NULL),
+   336→   336→('par_038', 'Linderos', 'Linderos', true, 'Vilcabamba', 'blue', NULL),
+   337→   337→('par_039', 'Santorum', 'Santorum', true, 'Vilcabamba', 'blue', NULL),
+   338→   338→('par_040', 'Solanda', 'Solanda', true, 'Vilcabamba', 'blue', NULL),
+   339→   339→('par_041', 'Moyococha', 'Moyococha', true, 'Vilcabamba', 'blue', NULL),
+   340→   340→('par_042', 'Tumianuma', 'Tumianuma', true, 'Vilcabamba', 'blue', NULL),
+   341→   341→('par_043', 'Comunidades', 'Comunidades', true, 'Vilcabamba', 'blue', NULL),
+   342→   342→('par_044', 'La Elvira', 'La Elvira (terminal)', true, 'Vilcabamba', 'blue', NULL),
+   343→   343→-- Ruta Yangana
+   344→   344→('par_045', 'Suro', 'Suro', true, 'Vilcabamba', 'blue', NULL),
+   345→   345→('par_046', 'Yangana', 'Yangana (terminal)', true, 'Vilcabamba', 'blue', NULL);
+   346→   346→
+   347→   347→-- ═════════════════════════════════════════════════════════
+   348→   348→-- SEED: PARADAS INTERMEDIAS (esPrincipal=false, nombre con ->)
+   349→   349→-- ═════════════════════════════════════════════════════════
+   350→   350→INSERT INTO "Parada" (id, nombre, "nombreCompleto", "esPrincipal", hub, zona) VALUES
+   351→   351→-- Intermedios hacia Malacatos (orange)
+   352→   352→('par_i01', 'Peña→Mal', 'La Peña -> Malacatos', false, 'Malacatos', 'orange'),
+   353→   353→('par_i02', 'Land→Mal', 'Landangui -> Malacatos', false, 'Malacatos', 'orange'),
+   354→   354→('par_i03', 'Chorri→Mal', 'Chorrillos -> Malacatos', false, 'Malacatos', 'orange'),
+   355→   355→('par_i04', 'Nango→Mal', 'Nangora -> Malacatos', false, 'Malacatos', 'orange'),
+   356→   356→('par_i05', 'Porv→Mal', 'Porvenir -> Malacatos', false, 'Malacatos', 'orange'),
+   357→   357→('par_i06', 'Gran→Mal', 'Granadillo -> Malacatos', false, 'Malacatos', 'orange'),
+   358→   358→('par_i07', 'Yamba→Mal', 'Yamba -> Malacatos', false, 'Malacatos', 'orange'),
+   359→   359→('par_i08', 'Rumi→Mal', 'Rumizhitana -> Malacatos', false, 'Malacatos', 'orange'),
+   360→   360→('par_i09', 'T.Leguas→Mal', 'Tres Leguas -> Malacatos', false, 'Malacatos', 'orange'),
+   361→   361→('par_i10', 'P.Nuevo→Mal', 'Pueblo Nuevo -> Malacatos', false, 'Malacatos', 'orange'),
+   362→   362→('par_i11', 'Caja→Mal', 'Cajánuma -> Malacatos', false, 'Malacatos', 'orange'),
+   363→   363→('par_i12', 'D.Puen→Mal', 'Dos Puentes -> Malacatos', false, 'Malacatos', 'orange'),
+   364→   364→('par_i13', 'Capulí→Mal', 'Capulí -> Malacatos', false, 'Malacatos', 'orange'),
+   365→   365→-- Intermedios hacia Vilcabamba (purple)
+   366→   366→('par_i14', 'S.Pedro→Vilc', 'San Pedro -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   367→   367→('par_i15', 'Carar→Vilc', 'Cararango -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   368→   368→('par_i16', 'Cavian→Vilc', 'Cavianga -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   369→   369→('par_i17', 'Taxich→Vilc', 'Taxiche -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   370→   370→('par_i18', 'Mal→Vilc', 'Malacatos -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   371→   371→('par_i19', 'Land→Vilc', 'Landangui -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   372→   372→('par_i20', 'Peña→Vilc', 'La Peña -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   373→   373→('par_i21', 'Chorri→Vilc', 'Chorrillos -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   374→   374→('par_i22', 'Nango→Vilc', 'Nangora -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   375→   375→('par_i23', 'Porv→Vilc', 'Porvenir -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   376→   376→('par_i24', 'Gran→Vilc', 'Granadillo -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   377→   377→('par_i25', 'Yamba→Vilc', 'Yamba -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   378→   378→('par_i26', 'Rumi→Vilc', 'Rumizhitana -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   379→   379→('par_i27', 'T.Leguas→Vilc', 'Tres Leguas -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   380→   380→('par_i28', 'P.Nuevo→Vilc', 'Pueblo Nuevo -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   381→   381→('par_i29', 'Caja→Vilc', 'Cajánuma -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   382→   382→('par_i30', 'D.Puen→Vilc', 'Dos Puentes -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   383→   383→('par_i31', 'Capulí→Vilc', 'Capulí -> Vilcabamba', false, 'Vilcabamba', 'purple'),
+   384→   384→-- Intermedios El Tambo desde Malacatos (orange)
+   385→   385→('par_i32', 'Mal→Ceibop', 'Malacatos -> Ceibopamba', false, 'Malacatos', 'orange'),
+   386→   386→('par_i33', 'Mal→Trinidad', 'Malacatos -> Trinidad', false, 'Malacatos', 'orange'),
+   387→   387→('par_i34', 'Mal→S.Jose', 'Malacatos -> San José', false, 'Malacatos', 'orange'),
+   388→   388→('par_i35', 'Mal→StoDom', 'Malacatos -> Santo Domingo', false, 'Malacatos', 'orange'),
+   389→   389→('par_i36', 'Mal→N.Dulce', 'Malacatos -> Naranjo Dulce', false, 'Malacatos', 'orange'),
+   390→   390→('par_i37', 'Mal→Zhotahu', 'Malacatos -> Zhotahuayco', false, 'Malacatos', 'orange'),
+   391→   391→('par_i38', 'Mal→LaMerc', 'Malacatos -> La Merced', false, 'Malacatos', 'orange'),
+   392→   392→('par_i39', 'Mal→S.Agust', 'Malacatos -> San Agustín', false, 'Malacatos', 'orange'),
+   393→   393→('par_i40', 'Mal→LaEra', 'Malacatos -> La Era', false, 'Malacatos', 'orange'),
+   394→   394→('par_i41', 'Mal→LaCap', 'Malacatos -> La Capilla', false, 'Malacatos', 'orange'),
+   395→   395→('par_i42', 'Mal→S.Bern', 'Malacatos -> San Bernaved', false, 'Malacatos', 'orange'),
+   396→   396→('par_i43', 'Mal→ElTambo', 'Malacatos -> El Tambo', false, 'Malacatos', 'orange'),
+   397→   397→-- Intermedios Zahuayco/Yangana desde Vilcabamba (purple)
+   398→   398→('par_i44', 'Vilc→Masan', 'Vilcabamba -> Masanamaca', false, 'Vilcabamba', 'purple'),
+   399→   399→('par_i45', 'Vilc→Quina', 'Vilcabamba -> Quinara', false, 'Vilcabamba', 'purple'),
+   400→   400→('par_i46', 'Vilc→Chumb', 'Vilcabamba -> Chumberos', false, 'Vilcabamba', 'purple'),
+   401→   401→('par_i47', 'Vilc→Palm', 'Vilcabamba -> Palmira', false, 'Vilcabamba', 'purple'),
+   402→   402→('par_i48', 'Vilc→Zahua', 'Vilcabamba -> Zahuayco', false, 'Vilcabamba', 'purple'),
+   403→   403→('par_i49', 'Vilc→Suro', 'Vilcabamba -> Suro', false, 'Vilcabamba', 'purple'),
+   404→   404→('par_i50', 'Vilc→Yangana', 'Vilcabamba -> Yangana', false, 'Vilcabamba', 'purple'),
+   405→   405→-- Intermedios Zahuayco/Yangana desde Malacatos (orange)
+   406→   406→('par_i51', 'Mal→Masan', 'Malacatos -> Masanamaca', false, 'Malacatos', 'orange'),
+   407→   407→('par_i52', 'Mal→Quina', 'Malacatos -> Quinara', false, 'Malacatos', 'orange'),
+   408→   408→('par_i53', 'Mal→Chumb', 'Malacatos -> Chumberos', false, 'Malacatos', 'orange'),
+   409→   409→('par_i54', 'Mal→Palm', 'Malacatos -> Palmira', false, 'Malacatos', 'orange'),
+   410→   410→('par_i55', 'Mal→Zahua', 'Malacatos -> Zahuayco', false, 'Malacatos', 'orange'),
+   411→   411→('par_i56', 'Mal→Suro', 'Malacatos -> Suro', false, 'Malacatos', 'orange'),
+   412→   412→('par_i57', 'Mal→Yangana', 'Malacatos -> Yangana', false, 'Malacatos', 'orange'),
+   413→   413→-- Intermedios La Elvira desde Malacatos (orange)
+   414→   414→('par_i58', 'Mal→Cucan', 'Malacatos -> Cucanama', false, 'Malacatos', 'orange'),
+   415→   415→('par_i59', 'Mal→Lind', 'Malacatos -> Linderos', false, 'Malacatos', 'orange'),
+   416→   416→('par_i60', 'Mal→Santo', 'Malacatos -> Santorum', false, 'Malacatos', 'orange'),
+   417→   417→('par_i61', 'Mal→Solan', 'Malacatos -> Solanda', false, 'Malacatos', 'orange'),
+   418→   418→('par_i62', 'Mal→Moyoc', 'Malacatos -> Moyococha', false, 'Malacatos', 'orange'),
+   419→   419→('par_i63', 'Mal→Tumia', 'Malacatos -> Tumianuma', false, 'Malacatos', 'orange'),
+   420→   420→('par_i64', 'Mal→Comun', 'Malacatos -> Comunidades', false, 'Malacatos', 'orange'),
+   421→   421→('par_i65', 'Mal→Elvira', 'Malacatos -> La Elvira', false, 'Malacatos', 'orange'),
+   422→   422→-- Intermedios La Elvira desde Vilcabamba (purple)
+   423→   423→('par_i66', 'Vilc→Cucan', 'Vilcabamba -> Cucanama', false, 'Vilcabamba', 'purple'),
+   424→   424→('par_i67', 'Vilc→Lind', 'Vilcabamba -> Linderos', false, 'Vilcabamba', 'purple'),
+   425→   425→('par_i68', 'Vilc→Santo', 'Vilcabamba -> Santorum', false, 'Vilcabamba', 'purple'),
+   426→   426→('par_i69', 'Vilc→Solan', 'Vilcabamba -> Solanda', false, 'Vilcabamba', 'purple'),
+   427→   427→('par_i70', 'Vilc→Moyoc', 'Vilcabamba -> Moyococha', false, 'Vilcabamba', 'purple'),
+   428→   428→('par_i71', 'Vilc→Tumia', 'Vilcabamba -> Tumianuma', false, 'Vilcabamba', 'purple'),
+   429→   429→('par_i72', 'Vilc→Comun', 'Vilcabamba -> Comunidades', false, 'Vilcabamba', 'purple'),
+   430→   430→('par_i73', 'Vilc→Elvira', 'Vilcabamba -> La Elvira', false, 'Vilcabamba', 'purple'),
+   431→   431→-- Intermedios VUELTA: desde hub hacia Loja (purple, desde Vilcabamba)
+   432→   432→('par_i74', 'Vilc→S.Pedro', 'Vilcabamba -> San Pedro', false, 'Vilcabamba', 'purple'),
+   433→   433→('par_i75', 'Vilc→Carar', 'Vilcabamba -> Cararango', false, 'Vilcabamba', 'purple'),
+   434→   434→('par_i76', 'Vilc→Cavian', 'Vilcabamba -> Cavianga', false, 'Vilcabamba', 'purple'),
+   435→   435→('par_i77', 'Vilc→Taxich', 'Vilcabamba -> Taxiche', false, 'Vilcabamba', 'purple'),
+   436→   436→('par_i78', 'Vilc→Malac', 'Vilcabamba -> Malacatos', false, 'Vilcabamba', 'purple'),
+   437→   437→('par_i79', 'Vilc→Land', 'Vilcabamba -> Landangui', false, 'Vilcabamba', 'purple'),
+   438→   438→('par_i80', 'Vilc→Chorri', 'Vilcabamba -> Chorrillos', false, 'Vilcabamba', 'purple'),
+   439→   439→('par_i81', 'Vilc→Nango', 'Vilcabamba -> Nangora', false, 'Vilcabamba', 'purple'),
+   440→   440→('par_i82', 'Vilc→Porv', 'Vilcabamba -> Porvenir', false, 'Vilcabamba', 'purple'),
+   441→   441→('par_i83', 'Vilc→Gran', 'Vilcabamba -> Granadillo', false, 'Vilcabamba', 'purple'),
+   442→   442→('par_i84', 'Vilc→Yamba', 'Vilcabamba -> Yamba', false, 'Vilcabamba', 'purple'),
+   443→   443→('par_i85', 'Vilc→Rumi', 'Vilcabamba -> Rumizhitana', false, 'Vilcabamba', 'purple'),
+   444→   444→('par_i86', 'Vilc→T.Leguas', 'Vilcabamba -> Tres Leguas', false, 'Vilcabamba', 'purple'),
+   445→   445→('par_i87', 'Vilc→P.Nuevo', 'Vilcabamba -> Pueblo Nuevo', false, 'Vilcabamba', 'purple'),
+   446→   446→('par_i88', 'Vilc→Caja', 'Vilcabamba -> Cajánuma', false, 'Vilcabamba', 'purple'),
+   447→   447→('par_i89', 'Vilc→D.Puen', 'Vilcabamba -> Dos Puentes', false, 'Vilcabamba', 'purple'),
+   448→   448→('par_i90', 'Vilc→Capulí', 'Vilcabamba -> Capulí', false, 'Vilcabamba', 'purple'),
+   449→   449→('par_i91', 'Vilc→Loja', 'Vilcabamba -> Loja (La Elvira)', false, 'Vilcabamba', 'purple'),
+   450→   450→-- Intermedios VUELTA: desde hub hacia Loja (orange, desde Malacatos)
+   451→   451→('par_i92', 'Mal→LaPeña', 'Malacatos -> La Peña', false, 'Malacatos', 'orange'),
+   452→   452→('par_i93', 'Mal→Land', 'Malacatos -> Landangui', false, 'Malacatos', 'orange'),
+   453→   453→('par_i94', 'Mal→Chorri', 'Malacatos -> Chorrillos', false, 'Malacatos', 'orange'),
+   454→   454→('par_i95', 'Mal→Nango', 'Malacatos -> Nangora', false, 'Malacatos', 'orange'),
+   455→   455→('par_i96', 'Mal→Porv', 'Malacatos -> Porvenir', false, 'Malacatos', 'orange'),
+   456→   456→('par_i97', 'Mal→Gran', 'Malacatos -> Granadillo', false, 'Malacatos', 'orange'),
+   457→   457→('par_i98', 'Mal→Yamba', 'Malacatos -> Yamba', false, 'Malacatos', 'orange'),
+   458→   458→('par_i99', 'Mal→Rumi', 'Malacatos -> Rumizhitana', false, 'Malacatos', 'orange'),
+   459→   459→('par_i100','Mal→T.Leguas','Malacatos -> Tres Leguas', false, 'Malacatos', 'orange'),
+   460→   460→('par_i101','Mal→P.Nuevo','Malacatos -> Pueblo Nuevo', false, 'Malacatos', 'orange'),
+   461→   461→('par_i102','Mal→Caja', 'Malacatos -> Cajánuma', false, 'Malacatos', 'orange'),
+   462→   462→('par_i103','Mal→D.Puen', 'Malacatos -> Dos Puentes', false, 'Malacatos', 'orange'),
+   463→   463→('par_i104','Mal→Capulí', 'Malacatos -> Capulí', false, 'Malacatos', 'orange'),
+   464→   464→-- Intermedios VUELTA: desde parada hacia Loja
+   465→   465→('par_i105','D.Puen→Loja','Dos Puentes -> Loja', false, 'Loja', 'green'),
+   466→   466→('par_i106','Caja→Loja', 'Cajánuma -> Loja', false, 'Loja', 'green'),
+   467→   467→('par_i107','P.Nuevo→Loja','Pueblo Nuevo -> Loja', false, 'Loja', 'green'),
+   468→   468→('par_i108','T.Leguas→Loja','Tres Leguas -> Loja', false, 'Loja', 'green'),
+   469→   469→('par_i109','Rumi→Loja', 'Rumizhitana -> Loja', false, 'Loja', 'green'),
+   470→   470→('par_i110','Yamba→Loja', 'Yamba -> Loja', false, 'Loja', 'green'),
+   471→   471→('par_i111','Gran→Loja', 'Granadillo -> Loja', false, 'Loja', 'green'),
+   472→   472→('par_i112','Porv→Loja', 'Porvenir -> Loja', false, 'Loja', 'green'),
+   473→   473→('par_i113','Nango→Loja', 'Nangora -> Loja', false, 'Loja', 'green'),
+   474→   474→('par_i114','Chorri→Loja', 'Chorrillos -> Loja', false, 'Loja', 'green'),
+   475→   475→('par_i115','Land→Loja', 'Landangui -> Loja', false, 'Loja', 'green'),
+   476→   476→('par_i116','Peña→Loja', 'La Peña -> Loja', false, 'Loja', 'green'),
+   477→   477→('par_i117','Mal→Loja',  'Malacatos -> Loja', false, 'Loja', 'green'),
+   478→   478→('par_i118','Taxich→Loja','Taxiche -> Loja', false, 'Loja', 'green'),
+   479→   479→('par_i119','Cavian→Loja','Cavianga -> Loja', false, 'Loja', 'green'),
+   480→   480→('par_i120','Carar→Loja', 'Cararango -> Loja', false, 'Loja', 'green'),
+   481→   481→('par_i121','S.Pedro→Loja','San Pedro -> Loja', false, 'Loja', 'green'),
+   482→   482→-- Intermedios VUELTA El Tambo hacia Loja
+   483→   483→('par_i122','LaCap→Loja','La Capilla -> Loja', false, 'Loja', 'green'),
+   484→   484→('par_i123','S.Bern→Loja','San Bernaved -> Loja', false, 'Loja', 'green');
+   485→   485→
+   486→   486→-- ═════════════════════════════════════════════════════════
+   487→   487→-- SEED: TARIFAS IDA (rutaId=NULL = compartidas por todas)
+   488→   488→-- ═════════════════════════════════════════════════════════
+   489→   489→INSERT INTO "Tarifa" (id, "rutaId", parada, direccion, normal, media, "esTemporal", prioridad) VALUES
+   490→   490→-- Troncal Loja - Vilcabamba IDA
+   491→   491→('t_ida_001', NULL, 'Dos Puentes', 'ida', 0.75, 0.40, false, 1),
+   492→   492→('t_ida_002', NULL, 'Cajánuma', 'ida', 1.25, 0.55, false, 1),
+   493→   493→('t_ida_003', NULL, 'Pueblo Nuevo', 'ida', 1.25, 0.55, false, 1),
+   494→   494→('t_ida_004', NULL, 'Tres Leguas', 'ida', 1.25, 0.55, false, 1),
+   495→   495→('t_ida_005', NULL, 'Rumizhitana', 'ida', 1.25, 0.55, false, 1),
+   496→   496→('t_ida_006', NULL, 'Yamba', 'ida', 1.25, 0.55, false, 1),
+   497→   497→('t_ida_007', NULL, 'Granadillo', 'ida', 1.40, 0.65, false, 1),
+   498→   498→('t_ida_008', NULL, 'Porvenir', 'ida', 1.40, 0.65, false, 1),
+   499→   499→('t_ida_009', NULL, 'Nangora', 'ida', 1.50, 0.75, false, 1),
+   500→   500→('t_ida_010', NULL, 'Chorrillos', 'ida', 1.50, 0.75, false, 1),
+   501→   501→('t_ida_011', NULL, 'Landangui', 'ida', 1.75, 0.90, false, 1),
+   502→   502→('t_ida_012', NULL, 'La Peña', 'ida', 1.75, 0.90, false, 1),
+   503→   503→('t_ida_013', NULL, 'Malacatos', 'ida', 2.00, 1.00, false, 1),
+   504→   504→('t_ida_014', NULL, 'Taxiche', 'ida', 2.00, 1.00, false, 1),
+   505→   505→('t_ida_015', NULL, 'Cavianga', 'ida', 2.25, 1.15, false, 1),
+   506→   506→('t_ida_016', NULL, 'Cararango', 'ida', 2.25, 1.15, false, 1),
+   507→   507→('t_ida_017', NULL, 'San Pedro', 'ida', 2.25, 1.15, false, 1),
+   508→   508→('t_ida_018', NULL, 'Vilcabamba', 'ida', 2.50, 1.25, false, 1),
+   509→   509→-- El Tambo IDA
+   510→   510→('t_ida_020', NULL, 'Ceibopamba', 'ida', 2.25, 1.15, false, 1),
+   511→   511→('t_ida_021', NULL, 'Trinidad', 'ida', 2.25, 1.15, false, 1),
+   512→   512→('t_ida_022', NULL, 'San José', 'ida', 2.25, 1.15, false, 1),
+   513→   513→('t_ida_023', NULL, 'Santo Domingo', 'ida', 2.50, 1.25, false, 1),
+   514→   514→('t_ida_024', NULL, 'Naranjo Dulce', 'ida', 2.75, 1.40, false, 1),
+   515→   515→('t_ida_025', NULL, 'Zhotahuayco', 'ida', 3.00, 1.50, false, 1),
+   516→   516→('t_ida_026', NULL, 'La Merced', 'ida', 3.25, 1.65, false, 1),
+   517→   517→('t_ida_027', NULL, 'San Agustín', 'ida', 3.75, 1.90, false, 1),
+   518→   518→('t_ida_028', NULL, 'La Era', 'ida', 3.75, 1.90, false, 1),
+   519→   519→('t_ida_029', NULL, 'La Capilla', 'ida', 4.00, 2.00, false, 1),
+   520→   520→('t_ida_030', NULL, 'San Bernaved', 'ida', 4.00, 2.00, false, 1),
+   521→   521→('t_ida_031', NULL, 'El Tambo', 'ida', 4.00, 2.00, false, 1),
+   522→   522→-- Zahuayco IDA
+   523→   523→('t_ida_032', NULL, 'Masanamaca', 'ida', 3.00, 1.50, false, 1),
+   524→   524→('t_ida_033', NULL, 'Quinara', 'ida', 3.25, 1.65, false, 1),
+   525→   525→('t_ida_034', NULL, 'Chumberos', 'ida', 3.75, 1.90, false, 1),
+   526→   526→('t_ida_035', NULL, 'Palmira', 'ida', 3.75, 1.90, false, 1),
+   527→   527→('t_ida_036', NULL, 'Zahuayco', 'ida', 4.00, 2.00, false, 1),
+   528→   528→-- La Elvira IDA
+   529→   529→('t_ida_037', NULL, 'Cucanama', 'ida', 2.50, 1.25, false, 1),
+   530→   530→('t_ida_038', NULL, 'Linderos', 'ida', 2.75, 1.40, false, 1),
+   531→   531→('t_ida_039', NULL, 'Santorum', 'ida', 3.00, 1.50, false, 1),
+   532→   532→('t_ida_040', NULL, 'Solanda', 'ida', 3.00, 1.50, false, 1),
+   533→   533→('t_ida_041', NULL, 'Moyococha', 'ida', 3.00, 1.50, false, 1),
+   534→   534→('t_ida_042', NULL, 'Tumianuma', 'ida', 3.25, 1.65, false, 1),
+   535→   535→('t_ida_043', NULL, 'Comunidades', 'ida', 3.50, 1.65, false, 1),
+   536→   536→('t_ida_044', NULL, 'La Elvira', 'ida', 3.75, 1.90, false, 1),
+   537→   537→-- Yangana IDA
+   538→   538→('t_ida_045', NULL, 'Suro', 'ida', 3.25, 1.65, false, 1),
+   539→   539→('t_ida_046', NULL, 'Yangana', 'ida', 3.75, 1.90, false, 1),
+   540→   540→-- Intermedios IDA hacia Malacatos (13 paradas)
+   541→   541→('t_ida_i01', NULL, 'Peña→Mal', 'ida', 0.75, 0.40, false, 1),
+   542→   542→('t_ida_i02', NULL, 'Land→Mal', 'ida', 0.75, 0.40, false, 1),
+   543→   543→('t_ida_i03', NULL, 'Chorri→Mal', 'ida', 0.75, 0.40, false, 1),
+   544→   544→('t_ida_i04', NULL, 'Nango→Mal', 'ida', 0.75, 0.40, false, 1),
+   545→   545→('t_ida_i05', NULL, 'Porv→Mal', 'ida', 1.10, 0.55, false, 1),
+   546→   546→('t_ida_i06', NULL, 'Gran→Mal', 'ida', 1.10, 0.55, false, 1),
+   547→   547→('t_ida_i07', NULL, 'Yamba→Mal', 'ida', 1.10, 0.55, false, 1),
+   548→   548→('t_ida_i08', NULL, 'Rumi→Mal', 'ida', 1.10, 0.55, false, 1),
+   549→   549→('t_ida_i09', NULL, 'T.Leguas→Mal', 'ida', 1.10, 0.55, false, 1),
+   550→   550→('t_ida_i10', NULL, 'P.Nuevo→Mal', 'ida', 1.10, 0.55, false, 1),
+   551→   551→('t_ida_i11', NULL, 'Caja→Mal', 'ida', 1.50, 0.75, false, 1),
+   552→   552→('t_ida_i12', NULL, 'D.Puen→Mal', 'ida', 1.50, 0.75, false, 1),
+   553→   553→('t_ida_i13', NULL, 'Capulí→Mal', 'ida', 2.00, 1.00, false, 1),
+   554→   554→-- Intermedios IDA hacia Vilcabamba (18 paradas)
+   555→   555→('t_ida_i14', NULL, 'S.Pedro→Vilc', 'ida', 0.75, 0.40, false, 1),
+   556→   556→('t_ida_i15', NULL, 'Carar→Vilc', 'ida', 0.75, 0.40, false, 1),
+   557→   557→('t_ida_i16', NULL, 'Cavian→Vilc', 'ida', 0.75, 0.40, false, 1),
+   558→   558→('t_ida_i17', NULL, 'Taxich→Vilc', 'ida', 0.75, 0.40, false, 1),
+   559→   559→('t_ida_i18', NULL, 'Mal→Vilc', 'ida', 1.10, 0.55, false, 1),
+   560→   560→('t_ida_i19', NULL, 'Land→Vilc', 'ida', 1.10, 0.55, false, 1),
+   561→   561→('t_ida_i20', NULL, 'Peña→Vilc', 'ida', 1.10, 0.55, false, 1),
+   562→   562→('t_ida_i21', NULL, 'Chorri→Vilc', 'ida', 1.25, 0.65, false, 1),
+   563→   563→('t_ida_i22', NULL, 'Nango→Vilc', 'ida', 1.25, 0.65, false, 1),
+   564→   564→('t_ida_i23', NULL, 'Porv→Vilc', 'ida', 1.25, 0.65, false, 1),
+   565→   565→('t_ida_i24', NULL, 'Gran→Vilc', 'ida', 1.50, 0.75, false, 1),
+   566→   566→('t_ida_i25', NULL, 'Yamba→Vilc', 'ida', 1.50, 0.75, false, 1),
+   567→   567→('t_ida_i26', NULL, 'Rumi→Vilc', 'ida', 1.50, 0.75, false, 1),
+   568→   568→('t_ida_i27', NULL, 'T.Leguas→Vilc', 'ida', 1.50, 0.75, false, 1),
+   569→   569→('t_ida_i28', NULL, 'P.Nuevo→Vilc', 'ida', 1.50, 0.75, false, 1),
+   570→   570→('t_ida_i29', NULL, 'Caja→Vilc', 'ida', 2.00, 1.00, false, 1),
+   571→   571→('t_ida_i30', NULL, 'D.Puen→Vilc', 'ida', 2.00, 1.00, false, 1),
+   572→   572→('t_ida_i31', NULL, 'Capulí→Vilc', 'ida', 2.50, 1.25, false, 1),
+   573→   573→-- Intermedios IDA El Tambo desde Malacatos (12 paradas)
+   574→   574→('t_ida_i32', NULL, 'Mal→Ceibop', 'ida', 0.75, 0.40, false, 1),
+   575→   575→('t_ida_i33', NULL, 'Mal→Trinidad', 'ida', 0.75, 0.40, false, 1),
+   576→   576→('t_ida_i34', NULL, 'Mal→S.Jose', 'ida', 0.75, 0.40, false, 1),
+   577→   577→('t_ida_i35', NULL, 'Mal→StoDom', 'ida', 1.00, 0.50, false, 1),
+   578→   578→('t_ida_i36', NULL, 'Mal→N.Dulce', 'ida', 1.25, 0.65, false, 1),
+   579→   579→('t_ida_i37', NULL, 'Mal→Zhotahu', 'ida', 1.50, 0.75, false, 1),
+   580→   580→('t_ida_i38', NULL, 'Mal→LaMerc', 'ida', 1.75, 0.90, false, 1),
+   581→   581→('t_ida_i39', NULL, 'Mal→S.Agust', 'ida', 1.75, 0.90, false, 1),
+   582→   582→('t_ida_i40', NULL, 'Mal→LaEra', 'ida', 2.00, 1.00, false, 1),
+   583→   583→('t_ida_i41', NULL, 'Mal→LaCap', 'ida', 2.25, 1.15, false, 1),
+   584→   584→('t_ida_i42', NULL, 'Mal→S.Bern', 'ida', 2.25, 1.15, false, 1),
+   585→   585→('t_ida_i43', NULL, 'Mal→ElTambo', 'ida', 2.25, 1.15, false, 1),
+   586→   586→-- Intermedios IDA Zahuayco/Yangana desde Vilcabamba (7)
+   587→   587→('t_ida_i44', NULL, 'Vilc→Masan', 'ida', 1.10, 0.55, false, 1),
+   588→   588→('t_ida_i45', NULL, 'Vilc→Quina', 'ida', 2.00, 1.00, false, 1),
+   589→   589→('t_ida_i46', NULL, 'Vilc→Chumb', 'ida', 2.00, 1.00, false, 1),
+   590→   590→('t_ida_i47', NULL, 'Vilc→Palm', 'ida', 2.25, 1.15, false, 1),
+   591→   591→('t_ida_i48', NULL, 'Vilc→Zahua', 'ida', 2.50, 1.25, false, 1),
+   592→   592→('t_ida_i49', NULL, 'Vilc→Suro', 'ida', 1.60, 0.80, false, 1),
+   593→   593→('t_ida_i50', NULL, 'Vilc→Yangana', 'ida', 2.00, 1.00, false, 1),
+   594→   594→-- Intermedios IDA Zahuayco/Yangana desde Malacatos (7)
+   595→   595→('t_ida_i51', NULL, 'Mal→Masan', 'ida', 2.00, 1.00, false, 1),
+   596→   596→('t_ida_i52', NULL, 'Mal→Quina', 'ida', 2.50, 1.25, false, 1),
+   597→   597→('t_ida_i53', NULL, 'Mal→Chumb', 'ida', 2.50, 1.25, false, 1),
+   598→   598→('t_ida_i54', NULL, 'Mal→Palm', 'ida', 2.90, 1.45, false, 1),
+   599→   599→('t_ida_i55', NULL, 'Mal→Zahua', 'ida', 3.15, 1.60, false, 1),
+   600→   600→('t_ida_i56', NULL, 'Mal→Suro', 'ida', 2.00, 1.00, false, 1),
+   601→   601→('t_ida_i57', NULL, 'Mal→Yangana', 'ida', 2.50, 1.25, false, 1),
+   602→   602→-- Intermedios IDA La Elvira desde Malacatos (8)
+   603→   603→('t_ida_i58', NULL, 'Mal→Cucan', 'ida', 1.60, 0.80, false, 1),
+   604→   604→('t_ida_i59', NULL, 'Mal→Lind', 'ida', 2.00, 1.00, false, 1),
+   605→   605→('t_ida_i60', NULL, 'Mal→Santo', 'ida', 2.00, 1.00, false, 1),
+   606→   606→('t_ida_i61', NULL, 'Mal→Solan', 'ida', 2.00, 1.00, false, 1),
+   607→   607→('t_ida_i62', NULL, 'Mal→Moyoc', 'ida', 2.00, 1.00, false, 1),
+   608→   608→('t_ida_i63', NULL, 'Mal→Tumia', 'ida', 2.50, 1.25, false, 1),
+   609→   609→('t_ida_i64', NULL, 'Mal→Comun', 'ida', 2.50, 1.25, false, 1),
+   610→   610→('t_ida_i65', NULL, 'Mal→Elvira', 'ida', 3.00, 1.50, false, 1),
+   611→   611→-- Intermedios IDA La Elvira desde Vilcabamba (8)
+   612→   612→('t_ida_i66', NULL, 'Vilc→Cucan', 'ida', 0.75, 0.40, false, 1),
+   613→   613→('t_ida_i67', NULL, 'Vilc→Lind', 'ida', 1.10, 0.55, false, 1),
+   614→   614→('t_ida_i68', NULL, 'Vilc→Santo', 'ida', 1.50, 0.65, false, 1),
+   615→   615→('t_ida_i69', NULL, 'Vilc→Solan', 'ida', 1.50, 0.65, false, 1),
+   616→   616→('t_ida_i70', NULL, 'Vilc→Moyoc', 'ida', 1.50, 0.65, false, 1),
+   617→   617→('t_ida_i71', NULL, 'Vilc→Tumia', 'ida', 2.00, 1.00, false, 1),
+   618→   618→('t_ida_i72', NULL, 'Vilc→Comun', 'ida', 2.00, 1.00, false, 1),
+   619→   619→('t_ida_i73', NULL, 'Vilc→Elvira', 'ida', 2.40, 1.20, false, 1);
+   620→   620→
+   621→   621→-- ═════════════════════════════════════════════════════════
+   622→   622→-- SEED: TARIFAS VUELTA TRONCAL COMPARTIDA (rutaId=NULL)
+   623→   623→-- ═════════════════════════════════════════════════════════
+   624→   624→INSERT INTO "Tarifa" (id, "rutaId", parada, direccion, normal, media, "esTemporal", prioridad) VALUES
+   625→   625→-- Troncal Vilcabamba vuelta
+   626→   626→('t_vta_001', NULL, 'Dos Puentes', 'vuelta', 0.75, 0.40, false, 1),
+   627→   627→('t_vta_002', NULL, 'Cajánuma', 'vuelta', 1.25, 0.55, false, 1),
+   628→   628→('t_vta_003', NULL, 'Pueblo Nuevo', 'vuelta', 1.25, 0.55, false, 1),
+   629→   629→('t_vta_004', NULL, 'Tres Leguas', 'vuelta', 1.25, 0.55, false, 1),
+   630→   630→('t_vta_005', NULL, 'Rumizhitana', 'vuelta', 1.25, 0.55, false, 1),
+   631→   631→('t_vta_006', NULL, 'Yamba', 'vuelta', 1.25, 0.55, false, 1),
+   632→   632→('t_vta_007', NULL, 'Granadillo', 'vuelta', 1.40, 0.65, false, 1),
+   633→   633→('t_vta_008', NULL, 'Porvenir', 'vuelta', 1.40, 0.65, false, 1),
+   634→   634→('t_vta_009', NULL, 'Nangora', 'vuelta', 1.50, 0.75, false, 1),
+   635→   635→('t_vta_010', NULL, 'Chorrillos', 'vuelta', 1.50, 0.75, false, 1),
+   636→   636→('t_vta_011', NULL, 'Landangui', 'vuelta', 1.75, 0.90, false, 1),
+   637→   637→('t_vta_012', NULL, 'La Peña', 'vuelta', 1.75, 0.90, false, 1),
+   638→   638→('t_vta_013', NULL, 'Malacatos', 'vuelta', 2.00, 1.00, false, 1),
+   639→   639→('t_vta_014', NULL, 'Taxiche', 'vuelta', 2.00, 1.00, false, 1),
+   640→   640→('t_vta_015', NULL, 'Cavianga', 'vuelta', 2.25, 1.15, false, 1),
+   641→   641→('t_vta_016', NULL, 'Cararango', 'vuelta', 2.25, 1.15, false, 1),
+   642→   642→('t_vta_017', NULL, 'San Pedro', 'vuelta', 2.25, 1.15, false, 1),
+   643→   643→('t_vta_018', NULL, 'Vilcabamba', 'vuelta', 2.50, 1.25, false, 1),
+   644→   644→-- Zona El Tambo VUELTA (TEMPORAL - esperando oficial)
+   645→   645→('t_vta_020', NULL, 'Ceibopamba', 'vuelta', 2.25, 1.15, true, 1),
+   646→   646→('t_vta_021', NULL, 'Trinidad', 'vuelta', 2.25, 1.15, true, 1),
+   647→   647→('t_vta_022', NULL, 'San José', 'vuelta', 2.25, 1.15, true, 1),
+   648→   648→('t_vta_023', NULL, 'Santo Domingo', 'vuelta', 2.50, 1.25, true, 1),
+   649→   649→('t_vta_024', NULL, 'Naranjo Dulce', 'vuelta', 2.75, 1.40, true, 1),
+   650→   650→('t_vta_025', NULL, 'Zhotahuayco', 'vuelta', 3.00, 1.50, true, 1),
+   651→   651→('t_vta_026', NULL, 'La Merced', 'vuelta', 3.25, 1.65, true, 1),
+   652→   652→('t_vta_027', NULL, 'San Agustín', 'vuelta', 3.75, 1.90, true, 1),
+   653→   653→('t_vta_028', NULL, 'La Era', 'vuelta', 3.75, 1.90, true, 1),
+   654→   654→('t_vta_029', NULL, 'La Capilla', 'vuelta', 4.00, 2.00, true, 1),
+   655→   655→('t_vta_030', NULL, 'San Bernaved', 'vuelta', 4.00, 2.00, true, 1),
+   656→   656→('t_vta_031', NULL, 'El Tambo', 'vuelta', 4.00, 2.00, true, 1),
+   657→   657→-- Zona Zahuayco VUELTA (TEMPORAL)
+   658→   658→('t_vta_032', NULL, 'Masanamaca', 'vuelta', 3.00, 1.50, true, 1),
+   659→   659→('t_vta_033', NULL, 'Quinara', 'vuelta', 3.25, 1.65, true, 1),
+   660→   660→('t_vta_034', NULL, 'Chumberos', 'vuelta', 3.75, 1.90, true, 1),
+   661→   661→('t_vta_035', NULL, 'Palmira', 'vuelta', 3.75, 1.90, true, 1),
+   662→   662→('t_vta_036', NULL, 'Zahuayco', 'vuelta', 4.00, 2.00, true, 1),
+   663→   663→-- Zona La Elvira VUELTA (TEMPORAL excepto La Elvira)
+   664→   664→('t_vta_037', NULL, 'Cucanama', 'vuelta', 2.50, 1.25, true, 1),
+   665→   665→('t_vta_038', NULL, 'Linderos', 'vuelta', 2.75, 1.40, true, 1),
+   666→   666→('t_vta_039', NULL, 'Santorum', 'vuelta', 3.00, 1.50, true, 1),
+   667→   667→('t_vta_040', NULL, 'Solanda', 'vuelta', 3.00, 1.50, true, 1),
+   668→   668→('t_vta_041', NULL, 'Moyococha', 'vuelta', 3.00, 1.50, true, 1),
+   669→   669→('t_vta_042', NULL, 'Tumianuma', 'vuelta', 3.25, 1.65, true, 1),
+   670→   670→('t_vta_043', NULL, 'Comunidades', 'vuelta', 3.50, 1.65, true, 1),
+   671→   671→('t_vta_044', NULL, 'La Elvira', 'vuelta', 3.75, 1.90, false, 1),
+   672→   672→-- Zona Yangana VUELTA (TEMPORAL)
+   673→   673→('t_vta_045', NULL, 'Suro', 'vuelta', 3.25, 1.65, true, 1),
+   674→   674→('t_vta_046', NULL, 'Yangana', 'vuelta', 3.75, 1.90, true, 1),
+   675→   675→-- Intermedios VUELTA compartidos (Malacatos hacia Loja, Vilcabamba hacia Loja, X→Loja)
+   676→   676→('t_vta_i01', NULL, 'Peña→Mal', 'vuelta', 0.75, 0.40, false, 1),
+   677→   677→('t_vta_i02', NULL, 'Land→Mal', 'vuelta', 0.75, 0.40, false, 1),
+   678→   678→('t_vta_i03', NULL, 'Chorri→Mal', 'vuelta', 0.75, 0.40, false, 1),
+   679→   679→('t_vta_i04', NULL, 'Nango→Mal', 'vuelta', 0.75, 0.40, false, 1),
+   680→   680→('t_vta_i05', NULL, 'Porv→Mal', 'vuelta', 1.10, 0.55, false, 1),
+   681→   681→('t_vta_i06', NULL, 'Gran→Mal', 'vuelta', 1.10, 0.55, false, 1),
+   682→   682→('t_vta_i07', NULL, 'Yamba→Mal', 'vuelta', 1.10, 0.55, false, 1),
+   683→   683→('t_vta_i08', NULL, 'Rumi→Mal', 'vuelta', 1.10, 0.55, false, 1),
+   684→   684→('t_vta_i09', NULL, 'T.Leguas→Mal', 'vuelta', 1.10, 0.55, false, 1),
+   685→   685→('t_vta_i10', NULL, 'P.Nuevo→Mal', 'vuelta', 1.10, 0.55, false, 1),
+   686→   686→('t_vta_i11', NULL, 'Caja→Mal', 'vuelta', 1.50, 0.75, false, 1),
+   687→   687→('t_vta_i12', NULL, 'D.Puen→Mal', 'vuelta', 1.50, 0.75, false, 1),
+   688→   688→('t_vta_i13', NULL, 'Capulí→Mal', 'vuelta', 2.00, 1.00, false, 1),
+   689→   689→('t_vta_i14', NULL, 'Mal→Ceibop', 'vuelta', 0.75, 0.40, false, 1),
+   690→   690→('t_vta_i15', NULL, 'Mal→Trinidad', 'vuelta', 0.75, 0.40, false, 1),
+   691→   691→('t_vta_i16', NULL, 'Mal→S.Jose', 'vuelta', 0.75, 0.40, false, 1),
+   692→   692→('t_vta_i17', NULL, 'Mal→StoDom', 'vuelta', 1.00, 0.50, false, 1),
+   693→   693→('t_vta_i18', NULL, 'Mal→N.Dulce', 'vuelta', 1.25, 0.65, false, 1),
+   694→   694→('t_vta_i19', NULL, 'Mal→Zhotahu', 'vuelta', 1.50, 0.75, false, 1),
+   695→   695→('t_vta_i20', NULL, 'Mal→LaMerc', 'vuelta', 1.75, 0.90, false, 1),
+   696→   696→('t_vta_i21', NULL, 'Mal→S.Agust', 'vuelta', 1.75, 0.90, false, 1),
+   697→   697→('t_vta_i22', NULL, 'Mal→LaEra', 'vuelta', 2.00, 1.00, false, 1),
+   698→   698→('t_vta_i23', NULL, 'Mal→LaCap', 'vuelta', 2.25, 1.15, false, 1),
+   699→   699→('t_vta_i24', NULL, 'Mal→S.Bern', 'vuelta', 2.25, 1.15, false, 1),
+   700→   700→('t_vta_i25', NULL, 'Mal→ElTambo', 'vuelta', 2.25, 1.15, false, 1),
+   701→   701→-- Intermedios VUELTA Vilcabamba hacia Loja
+   702→   702→('t_vta_i26', NULL, 'Vilc→S.Pedro', 'vuelta', 0.75, 0.40, false, 1),
+   703→   703→('t_vta_i27', NULL, 'Vilc→Carar', 'vuelta', 0.75, 0.40, false, 1),
+   704→   704→('t_vta_i28', NULL, 'Vilc→Cavian', 'vuelta', 0.75, 0.40, false, 1),
+   705→   705→('t_vta_i29', NULL, 'Vilc→Taxich', 'vuelta', 0.75, 0.40, false, 1),
+   706→   706→('t_vta_i30', NULL, 'Vilc→Malac', 'vuelta', 1.10, 0.55, false, 1),
+   707→   707→('t_vta_i31', NULL, 'Vilc→Land', 'vuelta', 1.10, 0.55, false, 1),
+   708→   708→('t_vta_i32', NULL, 'Vilc→Chorri', 'vuelta', 1.25, 0.65, false, 1),
+   709→   709→('t_vta_i33', NULL, 'Vilc→Nango', 'vuelta', 1.25, 0.65, false, 1),
+   710→   710→('t_vta_i34', NULL, 'Vilc→Porv', 'vuelta', 1.25, 0.65, false, 1),
+   711→   711→('t_vta_i35', NULL, 'Vilc→Gran', 'vuelta', 1.50, 0.75, false, 1),
+   712→   712→('t_vta_i36', NULL, 'Vilc→Yamba', 'vuelta', 1.50, 0.75, false, 1),
+   713→   713→('t_vta_i37', NULL, 'Vilc→Rumi', 'vuelta', 1.50, 0.75, false, 1),
+   714→   714→('t_vta_i38', NULL, 'Vilc→T.Leguas', 'vuelta', 1.50, 0.75, false, 1),
+   715→   715→('t_vta_i39', NULL, 'Vilc→P.Nuevo', 'vuelta', 1.50, 0.75, false, 1),
+   716→   716→('t_vta_i40', NULL, 'Vilc→Caja', 'vuelta', 2.00, 1.00, false, 1),
+   717→   717→('t_vta_i41', NULL, 'Vilc→D.Puen', 'vuelta', 2.00, 1.00, false, 1),
+   718→   718→('t_vta_i42', NULL, 'Vilc→Capulí', 'vuelta', 2.50, 1.25, false, 1),
+   719→   719→-- Intermedios VUELTA Malacatos hacia Loja
+   720→   720→('t_vta_i43', NULL, 'Mal→LaPeña', 'vuelta', 0.75, 0.40, false, 1),
+   721→   721→('t_vta_i44', NULL, 'Mal→Land', 'vuelta', 0.75, 0.40, false, 1),
+   722→   722→('t_vta_i45', NULL, 'Mal→Chorri', 'vuelta', 0.75, 0.40, false, 1),
+   723→   723→('t_vta_i46', NULL, 'Mal→Nango', 'vuelta', 0.75, 0.40, false, 1),
+   724→   724→('t_vta_i47', NULL, 'Mal→Porv', 'vuelta', 1.10, 0.55, false, 1),
+   725→   725→('t_vta_i48', NULL, 'Mal→Gran', 'vuelta', 1.10, 0.55, false, 1),
+   726→   726→('t_vta_i49', NULL, 'Mal→Yamba', 'vuelta', 1.10, 0.55, false, 1),
+   727→   727→('t_vta_i50', NULL, 'Mal→Rumi', 'vuelta', 1.10, 0.55, false, 1),
+   728→   728→('t_vta_i51', NULL, 'Mal→T.Leguas', 'vuelta', 1.10, 0.55, false, 1),
+   729→   729→('t_vta_i52', NULL, 'Mal→P.Nuevo', 'vuelta', 1.10, 0.55, false, 1),
+   730→   730→('t_vta_i53', NULL, 'Mal→Caja', 'vuelta', 1.50, 0.75, false, 1),
+   731→   731→('t_vta_i54', NULL, 'Mal→D.Puen', 'vuelta', 1.50, 0.75, false, 1),
+   732→   732→('t_vta_i55', NULL, 'Mal→Capulí', 'vuelta', 2.00, 1.00, false, 1),
+   733→   733→-- Intermedios VUELTA X → Loja
+   734→   734→('t_vta_i56', NULL, 'D.Puen→Loja', 'vuelta', 0.75, 0.40, false, 1),
+   735→   735→('t_vta_i57', NULL, 'Caja→Loja', 'vuelta', 1.25, 0.55, false, 1),
+   736→   736→('t_vta_i58', NULL, 'P.Nuevo→Loja', 'vuelta', 1.25, 0.55, false, 1),
+   737→   737→('t_vta_i59', NULL, 'T.Leguas→Loja', 'vuelta', 1.25, 0.55, false, 1),
+   738→   738→('t_vta_i60', NULL, 'Rumi→Loja', 'vuelta', 1.25, 0.55, false, 1),
+   739→   739→('t_vta_i61', NULL, 'Yamba→Loja', 'vuelta', 1.25, 0.55, false, 1),
+   740→   740→('t_vta_i62', NULL, 'Gran→Loja', 'vuelta', 1.40, 0.65, false, 1),
+   741→   741→('t_vta_i63', NULL, 'Porv→Loja', 'vuelta', 1.40, 0.65, false, 1),
+   742→   742→('t_vta_i64', NULL, 'Nango→Loja', 'vuelta', 1.50, 0.75, false, 1),
+   743→   743→('t_vta_i65', NULL, 'Chorri→Loja', 'vuelta', 1.50, 0.75, false, 1),
+   744→   744→('t_vta_i66', NULL, 'Land→Loja', 'vuelta', 1.75, 0.90, false, 1),
+   745→   745→('t_vta_i67', NULL, 'Peña→Loja', 'vuelta', 1.75, 0.90, false, 1),
+   746→   746→('t_vta_i68', NULL, 'Mal→Loja', 'vuelta', 2.00, 1.00, false, 1),
+   747→   747→('t_vta_i69', NULL, 'Taxich→Loja', 'vuelta', 2.00, 1.00, false, 1),
+   748→   748→('t_vta_i70', NULL, 'Cavian→Loja', 'vuelta', 2.25, 1.15, false, 1),
+   749→   749→('t_vta_i71', NULL, 'Carar→Loja', 'vuelta', 2.25, 1.15, false, 1),
+   750→   750→('t_vta_i72', NULL, 'S.Pedro→Loja', 'vuelta', 2.25, 1.15, false, 1),
+   751→   751→-- Intermedios VUELTA Zahuayco/Yangana/LaElvira (desde hubs)
+   752→   752→('t_vta_i73', NULL, 'Vilc→Masan', 'vuelta', 1.10, 0.55, false, 1),
+   753→   753→('t_vta_i74', NULL, 'Vilc→Quina', 'vuelta', 2.00, 1.00, false, 1),
+   754→   754→('t_vta_i75', NULL, 'Vilc→Chumb', 'vuelta', 2.00, 1.00, false, 1),
+   755→   755→('t_vta_i76', NULL, 'Vilc→Palm', 'vuelta', 2.25, 1.15, false, 1),
+   756→   756→('t_vta_i77', NULL, 'Vilc→Zahua', 'vuelta', 2.50, 1.25, false, 1),
+   757→   757→('t_vta_i78', NULL, 'Vilc→Suro', 'vuelta', 1.60, 0.80, false, 1),
+   758→   758→('t_vta_i79', NULL, 'Vilc→Yangana', 'vuelta', 2.00, 1.00, false, 1),
+   759→   759→('t_vta_i80', NULL, 'Mal→Masan', 'vuelta', 2.00, 1.00, false, 1),
+   760→   760→('t_vta_i81', NULL, 'Mal→Quina', 'vuelta', 2.50, 1.25, false, 1),
+   761→   761→('t_vta_i82', NULL, 'Mal→Chumb', 'vuelta', 2.50, 1.25, false, 1),
+   762→   762→('t_vta_i83', NULL, 'Mal→Palm', 'vuelta', 2.90, 1.45, false, 1),
+   763→   763→('t_vta_i84', NULL, 'Mal→Zahua', 'vuelta', 3.15, 1.60, false, 1),
+   764→   764→('t_vta_i85', NULL, 'Mal→Suro', 'vuelta', 2.00, 1.00, false, 1),
+   765→   765→('t_vta_i86', NULL, 'Mal→Yangana', 'vuelta', 2.50, 1.25, false, 1),
+   766→   766→('t_vta_i87', NULL, 'Mal→Cucan', 'vuelta', 1.60, 0.80, false, 1),
+   767→   767→('t_vta_i88', NULL, 'Mal→Lind', 'vuelta', 2.00, 1.00, false, 1),
+   768→   768→('t_vta_i89', NULL, 'Mal→Santo', 'vuelta', 2.00, 1.00, false, 1),
+   769→   769→('t_vta_i90', NULL, 'Mal→Solan', 'vuelta', 2.00, 1.00, false, 1),
+   770→   770→('t_vta_i91', NULL, 'Mal→Moyoc', 'vuelta', 2.00, 1.00, false, 1),
+   771→   771→('t_vta_i92', NULL, 'Mal→Tumia', 'vuelta', 2.50, 1.25, false, 1),
+   772→   772→('t_vta_i93', NULL, 'Mal→Comun', 'vuelta', 2.50, 1.25, false, 1),
+   773→   773→('t_vta_i94', NULL, 'Mal→Elvira', 'vuelta', 3.00, 1.50, false, 1),
+   774→   774→('t_vta_i95', NULL, 'Vilc→Cucan', 'vuelta', 0.75, 0.40, false, 1),
+   775→   775→('t_vta_i96', NULL, 'Vilc→Lind', 'vuelta', 1.10, 0.55, false, 1),
+   776→   776→('t_vta_i97', NULL, 'Vilc→Santo', 'vuelta', 1.50, 0.65, false, 1),
+   777→   777→('t_vta_i98', NULL, 'Vilc→Solan', 'vuelta', 1.50, 0.65, false, 1),
+   778→   778→('t_vta_i99', NULL, 'Vilc→Moyoc', 'vuelta', 1.50, 0.65, false, 1),
+   779→   779→('t_vta_i100',NULL, 'Vilc→Tumia', 'vuelta', 2.00, 1.00, false, 1),
+   780→   780→('t_vta_i101',NULL, 'Vilc→Comun', 'vuelta', 2.00, 1.00, false, 1),
+   781→   781→('t_vta_i102',NULL, 'Vilc→Elvira', 'vuelta', 2.40, 1.20, false, 1),
+   782→   782→('t_vta_i103',NULL, 'LaCap→Loja','vuelta', 4.00, 2.00, false, 1),
+   783→   783→('t_vta_i104',NULL, 'S.Bern→Loja','vuelta', 4.00, 2.00, false, 1);
+   784→   784→
+   785→   785→-- ═════════════════════════════════════════════════════════
+   786→   786→-- SEED: TARIFAS VUELTA ESPECÍFICAS POR RUTA (prioridad=0, override)
+   787→   787→-- ═════════════════════════════════════════════════════════
+   788→   788→
+   789→   789→-- EL TAMBO → LOJA (ruta_002): precios oficiales de retorno
+   790→   790→INSERT INTO "Tarifa" (id, "rutaId", parada, direccion, normal, media, "esTemporal", prioridad) VALUES
+   791→   791→('t_et_01', 'ruta_002', 'El Tambo', 'vuelta', 4.00, 2.00, false, 0),
+   792→   792→('t_et_02', 'ruta_002', 'San Bernaved', 'vuelta', 0.75, 0.40, false, 0),
+   793→   793→('t_et_03', 'ruta_002', 'La Capilla', 'vuelta', 0.75, 0.40, false, 0),
+   794→   794→('t_et_04', 'ruta_002', 'La Era', 'vuelta', 1.00, 0.50, false, 0),
+   795→   795→('t_et_05', 'ruta_002', 'San Agustín', 'vuelta', 1.25, 0.65, false, 0),
+   796→   796→('t_et_06', 'ruta_002', 'La Merced', 'vuelta', 1.50, 0.75, false, 0),
+   797→   797→('t_et_07', 'ruta_002', 'Zhotahuayco', 'vuelta', 1.75, 0.90, false, 0),
+   798→   798→('t_et_08', 'ruta_002', 'Naranjo Dulce', 'vuelta', 1.75, 0.90, false, 0),
+   799→   799→('t_et_09', 'ruta_002', 'Santo Domingo', 'vuelta', 2.00, 1.00, false, 0),
+   800→   800→('t_et_10', 'ruta_002', 'San José', 'vuelta', 2.25, 1.15, false, 0),
+   801→   801→('t_et_11', 'ruta_002', 'Ceibopamba', 'vuelta', 2.25, 1.15, false, 0),
+   802→   802→('t_et_12', 'ruta_002', 'Trinidad', 'vuelta', 2.25, 1.15, false, 0),
+   803→   803→('t_et_13', 'ruta_002', 'Malacatos', 'vuelta', 2.00, 1.00, false, 0),
+   804→   804→('t_et_14', 'ruta_002', 'La Peña', 'vuelta', 2.25, 1.15, false, 0),
+   805→   805→('t_et_15', 'ruta_002', 'Landangui', 'vuelta', 2.25, 1.15, false, 0),
+   806→   806→('t_et_16', 'ruta_002', 'Chorrillos', 'vuelta', 2.50, 1.25, false, 0),
+   807→   807→('t_et_17', 'ruta_002', 'Nangora', 'vuelta', 2.50, 1.25, false, 0),
+   808→   808→('t_et_18', 'ruta_002', 'Porvenir', 'vuelta', 2.50, 1.25, false, 0),
+   809→   809→('t_et_19', 'ruta_002', 'Granadillo', 'vuelta', 2.50, 1.25, false, 0),
+   810→   810→('t_et_20', 'ruta_002', 'Yamba', 'vuelta', 2.50, 1.25, false, 0),
+   811→   811→('t_et_21', 'ruta_002', 'Rumizhitana', 'vuelta', 2.50, 1.25, false, 0),
+   812→   812→('t_et_22', 'ruta_002', 'Tres Leguas', 'vuelta', 3.00, 1.50, false, 0),
+   813→   813→('t_et_23', 'ruta_002', 'Pueblo Nuevo', 'vuelta', 3.00, 1.50, false, 0),
+   814→   814→('t_et_24', 'ruta_002', 'Cajánuma', 'vuelta', 3.00, 1.50, false, 0),
+   815→   815→('t_et_25', 'ruta_002', 'Dos Puentes', 'vuelta', 4.00, 2.00, false, 0),
+   816→   816→('t_et_26', 'ruta_002', 'Capulí', 'vuelta', 4.00, 2.00, false, 0);
+   817→   817→
+   818→   818→-- VILCABAMBA → LOJA (ruta_001): precios oficiales de retorno
+   819→   819→INSERT INTO "Tarifa" (id, "rutaId", parada, direccion, normal, media, "esTemporal", prioridad) VALUES
+   820→   820→('t_vc_01', 'ruta_001', 'Vilcabamba', 'vuelta', 2.50, 1.25, false, 0),
+   821→   821→('t_vc_02', 'ruta_001', 'San Pedro', 'vuelta', 0.75, 0.40, false, 0),
+   822→   822→('t_vc_03', 'ruta_001', 'Cararango', 'vuelta', 0.75, 0.40, false, 0),
+   823→   823→('t_vc_04', 'ruta_001', 'Cavianga', 'vuelta', 0.75, 0.40, false, 0),
+   824→   824→('t_vc_05', 'ruta_001', 'Taxiche', 'vuelta', 0.75, 0.40, false, 0),
+   825→   825→('t_vc_06', 'ruta_001', 'Malacatos', 'vuelta', 1.10, 0.55, false, 0),
+   826→   826→('t_vc_07', 'ruta_001', 'Landangui', 'vuelta', 1.10, 0.55, false, 0),
+   827→   827→('t_vc_08', 'ruta_001', 'La Peña', 'vuelta', 0, 0, false, 0),
+   828→   828→('t_vc_09', 'ruta_001', 'Chorrillos', 'vuelta', 1.25, 0.65, false, 0),
+   829→   829→('t_vc_10', 'ruta_001', 'Nangora', 'vuelta', 1.25, 0.65, false, 0),
+   830→   830→('t_vc_11', 'ruta_001', 'Porvenir', 'vuelta', 1.25, 0.65, false, 0),
+   831→   831→('t_vc_12', 'ruta_001', 'Granadillo', 'vuelta', 1.50, 0.75, false, 0),
+   832→   832→('t_vc_13', 'ruta_001', 'Yamba', 'vuelta', 1.50, 0.75, false, 0),
+   833→   833→('t_vc_14', 'ruta_001', 'Rumizhitana', 'vuelta', 1.50, 0.75, false, 0),
+   834→   834→('t_vc_15', 'ruta_001', 'Tres Leguas', 'vuelta', 1.50, 0.75, false, 0),
+   835→   835→('t_vc_16', 'ruta_001', 'Pueblo Nuevo', 'vuelta', 1.50, 0.75, false, 0),
+   836→   836→('t_vc_17', 'ruta_001', 'Cajánuma', 'vuelta', 2.00, 1.00, false, 0),
+   837→   837→('t_vc_18', 'ruta_001', 'Dos Puentes', 'vuelta', 2.00, 1.00, false, 0),
+   838→   838→('t_vc_19', 'ruta_001', 'Capulí', 'vuelta', 2.50, 1.25, false, 0);
+   839→   839→
+   840→   840→-- YANGANA → LOJA (ruta_005): precios de retorno (muchos en $0 = no se vende directo)
+   841→   841→INSERT INTO "Tarifa" (id, "rutaId", parada, direccion, normal, media, "esTemporal", prioridad) VALUES
+   842→   842→('t_yg_01', 'ruta_005', 'Yangana', 'vuelta', 3.75, 1.90, false, 0),
+   843→   843→('t_yg_02', 'ruta_005', 'Suro', 'vuelta', 0.75, 0.40, false, 0),
+   844→   844→('t_yg_03', 'ruta_005', 'Dos Puentes', 'vuelta', 3.75, 1.90, false, 0),
+   845→   845→('t_yg_04', 'ruta_005', 'Cajánuma', 'vuelta', 0, 0, false, 0),
+   846→   846→('t_yg_05', 'ruta_005', 'Pueblo Nuevo', 'vuelta', 0, 0, false, 0),
+   847→   847→('t_yg_06', 'ruta_005', 'Tres Leguas', 'vuelta', 0, 0, false, 0),
+   848→   848→('t_yg_07', 'ruta_005', 'Rumizhitana', 'vuelta', 0, 0, false, 0),
+   849→   849→('t_yg_08', 'ruta_005', 'Yamba', 'vuelta', 0, 0, false, 0),
+   850→   850→('t_yg_09', 'ruta_005', 'Granadillo', 'vuelta', 0, 0, false, 0),
+   851→   851→('t_yg_10', 'ruta_005', 'Porvenir', 'vuelta', 0, 0, false, 0),
+   852→   852→('t_yg_11', 'ruta_005', 'Nangora', 'vuelta', 0, 0, false, 0),
+   853→   853→('t_yg_12', 'ruta_005', 'Chorrillos', 'vuelta', 0, 0, false, 0),
+   854→   854→('t_yg_13', 'ruta_005', 'Landangui', 'vuelta', 0, 0, false, 0),
+   855→   855→('t_yg_14', 'ruta_005', 'La Peña', 'vuelta', 0, 0, false, 0),
+   856→   856→('t_yg_15', 'ruta_005', 'Malacatos', 'vuelta', 0, 0, false, 0),
+   857→   857→('t_yg_16', 'ruta_005', 'Taxiche', 'vuelta', 0, 0, false, 0),
+   858→   858→('t_yg_17', 'ruta_005', 'Cavianga', 'vuelta', 0, 0, false, 0),
+   859→   859→('t_yg_18', 'ruta_005', 'Cararango', 'vuelta', 0, 0, false, 0),
+   860→   860→('t_yg_19', 'ruta_005', 'San Pedro', 'vuelta', 0, 0, false, 0),
+   861→   861→('t_yg_20', 'ruta_005', 'Vilcabamba', 'vuelta', 0, 0, false, 0),
+   862→   862→('t_yg_21', 'ruta_005', 'Masanamaca', 'vuelta', 0, 0, false, 0),
+   863→   863→('t_yg_22', 'ruta_005', 'Capulí', 'vuelta', 0, 0, false, 0);
+   864→   864→
+   865→   865→-- LA ELVIRA → LOJA (ruta_004): precios de retorno oficiales
+   866→   866→INSERT INTO "Tarifa" (id, "rutaId", parada, direccion, normal, media, "esTemporal", prioridad) VALUES
+   867→   867→('t_le_01', 'ruta_004', 'La Elvira', 'vuelta', 3.75, 1.90, false, 0),
+   868→   868→('t_le_02', 'ruta_004', 'Dos Puentes', 'vuelta', 3.75, 1.90, false, 0),
+   869→   869→('t_le_03', 'ruta_004', 'Comunidades', 'vuelta', 0.75, 0.40, false, 0),
+   870→   870→('t_le_04', 'ruta_004', 'Cajánuma', 'vuelta', 0, 0, false, 0),
+   871→   871→('t_le_05', 'ruta_004', 'Pueblo Nuevo', 'vuelta', 0, 0, false, 0),
+   872→   872→('t_le_06', 'ruta_004', 'Tres Leguas', 'vuelta', 0, 0, false, 0),
+   873→   873→('t_le_07', 'ruta_004', 'Rumizhitana', 'vuelta', 0, 0, false, 0),
+   874→   874→('t_le_08', 'ruta_004', 'Yamba', 'vuelta', 0, 0, false, 0),
+   875→   875→('t_le_09', 'ruta_004', 'Granadillo', 'vuelta', 0, 0, false, 0),
+   876→   876→('t_le_10', 'ruta_004', 'Porvenir', 'vuelta', 0, 0, false, 0),
+   877→   877→('t_le_11', 'ruta_004', 'Nangora', 'vuelta', 0, 0, false, 0),
+   878→   878→('t_le_12', 'ruta_004', 'Chorrillos', 'vuelta', 0, 0, false, 0),
+   879→   879→('t_le_13', 'ruta_004', 'Landangui', 'vuelta', 0, 0, false, 0),
+   880→   880→('t_le_14', 'ruta_004', 'La Peña', 'vuelta', 0, 0, false, 0),
+   881→   881→('t_le_15', 'ruta_004', 'Malacatos', 'vuelta', 0, 0, false, 0),
+   882→   882→('t_le_16', 'ruta_004', 'Taxiche', 'vuelta', 0, 0, false, 0),
+   883→   883→('t_le_17', 'ruta_004', 'Cavianga', 'vuelta', 0, 0, false, 0),
+   884→   884→('t_le_18', 'ruta_004', 'Cararango', 'vuelta', 0, 0, false, 0),
+   885→   885→('t_le_19', 'ruta_004', 'San Pedro', 'vuelta', 0, 0, false, 0),
+   886→   886→('t_le_20', 'ruta_004', 'Vilcabamba', 'vuelta', 0, 0, false, 0),
+   887→   887→('t_le_21', 'ruta_004', 'Cucanama', 'vuelta', 0, 0, false, 0),
+   888→   888→('t_le_22', 'ruta_004', 'Linderos', 'vuelta', 0, 0, false, 0),
+   889→   889→('t_le_23', 'ruta_004', 'Santorum', 'vuelta', 0, 0, false, 0),
+   890→   890→('t_le_24', 'ruta_004', 'Solanda', 'vuelta', 0, 0, false, 0),
+   891→   891→('t_le_25', 'ruta_004', 'Moyococha', 'vuelta', 0, 0, false, 0),
+   892→   892→('t_le_26', 'ruta_004', 'Tumianuma', 'vuelta', 0, 0, false, 0),
+   893→   893→('t_le_27', 'ruta_004', 'Quinara', 'vuelta', 0, 0, false, 0),
+   894→   894→-- Vilc→Loja específico de La Elvira ($2.25 vs $2.50 troncal)
+   895→   895→('t_le_28', 'ruta_004', 'Vilc→Loja', 'vuelta', 2.25, 1.15, false, 0);
+   896→   896→
+   897→   897→-- ═════════════════════════════════════════════════════════
+   898→   898→-- SEED: PERSONAL
+   899→   899→-- ═════════════════════════════════════════════════════════
+   900→   900→INSERT INTO "Persona" (id, nombre, cedula, telefono, rol, pin, "esActual") VALUES
+   901→   901→('pers_001', 'Carlos Mendez', '1104567890', '0997149000', 'AYUDANTE', '1234', true),
+   902→   902→('pers_002', 'Juan Perez', '1103456789', '0987654321', 'CONDUCTOR', '5678', true),
+   903→   903→('pers_003', 'Admin RutaGo', NULL, '0999999999', 'ADMIN', '0000', true);
+   904→   904→
+   905→   905→-- ═════════════════════════════════════════════════════════
+   906→   906→-- SEED: BUSES
+   907→   907→-- ═════════════════════════════════════════════════════════
+   908→   908→INSERT INTO "BusVT" (id, codigo, nombre, frecuencias, activo) VALUES
+   909→   909→('bus_001', 'VT-01', 'Bus 1 Vilcabamba', '[]', true),
+   910→   910→('bus_002', 'VT-02', 'Bus 2 Vilcabamba', '[]', true);
+   911→   911→
+   912→   912→-- ═════════════════════════════════════════════════════════
+   913→   913→-- SEED: FRECUENCIAS
+   914→   914→-- ═════════════════════════════════════════════════════════
+   915→   915→INSERT INTO "Frecuencia" (id, "vtCode", nombre, ruta, hora, direccion, activo) VALUES
+   916→   916→('freq_001', 'VT-01', '08:15 Loja - Vilcabamba', 'Loja - Vilcabamba', '08:15', 'ida', true),
+   917→   917→('freq_002', 'VT-01', '09:30 Vilcabamba - Loja', 'Loja - Vilcabamba', '09:30', 'vuelta', true),
+   918→   918→('freq_003', 'VT-01', '10:45 Loja - Vilcabamba', 'Loja - Vilcabamba', '10:45', 'ida', true),
+   919→   919→('freq_004', 'VT-01', '12:00 Vilcabamba - Loja', 'Loja - Vilcabamba', '12:00', 'vuelta', true);
+   920→   920→
+   921→   921→-- ═════════════════════════════════════════════════════════
+   922→   922→-- QUERÍA DE BÚSQUEDA DE PRECIO (replica la lógica del código)
+   923→   923→-- ═════════════════════════════════════════════════════════
+   924→   924→-- Para obtener el precio de una parada en vuelta para ruta La Elvira:
+   925→   925→--
+   926→   926→--   SELECT normal, media FROM "Tarifa"
+   927→   927→--   WHERE ("rutaId" = 'ruta_004' OR "rutaId" IS NULL)
+   928→   928→--     AND parada = 'Vilcabamba'
+   929→   929→--     AND direccion = 'vuelta'
+   930→   930→--   ORDER BY prioridad ASC
+   931→   931→--   LIMIT 1;
+   932→   932→--
+   933→   933→-- Esto retorna primero el precio específico (prioridad=0) si existe,
+   934→   934→--   sino el troncal compartido (prioridad=1).
+   935→   935→
+   936→   936→-- ═════════════════════════════════════════════════════════
+   937→   937→-- Nota: IndexedDB (cliente/offline) no necesita DDL.
+   938→   938→-- Stores: ventas_pendientes, tarifas_cache,
+   939→   939→--         frecuencias_cache, estados_frecuencias
+   940→   940→-- Ver: src/lib/indexeddb.ts
+   941→   941→-- ═════════════════════════════════════════════════════════
+   942→   942→
