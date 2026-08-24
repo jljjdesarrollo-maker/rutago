@@ -290,7 +290,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'Cararango': { normal: 0.75, media: 0.4 },       // ✅
   'San Pedro': { normal: 0.75, media: 0.4 },       // ✅
   'Capulí': { normal: 2.5, media: 1.25 },       // ✅
-  'Vilcabamba': { normal: 2.5, media: 1.25 },       // ✅
+  'Loja': { normal: 2.5, media: 1.25 },       // ✅
   // Zona El Tambo (solo usada si no encuentra en preciosVueltaElTambo)
   'Ceibopamba': { normal: 0, media: 0 },          // ⏳ TEMPORAL
   'Trinidad': { normal: 0, media: 0 },            // ⏳ TEMPORAL
