@@ -271,24 +271,24 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
 // ✅ = oficial del PDF retorno  |  ⏳ TEMPORAL = precio IDA hasta recibir oficial
 const preciosVuelta: Record<string, { normal: number; media: number }> = {
   // Troncal Loja ↔ Vilcabamba (compartida por Zahuayco, La Elvira, Yangana)
-  'Dos Puentes': { normal: 0.75, media: 0.4 },       // ✅
-  'Cajánuma': { normal: 1.25, media: 0.65 },          // ✅
-  'Pueblo Nuevo': { normal: 1.25, media: 0.65 },       // ✅
-  'Tres Leguas': { normal: 1.25, media: 0.65 },         // ✅
-  'Rumizhitana': { normal: 1.25, media: 0.65 },        // ✅
-  'Yamba': { normal: 1.25, media: 0.65 },               // ✅
-  'Granadillo': { normal: 1.4, media: 0.7 },           // ✅
-  'Porvenir': { normal: 1.4, media: 0.7 },             // ✅
-  'Nangora': { normal: 1.5, media: 0.75 },              // ✅
-  'Chorrillos': { normal: 1.5, media: 0.75 },           // ✅
-  'Landangui': { normal: 1.75, media: 0.9 },            // ✅
-  'La Peña': { normal: 1.75, media: 0.9 },              // ✅
-  'Malacatos': { normal: 2.0, media: 1.0 },            // ✅
-  'Taxiche': { normal: 2.0, media: 1.0 },              // ✅
-  'Cavianga': { normal: 2.25, media: 1.15 },             // ✅
-  'Cararango': { normal: 2.25, media: 1.15 },            // ✅
-  'San Pedro': { normal: 2.25, media: 1.15 },            // ✅
-  'Vilcabamba': { normal: 2.5, media: 1.25 },          // ✅
+  'Dos Puentes': { normal: 0, media: 0 },       // ✅
+  'Cajánuma': { normal: 0, media: 0 },          // ✅
+  'Pueblo Nuevo': { normal: 0, media: 0 },       // ✅
+  'Tres Leguas': { normal: 0, media: 0 },         // ✅
+  'Rumizhitana': { normal: 0, media: 0 },        // ✅
+  'Yamba': { normal: 0, media: 0 },               // ✅
+  'Granadillo': { normal: 0, media: 0 },           // ✅
+  'Porvenir': { normal: 0, media: 0 },             // ✅
+  'Nangora': { normal: 0, media: 0 },              // ✅
+  'Chorrillos': { normal: 0, media: 0 },           // ✅
+  'Landangui': { normal: 0, media: 0 },            // ✅
+  'La Peña': { normal: 0, media: 0 },              // ✅
+  'Malacatos': { normal: 0, media: 0 },            // ✅
+  'Taxiche': { normal: 0, media: 0 },              // ✅
+  'Cavianga': { normal: 0, media: 0 },             // ✅
+  'Cararango': { normal: 0, media: 0 },            // ✅
+  'San Pedro': { normal: 0, media: 0 },            // ✅
+  'Vilcabamba': { normal: 0, media: 0 },          // ✅
   // Zona El Tambo (solo usada si no encuentra en preciosVueltaElTambo)
   'Ceibopamba': { normal: 0, media: 0 },          // ⏳ TEMPORAL
   'Trinidad': { normal: 0, media: 0 },            // ⏳ TEMPORAL
