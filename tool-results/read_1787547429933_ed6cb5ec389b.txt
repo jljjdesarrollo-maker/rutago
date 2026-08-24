@@ -1,0 +1,855 @@
+     1→// Tarifas oficiales RutaGo - TRANSPORTES VILCABAMBATURIS CÍA. LTDA.
+     2→// NORMAL: pasaje entero | MEDIA: medio pasaje (niños, tercera edad, discapacidad)
+     3→// El Tambo: ramifica en Malacatos (NO pasa por Vilcabamba)
+     4→// Zahuayco, La Elvira, Yangana: pasan por Vilcabamba
+     5→//
+     6→// Actualizado: Agosto 2026 — precios del tarifario oficial XLSX
+     7→
+     8→export interface TarifaItem {
+     9→  id: string;
+    10→  parada: string;
+    11→  normal: number;
+    12→  media: number;
+    13→}
+    14→
+    15→export const TARIFA_MINIMA = 0; // Media tarifa más baja
+    16→
+    17→// ─── Zonas por parada (para cuadrícula coloreada) ───
+    18→// green  = cerca de Loja (inicio del recorrido)
+    19→// yellow = zona media
+    20→// blue   = cerca de Vilcabamba (final del recorrido)
+    21→export type ZonaColor = 'green' | 'yellow' | 'blue' | 'orange' | 'purple';
+    22→
+    23→export const PARADA_ZONA: Record<string, ZonaColor> = {
+    24→  // Zona cercana a Loja
+    25→  'Dos Puentes': 'green',
+    26→  'Cajánuma': 'green',
+    27→  'Pueblo Nuevo': 'green',
+    28→  'Capulí': 'green',
+    29→  'Loja': 'green',
+    30→  // Zona media
+    31→  'Tres Leguas': 'yellow',
+    32→  'Rumizhitana': 'yellow',
+    33→  'Yamba': 'yellow',
+    34→  'Granadillo': 'yellow',
+    35→  'Porvenir': 'yellow',
+    36→  'Nangora': 'yellow',
+    37→  'Chorrillos': 'yellow',
+    38→  'Landangui': 'yellow',
+    39→  'La Peña': 'yellow',
+    40→  'Malacatos': 'yellow',
+    41→  'Taxiche': 'yellow',
+    42→  // Zona cercana a Vilcabamba
+    43→  'Cavianga': 'blue',
+    44→  'Cararango': 'blue',
+    45→  'San Pedro': 'blue',
+    46→  'Vilcabamba': 'blue',
+    47→  // Zona cercana a El Tambo (desde Ceibopamba)
+    48→  'Ceibopamba': 'blue',
+    49→  'San José': 'blue',
+    50→  'Santo Domingo': 'blue',
+    51→  'Naranjo Dulce': 'blue',
+    52→  'Zhotahuayco': 'blue',
+    53→  'La Merced': 'blue',
+    54→  'San Agustín': 'blue',
+    55→  'La Era': 'blue',
+    56→  'La Capilla': 'blue',
+    57→  'San Bernaved': 'blue',
+    58→  'El Tambo': 'blue',
+    59→  // Zona Lejana (Zahuayco, La Elvira, Yangana)
+    60→  'Masanamaca': 'blue',
+    61→  'Quinara': 'blue',
+    62→  'Palmira': 'blue',
+    63→  'Zahuayco': 'blue',
+    64→  'Cucanama': 'blue',
+    65→  'Linderos': 'blue',
+    66→  'Moyococha': 'blue',
+    67→  'Santorum': 'blue',
+    68→  'Comunidades': 'blue',
+    69→  'Tumianuma': 'blue',
+    70→  'Solanda': 'blue',
+    71→  'La Elvira': 'blue',
+    72→  'Suro': 'blue',
+    73→  'Yangana': 'blue',
+    74→  // Intermedios se asignan dinámicamente por prefix en getZonaParada()
+    75→  // Mal→X y X→Mal → orange | Vilc→X → purple
+    76→};
+    77→
+    78→export const ZONA_COLORS: Record<ZonaColor, { bg: string; bgSelected: string; text: string; border: string; price: string; sub: string }> = {
+    79→  green: {
+    80→    bg: 'bg-green-50',
+    81→    bgSelected: 'bg-green-600',
+    82→    text: 'text-green-900',
+    83→    border: 'border-green-200',
+    84→    price: 'text-green-700',
+    85→    sub: 'text-green-400',
+    86→  },
+    87→  yellow: {
+    88→    bg: 'bg-amber-50',
+    89→    bgSelected: 'bg-amber-500',
+    90→    text: 'text-amber-900',
+    91→    border: 'border-amber-200',
+    92→    price: 'text-amber-700',
+    93→    sub: 'text-amber-400',
+    94→  },
+    95→  blue: {
+    96→    bg: 'bg-blue-50',
+    97→    bgSelected: 'bg-blue-600',
+    98→    text: 'text-blue-900',
+    99→    border: 'border-blue-200',
+   100→    price: 'text-blue-700',
+   101→    sub: 'text-blue-400',
+   102→  },
+   103→  orange: {
+   104→    bg: 'bg-orange-50',
+   105→    bgSelected: 'bg-orange-500',
+   106→    text: 'text-orange-900',
+   107→    border: 'border-orange-200',
+   108→    price: 'text-orange-700',
+   109→    sub: 'text-orange-400',
+   110→  },
+   111→  purple: {
+   112→    bg: 'bg-purple-50',
+   113→    bgSelected: 'bg-purple-600',
+   114→    text: 'text-purple-900',
+   115→    border: 'border-purple-200',
+   116→    price: 'text-purple-700',
+   117→    sub: 'text-purple-400',
+   118→  },
+   119→};
+   120→
+   121→export function getZonaParada(parada: string): ZonaColor {
+   122→  if (PARADA_ZONA[parada]) return PARADA_ZONA[parada];
+   123→  // Intermedios: color por hub de origen
+   124→  if (parada.startsWith('Vilc→')) return 'purple';
+   125→  if (parada.endsWith('→Vilc')) return 'purple';
+   126→  if (parada.startsWith('Mal→') || parada.endsWith('→Mal')) return 'orange';
+   127→  return 'yellow';
+   128→}
+   129→
+   130→export function isParadaPrincipal(parada: string): boolean {
+   131→  // Paradas principales: no contienen → en el nombre
+   132→  return !parada.includes('→');
+   133→}
+   134→
+   135→// ─── Precios IDA (desde Loja hacia el destino) ───
+   136→// ─── Precios IDA (desde Loja hacia el destino) ───
+   137→const preciosIda: Record<string, { normal: number; media: number }> = {
+   138→  // ═══ LOJA - VILCABAMBA ═══
+   139→  'Capulí': { normal: 0.75, media: 0.40 },
+   140→  'Dos Puentes': { normal: 0.75, media: 0.4 },
+   141→  'Cajánuma': { normal: 1.25, media: 0.65 },
+   142→  'Pueblo Nuevo': { normal: 1.25, media: 0.65 },
+   143→  'Tres Leguas': { normal: 1.25, media: 0.65 },
+   144→  'Rumizhitana': { normal: 1.25, media: 0.65 },
+   145→  'Yamba': { normal: 1.25, media: 0.65 },
+   146→  'Granadillo': { normal: 1.4, media: 0.7 },
+   147→  'Porvenir': { normal: 1.4, media: 0.7 },
+   148→  'Nangora': { normal: 1.5, media: 0.75 },
+   149→  'Chorrillos': { normal: 1.5, media: 0.75 },
+   150→  'Landangui': { normal: 1.75, media: 0.9 },
+   151→  'La Peña': { normal: 1.75, media: 0.9 },
+   152→  'Malacatos': { normal: 2.0, media: 1.0 },
+   153→  'Taxiche': { normal: 2.0, media: 1.0 },
+   154→  'Cavianga': { normal: 2.25, media: 1.15 },
+   155→  'Cararango': { normal: 2.25, media: 1.15 },
+   156→  'San Pedro': { normal: 2.25, media: 1.15 },
+   157→  'Vilcabamba': { normal: 2.5, media: 1.25 },
+   158→  // Tramos intermedios ida (desde parada hacia Malacatos)
+   159→  'Peña→Mal': { normal: 0.75, media: 0.40 },
+   160→  'Land→Mal': { normal: 0.75, media: 0.40 },
+   161→  'Chorri→Mal': { normal: 0.75, media: 0.40 },
+   162→  'Nango→Mal': { normal: 0.75, media: 0.40 },
+   163→  'Porv→Mal': { normal: 1.10, media: 0.55 },
+   164→  'Gran→Mal': { normal: 1.10, media: 0.55 },
+   165→  'Yamba→Mal': { normal: 1.10, media: 0.55 },
+   166→  'Rumi→Mal': { normal: 1.10, media: 0.55 },
+   167→  'T.Leguas→Mal': { normal: 1.10, media: 0.55 },
+   168→  'P.Nuevo→Mal': { normal: 1.10, media: 0.55 },
+   169→  'Caja→Mal': { normal: 1.50, media: 0.75 },
+   170→  'D.Puen→Mal': { normal: 1.50, media: 0.75 },
+   171→  'Capulí→Mal': { normal: 2.00, media: 1.00 },
+   172→  // Tramos intermedios ida (desde parada hacia Vilcabamba)
+   173→  'S.Pedro→Vilc': { normal: 0.75, media: 0.40 },
+   174→  'Carar→Vilc': { normal: 0.75, media: 0.40 },
+   175→  'Cavian→Vilc': { normal: 0.75, media: 0.40 },
+   176→  'Taxich→Vilc': { normal: 0.75, media: 0.40 },
+   177→  'Mal→Vilc': { normal: 1.10, media: 0.55 },
+   178→  'Land→Vilc': { normal: 1.10, media: 0.55 },
+   179→  'Peña→Vilc': { normal: 1.10, media: 0.55 },
+   180→  'Chorri→Vilc': { normal: 1.25, media: 0.65 },
+   181→  'Nango→Vilc': { normal: 1.25, media: 0.65 },
+   182→  'Porv→Vilc': { normal: 1.25, media: 0.65 },
+   183→  'Gran→Vilc': { normal: 1.50, media: 0.75 },
+   184→  'Yamba→Vilc': { normal: 1.50, media: 0.75 },
+   185→  'Rumi→Vilc': { normal: 1.50, media: 0.75 },
+   186→  'T.Leguas→Vilc': { normal: 1.50, media: 0.75 },
+   187→  'P.Nuevo→Vilc': { normal: 1.50, media: 0.75 },
+   188→  'Caja→Vilc': { normal: 2.00, media: 1.00 },
+   189→  'D.Puen→Vilc': { normal: 2.00, media: 1.00 },
+   190→  'Capulí→Vilc': { normal: 2.50, media: 1.25 },
+   191→  // ═══ LOJA - EL TAMBO (ramifica en Malacatos, NO pasa Vilcabamba) ═══
+   192→  'Ceibopamba': { normal: 0, media: 0 },
+   193→  'Trinidad': { normal: 0, media: 0 },
+   194→  'San José': { normal: 0, media: 0 },
+   195→  'Santo Domingo': { normal: 0, media: 0 },
+   196→  'Naranjo Dulce': { normal: 0, media: 0 },
+   197→  'Zhotahuayco': { normal: 0, media: 0 },
+   198→  'La Merced': { normal: 0, media: 0 },
+   199→  'San Agustín': { normal: 0, media: 0 },
+   200→  'La Era': { normal: 0, media: 0 },
+   201→  'La Capilla': { normal: 0, media: 0 },
+   202→  'San Bernaved': { normal: 0, media: 0 },
+   203→  'El Tambo': { normal: 0, media: 0 },
+   204→  // Intermedios El Tambo IDA (desde Malacatos hacia El Tambo)
+   205→  'Mal→Ceibop': { normal: 0, media: 0 },
+   206→  'Mal→Trinidad': { normal: 0, media: 0 },
+   207→  'Mal→S.Jose': { normal: 0, media: 0 },
+   208→  'Mal→StoDom': { normal: 0, media: 0 },
+   209→  'Mal→N.Dulce': { normal: 0, media: 0 },
+   210→  'Mal→Zhotahu': { normal: 0, media: 0 },
+   211→  'Mal→LaMerc': { normal: 0, media: 0 },
+   212→  'Mal→S.Agust': { normal: 0, media: 0 },
+   213→  'Mal→LaEra': { normal: 0, media: 0 },
+   214→  'Mal→LaCap': { normal: 0, media: 0 },
+   215→  'Mal→S.Bern': { normal: 0, media: 0 },
+   216→  'Mal→ElTambo': { normal: 0, media: 0 },
+   217→  // ═══ LOJA - ZAHUAYCO (pasa por Vilcabamba) ═══
+   218→  'Masanamaca': { normal: 0, media: 0 },
+   219→  'Quinara': { normal: 0, media: 0 },
+   220→  'Chumberos': { normal: 0, media: 0 },
+   221→  'Palmira': { normal: 0, media: 0 },
+   222→  'Zahuayco': { normal: 0, media: 0 },
+   223→  // Intermedios Zahuayco/Yangana IDA (desde Vilcabamba)
+   224→  'Vilc→Masan': { normal: 0, media: 0 },
+   225→  'Vilc→Quina': { normal: 0, media: 0 },
+   226→  'Vilc→Chumb': { normal: 0, media: 0 },
+   227→  'Vilc→Palm': { normal: 0, media: 0 },
+   228→  'Vilc→Zahua': { normal: 0, media: 0 },
+   229→  'Vilc→Suro': { normal: 0, media: 0 },
+   230→  'Vilc→Yangana': { normal: 0, media: 0 },
+   231→  // Intermedios Zahuayco/Yangana IDA (desde Malacatos)
+   232→  'Mal→Masan': { normal: 0, media: 0 },
+   233→  'Mal→Quina': { normal: 0, media: 0 },
+   234→  'Mal→Chumb': { normal: 0, media: 0 },
+   235→  'Mal→Palm': { normal: 0, media: 0 },
+   236→  'Mal→Zahua': { normal: 0, media: 0 },
+   237→  'Mal→Suro': { normal: 0, media: 0 },
+   238→  'Mal→Yangana': { normal: 0, media: 0 },
+   239→  // ═══ LOJA - LA ELVIRA (pasa por Vilcabamba) ═══
+   240→  'Cucanama': { normal: 0, media: 0 },
+   241→  'Linderos': { normal: 0, media: 0 },
+   242→  'Santorum': { normal: 0, media: 0 },
+   243→  'Solanda': { normal: 0, media: 0 },
+   244→  'Moyococha': { normal: 0, media: 0 },
+   245→  'Tumianuma': { normal: 0, media: 0 },
+   246→  'Comunidades': { normal: 0, media: 0 },
+   247→  'La Elvira': { normal: 0, media: 0 },
+   248→  // Intermedios La Elvira IDA (desde Malacatos hacia La Elvira)
+   249→  'Mal→Cucan': { normal: 0, media: 0 },
+   250→  'Mal→Lind': { normal: 0, media: 0 },
+   251→  'Mal→Santo': { normal: 0, media: 0 },
+   252→  'Mal→Solan': { normal: 0, media: 0 },
+   253→  'Mal→Moyoc': { normal: 0, media: 0 },
+   254→  'Mal→Tumia': { normal: 0, media: 0 },
+   255→  'Mal→Comun': { normal: 0, media: 0 },
+   256→  'Mal→Elvira': { normal: 0, media: 0 },
+   257→  // Intermedios La Elvira IDA (desde Vilcabamba hacia La Elvira)
+   258→  'Vilc→Cucan': { normal: 0, media: 0 },
+   259→  'Vilc→Lind': { normal: 0, media: 0 },
+   260→  'Vilc→Santo': { normal: 0, media: 0 },
+   261→  'Vilc→Solan': { normal: 0, media: 0 },
+   262→  'Vilc→Moyoc': { normal: 0, media: 0 },
+   263→  'Vilc→Tumia': { normal: 0, media: 0 },
+   264→  'Vilc→Comun': { normal: 0, media: 0 },
+   265→  'Vilc→Elvira': { normal: 0, media: 0 },
+   266→  // ═══ LOJA - YANGANA (pasa por Vilcabamba) ═══
+   267→  'Suro': { normal: 0, media: 0 },
+   268→  'Yangana': { normal: 0, media: 0 },
+   269→};
+   270→
+   271→// ─── Precios VUELTA (desde el destino hacia Loja) ───
+   272→// ✅ = oficial del PDF retorno  |  ⏳ TEMPORAL = precio IDA hasta recibir oficial
+   273→const preciosVuelta: Record<string, { normal: number; media: number }> = {
+   274→  // Troncal Loja ↔ Vilcabamba (compartida por Zahuayco, La Elvira, Yangana)
+   275→  'Dos Puentes': { normal: 0, media: 0 },       // ✅
+   276→  'Cajánuma': { normal: 0, media: 0 },          // ✅
+   277→  'Pueblo Nuevo': { normal: 0, media: 0 },       // ✅
+   278→  'Tres Leguas': { normal: 0, media: 0 },         // ✅
+   279→  'Rumizhitana': { normal: 0, media: 0 },        // ✅
+   280→  'Yamba': { normal: 0, media: 0 },               // ✅
+   281→  'Granadillo': { normal: 0, media: 0 },           // ✅
+   282→  'Porvenir': { normal: 0, media: 0 },             // ✅
+   283→  'Nangora': { normal: 0, media: 0 },              // ✅
+   284→  'Chorrillos': { normal: 0, media: 0 },           // ✅
+   285→  'Landangui': { normal: 0, media: 0 },            // ✅
+   286→  'La Peña': { normal: 0, media: 0 },              // ✅
+   287→  'Malacatos': { normal: 0, media: 0 },            // ✅
+   288→  'Taxiche': { normal: 0, media: 0 },              // ✅
+   289→  'Cavianga': { normal: 0, media: 0 },             // ✅
+   290→  'Cararango': { normal: 0, media: 0 },            // ✅
+   291→  'San Pedro': { normal: 0, media: 0 },            // ✅
+   292→  'Vilcabamba': { normal: 0, media: 0 },          // ✅
+   293→  // Zona El Tambo (solo usada si no encuentra en preciosVueltaElTambo)
+   294→  'Ceibopamba': { normal: 0, media: 0 },          // ⏳ TEMPORAL
+   295→  'Trinidad': { normal: 0, media: 0 },            // ⏳ TEMPORAL
+   296→  'San José': { normal: 0, media: 0 },             // ⏳ TEMPORAL
+   297→  'Santo Domingo': { normal: 0, media: 0 },        // ⏳ TEMPORAL
+   298→  'Naranjo Dulce': { normal: 0, media: 0 },        // ⏳ TEMPORAL
+   299→  'Zhotahuayco': { normal: 0, media: 0 },         // ⏳ TEMPORAL
+   300→  'La Merced': { normal: 0, media: 0 },            // ⏳ TEMPORAL
+   301→  'San Agustín': { normal: 0, media: 0 },          // ⏳ TEMPORAL
+   302→  'La Era': { normal: 0, media: 0 },               // ⏳ TEMPORAL
+   303→  'La Capilla': { normal: 0, media: 0 },            // ⏳ TEMPORAL
+   304→  'San Bernaved': { normal: 0, media: 0 },          // ⏳ TEMPORAL
+   305→  'El Tambo': { normal: 0, media: 0 },              // ⏳ TEMPORAL
+   306→  // Zona Zahuayco
+   307→  'Masanamaca': { normal: 0, media: 0 },           // ⏳ TEMPORAL
+   308→  'Quinara': { normal: 0, media: 0 },              // ⏳ TEMPORAL
+   309→  'Chumberos': { normal: 0, media: 0 },            // ⏳ TEMPORAL
+   310→  'Palmira': { normal: 0, media: 0 },              // ⏳ TEMPORAL
+   311→  'Zahuayco': { normal: 0, media: 0 },            // ⏳ TEMPORAL
+   312→  // Zona La Elvira
+   313→  'Cucanama': { normal: 0, media: 0 },             // ⏳ TEMPORAL
+   314→  'Linderos': { normal: 0, media: 0 },              // ⏳ TEMPORAL
+   315→  'Santorum': { normal: 0, media: 0 },             // ⏳ TEMPORAL
+   316→  'Solanda': { normal: 0, media: 0 },               // ⏳ TEMPORAL
+   317→  'Moyococha': { normal: 0, media: 0 },            // ⏳ TEMPORAL
+   318→  'Tumianuma': { normal: 0, media: 0 },            // ⏳ TEMPORAL
+   319→  'Comunidades': { normal: 0, media: 0 },          // ⏳ TEMPORAL
+   320→  'La Elvira': { normal: 0, media: 0 },            // ✅
+   321→  // Zona Yangana (precios vuelta específicos en preciosVueltaYangana)
+   322→  'Suro': { normal: 0, media: 0 },                 // ⏳ TEMPORAL (Zahuayco usa este)
+   323→  'Yangana': { normal: 0, media: 0 },              // ⏳ TEMPORAL (respaldo, Yangana usa preciosVueltaYangana)
+   324→  // Intermedios Vilcabamba vuelta (desde parada hacia Malacatos)
+   325→  'Peña→Mal': { normal: 0, media: 0 },
+   326→  'Land→Mal': { normal: 0, media: 0 },
+   327→  'Chorri→Mal': { normal: 0, media: 0 },
+   328→  'Nango→Mal': { normal: 0, media: 0 },
+   329→  'Porv→Mal': { normal: 0, media: 0 },
+   330→  'Gran→Mal': { normal: 0, media: 0 },
+   331→  'Yamba→Mal': { normal: 0, media: 0 },
+   332→  'Rumi→Mal': { normal: 0, media: 0 },
+   333→  'T.Leguas→Mal': { normal: 0, media: 0 },
+   334→  'P.Nuevo→Mal': { normal: 0, media: 0 },
+   335→  'Caja→Mal': { normal: 0, media: 0 },
+   336→  'D.Puen→Mal': { normal: 0, media: 0 },
+   337→  'Capulí→Mal': { normal: 0, media: 0 },
+   338→  // Intermedios El Tambo vuelta (desde Malacatos hacia El Tambo)
+   339→  'Mal→Ceibop': { normal: 0, media: 0 },
+   340→  'Mal→Trinidad': { normal: 0, media: 0 },
+   341→  'Mal→S.Jose': { normal: 0, media: 0 },
+   342→  'Mal→StoDom': { normal: 0, media: 0 },
+   343→  'Mal→N.Dulce': { normal: 0, media: 0 },
+   344→  'Mal→Zhotahu': { normal: 0, media: 0 },
+   345→  'Mal→LaMerc': { normal: 0, media: 0 },
+   346→  'Mal→S.Agust': { normal: 0, media: 0 },
+   347→  'Mal→LaEra': { normal: 0, media: 0 },
+   348→  'Mal→LaCap': { normal: 0, media: 0 },
+   349→  'Mal→S.Bern': { normal: 0, media: 0 },
+   350→  'Mal→ElTambo': { normal: 0, media: 0 },
+   351→  // Intermedios Zahuayco/Yangana vuelta (desde Vilcabamba/Malacatos)
+   352→  'Vilc→Masan': { normal: 0, media: 0 },
+   353→  'Vilc→Quina': { normal: 0, media: 0 },
+   354→  'Vilc→Chumb': { normal: 0, media: 0 },
+   355→  'Vilc→Palm': { normal: 0, media: 0 },
+   356→  'Vilc→Zahua': { normal: 0, media: 0 },
+   357→  'Vilc→Suro': { normal: 0, media: 0 },
+   358→  'Vilc→Yangana': { normal: 0, media: 0 },
+   359→  'Mal→Masan': { normal: 0, media: 0 },
+   360→  'Mal→Quina': { normal: 0, media: 0 },
+   361→  'Mal→Chumb': { normal: 0, media: 0 },
+   362→  'Mal→Palm': { normal: 0, media: 0 },
+   363→  'Mal→Zahua': { normal: 0, media: 0 },
+   364→  'Mal→Suro': { normal: 0, media: 0 },
+   365→  'Mal→Yangana': { normal: 0, media: 0 },
+   366→  // Intermedios La Elvira vuelta (desde Vilcabamba/Malacatos)
+   367→  'Mal→Cucan': { normal: 0, media: 0 },
+   368→  'Mal→Lind': { normal: 0, media: 0 },
+   369→  'Mal→Santo': { normal: 0, media: 0 },
+   370→  'Mal→Solan': { normal: 0, media: 0 },
+   371→  'Mal→Moyoc': { normal: 0, media: 0 },
+   372→  'Mal→Tumia': { normal: 0, media: 0 },
+   373→  'Mal→Comun': { normal: 0, media: 0 },
+   374→  'Mal→Elvira': { normal: 0, media: 0 },
+   375→  'Vilc→Cucan': { normal: 0, media: 0 },
+   376→  'Vilc→Lind': { normal: 0, media: 0 },
+   377→  'Vilc→Santo': { normal: 0, media: 0 },
+   378→  'Vilc→Solan': { normal: 0, media: 0 },
+   379→  'Vilc→Moyoc': { normal: 0, media: 0 },
+   380→  'Vilc→Tumia': { normal: 0, media: 0 },
+   381→  'Vilc→Comun': { normal: 0, media: 0 },
+   382→  'Vilc→Elvira': { normal: 0, media: 0 },
+   383→  // Intermedios troncal vuelta (desde hub hacia Loja)
+   384→  // Desde Vilcabamba hacia Loja (cerca→lejos)
+   385→  'Vilc→S.Pedro': { normal: 0, media: 0 },
+   386→  'Vilc→Carar': { normal: 0, media: 0 },
+   387→  'Vilc→Cavian': { normal: 0, media: 0 },
+   388→  'Vilc→Taxich': { normal: 0, media: 0 },
+   389→  'Vilc→Malac': { normal: 0, media: 0 },
+   390→  'Vilc→Land': { normal: 0, media: 0 },
+   391→  'Vilc→Chorri': { normal: 0, media: 0 },
+   392→  'Vilc→Nango': { normal: 0, media: 0 },
+   393→  'Vilc→Porv': { normal: 0, media: 0 },
+   394→  'Vilc→Gran': { normal: 0, media: 0 },
+   395→  'Vilc→Yamba': { normal: 0, media: 0 },
+   396→  'Vilc→Rumi': { normal: 0, media: 0 },
+   397→  'Vilc→T.Leguas': { normal: 0, media: 0 },
+   398→  'Vilc→P.Nuevo': { normal: 0, media: 0 },
+   399→  'Vilc→Caja': { normal: 0, media: 0 },
+   400→  'Vilc→D.Puen': { normal: 0, media: 0 },
+   401→  'Vilc→Capulí': { normal: 0, media: 0 },
+   402→  // Desde Malacatos hacia Loja (cerca→lejos)
+   403→  'Mal→LaPeña': { normal: 0, media: 0 },
+   404→  'Mal→Land': { normal: 0, media: 0 },
+   405→  'Mal→Chorri': { normal: 0, media: 0 },
+   406→  'Mal→Nango': { normal: 0, media: 0 },
+   407→  'Mal→Porv': { normal: 0, media: 0 },
+   408→  'Mal→Gran': { normal: 0, media: 0 },
+   409→  'Mal→Yamba': { normal: 0, media: 0 },
+   410→  'Mal→Rumi': { normal: 0, media: 0 },
+   411→  'Mal→T.Leguas': { normal: 0, media: 0 },
+   412→  'Mal→P.Nuevo': { normal: 0, media: 0 },
+   413→  'Mal→Caja': { normal: 0, media: 0 },
+   414→  'Mal→D.Puen': { normal: 0, media: 0 },
+   415→  'Mal→Capulí': { normal: 0, media: 0 },
+   416→  // Intermedios troncal vuelta: desde parada hacia Loja
+   417→  'D.Puen→Loja': { normal: 0, media: 0 },
+   418→  'Caja→Loja': { normal: 0, media: 0 },
+   419→  'P.Nuevo→Loja': { normal: 0, media: 0 },
+   420→  'T.Leguas→Loja': { normal: 0, media: 0 },
+   421→  'Rumi→Loja': { normal: 0, media: 0 },
+   422→  'Yamba→Loja': { normal: 0, media: 0 },
+   423→  'Gran→Loja': { normal: 0, media: 0 },
+   424→  'Porv→Loja': { normal: 0, media: 0 },
+   425→  'Nango→Loja': { normal: 0, media: 0 },
+   426→  'Chorri→Loja': { normal: 0, media: 0 },
+   427→  'Land→Loja': { normal: 0, media: 0 },
+   428→  'Peña→Loja': { normal: 0, media: 0 },
+   429→  'Mal→Loja': { normal: 0, media: 0 },
+   430→  'Taxich→Loja': { normal: 0, media: 0 },
+   431→  'Cavian→Loja': { normal: 0, media: 0 },
+   432→  'Carar→Loja': { normal: 0, media: 0 },
+   433→  'S.Pedro→Loja': { normal: 0, media: 0 },
+   434→};
+   435→
+   436→// ─── Precios VUELTA específicos: EL TAMBO → LOJA ───
+   437→// Directos desde El Tambo hacia cada parada
+   438→const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = {
+   439→  'El Tambo': { normal: 0, media: 0 },
+   440→  'San Bernaved': { normal: 0, media: 0 },
+   441→  'La Capilla': { normal: 0, media: 0 },
+   442→  'La Era': { normal: 0, media: 0 },
+   443→  'San Agustín': { normal: 0, media: 0 },
+   444→  'La Merced': { normal: 0, media: 0 },
+   445→  'Zhotahuayco': { normal: 0, media: 0 },
+   446→  'Naranjo Dulce': { normal: 0, media: 0 },
+   447→  'Santo Domingo': { normal: 0, media: 0 },
+   448→  'San José': { normal: 0, media: 0 },
+   449→  'Ceibopamba': { normal: 0, media: 0 },
+   450→  'Trinidad': { normal: 0, media: 0 },
+   451→  'Malacatos': { normal: 0, media: 0 },
+   452→  'La Peña': { normal: 0, media: 0 },
+   453→  'Landangui': { normal: 0, media: 0 },
+   454→  'Chorrillos': { normal: 0, media: 0 },
+   455→  'Nangora': { normal: 0, media: 0 },
+   456→  'Porvenir': { normal: 0, media: 0 },
+   457→  'Granadillo': { normal: 0, media: 0 },
+   458→  'Yamba': { normal: 0, media: 0 },
+   459→  'Rumizhitana': { normal: 0, media: 0 },
+   460→  'Tres Leguas': { normal: 0, media: 0 },
+   461→  'Pueblo Nuevo': { normal: 0, media: 0 },
+   462→  'Cajánuma': { normal: 0, media: 0 },
+   463→  'Dos Puentes': { normal: 0, media: 0 },
+   464→  'Capulí': { normal: 0, media: 0 },
+   465→  // Intermedios El Tambo IDA (desde Malacatos hacia El Tambo)
+   466→  'Mal→Ceibop': { normal: 0, media: 0 },
+   467→  'Mal→Trinidad': { normal: 0, media: 0 },
+   468→  'Mal→S.Jose': { normal: 0, media: 0 },
+   469→  'Mal→StoDom': { normal: 0, media: 0 },
+   470→  'Mal→N.Dulce': { normal: 0, media: 0 },
+   471→  'Mal→Zhotahu': { normal: 0, media: 0 },
+   472→  'Mal→LaMerc': { normal: 0, media: 0 },
+   473→  'Mal→S.Agust': { normal: 0, media: 0 },
+   474→  'Mal→LaEra': { normal: 0, media: 0 },
+   475→  'Mal→LaCap': { normal: 0, media: 0 },
+   476→  'Mal→S.Bern': { normal: 0, media: 0 },
+   477→  'Mal→ElTambo': { normal: 0, media: 0 },
+   478→  // Intermedios El Tambo vuelta: X → Loja (troncal usa preciosVuelta compartido)
+   479→  'LaCap→Loja': { normal: 0, media: 0 },
+   480→  'S.Bern→Loja': { normal: 0, media: 0 },
+   481→};
+   482→
+   483→// ─── Precios VUELTA específicos: YANGANA → LOJA ───
+   484→// Directos desde Yangana hacia cada parada
+   485→// Los que están en $0.00 = no se vende directo desde Yangana a esa parada
+   486→const preciosVueltaYangana: Record<string, { normal: number; media: number }> = {
+   487→  'Yangana': { normal: 0, media: 0 },
+   488→  'Suro': { normal: 0, media: 0 },
+   489→  'Dos Puentes': { normal: 0, media: 0 },
+   490→  'Cajánuma': { normal: 0, media: 0 },
+   491→  'Pueblo Nuevo': { normal: 0, media: 0 },
+   492→  'Tres Leguas': { normal: 0, media: 0 },
+   493→  'Rumizhitana': { normal: 0, media: 0 },
+   494→  'Yamba': { normal: 0, media: 0 },
+   495→  'Granadillo': { normal: 0, media: 0 },
+   496→  'Porvenir': { normal: 0, media: 0 },
+   497→  'Nangora': { normal: 0, media: 0 },
+   498→  'Chorrillos': { normal: 0, media: 0 },
+   499→  'Landangui': { normal: 0, media: 0 },
+   500→  'La Peña': { normal: 0, media: 0 },
+   501→  'Malacatos': { normal: 0, media: 0 },
+   502→  'Taxiche': { normal: 0, media: 0 },
+   503→  'Cavianga': { normal: 0, media: 0 },
+   504→  'Cararango': { normal: 0, media: 0 },
+   505→  'San Pedro': { normal: 0, media: 0 },
+   506→  'Vilcabamba': { normal: 0, media: 0 },
+   507→  'Masanamaca': { normal: 0, media: 0 },
+   508→  'Capulí': { normal: 0, media: 0 },
+   509→  // Intermedios: se buscan en preciosVuelta compartido (Vilc→X, Mal→X)
+   510→};
+   511→
+   512→// ─── Precios VUELTA específicos: VILCABAMBA → LOJA ───
+   513→// Directos desde Vilcabamba hacia cada parada
+   514→const preciosVueltaVilcabamba: Record<string, { normal: number; media: number }> = {
+   515→  'Vilcabamba': { normal: 0, media: 0 },
+   516→  'San Pedro': { normal: 0, media: 0 },
+   517→  'Cararango': { normal: 0, media: 0 },
+   518→  'Cavianga': { normal: 0, media: 0 },
+   519→  'Taxiche': { normal: 0, media: 0 },
+   520→  'Malacatos': { normal: 0, media: 0 },
+   521→  'Landangui': { normal: 0, media: 0 },
+   522→  'La Peña': { normal: 0, media: 0 },
+   523→  'Chorrillos': { normal: 0, media: 0 },
+   524→  'Nangora': { normal: 0, media: 0 },
+   525→  'Porvenir': { normal: 0, media: 0 },
+   526→  'Granadillo': { normal: 0, media: 0 },
+   527→  'Yamba': { normal: 0, media: 0 },
+   528→  'Rumizhitana': { normal: 0, media: 0 },
+   529→  'Tres Leguas': { normal: 0, media: 0 },
+   530→  'Pueblo Nuevo': { normal: 0, media: 0 },
+   531→  'Cajánuma': { normal: 0, media: 0 },
+   532→  'Dos Puentes': { normal: 0, media: 0 },
+   533→  'Capulí': { normal: 0, media: 0 },
+   534→};
+   535→
+   536→// ─── Precios VUELTA específicos: LA ELVIRA → LOJA ───
+   537→// Directos desde La Elvira hacia cada parada
+   538→// Los que están en $0.00 = no se vende directo desde La Elvira a esa parada
+   539→const preciosVueltaLaElvira: Record<string, { normal: number; media: number }> = {
+   540→  'La Elvira': { normal: 0, media: 0 },
+   541→  'Dos Puentes': { normal: 0, media: 0 },
+   542→  'Comunidades': { normal: 0, media: 0 },
+   543→  'Cajánuma': { normal: 0, media: 0 },
+   544→  'Pueblo Nuevo': { normal: 0, media: 0 },
+   545→  'Tres Leguas': { normal: 0, media: 0 },
+   546→  'Rumizhitana': { normal: 0, media: 0 },
+   547→  'Yamba': { normal: 0, media: 0 },
+   548→  'Granadillo': { normal: 0, media: 0 },
+   549→  'Porvenir': { normal: 0, media: 0 },
+   550→  'Nangora': { normal: 0, media: 0 },
+   551→  'Chorrillos': { normal: 0, media: 0 },
+   552→  'Landangui': { normal: 0, media: 0 },
+   553→  'La Peña': { normal: 0, media: 0 },
+   554→  'Malacatos': { normal: 0, media: 0 },
+   555→  'Taxiche': { normal: 0, media: 0 },
+   556→  'Cavianga': { normal: 0, media: 0 },
+   557→  'Cararango': { normal: 0, media: 0 },
+   558→  'San Pedro': { normal: 0, media: 0 },
+   559→  'Vilcabamba': { normal: 0, media: 0 },
+   560→  'Cucanama': { normal: 0, media: 0 },
+   561→  'Linderos': { normal: 0, media: 0 },
+   562→  'Santorum': { normal: 0, media: 0 },
+   563→  'Solanda': { normal: 0, media: 0 },
+   564→  'Moyococha': { normal: 0, media: 0 },
+   565→  'Tumianuma': { normal: 0, media: 0 },
+   566→  'Quinara': { normal: 0, media: 0 },
+   567→  // Intermedios: se buscan en preciosVuelta compartido (Vilc→X, Mal→X, X→Loja)
+   568→  // Vilc→Loja es específico de La Elvira ($2.25 vs $2.50 troncal)
+   569→  'Vilc→Loja': { normal: 0, media: 0 },
+   570→};
+   571→
+   572→// ─── Paradas por ruta según dirección ───
+   573→// "ida" = desde el origen de la ruta hacia el destino
+   574→// "vuelta" = desde el destino de vuelta al origen
+   575→
+   576→export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> = {
+   577→  'Loja - Vilcabamba': {
+   578→    ida: [
+   579→          'Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+   580→          'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
+   581→          'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Peña→Mal', 'Land→Mal',
+   582→          'Chorri→Mal', 'Nango→Mal', 'Porv→Mal', 'Gran→Mal', 'Yamba→Mal', 'Rumi→Mal', 'T.Leguas→Mal',
+   583→          'P.Nuevo→Mal', 'Caja→Mal', 'D.Puen→Mal', 'Capulí→Mal',
+   584→          'S.Pedro→Vilc', 'Carar→Vilc', 'Cavian→Vilc', 'Taxich→Vilc', 'Mal→Vilc', 'Land→Vilc', 'Peña→Vilc',
+   585→          'Chorri→Vilc', 'Nango→Vilc', 'Porv→Vilc', 'Gran→Vilc', 'Yamba→Vilc', 'Rumi→Vilc', 'T.Leguas→Vilc',
+   586→          'P.Nuevo→Vilc', 'Caja→Vilc', 'D.Puen→Vilc', 'Capulí→Vilc',
+   587→    ],
+   588→    vuelta: [
+   589→          'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
+   590→          'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas',
+   591→          'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
+   592→          // Intermedios desde Malacatos hacia Loja (orange, cerca→lejos)
+   593→          'Mal→LaPeña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
+   594→          'Mal→Gran', 'Mal→Yamba', 'Mal→Rumi', 'Mal→T.Leguas', 'Mal→P.Nuevo',
+   595→          'Mal→Caja', 'Mal→D.Puen', 'Mal→Capulí',
+   596→          // Intermedios desde parada hacia Loja (cerca→lejos desde Loja)
+   597→          'D.Puen→Loja', 'Caja→Loja', 'P.Nuevo→Loja', 'T.Leguas→Loja',
+   598→          'Rumi→Loja', 'Yamba→Loja', 'Gran→Loja', 'Porv→Loja',
+   599→          'Nango→Loja', 'Chorri→Loja', 'Land→Loja', 'Peña→Loja',
+   600→          'Mal→Loja', 'Taxich→Loja', 'Cavian→Loja', 'Carar→Loja', 'S.Pedro→Loja',
+   601→    ],
+   602→  },
+   603→  'Loja - Zahuayco': {
+   604→    ida: [
+   605→          'Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+   606→          'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
+   607→          'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Masanamaca', 'Quinara',
+   608→          'Chumberos', 'Palmira', 'Zahuayco', 'Vilc→Masan', 'Vilc→Quina', 'Vilc→Chumb', 'Vilc→Palm',
+   609→          'Vilc→Zahua', 'Mal→Masan', 'Mal→Quina', 'Mal→Chumb', 'Mal→Palm', 'Mal→Zahua',
+   610→    ],
+   611→    vuelta: [
+   612→          'Zahuayco', 'Palmira', 'Quinara', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango',
+   613→          'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui', 'Chorrillos', 'Nangora',
+   614→          'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo',
+   615→          'Cajánuma', 'Dos Puentes', 'Capulí',
+   616→    ],
+   617→  },
+   618→  'Loja - El Tambo': {
+   619→    ida: [
+   620→          'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+   621→          'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
+   622→          'Ceibopamba', 'Trinidad', 'San José', 'Santo Domingo', 'Naranjo Dulce', 'Zhotahuayco',
+   623→          'La Merced', 'San Agustín', 'La Era', 'La Capilla', 'San Bernaved', 'El Tambo', 'Mal→Ceibop',
+   624→          'Mal→Trinidad', 'Mal→S.Jose', 'Mal→StoDom', 'Mal→N.Dulce', 'Mal→Zhotahu', 'Mal→LaMerc',
+   625→          'Mal→S.Agust', 'Mal→LaEra', 'Mal→LaCap', 'Mal→S.Bern', 'Mal→ElTambo',
+   626→    ],
+   627→    vuelta: [
+   628→          'El Tambo', 'San Bernaved', 'La Capilla', 'La Era', 'San Agustín', 'La Merced', 'Zhotahuayco',
+   629→          'Naranjo Dulce', 'Santo Domingo', 'San José', 'Ceibopamba', 'Trinidad', 'Malacatos',
+   630→          'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba',
+   631→          'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
+   632→          // Intermedios desde Malacatos hacia Loja (orange, cerca→lejos)
+   633→          'Mal→LaPeña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
+   634→          'Mal→Gran', 'Mal→Yamba', 'Mal→Rumi', 'Mal→T.Leguas', 'Mal→P.Nuevo',
+   635→          'Mal→Caja', 'Mal→D.Puen', 'Mal→Capulí',
+   636→          // Intermedios desde parada hacia Loja (troncal)
+   637→          'D.Puen→Loja', 'Caja→Loja', 'P.Nuevo→Loja', 'T.Leguas→Loja',
+   638→          'Rumi→Loja', 'Yamba→Loja', 'Gran→Loja', 'Porv→Loja',
+   639→          'Nango→Loja', 'Chorri→Loja', 'Land→Loja', 'Peña→Loja', 'Mal→Loja',
+   640→          // Intermedios desde parada hacia Loja (rama El Tambo)
+   641→          'LaCap→Loja', 'S.Bern→Loja',
+   642→    ],
+   643→  },
+   644→  'Loja - La Elvira': {
+   645→    ida: [
+   646→          'Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+   647→          'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
+   648→          'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Cucanama', 'Linderos',
+   649→          'Santorum', 'Solanda', 'Moyococha', 'Tumianuma', 'Quinara', 'Comunidades', 'La Elvira',
+   650→          'Mal→Cucan', 'Mal→Lind', 'Mal→Santo', 'Mal→Solan', 'Mal→Moyoc', 'Mal→Tumia', 'Mal→Quina',
+   651→          'Mal→Comun', 'Mal→Elvira', 'Vilc→Cucan', 'Vilc→Lind', 'Vilc→Santo', 'Vilc→Solan',
+   652→          'Vilc→Moyoc', 'Vilc→Tumia', 'Vilc→Quina', 'Vilc→Comun', 'Vilc→Elvira',
+   653→    ],
+   654→    vuelta: [
+   655→          'La Elvira', 'Comunidades', 'Quinara', 'Tumianuma', 'Moyococha', 'Solanda', 'Santorum',
+   656→          'Linderos', 'Cucanama', 'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche',
+   657→          'Malacatos', 'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
+   658→          'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes',
+   659→          'Capulí',
+   660→          // Intermedios desde Malacatos hacia Loja (orange, cerca→lejos)
+   661→          'Mal→LaPeña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
+   662→          'Mal→Gran', 'Mal→Yamba', 'Mal→Rumi', 'Mal→T.Leguas', 'Mal→P.Nuevo',
+   663→          'Mal→Caja', 'Mal→D.Puen', 'Mal→Capulí',
+   664→          // Intermedios desde parada hacia Loja (troncal)
+   665→          'D.Puen→Loja', 'Caja→Loja', 'P.Nuevo→Loja', 'T.Leguas→Loja',
+   666→          'Rumi→Loja', 'Yamba→Loja', 'Gran→Loja', 'Porv→Loja',
+   667→          'Nango→Loja', 'Chorri→Loja', 'Land→Loja', 'Peña→Loja',
+   668→          'Mal→Loja', 'Taxich→Loja', 'Cavian→Loja', 'Carar→Loja', 'S.Pedro→Loja',
+   669→          'Vilc→Loja',
+   670→          // Intermedios La Elvira: X → Malacatos (orange) y X → Vilcabamba (purple)
+   671→          'Mal→Cucan', 'Mal→Lind', 'Mal→Santo', 'Mal→Solan', 'Mal→Moyoc', 'Mal→Tumia',
+   672→          'Mal→Quina', 'Mal→Comun', 'Mal→Elvira', 'Vilc→Cucan', 'Vilc→Lind', 'Vilc→Santo',
+   673→          'Vilc→Solan', 'Vilc→Moyoc', 'Vilc→Tumia', 'Vilc→Quina', 'Vilc→Comun', 'Vilc→Elvira',
+   674→    ],
+   675→  },
+   676→  'Loja - Yangana': {
+   677→    ida: [
+   678→          'Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+   679→          'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
+   680→          'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Masanamaca', 'Suro',
+   681→          'Yangana', 'Vilc→Masan', 'Vilc→Suro', 'Vilc→Yangana', 'Mal→Masan', 'Mal→Suro', 'Mal→Yangana',
+   682→    ],
+   683→    vuelta: [
+   684→          'Yangana', 'Suro', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
+   685→          'Taxiche', 'Malacatos', 'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir',
+   686→          'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma',
+   687→          'Dos Puentes', 'Capulí',
+   688→          // Intermedios desde Vilcabamba hacia Loja
+   689→          'Vilc→S.Pedro', 'Vilc→Carar', 'Vilc→Cavian', 'Vilc→Taxich', 'Vilc→Malac',
+   690→          'Vilc→Land', 'Vilc→Chorri', 'Vilc→Nango', 'Vilc→Porv', 'Vilc→Gran',
+   691→          'Vilc→Yamba', 'Vilc→Rumi', 'Vilc→T.Leguas', 'Vilc→P.Nuevo', 'Vilc→Caja',
+   692→          'Vilc→D.Puen', 'Vilc→Capulí',
+   693→          // Intermedios desde Malacatos hacia Loja
+   694→          'Mal→LaPeña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
+   695→          'Mal→Gran', 'Mal→Yamba', 'Mal→Rumi', 'Mal→T.Leguas', 'Mal→P.Nuevo',
+   696→          'Mal→Caja', 'Mal→D.Puen', 'Mal→Capulí',
+   697→    ],
+   698→  },
+   699→};
+   700→
+   701→// ─── Funciones de precio con soporte por dirección ───
+   702→//
+   703→// Lógica de precios (tipo semántico asignado por el API):
+   704→// - "ida"   = el bus se ALEJA de Loja → usar preciosIda
+   705→// - "vuelta" = el bus VIAJA HACIA Loja → usar preciosVuelta
+   706→//
+   707→// El API asigna dirección según el origen:
+   708→//   Si origen = Loja →  "ida" (alejándose)
+   709→//   Si origen ≠ Loja → "vuelta" (hacia Loja)
+   710→//
+   711→// normalizeRutaTipo solo cambia el nombre de ruta ("Vilcabamba-Loja" → "Loja-Vilcabamba")
+   712→// SIN invertir el tipo, porque el API ya lo asigna semánticamente correcto.
+   713→
+   714→function viajaHaciaLoja(ruta: string, tipo: string): boolean {
+   715→  // Ruta "Loja - X": ida se aleja de Loja, vuelta regresa a Loja
+   716→  if (ruta.startsWith('Loja')) return tipo === 'vuelta';
+   717→  // Ruta "X - Loja": ida va hacia Loja (usar preciosVuelta), vuelta se aleja (usar preciosIda)
+   718→  if (ruta.endsWith('Loja')) return tipo === 'ida';
+   719→  return false;
+   720→}
+   721→
+   722→// Obtener precio considerando la dirección del viaje
+   723→function getPrecio(parada: string, ruta: string, tipo: string): { normal: number; media: number } | null {
+   724→  if (viajaHaciaLoja(ruta, tipo)) {
+   725→    // Ruta El Tambo tiene precios de vuelta propios (no comparte troncal con Vilcabamba)
+   726→    if (ruta === 'Loja - El Tambo') {
+   727→      const tamboVuelta = preciosVueltaElTambo[parada];
+   728→      if (tamboVuelta) return tamboVuelta;
+   729→    }
+   730→    // Ruta Yangana tiene precios de vuelta propios (directos desde Yangana)
+   731→    if (ruta === 'Loja - Yangana') {
+   732→      const yangVuelta = preciosVueltaYangana[parada];
+   733→      if (yangVuelta) return yangVuelta;
+   734→    }
+   735→    // Ruta Vilcabamba tiene precios de vuelta propios (directos desde Vilcabamba)
+   736→    if (ruta === 'Loja - Vilcabamba') {
+   737→      const vilcVuelta = preciosVueltaVilcabamba[parada];
+   738→      if (vilcVuelta) return vilcVuelta;
+   739→    }
+   740→    // Ruta La Elvira tiene precios de vuelta propios (directos desde La Elvira)
+   741→    if (ruta === 'Loja - La Elvira') {
+   742→      const elviraVuelta = preciosVueltaLaElvira[parada];
+   743→      if (elviraVuelta) return elviraVuelta;
+   744→    }
+   745→    const vuelta = preciosVuelta[parada];
+   746→    if (vuelta) return vuelta;
+   747→    // Si la parada no tiene precio de vuelta, buscar en precios base
+   748→  }
+   749→  // Buscar primero en ida (base), luego en vuelta como fallback
+   750→  const ida = preciosIda[parada];
+   751→  if (ida) return ida;
+   752→  const vuelta = preciosVuelta[parada];
+   753→  return vuelta || null;
+   754→}
+   755→
+   756→// Tipo de pasajero
+   757→export type TipoPasajero = 'normal' | 'media';
+   758→
+   759→// Obtener paradas con tarifas para una ruta y dirección (USA PRECIOS POR DIRECCIÓN)
+   760→export function getParadasByRutaAndTipo(ruta: string, tipo: string): { parada: string; normal: number; media: number }[] {
+   761→  // Normalize: para rutas "X - Loja", mapear a "Loja - X" pero mantener tipo semántico
+   762→  // "Vilcabamba - Loja" tipo="vuelta" (API) → "Loja - Vilcabamba" tipo="vuelta"
+   763→  //   → usa paradas vuelta = [Vilcabamba, San Pedro, ...] y preciosVuelta ✓
+   764→  // "Vilcabamba - Loja" tipo="ida" (API) → "Loja - Vilcabamba" tipo="ida"
+   765→  //   → usa paradas ida = [Dos Puentes, Cajánuma, ...] y preciosIda ✓
+   766→  let effectiveRuta = ruta;
+   767→  let effectiveTipo = tipo;
+   768→  if (ruta.endsWith('Loja') && !ruta.startsWith('Loja')) {
+   769→    // "Vilcabamba - Loja" → mapear a "Loja - Vilcabamba" manteniendo el tipo semántico
+   770→    // El API ya asigna el tipo correcto: "ida"=alejándose de Loja, "vuelta"=hacia Loja
+   771→    // Solo necesitamos el nombre de ruta base, SIN invertir el tipo
+   772→    const baseName = ruta.replace(' - Loja', '');
+   773→    effectiveRuta = `Loja - ${baseName}`;
+   774→    // NO invertir effectiveTipo — ya viene correcto del API
+   775→  }
+   776→
+   777→  const rutaConfig = RUTA_PARADAS[effectiveRuta];
+   778→  if (!rutaConfig) {
+   779→    // Fallback: try original ruta
+   780→    const origConfig = RUTA_PARADAS[ruta];
+   781→    if (!origConfig) return [];
+   782→    const paradas = tipo === 'ida' ? origConfig.ida : origConfig.vuelta;
+   783→    return paradas.map(parada => {
+   784→      const precio = getPrecio(parada, ruta, tipo);
+   785→      return { parada, normal: precio?.normal ?? 0, media: precio?.media ?? 0 };
+   786→    });
+   787→  }
+   788→
+   789→  const paradas = effectiveTipo === 'ida' ? rutaConfig.ida : rutaConfig.vuelta;
+   790→  return paradas.map(parada => {
+   791→    const precio = getPrecio(parada, effectiveRuta, effectiveTipo);
+   792→    return {
+   793→      parada,
+   794→      normal: precio?.normal ?? 0,
+   795→      media: precio?.media ?? 0,
+   796→    };
+   797→  });
+   798→}
+   799→
+   800→// Normalizar ruta y tipo para rutas "X - Loja"
+   801→function normalizeRutaTipo(ruta: string, tipo: string): { ruta: string; tipo: string } {
+   802→  if (ruta.endsWith('Loja') && !ruta.startsWith('Loja')) {
+   803→    // "Vilcabamba - Loja" → mapear a "Loja - Vilcabamba" manteniendo tipo semántico
+   804→    // El API ya asigna tipo correcto, NO invertir
+   805→    const baseName = ruta.replace(' - Loja', '');
+   806→    return { ruta: `Loja - ${baseName}`, tipo };
+   807→  }
+   808→  return { ruta, tipo };
+   809→}
+   810→
+   811→// Obtener tarifa oficial (USA PRECIOS POR DIRECCIÓN)
+   812→export function getTarifa(ruta: string, parada: string, tipo: string, pasajeroTipo: TipoPasajero = 'normal'): number {
+   813→  const { ruta: nr, tipo: nt } = normalizeRutaTipo(ruta, tipo);
+   814→  const precio = getPrecio(parada, nr, nt);
+   815→  if (!precio) return TARIFA_MINIMA;
+   816→  return pasajeroTipo === 'media' ? precio.media : precio.normal;
+   817→}
+   818→
+   819→// Obtener todas las rutas disponibles
+   820→export function getAllRutas(): string[] {
+   821→  return Object.keys(RUTA_PARADAS);
+   822→}
+   823→
+   824→// Buscar la ruta más cercana dado un nombre de ruta parcial
+   825→export function matchRuta(rutaNombre: string): string {
+   826→  if (RUTA_PARADAS[rutaNombre]) return rutaNombre;
+   827→  const normalized = rutaNombre.replace(/\s*-\s*/g, ' - ').trim();
+   828→  if (RUTA_PARADAS[normalized]) return normalized;
+   829→
+   830→  const parts = rutaNombre.split(/[-–]/).map(s => s.trim());
+   831→  for (const key of Object.keys(RUTA_PARADAS)) {
+   832→    const keyParts = key.split(' - ');
+   833→    if (parts.length >= 2 && keyParts.length >= 2) {
+   834→      const match = (
+   835→        (keyParts[0].toLowerCase().includes(parts[0].toLowerCase()) ||
+   836→         parts[0].toLowerCase().includes(keyParts[0].toLowerCase())) &&
+   837→        (keyParts[1].toLowerCase().includes(parts[1].toLowerCase()) ||
+   838→         parts[1].toLowerCase().includes(keyParts[1].toLowerCase()))
+   839→      );
+   840→      if (match) return key;
+   841→    }
+   842→  }
+   843→  return rutaNombre;
+   844→}
+   845→
+   846→// Exportar lista completa de tarifas ida para referencia
+   847→export const preciosDesdeLoja: TarifaItem[] = Object.entries(preciosIda).map(([parada, p], i) => ({
+   848→  id: `ida-${String(i).padStart(2, '0')}`,
+   849→  parada,
+   850→  normal: p.normal,
+   851→  media: p.media,
+   852→}));
+   853→
+   854→export default preciosDesdeLoja;
+   855→
