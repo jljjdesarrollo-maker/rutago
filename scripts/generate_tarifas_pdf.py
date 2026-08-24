@@ -179,60 +179,11 @@ RUTAS = {
             'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
         ],
     },
-    'Vilcabamba - Loja': {
-        'ida': [
-            'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui',
-            'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas',
-            'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed', 'Loja',
-        ],
-        'vuelta': [
-            'Loja', 'Capul\u00ed', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana',
-            'Yamba', 'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a',
-            'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba',
-        ],
-    },
-    'Zahuayco - Loja': {
-        'ida': [
-            'Zahuayco', 'Palmira', 'Quinara', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango',
-            'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora',
-            'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo',
-            'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
-        ],
-        'vuelta': [
-            'Capul\u00ed', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana',
-            'Yamba', 'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a',
-            'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Masanamaca',
-            'Quinara', 'Palmira', 'Zahuayco',
-        ],
-    },
-    'La Elvira - Loja': {
-        'ida': [
-            'La Elvira', 'Tumianuma', 'Comunidades', 'Santorum', 'Moyococha', 'Linderos', 'Cucanama',
-            'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a',
-            'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana',
-            'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
-        ],
-        'vuelta': [
-            'Capul\u00ed', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana',
-            'Yamba', 'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a',
-            'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Cucanama',
-            'Linderos', 'Moyococha', 'Santorum', 'Comunidades', 'Tumianuma', 'La Elvira',
-        ],
-    },
-    'Yangana - Loja': {
-        'ida': [
-            'Yangana', 'Suro', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
-            'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir',
-            'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa',
-            'Dos Puentes', 'Capul\u00ed',
-        ],
-        'vuelta': [
-            'Capul\u00ed', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana',
-            'Yamba', 'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a',
-            'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Masanamaca',
-            'Suro', 'Yangana',
-        ],
-    },
+    # Rutas invertidas eliminadas (eran duplicados de las rutas base arriba):
+    # 'Vilcabamba - Loja' = 'Loja - Vilcabamba' al revés
+    # 'Zahuayco - Loja'  = 'Loja - Zahuayco'  al revés
+    # 'La Elvira - Loja' = 'Loja - La Elvira'  al revés
+    # 'Yangana - Loja'   = 'Loja - Yangana'   al revés
 }
 
 HEADER_BG = colors.HexColor('#1e3a5f')
@@ -294,7 +245,7 @@ def make_table(paradas, price_fn):
 
 elements = []
 elements.append(Paragraph('RutaGo - Tarifas de Precios', s_title))
-elements.append(Paragraph('TRANSPORTES VILCABAMBATURIS C.I.A. LTDA. | Precios cargados: Solo IDA Loja - Vilcabamba', s_subtitle))
+elements.append(Paragraph('TRANSPORTES VILCABAMBATURIS C.I.A. LTDA. | Precios cargados: Solo IDA Loja → Vilcabamba', s_subtitle))
 
 # Count stats
 loaded_ida = sum(1 for p in precios_ida.values() if p != (0,0))
