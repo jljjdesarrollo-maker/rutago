@@ -124,6 +124,7 @@ RUTAS = {
             'Naranjo Dulce', 'Santo Domingo', 'San Jos\u00e9', 'Ceibopamba', 'Trinidad', 'Malacatos',
             'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba',
             'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
+    'Loja',
             'Mal\u2192Pe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
             'Mal\u2192Gran', 'Mal\u2192Yamba', 'Mal\u2192Rumi', 'Mal\u2192T.Leguas', 'Mal\u2192P.Nuevo',
             'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
@@ -200,7 +201,18 @@ def get_price_ida(parada):
         return precios_ida[parada]
     return (0, 0)
 
-def get_price_vuelta(parada):
+ROUTE_MAP_KEYS = {
+    'Loja - Vilcabamba': 'preciosVueltaVilcabamba',
+    'Loja - El Tambo': 'preciosVueltaElTambo',
+    'Loja - Yangana': 'preciosVueltaYangana',
+    'Loja - La Elvira': 'preciosVueltaLaElvira',
+}
+
+def get_price_vuelta(parada, ruta_name=None):
+    if ruta_name and ruta_name in ROUTE_MAP_KEYS:
+        map_name = ROUTE_MAP_KEYS[ruta_name]
+        if map_name in vuelta_maps and parada in vuelta_maps[map_name]:
+            return vuelta_maps[map_name][parada]
     if parada in precios_vuelta:
         return precios_vuelta[parada]
     for name, pm in vuelta_maps.items():
@@ -261,7 +273,7 @@ for ruta_name, dirs in RUTAS.items():
     elements.append(Paragraph('IDA (hacia destino)', s_dir))
     elements.append(make_table(dirs['ida'], get_price_ida))
     elements.append(Paragraph('VUELTA (hacia Loja)', s_dir))
-    elements.append(make_table(dirs['vuelta'], get_price_vuelta))
+    elements.append(make_table(dirs['vuelta'], lambda p: get_price_vuelta(p, ruta_name)))
 
 doc.build(elements)
 print(f'PDF generado: {OUTPUT}')

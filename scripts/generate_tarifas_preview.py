@@ -89,6 +89,7 @@ RUTAS = {
             'Naranjo Dulce', 'Santo Domingo', 'San Jos\u00e9', 'Ceibopamba', 'Trinidad', 'Malacatos',
             'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba',
             'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
+    'Loja',
             'Mal\u2192Pe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
             'Mal\u2192Gran', 'Mal\u2192Yamba', 'Mal\u2192Rumi', 'Mal\u2192T.Leguas', 'Mal\u2192P.Nuevo',
             'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
@@ -246,8 +247,10 @@ function gz(p){
   return 'yellow';
 }
 function isPr(p){return !p.includes(ARROW); }
-function gp(p,d){
+function gp(p,d,r){
   if(d==='ida')return PRECIOS_IDA[p]||[0,0];
+  var rm={'Loja - Vilcabamba':'preciosVueltaVilcabamba','Loja - El Tambo':'preciosVueltaElTambo','Loja - Yangana':'preciosVueltaYangana','Loja - La Elvira':'preciosVueltaLaElvira'};
+  if(r&&rm[r]&&VUELTA_MAPS[rm[r]]&&VUELTA_MAPS[rm[r]][p])return VUELTA_MAPS[rm[r]][p];
   if(PRECIOS_VUELTA[p])return PRECIOS_VUELTA[p];
   for(const k of Object.keys(VUELTA_MAPS)){if(VUELTA_MAPS[k][p])return VUELTA_MAPS[k][p];}
   return [0,0];
@@ -286,7 +289,7 @@ function render(){
     html+='<div class="zone-label"><div class="zone-dot" style="background:'+ZDots[z]+'"></div><span>'+ZNames[z]+' ('+groups[z].length+')</span></div>';
     html+='<div class="grid">';
     groups[z].forEach(p=>{
-      const[n,m]=gp(p,cD);
+      const[n,m]=gp(p,cD,cR);
       const pr=cT==='media'?m:n;
       const has=n>0||m>0;
       const pc=has?c.price:'#cbd5e1';
@@ -298,7 +301,7 @@ function render(){
   document.getElementById('gridArea').innerHTML=html;
 
   let loaded=0;
-  ps.forEach(p=>{const[n,m]=gp(p,cD);if(n>0||m>0)loaded++;});
+  ps.forEach(p=>{const[n,m]=gp(p,cD,cR);if(n>0||m>0)loaded++;});
   document.getElementById('statsBar').innerHTML='<b>'+cR+'</b> | '+cD.toUpperCase()+' | '+loaded+'/'+ps.length+' precios cargados';
 }
 render();
