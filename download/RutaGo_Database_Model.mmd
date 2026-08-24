@@ -1,10 +1,54 @@
 erDiagram
-    %% ═══════════════════════════════════════════
-    %% RutaGo - Modelo de Base de Datos Completo
+    %% ═══════════════════════════════════════════════════════════
+    %% RutaGo - Modelo de Base de Datos COMPLETO (con Tarifas)
     %% PostgreSQL (Prisma) + IndexedDB (Offline)
-    %% ═══════════════════════════════════════════
+    %% ═══════════════════════════════════════════════════════════
 
     %% ─── SERVIDOR: PostgreSQL (Prisma) ───
+
+    Ruta {
+        String id PK "cuid()"
+        String nombre UK "Loja - Vilcabamba"
+        String descripcion "Ruta troncal Loja-Vilcabamba"
+        Boolean pasaPorVilcabamba "true si pasa por Vilcabamba"
+        Boolean ramificaEnMalacatos "true si ramifica (El Tambo)"
+        Boolean activo "true por defecto"
+        DateTime createdAt "now()"
+        DateTime updatedAt "auto"
+    }
+
+    Parada {
+        String id PK "cuid()"
+        String nombre UK "Vilcabamba | Vilc->Mal"
+        String nombreCompleto "Nombre descriptivo completo"
+        Boolean esPrincipal "true si no contiene ->"
+        String hub "Vilcabamba | Malacatos | Loja"
+        String zona "green | yellow | blue | orange | purple"
+        Int ordenTroncal "Orden en la ruta troncal"
+        DateTime createdAt "now()"
+        DateTime updatedAt "auto"
+    }
+
+    Tarifa {
+        String id PK "cuid()"
+        String rutaId FK "-> Ruta.id (NULL=troncal)"
+        String paradaId FK "-> Parada.id"
+        String direccion "ida | vuelta"
+        Float normal "Precio pasaje entero"
+        Float media "Precio medio pasaje"
+        Boolean esTemporal "true si no es oficial"
+        Int prioridad "0=especifico ruta, 1=troncal"
+        DateTime createdAt "now()"
+        DateTime updatedAt "auto"
+    }
+
+    RutaParada {
+        String id PK "cuid()"
+        String rutaId FK "-> Ruta.id"
+        String paradaId FK "-> Parada.id"
+        String direccion "ida | vuelta"
+        Int orden "Orden de display"
+    }
 
     BusVT {
         String id PK "cuid()"
@@ -32,7 +76,7 @@ erDiagram
         String id PK "cuid()"
         String vtCode FK "-> BusVT.codigo"
         String nombre "Ej: 08:15 Vilcabamba"
-        String ruta "Ej: Loja - Vilcabamba"
+        String ruta FK "-> Ruta.nombre"
         String hora "Ej: 08:15"
         String direccion "ida | vuelta"
         Boolean activo "true por defecto"
@@ -103,15 +147,20 @@ erDiagram
 
     %% ─── RELACIONES SERVIDOR ───
 
+    Ruta ||--o{ RutaParada : "tiene paradas"
+    Parada ||--o{ RutaParada : "aparece en rutas"
+    Ruta ||--o{ Tarifa : "rutaId (NULL=troncal)"
+    Parada ||--o{ Tarifa : "tiene precios"
     BusVT ||--o{ Frecuencia : "vtCode -> codigo"
     BusVT ||--o{ VentaBoleto : "vtCode -> codigo"
+    Frecuencia }o--|| Ruta : "ruta -> nombre"
     Frecuencia ||--o{ VentaBoleto : "frecuenciaId -> id"
     DailyRecord ||--o{ Trip : "recordId -> id (CASCADE)"
     DailyRecord ||--o{ Expense : "recordId -> id (CASCADE)"
 
-    %% ═══════════════════════════════════════════
+    %% ═══════════════════════════════════════════════════════════
     %% CLIENTE: IndexedDB (Offline - Navegador)
-    %% ═══════════════════════════════════════════
+    %% ═══════════════════════════════════════════════════════════
 
     VentaLocal {
         String id PK "UUID local"
@@ -182,3 +231,4 @@ erDiagram
 
     VentaLocal ..> VentaBoleto : "sync: pending -> synced"
     EstadoFrecuencia ..> Frecuencia : "estado ref frecuencia servidor"
+    TarifaCache ..> Tarifa : "cache offline de tarifas BD"
