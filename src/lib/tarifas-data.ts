@@ -136,6 +136,7 @@ export function isParadaPrincipal(parada: string): boolean {
 // ─── Precios IDA (desde Loja hacia el destino) ───
 const preciosIda: Record<string, { normal: number; media: number }> = {
   // ═══ LOJA - VILCABAMBA ═══
+  'Capulí': { normal: 0.75, media: 0.40 },
   'Dos Puentes': { normal: 0.75, media: 0.4 },
   'Cajánuma': { normal: 1.25, media: 0.65 },
   'Pueblo Nuevo': { normal: 1.25, media: 0.65 },
@@ -460,7 +461,7 @@ const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = 
   'Pueblo Nuevo': { normal: 0, media: 0 },
   'Cajánuma': { normal: 0, media: 0 },
   'Dos Puentes': { normal: 0, media: 0 },
-  'Capulí': { normal: 0.75, media: 0.4 },
+  'Capulí': { normal: 0, media: 0 },
   // Intermedios El Tambo IDA (desde Malacatos hacia El Tambo)
   'Mal→Ceibop': { normal: 0, media: 0 },
   'Mal→Trinidad': { normal: 0, media: 0 },
@@ -504,7 +505,7 @@ const preciosVueltaYangana: Record<string, { normal: number; media: number }> = 
   'San Pedro': { normal: 0, media: 0 },
   'Vilcabamba': { normal: 0, media: 0 },
   'Masanamaca': { normal: 0, media: 0 },
-  'Capulí': { normal: 0.75, media: 0.4 },
+  'Capulí': { normal: 0, media: 0 },
   // Intermedios: se buscan en preciosVuelta compartido (Vilc→X, Mal→X)
 };
 

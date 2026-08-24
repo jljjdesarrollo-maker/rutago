@@ -240,19 +240,21 @@ ALT_ROW = colors.HexColor('#f1f5f9')
 WHITE = colors.white
 ZERO_COLOR = colors.HexColor('#e2e8f0')
 
-# Price lookup: try ida first, then vuelta (both maps)
-def get_price(parada):
-    if parada in precios_ida and precios_ida[parada] != (0, 0):
+# Price lookup: only from the correct map, NO fallback
+def get_price_ida(parada):
+    if parada in precios_ida:
         return precios_ida[parada]
-    if parada in precios_vuelta and precios_vuelta[parada] != (0, 0):
+    return (0, 0)
+
+def get_price_vuelta(parada):
+    if parada in precios_vuelta:
         return precios_vuelta[parada]
-    # Check specific vuelta maps
     for name, pm in vuelta_maps.items():
-        if parada in pm and pm[parada] != (0, 0):
+        if parada in pm:
             return pm[parada]
     return (0, 0)
 
-def make_table(paradas):
+def make_table(paradas, price_fn):
     data = [[
         Paragraph('#', s_header),
         Paragraph('Parada', s_header),
@@ -260,7 +262,7 @@ def make_table(paradas):
         Paragraph('Medio', s_header),
     ]]
     for i, p in enumerate(paradas, 1):
-        normal, media = get_price(p)
+        normal, media = price_fn(p)
         if normal > 0:
             n_cell = Paragraph(f'${normal:.2f}', s_price)
             m_cell = Paragraph(f'${media:.2f}', s_price)
@@ -292,20 +294,20 @@ def make_table(paradas):
 
 elements = []
 elements.append(Paragraph('RutaGo - Tarifas de Precios', s_title))
-elements.append(Paragraph('TRANSPORTES VILCABAMBATURIS C.I.A. LTDA. | Precios cargados: Troncal Loja - Vilcabamba (ida y vuelta directos)', s_subtitle))
+elements.append(Paragraph('TRANSPORTES VILCABAMBATURIS C.I.A. LTDA. | Precios cargados: Solo IDA Loja - Vilcabamba', s_subtitle))
 
 # Count stats
-loaded = sum(1 for p in precios_ida.values() if p != (0,0)) + sum(1 for p in precios_vuelta.values() if p != (0,0))
-total = len(precios_ida) + len(precios_vuelta)
-elements.append(Paragraph(f'Rutas: {len(RUTAS)} | Precios cargados: {loaded} | Sin tarifa: {total - loaded}', s_note))
+loaded_ida = sum(1 for p in precios_ida.values() if p != (0,0))
+loaded_vuelta = sum(1 for p in precios_vuelta.values() if p != (0,0))
+elements.append(Paragraph(f'Rutas: {len(RUTAS)} | IDA cargados: {loaded_ida} | VUELTA cargados: {loaded_vuelta} | Pendientes: {len(precios_ida) + len(precios_vuelta) - loaded_ida - loaded_vuelta}', s_note))
 elements.append(Spacer(1, 3*mm))
 
 for ruta_name, dirs in RUTAS.items():
     elements.append(Paragraph(ruta_name, s_route))
     elements.append(Paragraph('IDA (hacia destino)', s_dir))
-    elements.append(make_table(dirs['ida']))
+    elements.append(make_table(dirs['ida'], get_price_ida))
     elements.append(Paragraph('VUELTA (hacia Loja)', s_dir))
-    elements.append(make_table(dirs['vuelta']))
+    elements.append(make_table(dirs['vuelta'], get_price_vuelta))
 
 doc.build(elements)
 print(f'PDF generado: {OUTPUT}')
