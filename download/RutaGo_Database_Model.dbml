@@ -1,251 +1,230 @@
-// ═══════════════════════════════════════════════════════════════
-// RutaGo - Modelo de Base de Datos COMPLETO (con Tarifas)
-// PostgreSQL (Prisma) + IndexedDB (Offline)
-// ═══════════════════════════════════════════════════════════════
-// 
-// ► Cómo ver este diagrama GRATIS:
-//   1. Abre https://dbdiagram.io
-//   2. Pega todo este contenido en el editor izquierdo
-//   3. El diagrama se genera automáticamente a la derecha
-//   4. Opcional: crea cuenta gratuita para guardar/enlace
-// ═══════════════════════════════════════════════════════════════
-
-
-// ─── SERVIDOR: PostgreSQL (Prisma) ─────────────────────────────
-
 Table Ruta {
-  id                  text [pk, note: 'cuid()']
-  nombre              text [unique, note: 'Loja - Vilcabamba']
-  descripcion         text
-  pasaPorVilcabamba   boolean [default: true, note: 'true si pasa por Vilcabamba']
-  ramificaEnMalacatos boolean [default: false, note: 'true si ramifica (El Tambo)']
-  activo              boolean [default: true]
-  createdAt           timestamp [default: `now()`]
-  updatedAt           timestamp [default: `now()`]
+  id text [pk]
+  nombre text [unique]
+  descripcion text
+  pasaPorVilcabamba boolean [default: true]
+  ramificaEnMalacatos boolean [default: false]
+  activo boolean [default: true]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
 
   Note: 'Rutas de transporte: troncal y ramales'
 }
 
 Table Parada {
-  id            text [pk, note: 'cuid()']
-  nombre        text [unique, note: 'Vilcabamba | Vilc->Mal']
+  id text [pk]
+  nombre text [unique]
   nombreCompleto text
-  esPrincipal   boolean [default: true, note: 'true si no contiene ->']
-  hub           text [note: 'Vilcabamba | Malacatos | Loja']
-  zona          text [default: 'yellow', note: 'green|yellow|blue|orange|purple']
-  ordenTroncal  integer [note: 'Orden en ruta troncal']
-  createdAt     timestamp [default: `now()`]
-  updatedAt     timestamp [default: `now()`]
+  esPrincipal boolean [default: true]
+  hub text
+  zona text [default: 'yellow']
+  ordenTroncal integer
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
 
   Note: 'Todas las paradas: principales e intermedias'
 }
 
 Table Tarifa {
-  id          text [pk, note: 'cuid()']
-  rutaId      text [ref: > Ruta.id, note: 'NULL = troncal compartido']
-  parada      text [note: 'Nombre de parada']
-  direccion   text [note: 'ida | vuelta']
-  normal      float [default: 0, note: 'Precio pasaje entero']
-  media       float [default: 0, note: 'Precio medio pasaje']
-  esTemporal  boolean [default: false, note: 'true si no es oficial']
-  prioridad   integer [default: 1, note: '0=específico ruta, 1=troncal']
-  createdAt   timestamp [default: `now()`]
-  updatedAt   timestamp [default: `now()`]
+  id text [pk]
+  rutaId text
+  parada text
+  direccion text
+  normal float [default: 0]
+  media float [default: 0]
+  esTemporal boolean [default: false]
+  prioridad integer [default: 1]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
 
-  Note: 'Precios por ruta, dirección y parada. Si rutaId=NULL aplica a todas las rutas (troncal). Lookup: primero busca rutaId específico, luego NULL como fallback.'
+  Note: 'Precios por ruta, direccion y parada. rutaId NULL = troncal compartido'
 }
 
 Table RutaParada {
-  id        text [pk]
-  rutaId    text [ref: > Ruta.id]
-  paradaId  text [ref: > Parada.id]
-  direccion text [note: 'ida | vuelta']
-  orden     integer [note: 'Orden de display']
+  id text [pk]
+  rutaId text
+  paradaId text
+  direccion text
+  orden integer
 
-  Note: 'Paradas que pertenecen a cada ruta (relación M:N)'
+  Note: 'Paradas que pertenecen a cada ruta (M:N)'
 }
 
 Table BusVT {
-  id          text [pk, note: 'cuid()']
-  codigo      text [unique, note: 'Ej: VT-01']
-  nombre      text [note: 'Ej: Bus 1 Vilcabamba']
-  frecuencias json [note: '[] horarios asignados']
-  activo      boolean [default: true]
-  createdAt   timestamp [default: `now()`]
-  updatedAt   timestamp [default: `now()`]
+  id text [pk]
+  codigo text [unique]
+  nombre text
+  frecuencias text
+  activo boolean [default: true]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
 
-  Note: 'Buses / vehículos de transporte'
+  Note: 'Buses / vehiculos de transporte'
 }
 
 Table Persona {
-  id            text [pk, note: 'cuid()']
-  nombre        text [note: 'Nombre completo']
-  cedula        text [note: 'NULLABLE']
-  telefono      text [note: 'NULLABLE']
-  rol           text [note: 'CONDUCTOR | AYUDANTE | ADMIN']
-  pin           text [unique, note: 'PIN de acceso']
-  esActual      boolean [default: false]
-  createdAt     timestamp [default: `now()`]
-  updatedAt     timestamp [default: `now()`]
+  id text [pk]
+  nombre text
+  cedula text
+  telefono text
+  rol text
+  pin text [unique]
+  esActual boolean [default: false]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
 
   Note: 'Conductores, ayudantes y administradores'
 }
 
 Table Frecuencia {
-  id        text [pk, note: 'cuid()']
-  vtCode    text [ref: > BusVT.codigo, note: 'Código del bus']
-  nombre    text [note: 'Ej: 08:15 Vilcabamba']
-  ruta      text [ref: > Ruta.nombre, note: 'Nombre de ruta']
-  hora      text [note: 'Ej: 08:15']
-  direccion text [note: 'ida | vuelta']
-  activo    boolean [default: true]
-  createdAt timestamp [default: `now()`]
-  updatedAt timestamp [default: `now()`]
+  id text [pk]
+  vtCode text
+  nombre text
+  ruta text
+  hora text
+  direccion text
+  activo boolean [default: true]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
 
   Note: 'Horarios de salida asignados a cada bus'
 }
 
 Table VentaBoleto {
-  id             text [pk, note: 'cuid()']
-  fecha          text [note: 'Ej: 24/08/26']
-  vtCode         text [ref: > BusVT.codigo]
-  frecuenciaId   text [ref: > Frecuencia.id, note: 'NULLABLE']
-  ruta           text [note: 'Ej: Loja - Vilcabamba']
-  parada         text [note: 'Ej: Vilcabamba | Vilc->Mal']
-  tipo           text [note: 'ida | vuelta']
-  tarifaOficial  float [note: 'Tarifa oficial']
-  cobrado        float [note: 'Monto cobrado']
-  hora           text [note: 'Ej: 08:32']
-  ayudanteId     text [ref: > Persona.id]
-  ayudanteNombre text [note: 'Denormalizado']
-  lat            float [note: 'GPS (NULLABLE)']
-  lng            float [note: 'GPS (NULLABLE)']
-  syncStatus     text [default: 'pending', note: 'pending | synced | error']
-  serverId       text [note: 'ID servidor al sincronizar']
-  syncError      text [note: 'NULLABLE']
-  createdAt      timestamp [default: `now()`]
-  updatedAt      timestamp [default: `now()`]
+  id text [pk]
+  fecha text
+  vtCode text
+  frecuenciaId text
+  ruta text
+  parada text
+  tipo text
+  tarifaOficial float
+  cobrado float
+  hora text
+  ayudanteId text
+  ayudanteNombre text
+  lat float
+  lng float
+  syncStatus text [default: 'pending']
+  serverId text
+  syncError text
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
 
   Note: 'Registro de cada boleto vendido (servidor)'
 }
 
 Table DailyRecord {
-  id              text [pk]
-  date            text [note: 'Ej: 2026-08-24']
-  km              text [note: 'NULLABLE - Kilometraje']
-  conductor       text [note: 'NULLABLE']
-  ayudanteNombre  text [note: 'NULLABLE']
-  vtCode          text [ref: > BusVT.codigo, note: 'NULLABLE']
-  production      float [default: 0]
-  cajaComun       float [default: 0]
-  sobrante        float [default: 0]
-  tickets         float [default: 0]
+  id text [pk]
+  date text
+  km text
+  conductor text
+  ayudanteNombre text
+  vtCode text
+  production float [default: 0]
+  cajaComun float [default: 0]
+  sobrante float [default: 0]
+  tickets float [default: 0]
   entregaAyudante float [default: 0]
   entregaCompania float [default: 0]
-  totalGastos     float [default: 0]
-  photoUrl        text [note: 'NULLABLE - Foto recibo']
-  createdAt       timestamp [default: `now()`]
-  updatedAt       timestamp [default: `now()`]
+  totalGastos float [default: 0]
+  photoUrl text
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
 
-  Note: 'Registro diario de producción y gastos por bus'
+  Note: 'Registro diario de produccion y gastos por bus'
 }
 
 Table Trip {
-  id        text [pk]
-  recordId  text [ref: > DailyRecord.id]
-  order     integer [note: 'Orden del viaje']
-  routeFrom text [note: 'Origen']
-  routeTo   text [note: 'Destino']
-  time      text [note: 'NULLABLE - Hora']
-  income    float [default: 0]
+  id text [pk]
+  recordId text
+  trip_order integer
+  routeFrom text
+  routeTo text
+  time text
+  income float [default: 0]
   efectivoReal float [default: 0]
-  boletos   float [default: 0]
+  boletos float [default: 0]
 
   Note: 'Viajes realizados en un DailyRecord'
 }
 
 Table Expense {
-  id          text [pk]
-  recordId    text [ref: > DailyRecord.id]
-  order       integer [note: 'Orden del gasto']
-  description text [note: 'Descripción del gasto']
-  amount      float [default: 0]
+  id text [pk]
+  recordId text
+  expense_order integer
+  description text
+  amount float [default: 0]
 
   Note: 'Gastos registrados en un DailyRecord'
 }
 
-
-// ─── CLIENTE: IndexedDB (Offline - Navegador) ─────────────────
-
 Table VentaLocal {
-  id             text [pk, note: 'UUID local']
-  fecha          text [note: 'Ej: 24/08/26']
-  vtCode         text [note: 'Código del bus']
-  frecuenciaId   text [note: 'FK real Frecuencia.id']
-  frecuenciaNombre text [note: 'Denormalizado']
-  estadoId       text [note: 'Compuesto: fecha_frecuenciaId']
-  ruta           text [note: 'Ej: Loja - Vilcabamba']
-  parada         text [note: 'Ej: Vilcabamba']
-  tipo           text [note: 'ida | vuelta']
-  pasajeroTipo   text [note: 'Entero | Media']
-  tarifaOficial  float [note: 'Tarifa oficial']
-  cobrado        float [note: 'Monto cobrado']
-  hora           text [note: 'Ej: 08:32']
-  createdAt      text [note: 'ISO timestamp']
-  ayudanteId     text [note: 'FK Persona.id']
-  ayudanteNombre text [note: 'Denormalizado']
-  lat            float [note: 'GPS (opcional)']
-  lng            float [note: 'GPS (opcional)']
-  syncStatus     text [default: 'pending', note: 'pending | synced | error']
-  serverId       text [note: 'ID del servidor post-sync']
-  syncError      text [note: 'Mensaje de error']
+  id text [pk]
+  fecha text
+  vtCode text
+  frecuenciaId text
+  frecuenciaNombre text
+  estadoId text
+  ruta text
+  parada text
+  tipo text
+  pasajeroTipo text
+  tarifaOficial float
+  cobrado float
+  hora text
+  createdAt text
+  ayudanteId text
+  ayudanteNombre text
+  lat float
+  lng float
+  syncStatus text [default: 'pending']
+  serverId text
+  syncError text
 
-  Note: 'Ventas offline (IndexedDB). Se sincronizan a VentaBoleto.'
+  Note: 'Ventas offline - IndexedDB - Se sincronizan a VentaBoleto'
 }
 
 Table TarifaCache {
-  id        text [pk, note: '= vtCode']
-  vtCode    text [note: 'Código del bus']
-  tarifas   json [note: 'Array de tarifas cacheadas']
-  updatedAt text [note: 'Última actualización']
+  id text [pk]
+  vtCode text
+  tarifas text
+  updatedAt text
 
   Note: 'Cache offline de tarifas desde servidor'
 }
 
 Table FrecuenciaCache {
-  id          text [pk, note: '= vtCode']
-  vtCode      text [note: 'Código del bus']
-  frecuencias json [note: 'Array de frecuencias cacheadas']
-  updatedAt   text [note: 'Última actualización']
+  id text [pk]
+  vtCode text
+  frecuencias text
+  updatedAt text
 
   Note: 'Cache offline de frecuencias desde servidor'
 }
 
 Table EstadoFrecuencia {
-  estadoId       text [pk, note: 'Compuesto: fecha_frecuenciaId']
-  frecuenciaId   text [note: 'FK Frecuencia.id']
-  nombre         text [note: 'Nombre frecuencia']
-  ruta           text [note: 'Ruta asignada']
-  hora           text [note: 'Hora salida']
-  direccion      text [note: 'ida | vuelta']
-  estado         text [note: 'pendiente|abierta|cerrada|no_realizada']
-  ventasCount    integer [note: 'Cantidad de ventas']
-  totalRecaudado float [note: 'Total recolectado']
-  arqueoEfectivo float [note: 'Efectivo contado (opcional)']
-  arqueoDiferencia float [note: 'Diferencia (opcional)']
-  arqueoFecha    text [note: 'Fecha arqueo (opcional)']
-  vtCode         text [note: 'Código del bus']
-  fecha          text [note: 'Fecha operación']
-  gpsLatStart    float [note: 'GPS inicio (opcional)']
-  gpsLngStart    float [note: 'GPS inicio (opcional)']
-  gpsLatEnd      float [note: 'GPS fin (opcional)']
-  gpsLngEnd      float [note: 'GPS fin (opcional)']
+  estadoId text [pk]
+  frecuenciaId text
+  nombre text
+  ruta text
+  hora text
+  direccion text
+  estado text
+  ventasCount integer
+  totalRecaudado float
+  arqueoEfectivo float
+  arqueoDiferencia float
+  arqueoFecha text
+  vtCode text
+  fecha text
+  gpsLatStart float
+  gpsLngStart float
+  gpsLatEnd float
+  gpsLngEnd float
 
-  Note: 'Estado operativo de cada frecuencia por fecha (IndexedDB)'
+  Note: 'Estado operativo de cada frecuencia por fecha - IndexedDB'
 }
-
-
-// ─── RELACIONES SERVIDOR ───────────────────────────────────────
 
 Ref: RutaParada.rutaId > Ruta.id
 Ref: RutaParada.paradaId > Parada.id
@@ -258,8 +237,4 @@ Ref: Frecuencia.ruta > Ruta.nombre
 Ref: Trip.recordId > DailyRecord.id
 Ref: Expense.recordId > DailyRecord.id
 Ref: DailyRecord.vtCode > BusVT.codigo
-
-// ─── RELACIONES OFFLINE (conceptuales) ─────────────────────────
-
-Ref: EstadoFrecuencia.estadoId > EstadoFrecuencia.estadoId
 Ref: VentaLocal.estadoId > EstadoFrecuencia.estadoId
