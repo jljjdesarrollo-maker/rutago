@@ -1,12 +1,11 @@
-import sys, os
-sys.path.insert(0, '/home/z/my-project/skills/pdf/scripts')
+import sys, os, re
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm, cm
 from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.platypus import (
-    SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+    SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 )
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -27,154 +26,181 @@ doc = SimpleDocTemplate(
     subject='Listado completo de tarifas por ruta',
 )
 
-W = A4[0] - 3*cm  # usable width
+W = A4[0] - 3*cm
 
-# ─── Styles ───
-s_title = ParagraphStyle('Title', fontName='DejaVu-Bold', fontSize=22, leading=28, spaceAfter=4*mm, textColor=colors.HexColor('#1e3a5f'))
-s_subtitle = ParagraphStyle('Subtitle', fontName='DejaVu', fontSize=11, leading=14, spaceAfter=8*mm, textColor=colors.HexColor('#64748b'))
-s_route = ParagraphStyle('Route', fontName='DejaVu-Bold', fontSize=13, leading=18, spaceBefore=6*mm, spaceAfter=3*mm, textColor=colors.HexColor('#1e40af'), borderPadding=(0,0,0,0))
-s_dir = ParagraphStyle('Dir', fontName='DejaVu-Bold', fontSize=10, leading=14, spaceBefore=3*mm, spaceAfter=2*mm, textColor=colors.HexColor('#475569'))
-s_header = ParagraphStyle('Header', fontName='DejaVu-Bold', fontSize=8, leading=10, textColor=colors.white)
-s_cell = ParagraphStyle('Cell', fontName='DejaVu', fontSize=8, leading=10)
-s_cell_center = ParagraphStyle('CellC', fontName='DejaVu', fontSize=8, leading=10, alignment=1)
-s_footer = ParagraphStyle('Footer', fontName='DejaVu', fontSize=7, leading=9, textColor=colors.HexColor('#94a3b8'), alignment=1)
-s_note = ParagraphStyle('Note', fontName='DejaVu', fontSize=8, leading=11, textColor=colors.HexColor('#64748b'), spaceBefore=4*mm)
+s_title = ParagraphStyle('Title', fontName='DejaVu-Bold', fontSize=20, leading=26, spaceAfter=3*mm, textColor=colors.HexColor('#1e3a5f'))
+s_subtitle = ParagraphStyle('Subtitle', fontName='DejaVu', fontSize=9, leading=12, spaceAfter=6*mm, textColor=colors.HexColor('#64748b'))
+s_route = ParagraphStyle('Route', fontName='DejaVu-Bold', fontSize=12, leading=16, spaceBefore=5*mm, spaceAfter=2*mm, textColor=colors.HexColor('#1e40af'))
+s_dir = ParagraphStyle('Dir', fontName='DejaVu-Bold', fontSize=9, leading=13, spaceBefore=3*mm, spaceAfter=2*mm, textColor=colors.HexColor('#475569'))
+s_header = ParagraphStyle('Header', fontName='DejaVu-Bold', fontSize=7.5, leading=10, textColor=colors.white)
+s_cell = ParagraphStyle('Cell', fontName='DejaVu', fontSize=7.5, leading=10)
+s_cell_center = ParagraphStyle('CellC', fontName='DejaVu', fontSize=7.5, leading=10, alignment=1)
+s_note = ParagraphStyle('Note', fontName='DejaVu', fontSize=8, leading=11, textColor=colors.HexColor('#64748b'), spaceBefore=3*mm)
+s_zero = ParagraphStyle('Zero', fontName='DejaVu', fontSize=7.5, leading=10, alignment=1, textColor=colors.HexColor('#cbd5e1'))
+s_price = ParagraphStyle('Price', fontName='DejaVu-Bold', fontSize=7.5, leading=10, alignment=1, textColor=colors.HexColor('#16a34a'))
 
-# ─── Data from RUTA_PARADAS ───
+# ─── Read prices from tarifas-data.ts ───
+with open('/home/z/my-project/src/lib/tarifas-data.ts', 'r') as f:
+    ts_content = f.read()
+
+# Parse preciosIda
+def parse_price_map(section_text):
+    prices = {}
+    for m in re.finditer(r"'([^']+)':\s*\{\s*normal:\s*([0-9.]+),\s*media:\s*([0-9.]+)\s*\}", section_text):
+        parada, normal, media = m.group(1), float(m.group(2)), float(m.group(3))
+        prices[parada] = (normal, media)
+    return prices
+
+# Extract preciosIda section
+ida_match = re.search(r'const preciosIda.*?=(\s*\{.*?\n\});', ts_content, re.DOTALL)
+precios_ida = parse_price_map(ida_match.group(1)) if ida_match else {}
+
+# Extract preciosVuelta section
+vuelta_match = re.search(r'const preciosVuelta.*?=(\s*\{.*?\n\});', ts_content, re.DOTALL)
+precios_vuelta = parse_price_map(vuelta_match.group(1)) if vuelta_match else {}
+
+# Extract specific vuelta maps
+vuelta_maps = {}
+for name in ['preciosVueltaElTambo', 'preciosVueltaYangana', 'preciosVueltaVilcabamba', 'preciosVueltaLaElvira']:
+    m = re.search(rf'const {name}.*?=(\s*\{{.*?\n\}});', ts_content, re.DOTALL)
+    if m:
+        vuelta_maps[name] = parse_price_map(m.group(1))
+
+# ─── Route definitions (updated with Capuli first) ───
 RUTAS = {
     'Loja - Vilcabamba': {
         'ida': [
-            'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
-            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
-            'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Peña→Mal', 'Land→Mal',
-            'Chorri→Mal', 'Nango→Mal', 'Porv→Mal', 'Gran→Mal', 'Yamba→Mal', 'Rumi→Mal', 'T.Leguas→Mal',
-            'P.Nuevo→Mal', 'Caja→Mal', 'D.Puen→Mal', 'Capulí→Mal',
-            'S.Pedro→Vilc', 'Carar→Vilc', 'Cavian→Vilc', 'Taxich→Vilc', 'Mal→Vilc', 'Land→Vilc', 'Peña→Vilc',
-            'Chorri→Vilc', 'Nango→Vilc', 'Porv→Vilc', 'Gran→Vilc', 'Yamba→Vilc', 'Rumi→Vilc', 'T.Leguas→Vilc',
-            'P.Nuevo→Vilc', 'Caja→Vilc', 'D.Puen→Vilc', 'Capulí→Vilc',
+            'Capulí', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a', 'Malacatos',
+            'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Pe\u00f1a\u2192Mal', 'Land\u2192Mal',
+            'Chorri\u2192Mal', 'Nango\u2192Mal', 'Porv\u2192Mal', 'Gran\u2192Mal', 'Yamba\u2192Mal', 'Rumi\u2192Mal', 'T.Leguas\u2192Mal',
+            'P.Nuevo\u2192Mal', 'Caja\u2192Mal', 'D.Puen\u2192Mal', 'Capul\u00ed\u2192Mal',
+            'S.Pedro\u2192Vilc', 'Carar\u2192Vilc', 'Cavian\u2192Vilc', 'Taxich\u2192Vilc', 'Mal\u2192Vilc', 'Land\u2192Vilc', 'Pe\u00f1a\u2192Vilc',
+            'Chorri\u2192Vilc', 'Nango\u2192Vilc', 'Porv\u2192Vilc', 'Gran\u2192Vilc', 'Yamba\u2192Vilc', 'Rumi\u2192Vilc', 'T.Leguas\u2192Vilc',
+            'P.Nuevo\u2192Vilc', 'Caja\u2192Vilc', 'D.Puen\u2192Vilc', 'Capul\u00ed\u2192Vilc',
         ],
         'vuelta': [
-            'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
+            'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui',
             'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas',
-            'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
-            'Mal→LaPeña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
-            'Mal→Gran', 'Mal→Yamba', 'Mal→Rumi', 'Mal→T.Leguas', 'Mal→P.Nuevo',
-            'Mal→Caja', 'Mal→D.Puen', 'Mal→Capulí',
-            'D.Puen→Loja', 'Caja→Loja', 'P.Nuevo→Loja', 'T.Leguas→Loja',
-            'Rumi→Loja', 'Yamba→Loja', 'Gran→Loja', 'Porv→Loja',
-            'Nango→Loja', 'Chorri→Loja', 'Land→Loja', 'Peña→Loja',
-            'Mal→Loja', 'Taxich→Loja', 'Cavian→Loja', 'Carar→Loja', 'S.Pedro→Loja',
+            'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
+            'Mal\u2192LaPe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
+            'Mal\u2192Gran', 'Mal\u2192Yamba', 'Mal\u2192Rumi', 'Mal\u2192T.Leguas', 'Mal\u2192P.Nuevo',
+            'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
+            'D.Puen\u2192Loja', 'Caja\u2192Loja', 'P.Nuevo\u2192Loja', 'T.Leguas\u2192Loja',
+            'Rumi\u2192Loja', 'Yamba\u2192Loja', 'Gran\u2192Loja', 'Porv\u2192Loja',
+            'Nango\u2192Loja', 'Chorri\u2192Loja', 'Land\u2192Loja', 'Pe\u00f1a\u2192Loja',
+            'Mal\u2192Loja', 'Taxich\u2192Loja', 'Cavian\u2192Loja', 'Carar\u2192Loja', 'S.Pedro\u2192Loja',
         ],
     },
     'Loja - Zahuayco': {
         'ida': [
-            'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
-            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
+            'Capulí', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a', 'Malacatos',
             'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Masanamaca', 'Quinara',
-            'Chumberos', 'Palmira', 'Zahuayco', 'Vilc→Masan', 'Vilc→Quina', 'Vilc→Chumb', 'Vilc→Palm',
-            'Vilc→Zahua', 'Mal→Masan', 'Mal→Quina', 'Mal→Chumb', 'Mal→Palm', 'Mal→Zahua',
+            'Chumberos', 'Palmira', 'Zahuayco', 'Vilc\u2192Masan', 'Vilc\u2192Quina', 'Vilc\u2192Chumb', 'Vilc\u2192Palm',
+            'Vilc\u2192Zahua', 'Mal\u2192Masan', 'Mal\u2192Quina', 'Mal\u2192Chumb', 'Mal\u2192Palm', 'Mal\u2192Zahua',
         ],
         'vuelta': [
             'Zahuayco', 'Palmira', 'Quinara', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango',
-            'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui', 'Chorrillos', 'Nangora',
+            'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora',
             'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo',
-            'Cajánuma', 'Dos Puentes', 'Capulí',
+            'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
         ],
     },
     'Loja - El Tambo': {
         'ida': [
-            'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
-            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
-            'Ceibopamba', 'Trinidad', 'San José', 'Santo Domingo', 'Naranjo Dulce', 'Zhotahuayco',
-            'La Merced', 'San Agustín', 'La Era', 'La Capilla', 'San Bernaved', 'El Tambo', 'Mal→Ceibop',
-            'Mal→Trinidad', 'Mal→S.Jose', 'Mal→StoDom', 'Mal→N.Dulce', 'Mal→Zhotahu', 'Mal→LaMerc',
-            'Mal→S.Agust', 'Mal→LaEra', 'Mal→LaCap', 'Mal→S.Bern', 'Mal→ElTambo',
+            'Capulí', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a', 'Malacatos',
+            'Ceibopamba', 'Trinidad', 'San Jos\u00e9', 'Santo Domingo', 'Naranjo Dulce', 'Zhotahuayco',
+            'La Merced', 'San Agust\u00edn', 'La Era', 'La Capilla', 'San Bernaved', 'El Tambo', 'Mal\u2192Ceibop',
+            'Mal\u2192Trinidad', 'Mal\u2192S.Jose', 'Mal\u2192StoDom', 'Mal\u2192N.Dulce', 'Mal\u2192Zhotahu', 'Mal\u2192LaMerc',
+            'Mal\u2192S.Agust', 'Mal\u2192LaEra', 'Mal\u2192LaCap', 'Mal\u2192S.Bern', 'Mal\u2192ElTambo',
         ],
         'vuelta': [
-            'El Tambo', 'San Bernaved', 'La Capilla', 'La Era', 'San Agustín', 'La Merced', 'Zhotahuayco',
-            'Naranjo Dulce', 'Santo Domingo', 'San José', 'Ceibopamba', 'Trinidad', 'Malacatos',
-            'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba',
-            'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
-            'Mal→LaPeña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
-            'Mal→Gran', 'Mal→Yamba', 'Mal→Rumi', 'Mal→T.Leguas', 'Mal→P.Nuevo',
-            'Mal→Caja', 'Mal→D.Puen', 'Mal→Capulí',
-            'D.Puen→Loja', 'Caja→Loja', 'P.Nuevo→Loja', 'T.Leguas→Loja',
-            'Rumi→Loja', 'Yamba→Loja', 'Gran→Loja', 'Porv→Loja',
-            'Nango→Loja', 'Chorri→Loja', 'Land→Loja', 'Peña→Loja', 'Mal→Loja',
-            'LaCap→Loja', 'S.Bern→Loja',
+            'El Tambo', 'San Bernaved', 'La Capilla', 'La Era', 'San Agust\u00edn', 'La Merced', 'Zhotahuayco',
+            'Naranjo Dulce', 'Santo Domingo', 'San Jos\u00e9', 'Ceibopamba', 'Trinidad', 'Malacatos',
+            'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba',
+            'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
+            'Mal\u2192LaPe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
+            'Mal\u2192Gran', 'Mal\u2192Yamba', 'Mal\u2192Rumi', 'Mal\u2192T.Leguas', 'Mal\u2192P.Nuevo',
+            'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
+            'D.Puen\u2192Loja', 'Caja\u2192Loja', 'P.Nuevo\u2192Loja', 'T.Leguas\u2192Loja',
+            'Rumi\u2192Loja', 'Yamba\u2192Loja', 'Gran\u2192Loja', 'Porv\u2192Loja',
+            'Nango\u2192Loja', 'Chorri\u2192Loja', 'Land\u2192Loja', 'Pe\u00f1a\u2192Loja', 'Mal\u2192Loja',
+            'LaCap\u2192Loja', 'S.Bern\u2192Loja',
         ],
     },
     'Loja - La Elvira': {
         'ida': [
-            'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
-            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
+            'Capulí', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a', 'Malacatos',
             'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Cucanama', 'Linderos',
             'Santorum', 'Solanda', 'Moyococha', 'Tumianuma', 'Quinara', 'Comunidades', 'La Elvira',
-            'Mal→Cucan', 'Mal→Lind', 'Mal→Santo', 'Mal→Solan', 'Mal→Moyoc', 'Mal→Tumia', 'Mal→Quina',
-            'Mal→Comun', 'Mal→Elvira', 'Vilc→Cucan', 'Vilc→Lind', 'Vilc→Santo', 'Vilc→Solan',
-            'Vilc→Moyoc', 'Vilc→Tumia', 'Vilc→Quina', 'Vilc→Comun', 'Vilc→Elvira',
+            'Mal\u2192Cucan', 'Mal\u2192Lind', 'Mal\u2192Santo', 'Mal\u2192Solan', 'Mal\u2192Moyoc', 'Mal\u2192Tumia', 'Mal\u2192Quina',
+            'Mal\u2192Comun', 'Mal\u2192Elvira', 'Vilc\u2192Cucan', 'Vilc\u2192Lind', 'Vilc\u2192Santo', 'Vilc\u2192Solan',
+            'Vilc\u2192Moyoc', 'Vilc\u2192Tumia', 'Vilc\u2192Quina', 'Vilc\u2192Comun', 'Vilc\u2192Elvira',
         ],
         'vuelta': [
             'La Elvira', 'Comunidades', 'Quinara', 'Tumianuma', 'Moyococha', 'Solanda', 'Santorum',
             'Linderos', 'Cucanama', 'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche',
-            'Malacatos', 'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
-            'Mal→LaPeña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
-            'Mal→Gran', 'Mal→Yamba', 'Mal→Rumi', 'Mal→T.Leguas', 'Mal→P.Nuevo',
-            'Mal→Caja', 'Mal→D.Puen', 'Mal→Capulí',
-            'D.Puen→Loja', 'Caja→Loja', 'P.Nuevo→Loja', 'T.Leguas→Loja',
-            'Rumi→Loja', 'Yamba→Loja', 'Gran→Loja', 'Porv→Loja',
-            'Nango→Loja', 'Chorri→Loja', 'Land→Loja', 'Peña→Loja',
-            'Mal→Loja', 'Taxich→Loja', 'Cavian→Loja', 'Carar→Loja', 'S.Pedro→Loja',
-            'Vilc→Loja',
-            'Mal→Cucan', 'Mal→Lind', 'Mal→Santo', 'Mal→Solan', 'Mal→Moyoc', 'Mal→Tumia',
-            'Mal→Quina', 'Mal→Comun', 'Mal→Elvira', 'Vilc→Cucan', 'Vilc→Lind', 'Vilc→Santo',
-            'Vilc→Solan', 'Vilc→Moyoc', 'Vilc→Tumia', 'Vilc→Quina', 'Vilc→Comun', 'Vilc→Elvira',
+            'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
+            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
+            'Mal\u2192LaPe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
+            'Mal\u2192Gran', 'Mal\u2192Yamba', 'Mal\u2192Rumi', 'Mal\u2192T.Leguas', 'Mal\u2192P.Nuevo',
+            'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
+            'D.Puen\u2192Loja', 'Caja\u2192Loja', 'P.Nuevo\u2192Loja', 'T.Leguas\u2192Loja',
+            'Rumi\u2192Loja', 'Yamba\u2192Loja', 'Gran\u2192Loja', 'Porv\u2192Loja',
+            'Nango\u2192Loja', 'Chorri\u2192Loja', 'Land\u2192Loja', 'Pe\u00f1a\u2192Loja',
+            'Mal\u2192Loja', 'Taxich\u2192Loja', 'Cavian\u2192Loja', 'Carar\u2192Loja', 'S.Pedro\u2192Loja',
+            'Vilc\u2192Loja',
+            'Mal\u2192Cucan', 'Mal\u2192Lind', 'Mal\u2192Santo', 'Mal\u2192Solan', 'Mal\u2192Moyoc', 'Mal\u2192Tumia',
+            'Mal\u2192Quina', 'Mal\u2192Comun', 'Mal\u2192Elvira', 'Vilc\u2192Cucan', 'Vilc\u2192Lind', 'Vilc\u2192Santo',
+            'Vilc\u2192Solan', 'Vilc\u2192Moyoc', 'Vilc\u2192Tumia', 'Vilc\u2192Quina', 'Vilc\u2192Comun', 'Vilc\u2192Elvira',
         ],
     },
     'Loja - Yangana': {
         'ida': [
-            'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
-            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
+            'Capulí', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a', 'Malacatos',
             'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Masanamaca', 'Suro',
-            'Yangana', 'Vilc→Masan', 'Vilc→Suro', 'Vilc→Yangana', 'Mal→Masan', 'Mal→Suro', 'Mal→Yangana',
+            'Yangana', 'Vilc\u2192Masan', 'Vilc\u2192Suro', 'Vilc\u2192Yangana', 'Mal\u2192Masan', 'Mal\u2192Suro', 'Mal\u2192Yangana',
         ],
         'vuelta': [
             'Yangana', 'Suro', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
-            'Taxiche', 'Malacatos', 'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir',
-            'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma',
-            'Dos Puentes', 'Capulí',
-            'Vilc→S.Pedro', 'Vilc→Carar', 'Vilc→Cavian', 'Vilc→Taxich', 'Vilc→Malac',
-            'Vilc→Land', 'Vilc→Chorri', 'Vilc→Nango', 'Vilc→Porv', 'Vilc→Gran',
-            'Vilc→Yamba', 'Vilc→Rumi', 'Vilc→T.Leguas', 'Vilc→P.Nuevo', 'Vilc→Caja',
-            'Vilc→D.Puen', 'Vilc→Capulí',
-            'Mal→LaPeña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
-            'Mal→Gran', 'Mal→Yamba', 'Mal→Rumi', 'Mal→T.Leguas', 'Mal→P.Nuevo',
-            'Mal→Caja', 'Mal→D.Puen', 'Mal→Capulí',
+            'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir',
+            'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa',
+            'Dos Puentes', 'Capul\u00ed',
+            'Vilc\u2192S.Pedro', 'Vilc\u2192Carar', 'Vilc\u2192Cavian', 'Vilc\u2192Taxich', 'Vilc\u2192Malac',
+            'Vilc\u2192Land', 'Vilc\u2192Chorri', 'Vilc\u2192Nango', 'Vilc\u2192Porv', 'Vilc\u2192Gran',
+            'Vilc\u2192Yamba', 'Vilc\u2192Rumi', 'Vilc\u2192T.Leguas', 'Vilc\u2192P.Nuevo', 'Vilc\u2192Caja',
+            'Vilc\u2192D.Puen', 'Vilc\u2192Capul\u00ed',
+            'Mal\u2192LaPe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
+            'Mal\u2192Gran', 'Mal\u2192Yamba', 'Mal\u2192Rumi', 'Mal\u2192T.Leguas', 'Mal\u2192P.Nuevo',
+            'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
         ],
     },
     'Vilcabamba - Loja': {
         'ida': [
-            'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
+            'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui',
             'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas',
-            'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí', 'Loja',
+            'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed', 'Loja',
         ],
         'vuelta': [
-            'Loja', 'Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana',
-            'Yamba', 'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
+            'Loja', 'Capul\u00ed', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana',
+            'Yamba', 'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a',
             'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba',
         ],
     },
     'Zahuayco - Loja': {
         'ida': [
             'Zahuayco', 'Palmira', 'Quinara', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango',
-            'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui', 'Chorrillos', 'Nangora',
+            'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora',
             'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo',
-            'Cajánuma', 'Dos Puentes', 'Capulí',
+            'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
         ],
         'vuelta': [
-            'Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana',
-            'Yamba', 'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
+            'Capul\u00ed', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana',
+            'Yamba', 'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a',
             'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Masanamaca',
             'Quinara', 'Palmira', 'Zahuayco',
         ],
@@ -182,13 +208,13 @@ RUTAS = {
     'La Elvira - Loja': {
         'ida': [
             'La Elvira', 'Tumianuma', 'Comunidades', 'Santorum', 'Moyococha', 'Linderos', 'Cucanama',
-            'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Peña',
+            'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a',
             'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana',
-            'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
+            'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
         ],
         'vuelta': [
-            'Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana',
-            'Yamba', 'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
+            'Capul\u00ed', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana',
+            'Yamba', 'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a',
             'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Cucanama',
             'Linderos', 'Moyococha', 'Santorum', 'Comunidades', 'Tumianuma', 'La Elvira',
         ],
@@ -196,51 +222,68 @@ RUTAS = {
     'Yangana - Loja': {
         'ida': [
             'Yangana', 'Suro', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
-            'Taxiche', 'Malacatos', 'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir',
-            'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma',
-            'Dos Puentes', 'Capulí',
+            'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir',
+            'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa',
+            'Dos Puentes', 'Capul\u00ed',
         ],
         'vuelta': [
-            'Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana',
-            'Yamba', 'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña',
+            'Capul\u00ed', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana',
+            'Yamba', 'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a',
             'Malacatos', 'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Masanamaca',
             'Suro', 'Yangana',
         ],
     },
 }
 
-# ─── Build tables ───
 HEADER_BG = colors.HexColor('#1e3a5f')
 ALT_ROW = colors.HexColor('#f1f5f9')
 WHITE = colors.white
+ZERO_COLOR = colors.HexColor('#e2e8f0')
 
-def make_table(paradas, label):
+# Price lookup: try ida first, then vuelta (both maps)
+def get_price(parada):
+    if parada in precios_ida and precios_ida[parada] != (0, 0):
+        return precios_ida[parada]
+    if parada in precios_vuelta and precios_vuelta[parada] != (0, 0):
+        return precios_vuelta[parada]
+    # Check specific vuelta maps
+    for name, pm in vuelta_maps.items():
+        if parada in pm and pm[parada] != (0, 0):
+            return pm[parada]
+    return (0, 0)
+
+def make_table(paradas):
     data = [[
         Paragraph('#', s_header),
         Paragraph('Parada', s_header),
         Paragraph('Normal', s_header),
-        Paragraph('Media', s_header),
+        Paragraph('Medio', s_header),
     ]]
     for i, p in enumerate(paradas, 1):
+        normal, media = get_price(p)
+        if normal > 0:
+            n_cell = Paragraph(f'${normal:.2f}', s_price)
+            m_cell = Paragraph(f'${media:.2f}', s_price)
+        else:
+            n_cell = Paragraph('$0.00', s_zero)
+            m_cell = Paragraph('$0.00', s_zero)
         data.append([
             Paragraph(str(i), s_cell_center),
             Paragraph(p, s_cell),
-            Paragraph('$0.00', s_cell_center),
-            Paragraph('$0.00', s_cell_center),
+            n_cell,
+            m_cell,
         ])
-    col_w = [0.08*W, 0.57*W, 0.175*W, 0.175*W]
+    col_w = [0.07*W, 0.58*W, 0.175*W, 0.175*W]
     t = Table(data, colWidths=col_w, repeatRows=1)
     style_cmds = [
         ('BACKGROUND', (0,0), (-1,0), HEADER_BG),
         ('TEXTCOLOR', (0,0), (-1,0), WHITE),
-        ('FONTNAME', (0,0), (-1,0), 'DejaVu-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 8),
-        ('BOTTOMPADDING', (0,0), (-1,0), 6),
-        ('TOPPADDING', (0,0), (-1,0), 6),
-        ('GRID', (0,0), (-1,-1), 0.4, colors.HexColor('#cbd5e1')),
+        ('GRID', (0,0), (-1,-1), 0.3, colors.HexColor('#cbd5e1')),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('TOPPADDING', (0,1), (-1,-1), 3),
-        ('BOTTOMPADDING', (0,1), (-1,-1), 3),
+        ('TOPPADDING', (0,0), (-1,0), 5),
+        ('BOTTOMPADDING', (0,0), (-1,0), 5),
+        ('TOPPADDING', (0,1), (-1,-1), 2.5),
+        ('BOTTOMPADDING', (0,1), (-1,-1), 2.5),
     ]
     for i in range(2, len(data), 2):
         style_cmds.append(('BACKGROUND', (0,i), (-1,i), ALT_ROW))
@@ -248,29 +291,21 @@ def make_table(paradas, label):
     return t
 
 elements = []
-
-# ─── Title ───
 elements.append(Paragraph('RutaGo - Tarifas de Precios', s_title))
-elements.append(Paragraph('TRANSPORTES VILCABAMBATURIS C.I.A. LTDA. | Todos los precios en $0.00 (sin tarifa asignada)', s_subtitle))
-elements.append(Spacer(1, 2*mm))
+elements.append(Paragraph('TRANSPORTES VILCABAMBATURIS C.I.A. LTDA. | Precios cargados: Troncal Loja - Vilcabamba (ida y vuelta directos)', s_subtitle))
 
-# ─── Summary row ───
-total_paradas = sum(len(d['ida']) + len(d['vuelta']) for d in RUTAS.values())
-elements.append(Paragraph(f'Total rutas: {len(RUTAS)} | Total paradas (ida + vuelta): {total_paradas}', s_note))
-elements.append(Spacer(1, 4*mm))
+# Count stats
+loaded = sum(1 for p in precios_ida.values() if p != (0,0)) + sum(1 for p in precios_vuelta.values() if p != (0,0))
+total = len(precios_ida) + len(precios_vuelta)
+elements.append(Paragraph(f'Rutas: {len(RUTAS)} | Precios cargados: {loaded} | Sin tarifa: {total - loaded}', s_note))
+elements.append(Spacer(1, 3*mm))
 
 for ruta_name, dirs in RUTAS.items():
-    # Route heading
     elements.append(Paragraph(ruta_name, s_route))
-    
-    # Ida table
     elements.append(Paragraph('IDA (hacia destino)', s_dir))
-    elements.append(make_table(dirs['ida'], 'Ida'))
-    
-    # Vuelta table
+    elements.append(make_table(dirs['ida']))
     elements.append(Paragraph('VUELTA (hacia Loja)', s_dir))
-    elements.append(make_table(dirs['vuelta'], 'Vuelta'))
+    elements.append(make_table(dirs['vuelta']))
 
 doc.build(elements)
 print(f'PDF generado: {OUTPUT}')
-print(f'Rutas: {len(RUTAS)} | Paradas totales: {total_paradas}')

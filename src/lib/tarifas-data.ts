@@ -136,24 +136,24 @@ export function isParadaPrincipal(parada: string): boolean {
 // ─── Precios IDA (desde Loja hacia el destino) ───
 const preciosIda: Record<string, { normal: number; media: number }> = {
   // ═══ LOJA - VILCABAMBA ═══
-  'Dos Puentes': { normal: 0, media: 0 },
-  'Cajánuma': { normal: 0, media: 0 },
-  'Pueblo Nuevo': { normal: 0, media: 0 },
-  'Tres Leguas': { normal: 0, media: 0 },
-  'Rumizhitana': { normal: 0, media: 0 },
-  'Yamba': { normal: 0, media: 0 },
-  'Granadillo': { normal: 0, media: 0 },
-  'Porvenir': { normal: 0, media: 0 },
-  'Nangora': { normal: 0, media: 0 },
-  'Chorrillos': { normal: 0, media: 0 },
-  'Landangui': { normal: 0, media: 0 },
-  'La Peña': { normal: 0, media: 0 },
-  'Malacatos': { normal: 0, media: 0 },
-  'Taxiche': { normal: 0, media: 0 },
-  'Cavianga': { normal: 0, media: 0 },
-  'Cararango': { normal: 0, media: 0 },
-  'San Pedro': { normal: 0, media: 0 },
-  'Vilcabamba': { normal: 0, media: 0 },
+  'Dos Puentes': { normal: 0.75, media: 0.4 },
+  'Cajánuma': { normal: 1.25, media: 0.65 },
+  'Pueblo Nuevo': { normal: 1.25, media: 0.65 },
+  'Tres Leguas': { normal: 1.25, media: 0.65 },
+  'Rumizhitana': { normal: 1.25, media: 0.65 },
+  'Yamba': { normal: 1.25, media: 0.65 },
+  'Granadillo': { normal: 1.4, media: 0.7 },
+  'Porvenir': { normal: 1.4, media: 0.7 },
+  'Nangora': { normal: 1.5, media: 0.75 },
+  'Chorrillos': { normal: 1.5, media: 0.75 },
+  'Landangui': { normal: 1.75, media: 0.9 },
+  'La Peña': { normal: 1.75, media: 0.9 },
+  'Malacatos': { normal: 2.0, media: 1.0 },
+  'Taxiche': { normal: 2.0, media: 1.0 },
+  'Cavianga': { normal: 2.25, media: 1.15 },
+  'Cararango': { normal: 2.25, media: 1.15 },
+  'San Pedro': { normal: 2.25, media: 1.15 },
+  'Vilcabamba': { normal: 2.5, media: 1.25 },
   // Tramos intermedios ida (desde parada hacia Malacatos)
   'Peña→Mal': { normal: 0, media: 0 },
   'Land→Mal': { normal: 0, media: 0 },
@@ -271,24 +271,24 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
 // ✅ = oficial del PDF retorno  |  ⏳ TEMPORAL = precio IDA hasta recibir oficial
 const preciosVuelta: Record<string, { normal: number; media: number }> = {
   // Troncal Loja ↔ Vilcabamba (compartida por Zahuayco, La Elvira, Yangana)
-  'Dos Puentes': { normal: 0, media: 0 },       // ✅
-  'Cajánuma': { normal: 0, media: 0 },          // ✅
-  'Pueblo Nuevo': { normal: 0, media: 0 },       // ✅
-  'Tres Leguas': { normal: 0, media: 0 },         // ✅
-  'Rumizhitana': { normal: 0, media: 0 },        // ✅
-  'Yamba': { normal: 0, media: 0 },               // ✅
-  'Granadillo': { normal: 0, media: 0 },           // ✅
-  'Porvenir': { normal: 0, media: 0 },             // ✅
-  'Nangora': { normal: 0, media: 0 },              // ✅
-  'Chorrillos': { normal: 0, media: 0 },           // ✅
-  'Landangui': { normal: 0, media: 0 },            // ✅
-  'La Peña': { normal: 0, media: 0 },              // ✅
-  'Malacatos': { normal: 0, media: 0 },            // ✅
-  'Taxiche': { normal: 0, media: 0 },              // ✅
-  'Cavianga': { normal: 0, media: 0 },             // ✅
-  'Cararango': { normal: 0, media: 0 },            // ✅
-  'San Pedro': { normal: 0, media: 0 },            // ✅
-  'Vilcabamba': { normal: 0, media: 0 },          // ✅
+  'Dos Puentes': { normal: 0.75, media: 0.4 },       // ✅
+  'Cajánuma': { normal: 1.25, media: 0.65 },          // ✅
+  'Pueblo Nuevo': { normal: 1.25, media: 0.65 },       // ✅
+  'Tres Leguas': { normal: 1.25, media: 0.65 },         // ✅
+  'Rumizhitana': { normal: 1.25, media: 0.65 },        // ✅
+  'Yamba': { normal: 1.25, media: 0.65 },               // ✅
+  'Granadillo': { normal: 1.4, media: 0.7 },           // ✅
+  'Porvenir': { normal: 1.4, media: 0.7 },             // ✅
+  'Nangora': { normal: 1.5, media: 0.75 },              // ✅
+  'Chorrillos': { normal: 1.5, media: 0.75 },           // ✅
+  'Landangui': { normal: 1.75, media: 0.9 },            // ✅
+  'La Peña': { normal: 1.75, media: 0.9 },              // ✅
+  'Malacatos': { normal: 2.0, media: 1.0 },            // ✅
+  'Taxiche': { normal: 2.0, media: 1.0 },              // ✅
+  'Cavianga': { normal: 2.25, media: 1.15 },             // ✅
+  'Cararango': { normal: 2.25, media: 1.15 },            // ✅
+  'San Pedro': { normal: 2.25, media: 1.15 },            // ✅
+  'Vilcabamba': { normal: 2.5, media: 1.25 },          // ✅
   // Zona El Tambo (solo usada si no encuentra en preciosVueltaElTambo)
   'Ceibopamba': { normal: 0, media: 0 },          // ⏳ TEMPORAL
   'Trinidad': { normal: 0, media: 0 },            // ⏳ TEMPORAL
@@ -460,7 +460,7 @@ const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = 
   'Pueblo Nuevo': { normal: 0, media: 0 },
   'Cajánuma': { normal: 0, media: 0 },
   'Dos Puentes': { normal: 0, media: 0 },
-  'Capulí': { normal: 0, media: 0 },
+  'Capulí': { normal: 0.75, media: 0.4 },
   // Intermedios El Tambo IDA (desde Malacatos hacia El Tambo)
   'Mal→Ceibop': { normal: 0, media: 0 },
   'Mal→Trinidad': { normal: 0, media: 0 },
@@ -504,7 +504,7 @@ const preciosVueltaYangana: Record<string, { normal: number; media: number }> = 
   'San Pedro': { normal: 0, media: 0 },
   'Vilcabamba': { normal: 0, media: 0 },
   'Masanamaca': { normal: 0, media: 0 },
-  'Capulí': { normal: 0, media: 0 },
+  'Capulí': { normal: 0.75, media: 0.4 },
   // Intermedios: se buscan en preciosVuelta compartido (Vilc→X, Mal→X)
 };
 
@@ -575,7 +575,7 @@ const preciosVueltaLaElvira: Record<string, { normal: number; media: number }> =
 export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> = {
   'Loja - Vilcabamba': {
     ida: [
-          'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+          'Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
           'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
           'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Peña→Mal', 'Land→Mal',
           'Chorri→Mal', 'Nango→Mal', 'Porv→Mal', 'Gran→Mal', 'Yamba→Mal', 'Rumi→Mal', 'T.Leguas→Mal',
@@ -601,7 +601,7 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
   },
   'Loja - Zahuayco': {
     ida: [
-          'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+          'Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
           'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
           'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Masanamaca', 'Quinara',
           'Chumberos', 'Palmira', 'Zahuayco', 'Vilc→Masan', 'Vilc→Quina', 'Vilc→Chumb', 'Vilc→Palm',
@@ -642,7 +642,7 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
   },
   'Loja - La Elvira': {
     ida: [
-          'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+          'Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
           'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
           'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Cucanama', 'Linderos',
           'Santorum', 'Solanda', 'Moyococha', 'Tumianuma', 'Quinara', 'Comunidades', 'La Elvira',
@@ -674,7 +674,7 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
   },
   'Loja - Yangana': {
     ida: [
-          'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+          'Capulí', 'Dos Puentes', 'Cajánuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
           'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
           'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Masanamaca', 'Suro',
           'Yangana', 'Vilc→Masan', 'Vilc→Suro', 'Vilc→Yangana', 'Mal→Masan', 'Mal→Suro', 'Mal→Yangana',
