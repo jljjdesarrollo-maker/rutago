@@ -70,6 +70,7 @@ RUTAS = {
             'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora',
             'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo',
             'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
+    'Loja',
         ],
     },
     'Loja - El Tambo': {
@@ -249,7 +250,7 @@ function gz(p){
 function isPr(p){return !p.includes(ARROW); }
 function gp(p,d,r){
   if(d==='ida')return PRECIOS_IDA[p]||[0,0];
-  var rm={'Loja - Vilcabamba':'preciosVueltaVilcabamba','Loja - El Tambo':'preciosVueltaElTambo','Loja - Yangana':'preciosVueltaYangana','Loja - La Elvira':'preciosVueltaLaElvira'};
+  var rm={'Loja - Vilcabamba':'preciosVueltaVilcabamba','Loja - El Tambo':'preciosVueltaElTambo','Loja - Zahuayco':'preciosVueltaZahuayco','Loja - Yangana':'preciosVueltaYangana','Loja - La Elvira':'preciosVueltaLaElvira'};
   if(r&&rm[r]&&VUELTA_MAPS[rm[r]]&&VUELTA_MAPS[rm[r]][p]){var v=VUELTA_MAPS[rm[r]][p];if(v[0]>0||v[1]>0)return v;}
   if(PRECIOS_VUELTA[p])return PRECIOS_VUELTA[p];
   for(const k of Object.keys(VUELTA_MAPS)){var v2=VUELTA_MAPS[k][p];if(v2&&(v2[0]>0||v2[1]>0))return v2;}

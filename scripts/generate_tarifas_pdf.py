@@ -105,6 +105,7 @@ RUTAS = {
             'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora',
             'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo',
             'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
+    'Loja',
         ],
     },
     'Loja - El Tambo': {
@@ -204,6 +205,7 @@ def get_price_ida(parada):
 ROUTE_MAP_KEYS = {
     'Loja - Vilcabamba': 'preciosVueltaVilcabamba',
     'Loja - El Tambo': 'preciosVueltaElTambo',
+    'Loja - Zahuayco': 'preciosVueltaZahuayco',
     'Loja - Yangana': 'preciosVueltaYangana',
     'Loja - La Elvira': 'preciosVueltaLaElvira',
 }

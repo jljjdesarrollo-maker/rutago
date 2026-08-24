@@ -461,6 +461,35 @@ const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = 
   'LaCap→Loja': { normal: 0, media: 0 },
   'S.Bern→Loja': { normal: 0, media: 0 },
 };
+// ─── Precios VUELTA específicos: ZAHUAYCO → LOJA ───
+// Directos desde Zahuayco hacia cada parada
+const preciosVueltaZahuayco: Record<string, { normal: number; media: number }> = {
+  'Loja': { normal: 3.50, media: 1.75 },
+  'Capulí': { normal: 3.50, media: 1.75 },
+  'Dos Puentes': { normal: 3.50, media: 1.75 },
+  'Cajánuma': { normal: 3.50, media: 1.75 },
+  'Pueblo Nuevo': { normal: 3.50, media: 1.75 },
+  'Tres Leguas': { normal: 3.50, media: 1.75 },
+  'Rumizhitana': { normal: 3.50, media: 1.75 },
+  'Yamba': { normal: 3.25, media: 1.65 },
+  'Granadillo': { normal: 3.25, media: 1.65 },
+  'Porvenir': { normal: 3.25, media: 1.65 },
+  'Nangora': { normal: 3.25, media: 1.65 },
+  'Chorrillos': { normal: 3.15, media: 1.60 },
+  'Landangui': { normal: 3.15, media: 1.60 },
+  'La Peña': { normal: 3.15, media: 1.60 },
+  'Malacatos': { normal: 3.15, media: 1.60 },
+  'Taxiche': { normal: 3.15, media: 1.60 },
+  'Cavianga': { normal: 2.75, media: 1.40 },
+  'Cararango': { normal: 2.75, media: 1.40 },
+  'San Pedro': { normal: 2.75, media: 1.40 },
+  'Vilcabamba': { normal: 2.00, media: 1.00 },
+  'Masanamaca': { normal: 1.25, media: 0.65 },
+  'Quinara': { normal: 1.00, media: 0.50 },
+  'Chumberos': { normal: 1.00, media: 0.50 },
+  'Palmira': { normal: 0.75, media: 0.40 },
+};
+
 
 // ─── Precios VUELTA específicos: YANGANA → LOJA ───
 // Directos desde Yangana hacia cada parada
