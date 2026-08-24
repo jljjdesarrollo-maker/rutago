@@ -1,0 +1,184 @@
+erDiagram
+    %% ═══════════════════════════════════════════
+    %% RutaGo - Modelo de Base de Datos Completo
+    %% PostgreSQL (Prisma) + IndexedDB (Offline)
+    %% ═══════════════════════════════════════════
+
+    %% ─── SERVIDOR: PostgreSQL (Prisma) ───
+
+    BusVT {
+        String id PK "cuid()"
+        String codigo UK "Ej: VT-01"
+        String nombre "Ej: Bus 1 Vilcabamba"
+        Json frecuencias "[] horarios asignados"
+        Boolean activo "true por defecto"
+        DateTime createdAt "now()"
+        DateTime updatedAt "auto"
+    }
+
+    Persona {
+        String id PK "cuid()"
+        String nombre "Nombre completo"
+        String cedula "NULLABLE"
+        String telefono "NULLABLE"
+        String rol "CONDUCTOR | AYUDANTE | ADMIN"
+        String pin UK "PIN de acceso (unique)"
+        Boolean esActual "false por defecto"
+        DateTime createdAt "now()"
+        DateTime updatedAt "auto"
+    }
+
+    Frecuencia {
+        String id PK "cuid()"
+        String vtCode FK "-> BusVT.codigo"
+        String nombre "Ej: 08:15 Vilcabamba"
+        String ruta "Ej: Loja - Vilcabamba"
+        String hora "Ej: 08:15"
+        String direccion "ida | vuelta"
+        Boolean activo "true por defecto"
+        DateTime createdAt "now()"
+        DateTime updatedAt "auto"
+    }
+
+    VentaBoleto {
+        String id PK "cuid()"
+        String fecha "Ej: 24/08/26"
+        String vtCode FK "-> BusVT.codigo"
+        String frecuenciaId FK "-> Frecuencia.id (NULLABLE)"
+        String ruta "Ej: Loja - Vilcabamba"
+        String parada "Ej: Vilcabamba | Vilc->Mal"
+        String tipo "ida | vuelta"
+        Float tarifaOficial "Tarifa oficial"
+        Float cobrado "Monto cobrado"
+        String hora "Ej: 08:32"
+        String ayudanteId FK "-> Persona.id"
+        String ayudanteNombre "Denormalizado"
+        Float lat "GPS (NULLABLE)"
+        Float lng "GPS (NULLABLE)"
+        String syncStatus "pending | synced | error"
+        String serverId "ID servidor al sincronizar"
+        String syncError "NULLABLE"
+        DateTime createdAt "now()"
+        DateTime updatedAt "auto"
+    }
+
+    DailyRecord {
+        String id PK "cuid()"
+        String date "Ej: 2026-08-24"
+        String km "NULLABLE - Kilometraje"
+        String conductor "NULLABLE"
+        String ayudanteNombre "NULLABLE"
+        String vtCode "NULLABLE -> BusVT.codigo"
+        Float production "0 por defecto"
+        Float cajaComun "0 por defecto"
+        Float sobrante "0 por defecto"
+        Float tickets "0 por defecto"
+        Float entregaAyudante "0 por defecto"
+        Float entregaCompania "0 por defecto"
+        Float totalGastos "0 por defecto"
+        String photoUrl "NULLABLE - Foto recibo"
+        DateTime createdAt "now()"
+        DateTime updatedAt "auto"
+    }
+
+    Trip {
+        String id PK "cuid()"
+        String recordId FK "-> DailyRecord.id"
+        Int order "Orden del viaje"
+        String routeFrom "Origen"
+        String routeTo "Destino"
+        String time "NULLABLE - Hora"
+        Float income "0 por defecto"
+        Float efectivoReal "0 por defecto"
+        Float boletos "0 por defecto"
+    }
+
+    Expense {
+        String id PK "cuid()"
+        String recordId FK "-> DailyRecord.id"
+        Int order "Orden del gasto"
+        String description "Descripcion del gasto"
+        Float amount "0 por defecto"
+    }
+
+    %% ─── RELACIONES SERVIDOR ───
+
+    BusVT ||--o{ Frecuencia : "vtCode -> codigo"
+    BusVT ||--o{ VentaBoleto : "vtCode -> codigo"
+    Frecuencia ||--o{ VentaBoleto : "frecuenciaId -> id"
+    DailyRecord ||--o{ Trip : "recordId -> id (CASCADE)"
+    DailyRecord ||--o{ Expense : "recordId -> id (CASCADE)"
+
+    %% ═══════════════════════════════════════════
+    %% CLIENTE: IndexedDB (Offline - Navegador)
+    %% ═══════════════════════════════════════════
+
+    VentaLocal {
+        String id PK "UUID local"
+        String fecha "Ej: 24/08/26"
+        String vtCode "Codigo del bus"
+        String frecuenciaId "FK real Frecuencia.id"
+        String frecuenciaNombre "Denormalizado"
+        String estadoId "Compuesto: fecha_frecuenciaId"
+        String ruta "Ej: Loja - Vilcabamba"
+        String parada "Ej: Vilcabamba"
+        String tipo "ida | vuelta"
+        String pasajeroTipo "Entero | Media"
+        Float tarifaOficial "Tarifa oficial"
+        Float cobrado "Monto cobrado"
+        String hora "Ej: 08:32"
+        String createdAt "ISO timestamp"
+        String ayudanteId "FK Persona.id"
+        String ayudanteNombre "Denormalizado"
+        Float lat "GPS (opcional)"
+        Float lng "GPS (opcional)"
+        String syncStatus "pending | synced | error"
+        String serverId "ID del servidor post-sync"
+        String syncError "Mensaje de error"
+    }
+
+    TarifaCache {
+        String id PK "= vtCode"
+        String vtCode "Codigo del bus"
+        Json tarifas "Array de tarifas"
+        String updatedAt "Ultima actualizacion"
+    }
+
+    FrecuenciaCache {
+        String id PK "= vtCode"
+        String vtCode "Codigo del bus"
+        Json frecuencias "Array de frecuencias"
+        String updatedAt "Ultima actualizacion"
+    }
+
+    EstadoFrecuencia {
+        String estadoId PK "Compuesto: fecha_frecuenciaId"
+        String frecuenciaId "FK Frecuencia.id"
+        String nombre "Nombre frecuencia"
+        String ruta "Ruta asignada"
+        String hora "Hora salida"
+        String direccion "ida | vuelta"
+        String estado "pendiente|abierta|cerrada|no_realizada"
+        Int ventasCount "Cantidad de ventas"
+        Float totalRecaudado "Total recolectado"
+        Float arqueoEfectivo "Efectivo contado (opcional)"
+        Float arqueoDiferencia "Diferencia (opcional)"
+        String arqueoFecha "Fecha arqueo (opcional)"
+        String vtCode "Codigo del bus"
+        String fecha "Fecha operacion"
+        Float gpsLatStart "GPS inicio (opcional)"
+        Float gpsLngStart "GPS inicio (opcional)"
+        Float gpsLatEnd "GPS fin (opcional)"
+        Float gpsLngEnd "GPS fin (opcional)"
+    }
+
+    %% ─── RELACIONES OFFLINE ───
+
+    EstadoFrecuencia ||--o{ VentaLocal : "estadoId agrupa ventas"
+    VentaLocal }o--|| TarifaCache : "vtCode referencia cache"
+    VentaLocal }o--|| FrecuenciaCache : "vtCode referencia cache"
+
+    %% ─── SINCRONIZACION ───
+
+    VentaLocal ..> VentaBoleto : "sync: pending -> synced"
+    EstadoFrecuencia ..> Frecuencia : "estado ref frecuencia servidor"
