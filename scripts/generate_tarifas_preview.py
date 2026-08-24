@@ -30,118 +30,107 @@ if zona_match:
     for m in re.finditer(r"'([^']+)':\s*'([^']+)'", zona_match.group(1)):
         parada_zona[m.group(1)] = m.group(2)
 
-# Routes (without duplicates)
+# Routes - keys MUST match exactly what's in tarifas-data.ts (with accents and →)
 RUTAS = {
     'Loja - Vilcabamba': {
         'ida': [
-            'Capuli', 'Dos Puentes', 'Cajanuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
-            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pena', 'Malacatos',
+            'Capul\u00ed', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a', 'Malacatos',
             'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba',
-            'Pena-Mal', 'Land-Mal', 'Chorri-Mal', 'Nango-Mal', 'Porv-Mal', 'Gran-Mal', 'Yamba-Mal',
-            'Rumi-Mal', 'T.Leguas-Mal', 'P.Nuevo-Mal', 'Caja-Mal', 'D.Puen-Mal', 'Capuli-Mal',
-            'S.Pedro-Vilc', 'Carar-Vilc', 'Cavian-Vilc', 'Taxich-Vilc', 'Mal-Vilc', 'Land-Vilc', 'Pena-Vilc',
-            'Chorri-Vilc', 'Nango-Vilc', 'Porv-Vilc', 'Gran-Vilc', 'Yamba-Vilc', 'Rumi-Vilc', 'T.Leguas-Vilc',
-            'P.Nuevo-Vilc', 'Caja-Vilc', 'D.Puen-Vilc', 'Capuli-Vilc',
+            'Pe\u00f1a\u2192Mal', 'Land\u2192Mal', 'Chorri\u2192Mal', 'Nango\u2192Mal', 'Porv\u2192Mal', 'Gran\u2192Mal', 'Yamba\u2192Mal',
+            'Rumi\u2192Mal', 'T.Leguas\u2192Mal', 'P.Nuevo\u2192Mal', 'Caja\u2192Mal', 'D.Puen\u2192Mal', 'Capul\u00ed\u2192Mal',
+            'S.Pedro\u2192Vilc', 'Carar\u2192Vilc', 'Cavian\u2192Vilc', 'Taxich\u2192Vilc', 'Mal\u2192Vilc', 'Land\u2192Vilc', 'Pe\u00f1a\u2192Vilc',
+            'Chorri\u2192Vilc', 'Nango\u2192Vilc', 'Porv\u2192Vilc', 'Gran\u2192Vilc', 'Yamba\u2192Vilc', 'Rumi\u2192Vilc', 'T.Leguas\u2192Vilc',
+            'P.Nuevo\u2192Vilc', 'Caja\u2192Vilc', 'D.Puen\u2192Vilc', 'Capul\u00ed\u2192Vilc',
         ],
         'vuelta': [
-            'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Pena', 'Landangui',
+            'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui',
             'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas',
-            'Pueblo Nuevo', 'Cajanuma', 'Dos Puentes', 'Capuli',
-            'Mal-LaPena', 'Mal-Land', 'Mal-Chorri', 'Mal-Nango', 'Mal-Porv',
-            'Mal-Gran', 'Mal-Yamba', 'Mal-Rumi', 'Mal-T.Leguas', 'Mal-P.Nuevo',
-            'Mal-Caja', 'Mal-D.Puen', 'Mal-Capuli',
-            'D.Puen-Loja', 'Caja-Loja', 'P.Nuevo-Loja', 'T.Leguas-Loja',
-            'Rumi-Loja', 'Yamba-Loja', 'Gran-Loja', 'Porv-Loja',
-            'Nango-Loja', 'Chorri-Loja', 'Land-Loja', 'Pena-Loja',
-            'Mal-Loja', 'Taxich-Loja', 'Cavian-Loja', 'Carar-Loja', 'S.Pedro-Loja',
+            'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
+            'Mal\u2192Pe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
+            'Mal\u2192Gran', 'Mal\u2192Yamba', 'Mal\u2192Rumi', 'Mal\u2192T.Leguas', 'Mal\u2192P.Nuevo',
+            'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
+            'D.Puen\u2192Loja', 'Caja\u2192Loja', 'P.Nuevo\u2192Loja', 'T.Leguas\u2192Loja',
+            'Rumi\u2192Loja', 'Yamba\u2192Loja', 'Gran\u2192Loja', 'Porv\u2192Loja',
+            'Nango\u2192Loja', 'Chorri\u2192Loja', 'Land\u2192Loja', 'Pe\u00f1a\u2192Loja',
+            'Mal\u2192Loja', 'Taxich\u2192Loja', 'Cavian\u2192Loja', 'Carar\u2192Loja', 'S.Pedro\u2192Loja',
         ],
     },
     'Loja - Zahuayco': {
         'ida': [
-            'Capuli', 'Dos Puentes', 'Cajanuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
-            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pena', 'Malacatos',
+            'Capul\u00ed', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a', 'Malacatos',
             'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Masanamaca', 'Quinara',
             'Chumberos', 'Palmira', 'Zahuayco',
-            'Vilc-Masan', 'Vilc-Quina', 'Vilc-Chumb', 'Vilc-Palm', 'Vilc-Zahua',
-            'Mal-Masan', 'Mal-Quina', 'Mal-Chumb', 'Mal-Palm', 'Mal-Zahua',
+            'Vilc\u2192Masan', 'Vilc\u2192Quina', 'Vilc\u2192Chumb', 'Vilc\u2192Palm', 'Vilc\u2192Zahua',
+            'Mal\u2192Masan', 'Mal\u2192Quina', 'Mal\u2192Chumb', 'Mal\u2192Palm', 'Mal\u2192Zahua',
         ],
         'vuelta': [
             'Zahuayco', 'Palmira', 'Quinara', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango',
-            'Cavianga', 'Taxiche', 'Malacatos', 'La Pena', 'Landangui', 'Chorrillos', 'Nangora',
+            'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora',
             'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo',
-            'Cajanuma', 'Dos Puentes', 'Capuli',
+            'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
         ],
     },
     'Loja - El Tambo': {
         'ida': [
-            'Capuli', 'Dos Puentes', 'Cajanuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
-            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pena', 'Malacatos',
-            'Ceibopamba', 'Trinidad', 'San Jose', 'Santo Domingo', 'Naranjo Dulce', 'Zhotahuayco',
-            'La Merced', 'San Agustin', 'La Era', 'La Capilla', 'San Bernaved', 'El Tambo',
-            'Mal-Ceibop', 'Mal-Trinidad', 'Mal-S.Jose', 'Mal-StoDom', 'Mal-N.Dulce', 'Mal-Zhotahu',
-            'Mal-LaMerc', 'Mal-S.Agust', 'Mal-LaEra', 'Mal-LaCap', 'Mal-S.Bern', 'Mal-ElTambo',
+            'Capul\u00ed', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a', 'Malacatos',
+            'Ceibopamba', 'Trinidad', 'San Jos\u00e9', 'Santo Domingo', 'Naranjo Dulce', 'Zhotahuayco',
+            'La Merced', 'San Agust\u00edn', 'La Era', 'La Capilla', 'San Bernaved', 'El Tambo',
+            'Mal\u2192Ceibop', 'Mal\u2192Trinidad', 'Mal\u2192S.Jose', 'Mal\u2192StoDom', 'Mal\u2192N.Dulce', 'Mal\u2192Zhotahu',
+            'Mal\u2192LaMerc', 'Mal\u2192S.Agust', 'Mal\u2192LaEra', 'Mal\u2192LaCap', 'Mal\u2192S.Bern', 'Mal\u2192ElTambo',
         ],
         'vuelta': [
-            'El Tambo', 'San Bernaved', 'La Capilla', 'La Era', 'San Agustin', 'La Merced', 'Zhotahuayco',
-            'Naranjo Dulce', 'Santo Domingo', 'San Jose', 'Ceibopamba', 'Trinidad', 'Malacatos',
-            'La Pena', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba',
-            'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajanuma', 'Dos Puentes', 'Capuli',
-            'Mal-LaPena', 'Mal-Land', 'Mal-Chorri', 'Mal-Nango', 'Mal-Porv',
-            'Mal-Gran', 'Mal-Yamba', 'Mal-Rumi', 'Mal-T.Leguas', 'Mal-P.Nuevo',
-            'Mal-Caja', 'Mal-D.Puen', 'Mal-Capuli',
-            'D.Puen-Loja', 'Caja-Loja', 'P.Nuevo-Loja', 'T.Leguas-Loja',
-            'Rumi-Loja', 'Yamba-Loja', 'Gran-Loja', 'Porv-Loja',
-            'Nango-Loja', 'Chorri-Loja', 'Land-Loja', 'Pena-Loja', 'Mal-Loja',
-            'LaCap-Loja', 'S.Bern-Loja',
+            'El Tambo', 'San Bernaved', 'La Capilla', 'La Era', 'San Agust\u00edn', 'La Merced', 'Zhotahuayco',
+            'Naranjo Dulce', 'Santo Domingo', 'San Jos\u00e9', 'Ceibopamba', 'Trinidad', 'Malacatos',
+            'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba',
+            'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
+            'Mal\u2192Pe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
+            'Mal\u2192Gran', 'Mal\u2192Yamba', 'Mal\u2192Rumi', 'Mal\u2192T.Leguas', 'Mal\u2192P.Nuevo',
+            'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
+            'D.Puen\u2192Loja', 'Caja\u2192Loja', 'P.Nuevo\u2192Loja', 'T.Leguas\u2192Loja',
+            'Rumi\u2192Loja', 'Yamba\u2192Loja', 'Gran\u2192Loja', 'Porv\u2192Loja',
+            'Nango\u2192Loja', 'Chorri\u2192Loja', 'Land\u2192Loja', 'Pe\u00f1a\u2192Loja', 'Mal\u2192Loja',
         ],
     },
     'Loja - La Elvira': {
         'ida': [
-            'Capuli', 'Dos Puentes', 'Cajanuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
-            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pena', 'Malacatos',
+            'Capul\u00ed', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a', 'Malacatos',
             'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Cucanama', 'Linderos',
             'Santorum', 'Solanda', 'Moyococha', 'Tumianuma', 'Quinara', 'Comunidades', 'La Elvira',
-            'Mal-Cucan', 'Mal-Lind', 'Mal-Santo', 'Mal-Solan', 'Mal-Moyoc', 'Mal-Tumia', 'Mal-Quina',
-            'Mal-Comun', 'Mal-Elvira',
-            'Vilc-Cucan', 'Vilc-Lind', 'Vilc-Santo', 'Vilc-Solan', 'Vilc-Moyoc', 'Vilc-Tumia', 'Vilc-Quina',
-            'Vilc-Comun', 'Vilc-Elvira',
+            'Mal\u2192Cucan', 'Mal\u2192Lind', 'Mal\u2192Santo', 'Mal\u2192Solan', 'Mal\u2192Moyoc', 'Mal\u2192Tumia', 'Mal\u2192Quina',
+            'Mal\u2192Comun', 'Mal\u2192Elvira',
+            'Vilc\u2192Cucan', 'Vilc\u2192Lind', 'Vilc\u2192Santo', 'Vilc\u2192Solan',
+            'Vilc\u2192Moyoc', 'Vilc\u2192Tumia', 'Vilc\u2192Quina', 'Vilc\u2192Comun', 'Vilc\u2192Elvira',
         ],
         'vuelta': [
             'La Elvira', 'Comunidades', 'Quinara', 'Tumianuma', 'Moyococha', 'Solanda', 'Santorum',
             'Linderos', 'Cucanama', 'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche',
-            'Malacatos', 'La Pena', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
-            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajanuma', 'Dos Puentes', 'Capuli',
-            'Mal-LaPena', 'Mal-Land', 'Mal-Chorri', 'Mal-Nango', 'Mal-Porv',
-            'Mal-Gran', 'Mal-Yamba', 'Mal-Rumi', 'Mal-T.Leguas', 'Mal-P.Nuevo',
-            'Mal-Caja', 'Mal-D.Puen', 'Mal-Capuli',
-            'D.Puen-Loja', 'Caja-Loja', 'P.Nuevo-Loja', 'T.Leguas-Loja',
-            'Rumi-Loja', 'Yamba-Loja', 'Gran-Loja', 'Porv-Loja',
-            'Nango-Loja', 'Chorri-Loja', 'Land-Loja', 'Pena-Loja',
-            'Mal-Loja', 'Taxich-Loja', 'Cavian-Loja', 'Carar-Loja', 'S.Pedro-Loja', 'Vilc-Loja',
-            'Mal-Cucan', 'Mal-Lind', 'Mal-Santo', 'Mal-Solan', 'Mal-Moyoc', 'Mal-Tumia',
-            'Mal-Quina', 'Mal-Comun', 'Mal-Elvira', 'Vilc-Cucan', 'Vilc-Lind', 'Vilc-Santo',
-            'Vilc-Solan', 'Vilc-Moyoc', 'Vilc-Tumia', 'Vilc-Quina', 'Vilc-Comun', 'Vilc-Elvira',
+            'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
+            'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
+            'Mal\u2192Pe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
+            'Mal\u2192Gran', 'Mal\u2192Yamba', 'Mal\u2192Rumi', 'Mal\u2192T.Leguas', 'Mal\u2192P.Nuevo',
+            'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
+            'D.Puen\u2192Loja', 'Caja\u2192Loja', 'P.Nuevo\u2192Loja', 'T.Leguas\u2192Loja',
+            'Rumi\u2192Loja', 'Yamba\u2192Loja', 'Gran\u2192Loja', 'Porv\u2192Loja',
+            'Nango\u2192Loja', 'Chorri\u2192Loja', 'Land\u2192Loja', 'Pe\u00f1a\u2192Loja',
+            'Mal\u2192Loja', 'Taxich\u2192Loja', 'Cavian\u2192Loja', 'Carar\u2192Loja', 'S.Pedro\u2192Loja',
         ],
     },
     'Loja - Yangana': {
         'ida': [
-            'Capuli', 'Dos Puentes', 'Cajanuma', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
-            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pena', 'Malacatos',
+            'Capul\u00ed', 'Dos Puentes', 'Caj\u00e1numa', 'Pueblo Nuevo', 'Tres Leguas', 'Rumizhitana', 'Yamba',
+            'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Pe\u00f1a', 'Malacatos',
             'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Masanamaca', 'Suro',
-            'Yangana', 'Vilc-Masan', 'Vilc-Suro', 'Vilc-Yangana', 'Mal-Masan', 'Mal-Suro', 'Mal-Yangana',
+            'Yangana', 'Vilc\u2192Masan', 'Vilc\u2192Suro', 'Vilc\u2192Yangana', 'Mal\u2192Masan', 'Mal\u2192Suro', 'Mal\u2192Yangana',
         ],
         'vuelta': [
             'Yangana', 'Suro', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
-            'Taxiche', 'Malacatos', 'La Pena', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir',
-            'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajanuma',
-            'Dos Puentes', 'Capuli',
-            'Vilc-S.Pedro', 'Vilc-Carar', 'Vilc-Cavian', 'Vilc-Taxich', 'Vilc-Malac',
-            'Vilc-Land', 'Vilc-Chorri', 'Vilc-Nango', 'Vilc-Porv', 'Vilc-Gran',
-            'Vilc-Yamba', 'Vilc-Rumi', 'Vilc-T.Leguas', 'Vilc-P.Nuevo', 'Vilc-Caja',
-            'Vilc-D.Puen', 'Vilc-Capuli',
-            'Mal-LaPena', 'Mal-Land', 'Mal-Chorri', 'Mal-Nango', 'Mal-Porv',
-            'Mal-Gran', 'Mal-Yamba', 'Mal-Rumi', 'Mal-T.Leguas', 'Mal-P.Nuevo',
-            'Mal-Caja', 'Mal-D.Puen', 'Mal-Capuli',
+            'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir',
+            'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa',
+            'Dos Puentes', 'Capul\u00ed',
         ],
     },
 }
@@ -196,9 +185,10 @@ tab-bar button.on { border-bottom-color: #912D26; color: #912D26; }
 .zone-label span { font-size: 9px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.04em; }
 
 .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
-.btn { border-radius: 12px; padding: 7px 8px; min-height: 50px; display: flex; flex-direction: column; justify-content: center; }
+.btn { border-radius: 12px; padding: 7px 8px; min-height: 50px; display: flex; flex-direction: column; justify-content: center; cursor: default; }
 .btn .name { font-size: 10px; font-weight: 700; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn .price { font-size: 14px; font-weight: 900; margin-top: 1px; }
+.btn.zero { opacity: 0.4; }
 
 .stats-bar { background: white; border-top: 2px solid #f3f4f6; padding: 6px 12px; text-align: center; font-size: 11px; color: #6b7280; }
 .legend { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; padding: 10px; background: white; border-top: 1px solid #e5e7eb; }
@@ -231,6 +221,7 @@ h1 { text-align: center; padding: 16px; color: #1e3a5f; font-size: 16px; width: 
 // __JSON_VMAPS_PLACEHOLDER__
 // __JSON_ZONA_PLACEHOLDER__
 
+const ARROW = '\u2192';
 const ZC = {
   green:  {bg:'#f0fdf4',text:'#14532d',border:'#bbf7d0',price:'#15803d'},
   yellow: {bg:'#fffbeb',text:'#78350f',border:'#fde68a',price:'#b45309'},
@@ -239,39 +230,47 @@ const ZC = {
   purple: {bg:'#faf5ff',text:'#581c87',border:'#e9d5ff',price:'#7e22ce'},
 };
 const ZDots = {green:'#22c55e',yellow:'#f59e0b',blue:'#3b82f6',orange:'#f97316',purple:'#a855f7'};
-const ZNames = {green:'Cerca de Loja',yellow:'Zona media',blue:'Cerca de destino',orange:'Intermedios Malacatos',purple:'Intermedios Vilcabamba'};
-const ZOrder = ['green','yellow','blue','orange','purple'];
+const ZNames = {green:'Cerca de Loja',yellow:'Zona media',blue:'Cerca de destino',orange:'Intermedios Malacatos',purple:'Intermedios Vilcabamba',loja:'Hacia Loja'};
+const ZOrder = ['green','yellow','blue','orange','purple','loja'];
 
 let cR=Object.keys(DATA)[0], cD='ida', cT='normal', cTab='principal';
 
-function gz(p){if(PARADA_ZONA[p])return PARADA_ZONA[p];if(p.includes('-Mal')||p.includes('Mal-'))return'orange';if(p.includes('-Vilc')||p.includes('Vilc-'))return'purple';if(p.includes('-Loja'))return'green';return'yellow';}
-function isPr(p){return!p.includes('-');}
-function gp(p,d){if(d==='ida')return PRECIOS_IDA[p]||[0,0];if(PRECIOS_VUELTA[p])return PRECIOS_VUELTA[p];for(const k of Object.keys(VUELTA_MAPS)){if(VUELTA_MAPS[k][p])return VUELTA_MAPS[k][p];}return[0,0];}
+function gz(p){
+  if(PARADA_ZONA[p])return PARADA_ZONA[p];
+  if(p.includes(ARROW+'Mal')||p.startsWith('Mal'+ARROW))return 'orange';
+  if(p.includes(ARROW+'Vilc')||p.startsWith('Vilc'+ARROW))return 'purple';
+  if(p.includes(ARROW+'Loja'))return 'loja';
+  return 'yellow';
+}
+function isPr(p){return !p.includes(ARROW); }
+function gp(p,d){
+  if(d==='ida')return PRECIOS_IDA[p]||[0,0];
+  if(PRECIOS_VUELTA[p])return PRECIOS_VUELTA[p];
+  for(const k of Object.keys(VUELTA_MAPS)){if(VUELTA_MAPS[k][p])return VUELTA_MAPS[k][p];}
+  return [0,0];
+}
+
+function esc(s){return s.replace(/'/g, "&#39;").replace(/</g, '&lt;');}
 
 function render(){
-  // Route tabs
   document.getElementById('routeTabs').innerHTML=Object.keys(DATA).map(r=>
     '<button class="'+(r===cR?'active':'')+'" onclick="cR=\''+r+'\';render()">'+r.split(' - ')[1]+'</button>'
   ).join('');
 
-  // Direction bar
   document.getElementById('dirBar').innerHTML=
-    '<button class="ida'+(cD!=='ida'?' off':'')+'" onclick="cD=\'ida\';render()">IDA (hacia destino)</button>'+
-    '<button class="vuelta'+(cD!=='vuelta'?' off':'')+'" onclick="cD=\'vuelta\';render()">VUELTA (hacia Loja)</button>';
+    '<button class="ida'+(cD!=='ida'?' off':'')+'" onclick="cD=\'ida\';render()">IDA</button>'+
+    '<button class="vuelta'+(cD!=='vuelta'?' off':'')+'" onclick="cD=\'vuelta\';render()">VUELTA</button>';
 
-  // Tipo bar
   document.getElementById('tipoBar').innerHTML=
     '<button class="'+(cT==='normal'?'on':'')+'" onclick="cT=\'normal\';render()">ENTERO</button>'+
     '<button class="'+(cT==='media'?'on':'')+'" onclick="cT=\'media\';render()">MEDIA</button>';
 
-  // Tab bar
   const ps=DATA[cR][cD];
   const nPr=ps.filter(isPr).length, nIn=ps.filter(p=>!isPr(p)).length;
   document.getElementById('tabBar').innerHTML=
     '<button class="'+(cTab==='principal'?'on':'')+'" onclick="cTab=\'principal\';render()">Paradas ('+nPr+')</button>'+
     '<button class="'+(cTab==='intermedia'?'on':'')+'" onclick="cTab=\'intermedia\';render()">Intermedios ('+nIn+')</button>';
 
-  // Grid
   const showPr=cTab==='principal';
   const filtered=ps.filter(p=>showPr?isPr(p):!isPr(p));
   const groups={};
@@ -288,16 +287,16 @@ function render(){
       const pr=cT==='media'?m:n;
       const has=n>0||m>0;
       const pc=has?c.price:'#cbd5e1';
-      html+='<div class="btn" style="background:'+c.bg+';border:1px solid '+c.border+'"><div class="name" style="color:'+c.text+'">'+p+'</div><div class="price" style="color:'+pc+'">$'+pr.toFixed(2)+'</div></div>';
+      const zc=has?c.bg:'#f9fafb';
+      html+='<div class="btn'+(has?'':' zero')+'" style="background:'+zc+';border:1px solid '+(has?c.border:'#e5e7eb')+'"><div class="name" style="color:'+(has?c.text:'#9ca3af')+'">'+esc(p)+'</div><div class="price" style="color:'+pc+'">$'+pr.toFixed(2)+'</div></div>';
     });
     html+='</div>';
   });
   document.getElementById('gridArea').innerHTML=html;
 
-  // Stats
   let loaded=0;
   ps.forEach(p=>{const[n,m]=gp(p,cD);if(n>0||m>0)loaded++;});
-  document.getElementById('statsBar').innerHTML='<b>'+cR+'</b> · '+cD.toUpperCase()+' · '+loaded+'/'+ps.length+' precios cargados';
+  document.getElementById('statsBar').innerHTML='<b>'+cR+'</b> | '+cD.toUpperCase()+' | '+loaded+'/'+ps.length+' precios cargados';
 }
 render();
 </script>
@@ -306,10 +305,10 @@ render();
 
 # Replace placeholders with actual JSON
 html = html_template.replace('// __JSON_DATA_PLACEHOLDER__', 'const DATA = ' + json_data + ';')
-html = html.replace('// __JSON_IDA_PLACEHOLDER__', 'const PRECIOS_IDA = ' + json_ida + ';')
-html = html.replace('// __JSON_VUELTA_PLACEHOLDER__', 'const PRECIOS_VUELTA = ' + json_vuelta + ';')
-html = html.replace('// __JSON_VMAPS_PLACEHOLDER__', 'const VUELTA_MAPS = ' + json_vmaps + ';')
-html = html.replace('// __JSON_ZONA_PLACEHOLDER__', 'const PARADA_ZONA = ' + json_zona + ';')
+html = html_template.replace('// __JSON_IDA_PLACEHOLDER__', 'const PRECIOS_IDA = ' + json_ida + ';')
+html = html_template.replace('// __JSON_VUELTA_PLACEHOLDER__', 'const PRECIOS_VUELTA = ' + json_vuelta + ';')
+html = html_template.replace('// __JSON_VMAPS_PLACEHOLDER__', 'const VUELTA_MAPS = ' + json_vmaps + ';')
+html = html_template.replace('// __JSON_ZONA_PLACEHOLDER__', 'const PARADA_ZONA = ' + json_zona + ';')
 
 output = '/home/z/my-project/download/RutaGo_Tarifas_Preview.html'
 with open(output, 'w') as f:
@@ -317,3 +316,18 @@ with open(output, 'w') as f:
 
 print(f'HTML generado: {output}')
 print(f'Tamano: {len(html)} bytes')
+
+# Verify key match
+miss_ida = 0
+miss_vuelta = 0
+for ruta, dirs in RUTAS.items():
+    for p in dirs['ida']:
+        if p not in precios_ida: miss_ida += 1
+    for p in dirs['vuelta']:
+        if p not in precios_vuelta:
+            found = False
+            for vm in vuelta_maps.values():
+                if p in vm: found = True; break
+            if not found: miss_vuelta += 1
+print(f'IDA keys sin precio: {miss_ida}')
+print(f'VUELTA keys sin precio: {miss_vuelta}')

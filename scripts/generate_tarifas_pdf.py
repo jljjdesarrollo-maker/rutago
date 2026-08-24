@@ -83,7 +83,7 @@ RUTAS = {
             'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui',
             'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas',
             'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
-            'Mal\u2192LaPe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
+            'Mal\u2192Pe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
             'Mal\u2192Gran', 'Mal\u2192Yamba', 'Mal\u2192Rumi', 'Mal\u2192T.Leguas', 'Mal\u2192P.Nuevo',
             'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
             'D.Puen\u2192Loja', 'Caja\u2192Loja', 'P.Nuevo\u2192Loja', 'T.Leguas\u2192Loja',
@@ -121,7 +121,7 @@ RUTAS = {
             'Naranjo Dulce', 'Santo Domingo', 'San Jos\u00e9', 'Ceibopamba', 'Trinidad', 'Malacatos',
             'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba',
             'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
-            'Mal\u2192LaPe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
+            'Mal\u2192Pe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
             'Mal\u2192Gran', 'Mal\u2192Yamba', 'Mal\u2192Rumi', 'Mal\u2192T.Leguas', 'Mal\u2192P.Nuevo',
             'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
             'D.Puen\u2192Loja', 'Caja\u2192Loja', 'P.Nuevo\u2192Loja', 'T.Leguas\u2192Loja',
@@ -145,7 +145,7 @@ RUTAS = {
             'Linderos', 'Cucanama', 'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche',
             'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo',
             'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
-            'Mal\u2192LaPe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
+            'Mal\u2192Pe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
             'Mal\u2192Gran', 'Mal\u2192Yamba', 'Mal\u2192Rumi', 'Mal\u2192T.Leguas', 'Mal\u2192P.Nuevo',
             'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
             'D.Puen\u2192Loja', 'Caja\u2192Loja', 'P.Nuevo\u2192Loja', 'T.Leguas\u2192Loja',
@@ -174,7 +174,7 @@ RUTAS = {
             'Vilc\u2192Land', 'Vilc\u2192Chorri', 'Vilc\u2192Nango', 'Vilc\u2192Porv', 'Vilc\u2192Gran',
             'Vilc\u2192Yamba', 'Vilc\u2192Rumi', 'Vilc\u2192T.Leguas', 'Vilc\u2192P.Nuevo', 'Vilc\u2192Caja',
             'Vilc\u2192D.Puen', 'Vilc\u2192Capul\u00ed',
-            'Mal\u2192LaPe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
+            'Mal\u2192Pe\u00f1a', 'Mal\u2192Land', 'Mal\u2192Chorri', 'Mal\u2192Nango', 'Mal\u2192Porv',
             'Mal\u2192Gran', 'Mal\u2192Yamba', 'Mal\u2192Rumi', 'Mal\u2192T.Leguas', 'Mal\u2192P.Nuevo',
             'Mal\u2192Caja', 'Mal\u2192D.Puen', 'Mal\u2192Capul\u00ed',
         ],
@@ -245,7 +245,7 @@ def make_table(paradas, price_fn):
 
 elements = []
 elements.append(Paragraph('RutaGo - Tarifas de Precios', s_title))
-elements.append(Paragraph('TRANSPORTES VILCABAMBATURIS C.I.A. LTDA. | Precios cargados: Solo IDA Loja → Vilcabamba', s_subtitle))
+elements.append(Paragraph('TRANSPORTES VILCABAMBATURIS C.I.A. LTDA. | IDA + VUELTA Loja ↔ Vilcabamba completas', s_subtitle))
 
 # Count stats
 loaded_ida = sum(1 for p in precios_ida.values() if p != (0,0))
