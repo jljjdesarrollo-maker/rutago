@@ -592,9 +592,28 @@ const preciosVueltaLaElvira: Record<string, { normal: number; media: number }> =
   'Tumianuma': { normal: 1.00, media: 0.50 },
   'Comunidades': { normal: 0.75, media: 0.40 },
   'Quinara': { normal: 0, media: 0 },
-  // Intermedios: se buscan en preciosVuelta compartido (Vilc→X, Mal→X, X→Loja)
-  // Vilc→Loja es específico de La Elvira ($2.25 vs $2.50 troncal)
-  'Vilc→Loja': { normal: 0, media: 0 },
+  // Intermedios La Elvira VUELTA (ramal desde Malacatos)
+  'Mal→Cucan': { normal: 1.60, media: 0.80 },
+  'Mal→Lind': { normal: 2.00, media: 1.00 },
+  'Mal→Santo': { normal: 2.00, media: 1.00 },
+  'Mal→Solan': { normal: 2.00, media: 1.00 },
+  'Mal→Moyoc': { normal: 2.00, media: 1.00 },
+  'Mal→Tumia': { normal: 2.50, media: 1.25 },
+  'Mal→Quina': { normal: 2.50, media: 1.25 },
+  'Mal→Comun': { normal: 2.50, media: 1.25 },
+  'Mal→Elvira': { normal: 3.00, media: 1.50 },
+  // Intermedios La Elvira VUELTA (ramal desde Vilcabamba)
+  'Vilc→Cucan': { normal: 0.75, media: 0.40 },
+  'Vilc→Lind': { normal: 1.10, media: 0.55 },
+  'Vilc→Santo': { normal: 1.50, media: 0.75 },
+  'Vilc→Solan': { normal: 1.50, media: 0.75 },
+  'Vilc→Moyoc': { normal: 1.50, media: 0.75 },
+  'Vilc→Tumia': { normal: 2.00, media: 1.00 },
+  'Vilc→Quina': { normal: 2.00, media: 1.00 },
+  'Vilc→Comun': { normal: 2.00, media: 1.00 },
+  'Vilc→Elvira': { normal: 2.40, media: 1.20 },
+  // Vilc→Loja es específico de La Elvira ($2.25 vs $2.50 troncal Vilcabamba)
+  'Vilc→Loja': { normal: 2.25, media: 1.15 },
 };
 
 // ─── Paradas por ruta según dirección ───
