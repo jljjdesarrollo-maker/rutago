@@ -238,16 +238,16 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'Vilc→Chumb': { normal: 2.0, media: 1.0 },
   'Vilc→Palm': { normal: 2.25, media: 1.15 },
   'Vilc→Zahua': { normal: 2.5, media: 1.25 },
-  'Vilc→Suro': { normal: 0, media: 0 },
-  'Vilc→Yangana': { normal: 0, media: 0 },
+  'Vilc→Suro': { normal: 1.60, media: 0.80 },
+  'Vilc→Yangana': { normal: 2.00, media: 1.00 },
   // Intermedios Zahuayco/Yangana IDA (desde Malacatos)
   'Mal→Masan': { normal: 2.0, media: 1.0 },
   'Mal→Quina': { normal: 2.0, media: 1.0 },
   'Mal→Chumb': { normal: 2.5, media: 1.25 },
   'Mal→Palm': { normal: 2.9, media: 1.45 },
   'Mal→Zahua': { normal: 3.15, media: 1.6 },
-  'Mal→Suro': { normal: 0, media: 0 },
-  'Mal→Yangana': { normal: 0, media: 0 },
+  'Mal→Suro': { normal: 2.00, media: 1.00 },
+  'Mal→Yangana': { normal: 2.50, media: 1.25 },
   // ═══ LOJA - LA ELVIRA (pasa por Vilcabamba) ═══
   'Cucanama': { normal: 2.50, media: 1.25 },
   'Linderos': { normal: 2.75, media: 1.40 },
@@ -278,8 +278,8 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'Vilc→Comun': { normal: 2.00, media: 1.00 },
   'Vilc→Elvira': { normal: 2.40, media: 1.20 },
   // ═══ LOJA - YANGANA (pasa por Vilcabamba) ═══
-  'Suro': { normal: 0, media: 0 },
-  'Yangana': { normal: 0, media: 0 },
+  'Suro': { normal: 3.25, media: 1.65 },
+  'Yangana': { normal: 3.75, media: 1.90 },
 };
 
 // ─── Precios VUELTA (desde el destino hacia Loja) ───
