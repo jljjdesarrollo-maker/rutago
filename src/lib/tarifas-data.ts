@@ -532,7 +532,13 @@ const preciosVueltaYangana: Record<string, { normal: number; media: number }> = 
   'San Pedro': { normal: 2.00, media: 1.00 },
   'Vilcabamba': { normal: 2.00, media: 1.00 },
   'Masanamaca': { normal: 1.00, media: 0.50 },
-  // Intermedios: se buscan en preciosVuelta compartido (Vilc→X, Mal→X)
+  // Intermedios Yangana VUELTA (ramal propios)
+  'Mal→Masan': { normal: 1.60, media: 0.80 },
+  'Mal→Suro': { normal: 2.00, media: 1.00 },
+  'Mal→Yangana': { normal: 2.50, media: 1.25 },
+  'Vilc→Masan': { normal: 1.10, media: 0.55 },
+  'Vilc→Suro': { normal: 1.60, media: 0.80 },
+  'Vilc→Yangana': { normal: 2.00, media: 1.00 },
 };
 
 // ─── Precios VUELTA específicos: VILCABAMBA → LOJA ───
