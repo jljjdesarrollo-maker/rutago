@@ -441,37 +441,26 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           </div>
         )}
 
-        {/* Parada manual (siempre visible al final) */}
-        <div className="mt-2 bg-white rounded-xl border border-gray-100 p-2 shadow-sm">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Otra parada..."
-              value={parada}
-              onChange={handleParadaManualChange}
-              className="flex-1 px-3 py-2 rounded-lg bg-gray-50 text-sm text-[#3A3A3A] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#912D26]/30"
-            />
-            {parada && !allParadas.find(p => p.parada === parada) && cobrado && parseFloat(cobrado) >= TARIFA_MINIMA && (
-              <button
-                onClick={handleVenta}
-                className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-bold active:scale-95 transition-all"
-              >
-                OK
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Advertencia tarifa */}
+        {/* Advertencia tarifa (dentro del scroll para no ensuciar la barra fija) */}
         {parada && allParadas.some(p => p.parada === parada) && tarifaAuto > 0 && cobrado && parseFloat(cobrado) !== tarifaAuto && (
-          <div className="text-center text-[11px] text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5 mt-1.5">
+          <div className="text-center text-[11px] text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5 mt-1">
             Oficial: ${tarifaAuto.toFixed(2)} — Diff: ${Math.abs(parseFloat(cobrado || '0') - tarifaAuto).toFixed(2)}
           </div>
         )}
       </div>
 
-      {/* ─── BARRA FIJA INFERIOR: Monto + REGISTRAR ─── */}
+      {/* ─── BARRA FIJA INFERIOR: Parada manual + Monto + REGISTRAR ─── */}
       <div className="bg-white border-t-2 border-gray-100 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
+        {/* Parada manual — siempre accesible sin scroll */}
+        <div className="mb-2">
+          <input
+            type="text"
+            placeholder="Parada o destino..."
+            value={parada}
+            onChange={handleParadaManualChange}
+            className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm text-[#3A3A3A] placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#912D26]/30 focus:border-[#912D26]/40"
+          />
+        </div>
         <div className="relative mb-2">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-lg">$</span>
           <input
