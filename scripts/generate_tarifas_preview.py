@@ -136,7 +136,7 @@ RUTAS = {
             'Yangana', 'Suro', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
             'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir',
             'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa',
-            'Dos Puentes', 'Capul\u00ed',
+            'Dos Puentes', 'Capul\u00ed', 'Loja',
         ],
     },
 }

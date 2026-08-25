@@ -175,7 +175,7 @@ RUTAS = {
             'Yangana', 'Suro', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga',
             'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir',
             'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Caj\u00e1numa',
-            'Dos Puentes', 'Capul\u00ed',
+            'Dos Puentes', 'Capul\u00ed', 'Loja',
             'Vilc\u2192S.Pedro', 'Vilc\u2192Carar', 'Vilc\u2192Cavian', 'Vilc\u2192Taxich', 'Vilc\u2192Malac',
             'Vilc\u2192Land', 'Vilc\u2192Chorri', 'Vilc\u2192Nango', 'Vilc\u2192Porv', 'Vilc\u2192Gran',
             'Vilc\u2192Yamba', 'Vilc\u2192Rumi', 'Vilc\u2192T.Leguas', 'Vilc\u2192P.Nuevo', 'Vilc\u2192Caja',
