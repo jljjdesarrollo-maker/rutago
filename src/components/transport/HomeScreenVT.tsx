@@ -15,6 +15,51 @@ interface VTOption {
   id: string;
   codigo: string;
   nombre: string;
+  frecuencias?: { routeFrom: string; routeTo: string; time: string }[];
+}
+
+type VTRouteType = 'vilcabamba' | 'el_tambo' | 'la_elvira' | 'yangana' | 'zahuayco';
+
+const ROUTE_STYLES: Record<VTRouteType, {
+  bg: string; border: string; text: string; subtext: string;
+  selectedBg: string; selectedRing: string;
+  label: string; badgeBg: string; badgeText: string;
+}> = {
+  vilcabamba: {
+    bg: 'bg-gray-100', border: 'border-gray-200', text: 'text-[#3A3A3A]', subtext: 'text-gray-400',
+    selectedBg: 'bg-[#912D26]', selectedRing: 'ring-red-400',
+    label: '', badgeBg: '', badgeText: '',
+  },
+  el_tambo: {
+    bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-900', subtext: 'text-amber-500',
+    selectedBg: 'bg-amber-700', selectedRing: 'ring-amber-400',
+    label: 'El Tambo', badgeBg: 'bg-amber-100', badgeText: 'text-amber-700',
+  },
+  la_elvira: {
+    bg: 'bg-violet-50', border: 'border-violet-300', text: 'text-violet-900', subtext: 'text-violet-400',
+    selectedBg: 'bg-violet-700', selectedRing: 'ring-violet-400',
+    label: 'La Elvira', badgeBg: 'bg-violet-100', badgeText: 'text-violet-700',
+  },
+  yangana: {
+    bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-900', subtext: 'text-emerald-400',
+    selectedBg: 'bg-emerald-700', selectedRing: 'ring-emerald-400',
+    label: 'Yangana', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700',
+  },
+  zahuayco: {
+    bg: 'bg-sky-50', border: 'border-sky-300', text: 'text-sky-900', subtext: 'text-sky-400',
+    selectedBg: 'bg-sky-700', selectedRing: 'ring-sky-400',
+    label: 'Zahuayco', badgeBg: 'bg-sky-100', badgeText: 'text-sky-700',
+  },
+};
+
+function getVTRouteType(frecuencias?: { routeFrom: string; routeTo: string }[]): VTRouteType {
+  if (!frecuencias || frecuencias.length === 0) return 'vilcabamba';
+  const allDests = [...frecuencias.map(f => f.routeTo), ...frecuencias.map(f => f.routeFrom)];
+  if (allDests.some(d => d === 'El Tambo')) return 'el_tambo';
+  if (allDests.some(d => d === 'La Elvira')) return 'la_elvira';
+  if (allDests.some(d => d === 'Yangana')) return 'yangana';
+  if (allDests.some(d => d === 'Zahuayco')) return 'zahuayco';
+  return 'vilcabamba';
 }
 
 interface AyudanteActivo {
@@ -55,6 +100,7 @@ export function HomeScreenVT({ onSessionStart }: Props) {
             id: vt.id,
             codigo: vt.codigo,
             nombre: vt.nombre,
+            frecuencias: vt.frecuencias || [],
           }));
           setVts(mapped);
           if (mapped.length === 1) {
@@ -405,19 +451,34 @@ export function HomeScreenVT({ onSessionStart }: Props) {
               <Bus className="w-4 h-4 text-[#912D26]" /> Unidad
             </h2>
             <div className={`grid gap-3 ${vts.length <= 2 ? 'grid-cols-2' : vts.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-              {vts.map(vt => (
-                <button key={vt.codigo}
-                  onClick={() => vts.length === 1 ? startSession(vt.codigo) : setSelectedVT(vt.codigo)}
-                  className={`py-5 px-3 rounded-xl text-center transition-all active:scale-95 ${
-                    selectedVT === vt.codigo
-                      ? 'bg-[#912D26] text-white shadow-md ring-2 ring-red-400'
-                      : 'bg-gray-100 text-[#3A3A3A] hover:bg-gray-200 active:bg-gray-300'
-                  }`}
-                >
-                  <div className="text-base font-bold">{vt.codigo}</div>
-                  <div className="text-[10px] mt-0.5 opacity-70">{vt.nombre}</div>
-                </button>
-              ))}
+              {vts.map(vt => {
+                const routeType = getVTRouteType(vt.frecuencias);
+                const style = ROUTE_STYLES[routeType];
+                const isSelected = selectedVT === vt.codigo;
+                return (
+                  <button key={vt.codigo}
+                    onClick={() => vts.length === 1 ? startSession(vt.codigo) : setSelectedVT(vt.codigo)}
+                    className={`relative py-5 px-3 rounded-xl text-center transition-all active:scale-95 border ${
+                      isSelected
+                        ? `${style.selectedBg} text-white shadow-md ring-2 ${style.selectedRing}`
+                        : `${style.bg} ${style.border} ${style.text} hover:opacity-80 active:opacity-70`
+                    }`}
+                  >
+                    <div className="text-base font-bold">{vt.codigo}</div>
+                    <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/70' : style.subtext}`}>{vt.nombre}</div>
+                    {style.label && !isSelected && (
+                      <span className={`absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full ${style.badgeBg} ${style.badgeText} shadow-sm`}>
+                        {style.label}
+                      </span>
+                    )}
+                    {style.label && isSelected && (
+                      <span className="absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-white/25 text-white shadow-sm">
+                        {style.label}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
