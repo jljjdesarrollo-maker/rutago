@@ -448,22 +448,6 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
         </div>
       </div>
 
-      {/* ─── SYNC OBLIGATORIO banner when online + pending ─── */}
-      {mustSyncBeforeArqueo && (
-        <div className="mx-4 mt-3 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-2xl p-3 flex items-center gap-3 shadow-md">
-          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Wifi className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex-1">
-            <p className="text-white font-black text-sm">SYNC OBLIGATORIO</p>
-            <p className="text-white/80 text-xs">Tienes {pendingCount} venta{pendingCount !== 1 ? 's' : ''} pendiente{pendingCount !== 1 ? 's' : ''}. Debes sincronizar antes de hacer el arqueo.</p>
-          </div>
-          <button onClick={onGoToSync} className="bg-white text-orange-600 font-black text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 active:scale-95 shadow-sm flex-shrink-0">
-            <Send className="w-4 h-4" /> SYNC
-          </button>
-        </div>
-      )}
-
       <div className="flex-1 px-4 py-3 space-y-2 overflow-y-auto pb-6">
         <div className="text-center text-xs text-gray-500 mb-1">
           {new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -706,21 +690,15 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
                       </button>
                     </>
                   )}
-                  {/* ABIERTA: Seguir Vendiendo + Arqueo (or SYNC if online+pending) */}
+                  {/* ABIERTA: Seguir Vendiendo + Arqueo directo */}
                   {estado.estado === 'abierta' && (
                     <>
                       <button onClick={() => onOpenFrequency(estado)} className={`flex-1 py-2 rounded-xl ${rutaColor.bg} text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]`}>
                         <ChevronRight className="w-4 h-4" /> Seguir Vendiendo
                       </button>
-                      {mustSyncBeforeArqueo ? (
-                        <button onClick={onGoToSync} className="flex-1 py-2 rounded-xl bg-orange-500 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
-                          <Send className="w-4 h-4" /> Sync {pendingCount}
-                        </button>
-                      ) : (
-                        <button onClick={() => handleGoToArqueo(estado, esUltimaFrec)} className="flex-1 py-2 rounded-xl bg-blue-600 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
-                          <CheckCircle2 className="w-4 h-4" /> Arqueo
-                        </button>
-                      )}
+                      <button onClick={() => handleGoToArqueo(estado, esUltimaFrec)} className="flex-1 py-2 rounded-xl bg-blue-600 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
+                        <CheckCircle2 className="w-4 h-4" /> Arqueo
+                      </button>
                     </>
                   )}
                   {/* CERRADA */}
