@@ -488,6 +488,18 @@ const preciosVueltaZahuayco: Record<string, { normal: number; media: number }> =
   'Quinara': { normal: 1.00, media: 0.50 },
   'Chumberos': { normal: 1.00, media: 0.50 },
   'Palmira': { normal: 0.75, media: 0.40 },
+  // Intermedios Zahuayco VUELTA
+  'Mal→Loja': { normal: 2.00, media: 1.00 },
+  'Mal→Masan': { normal: 2.00, media: 1.00 },
+  'Mal→Quina': { normal: 2.00, media: 1.00 },
+  'Mal→Chumb': { normal: 2.50, media: 1.25 },
+  'Mal→Palm': { normal: 2.90, media: 1.45 },
+  'Mal→Zahua': { normal: 3.15, media: 1.60 },
+  'Vilc→Masan': { normal: 1.10, media: 0.55 },
+  'Vilc→Quina': { normal: 2.00, media: 1.00 },
+  'Vilc→Chumb': { normal: 2.00, media: 1.00 },
+  'Vilc→Palm': { normal: 2.25, media: 1.15 },
+  'Vilc→Zahua': { normal: 2.50, media: 1.25 },
 };
 
 
@@ -624,7 +636,10 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'Zahuayco', 'Palmira', 'Quinara', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango',
           'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui', 'Chorrillos', 'Nangora',
           'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo',
-          'Cajánuma', 'Dos Puentes', 'Capulí',
+          'Cajánuma', 'Dos Puentes', 'Capulí', 'Loja',
+          // Intermedios Zahuayco VUELTA (Mal→X y Vilc→X)
+          'Mal→Masan', 'Mal→Quina', 'Mal→Chumb', 'Mal→Palm', 'Mal→Zahua', 'Mal→Loja',
+          'Vilc→Masan', 'Vilc→Quina', 'Vilc→Chumb', 'Vilc→Palm', 'Vilc→Zahua',
     ],
   },
   'Loja - El Tambo': {
@@ -738,6 +753,11 @@ function getPrecio(parada: string, ruta: string, tipo: string): { normal: number
     if (ruta === 'Loja - El Tambo') {
       const tamboVuelta = preciosVueltaElTambo[parada];
       if (tamboVuelta) return tamboVuelta;
+    }
+    // Ruta Zahuayco tiene precios de vuelta propios (directos desde Zahuayco)
+    if (ruta === 'Loja - Zahuayco') {
+      const zahuaycoVuelta = preciosVueltaZahuayco[parada];
+      if (zahuaycoVuelta) return zahuaycoVuelta;
     }
     // Ruta Yangana tiene precios de vuelta propios (directos desde Yangana)
     if (ruta === 'Loja - Yangana') {

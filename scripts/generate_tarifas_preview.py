@@ -18,7 +18,7 @@ vuelta_match = re.search(r'const preciosVuelta.*?=(\s*\{.*?\n\});', ts_content, 
 precios_vuelta = parse_price_map(vuelta_match.group(1)) if vuelta_match else {}
 
 vuelta_maps = {}
-for name in ['preciosVueltaElTambo', 'preciosVueltaYangana', 'preciosVueltaVilcabamba', 'preciosVueltaLaElvira']:
+for name in ['preciosVueltaElTambo', 'preciosVueltaZahuayco', 'preciosVueltaYangana', 'preciosVueltaVilcabamba', 'preciosVueltaLaElvira']:
     m = re.search(rf'const {name}.*?=(\s*\{{.*?\n\}});', ts_content, re.DOTALL)
     if m:
         vuelta_maps[name] = parse_price_map(m.group(1))
@@ -69,8 +69,9 @@ RUTAS = {
             'Zahuayco', 'Palmira', 'Quinara', 'Masanamaca', 'Vilcabamba', 'San Pedro', 'Cararango',
             'Cavianga', 'Taxiche', 'Malacatos', 'La Pe\u00f1a', 'Landangui', 'Chorrillos', 'Nangora',
             'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo',
-            'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed',
-    'Loja',
+            'Caj\u00e1numa', 'Dos Puentes', 'Capul\u00ed', 'Loja',
+            'Mal\u2192Masan', 'Mal\u2192Quina', 'Mal\u2192Chumb', 'Mal\u2192Palm', 'Mal\u2192Zahua', 'Mal\u2192Loja',
+            'Vilc\u2192Masan', 'Vilc\u2192Quina', 'Vilc\u2192Chumb', 'Vilc\u2192Palm', 'Vilc\u2192Zahua',
         ],
     },
     'Loja - El Tambo': {
