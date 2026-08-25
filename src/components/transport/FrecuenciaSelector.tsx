@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { type VTSession, type FrecuenciaEstado, type FrecuenciaData, loadPromoConfig } from './types-boletos';
 import { getVentasByFrecuencia, countVentasPendientes } from '@/lib/indexeddb';
+import { matchRuta } from '@/lib/tarifas-data';
 import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck, AlertTriangle, Wrench, Droplets, UserX, Ban, FileText, Truck } from 'lucide-react';
 
 interface Props {
@@ -15,6 +16,61 @@ interface Props {
 }
 
 const today = () => new Date().toISOString().split('T')[0];
+
+// ─── Colores por ruta para botones de frecuencia ───
+type RutaColorKey = 'el_tambo' | 'la_elvira' | 'yangana' | 'zahuayco' | 'vilcabamba';
+
+const RUTA_BUTTON_COLORS: Record<RutaColorKey, { bg: string; shadow: string; border: string; badge: string; text: string; light: string }> = {
+  el_tambo: {
+    bg: 'bg-blue-600',
+    shadow: 'shadow-blue-200',
+    border: 'border-l-blue-600',
+    badge: 'bg-blue-100 text-blue-700',
+    text: 'text-blue-600',
+    light: 'bg-blue-50',
+  },
+  la_elvira: {
+    bg: 'bg-purple-600',
+    shadow: 'shadow-purple-200',
+    border: 'border-l-purple-600',
+    badge: 'bg-purple-100 text-purple-700',
+    text: 'text-purple-600',
+    light: 'bg-purple-50',
+  },
+  yangana: {
+    bg: 'bg-emerald-600',
+    shadow: 'shadow-emerald-200',
+    border: 'border-l-emerald-600',
+    badge: 'bg-emerald-100 text-emerald-700',
+    text: 'text-emerald-600',
+    light: 'bg-emerald-50',
+  },
+  zahuayco: {
+    bg: 'bg-amber-600',
+    shadow: 'shadow-amber-200',
+    border: 'border-l-amber-600',
+    badge: 'bg-amber-100 text-amber-700',
+    text: 'text-amber-600',
+    light: 'bg-amber-50',
+  },
+  vilcabamba: {
+    bg: 'bg-[#912D26]',
+    shadow: 'shadow-red-200',
+    border: 'border-l-[#912D26]',
+    badge: 'bg-red-100 text-[#912D26]',
+    text: 'text-[#912D26]',
+    light: 'bg-red-50',
+  },
+};
+
+function getRutaColorKey(rutaNombre: string): RutaColorKey {
+  const ruta = matchRuta(rutaNombre).toLowerCase();
+  if (ruta.includes('el tambo')) return 'el_tambo';
+  if (ruta.includes('la elvira')) return 'la_elvira';
+  if (ruta.includes('yangana')) return 'yangana';
+  if (ruta.includes('zahuayco')) return 'zahuayco';
+  return 'vilcabamba';
+}
 
 // ─── LocalStorage helpers for estados (synchronous, reliable) ───
 
@@ -598,10 +654,15 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
             const disponible = isFrecuenciaDisponible(index);
             const esUltimaFrec = index === estados.length - 1;
             const bloqueada = !disponible && estado.estado === 'pendiente';
+            const rutaColor = RUTA_BUTTON_COLORS[getRutaColorKey(estado.ruta)];
 
             return (
-              <div key={estado.estadoId} className={`rounded-2xl border p-3 transition-all ${
-                bloqueada ? 'bg-gray-50 border-gray-100 opacity-50' : getStateColor(estado.estado)
+              <div key={estado.estadoId} className={`rounded-2xl border border-l-4 p-3 transition-all ${
+                bloqueada
+                  ? 'bg-gray-50 border-gray-100 border-l-gray-300 opacity-50'
+                  : estado.estado === 'abierta'
+                    ? `${rutaColor.light} ${rutaColor.border}`
+                    : `${getStateColor(estado.estado)} ${rutaColor.border}`
               }`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -624,7 +685,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
                       <Ticket className="w-3 h-3" />
                       <span>{estado.ventasCount} boleto{estado.ventasCount !== 1 ? 's' : ''}</span>
                     </div>
-                    <div className="flex items-center gap-1 bg-[#912D26]/10 text-[#912D26] px-2 py-1 rounded-lg text-xs font-bold">
+                    <div className={`flex items-center gap-1 ${rutaColor.badge} px-2 py-1 rounded-lg text-xs font-bold`}>
                       <DollarSign className="w-3 h-3" />
                       <span>${estado.totalRecaudado.toFixed(2)}</span>
                     </div>
@@ -634,7 +695,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
                   {/* PENDIENTE + disponible */}
                   {estado.estado === 'pendiente' && disponible && (
                     <>
-                      <button onClick={() => handleOpen(estado)} className="flex-1 py-3.5 rounded-xl bg-[#912D26] text-white font-bold text-sm flex items-center justify-center gap-1.5 active:scale-[0.97] shadow-md shadow-red-200">
+                      <button onClick={() => handleOpen(estado)} className={`flex-1 py-3.5 rounded-xl ${rutaColor.bg} text-white font-bold text-sm flex items-center justify-center gap-1.5 active:scale-[0.97] shadow-md ${rutaColor.shadow}`}>
                         <Play className="w-4 h-4" /> Vender
                       </button>
                       <button onClick={() => handleNoRealizada(estado)} className="py-3.5 px-4 rounded-xl bg-orange-100 text-orange-600 font-bold text-sm flex items-center gap-1.5 active:scale-[0.97]" title="No Realizada">
@@ -648,7 +709,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
                   {/* ABIERTA: Seguir Vendiendo + Arqueo (or SYNC if online+pending) */}
                   {estado.estado === 'abierta' && (
                     <>
-                      <button onClick={() => onOpenFrequency(estado)} className="flex-1 py-2 rounded-xl bg-green-600 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
+                      <button onClick={() => onOpenFrequency(estado)} className={`flex-1 py-2 rounded-xl ${rutaColor.bg} text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]`}>
                         <ChevronRight className="w-4 h-4" /> Seguir Vendiendo
                       </button>
                       {mustSyncBeforeArqueo ? (
