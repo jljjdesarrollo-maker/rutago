@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { type FrecuenciaEstado, type VTSession } from './types-boletos';
-import { getVentasByFrecuencia } from '@/lib/indexeddb';
+import { getVentasByFrecuencia, countVentasPendientes, syncVentasSilencioso } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
-import { DollarSign, Check, ChevronLeft, AlertTriangle, TrendingDown, TrendingUp, Equal, ArrowRight } from 'lucide-react';
+import { DollarSign, Check, ChevronLeft, AlertTriangle, TrendingDown, TrendingUp, Equal, ArrowRight, RefreshCw, WifiOff, CheckCircle } from 'lucide-react';
 
 interface Props {
   session: VTSession;
@@ -21,6 +21,10 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
   const [confirmado, setConfirmado] = useState(false);
   const [saving, setSaving] = useState(false);
   const [ventasOpen, setVentasOpen] = useState(false);
+  // Sync visible state
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ synced: number; failed: number; total: number } | null>(null);
+  const [noInternet, setNoInternet] = useState(false);
 
   const loadVentas = useCallback(async () => {
     const all = await getVentasByFrecuencia(estado.estadoId);
@@ -76,6 +80,21 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
         }
       } catch (e) { console.error('LS error:', e); }
       setConfirmado(true);
+      // Start visible sync after arqueo confirmation
+      if (navigator.onLine) {
+        setSyncing(true);
+        try {
+          const result = await syncVentasSilencioso();
+          setSyncResult(result);
+        } catch {
+          setSyncResult({ synced: 0, failed: 0, total: 0 });
+        }
+        setSyncing(false);
+      } else {
+        setNoInternet(true);
+        const count = await countVentasPendientes();
+        setSyncResult({ synced: 0, failed: 0, total: count });
+      }
     } catch (err) {
       console.error('Error guardando arqueo:', err);
     } finally {
@@ -104,19 +123,48 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
           {sobrante && <p className="text-green-200 font-bold text-lg">SOBRANTE: ${diferencia.toFixed(2)}</p>}
           {faltante && <p className="text-yellow-200 font-bold text-lg">FALTANTE: ${Math.abs(diferencia).toFixed(2)}</p>}
 
+          {/* Sync visible */}
+          <div className="mt-6 w-full max-w-xs">
+            {syncing ? (
+              <div className="bg-white/20 rounded-2xl px-6 py-5 text-center">
+                <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2" />
+                <p className="font-bold text-sm">Sincronizando ventas...</p>
+              </div>
+            ) : noInternet && syncResult ? (
+              <div className="bg-red-500/40 rounded-2xl px-6 py-4 text-center">
+                <WifiOff className="w-6 h-6 mx-auto mb-1" />
+                <p className="font-bold text-sm">Sin internet</p>
+                <p className="text-white/80 text-xs mt-1">{syncResult.total} venta{syncResult.total !== 1 ? 's' : ''} pendiente{syncResult.total !== 1 ? 's' : ''} se sincronizara{syncResult.total === 1 ? '' : 'n'} despues</p>
+              </div>
+            ) : syncResult && syncResult.synced > 0 ? (
+              <div className="bg-green-500/40 rounded-2xl px-6 py-4 text-center">
+                <CheckCircle className="w-6 h-6 mx-auto mb-1" />
+                <p className="font-bold text-sm">{syncResult.synced} venta{syncResult.synced !== 1 ? 's' : ''} sincronizada{syncResult.synced === 1 ? '' : 's'}</p>
+                {syncResult.failed > 0 && (
+                  <p className="text-yellow-200 text-xs mt-1">{syncResult.failed} con error</p>
+                )}
+              </div>
+            ) : syncResult && syncResult.synced === 0 && syncResult.total === 0 ? (
+              <div className="bg-white/20 rounded-2xl px-6 py-4 text-center">
+                <CheckCircle className="w-6 h-6 mx-auto mb-1" />
+                <p className="font-bold text-sm">Todo al dia</p>
+              </div>
+            ) : null}
+          </div>
+
           {!esUltima && (
-            <div className="mt-6 bg-white/20 rounded-2xl px-6 py-4 text-center">
+            <div className="mt-4 bg-white/20 rounded-2xl px-6 py-3 text-center">
               <p className="text-sm font-medium">Siguiente frecuencia habilitada</p>
             </div>
           )}
 
           {esUltima && (
-            <div className="mt-6 bg-white/20 rounded-2xl px-6 py-4 text-center">
+            <div className="mt-4 bg-white/20 rounded-2xl px-6 py-3 text-center">
               <p className="text-sm font-medium">Todas las frecuencias completadas</p>
             </div>
           )}
 
-          <div className="mt-8 w-full max-w-xs">
+          <div className="mt-6 w-full max-w-xs">
             <button onClick={handleFinish}
               className="w-full py-4 rounded-2xl bg-white/20 text-white font-bold text-lg flex items-center justify-center gap-2 active:scale-95">
               {esUltima ? 'FINALIZAR' : 'CONTINUAR'} <ArrowRight className="w-5 h-5" />
