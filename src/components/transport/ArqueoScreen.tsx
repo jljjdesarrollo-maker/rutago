@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { type FrecuenciaEstado, type VTSession } from './types-boletos';
-import { getVentasByFrecuencia } from '@/lib/indexeddb';
+import { getVentasByFrecuencia, syncVentasSilencioso } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
 import { DollarSign, Check, ChevronLeft, AlertTriangle, TrendingDown, TrendingUp, Equal, Send, ArrowRight } from 'lucide-react';
 
@@ -76,6 +76,12 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
           }
         }
       } catch (e) { console.error('LS error:', e); }
+      // ─── Auto-sync silencioso en background (fire & forget) ───
+      if (navigator.onLine) {
+        syncVentasSilencioso().then(r => {
+          if (r.synced > 0) console.log(`[AutoSync] ${r.synced}/${r.total} ventas sincronizadas tras arqueo`);
+        }).catch(() => {});
+      }
       setConfirmado(true);
     } catch (err) {
       console.error('Error guardando arqueo:', err);
@@ -118,12 +124,6 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
           )}
 
           <div className="mt-8 w-full max-w-xs">
-            {connection.pendingCount > 0 && connection.status !== 'offline' && (
-              <button onClick={onGoToSync}
-                className="w-full py-4 rounded-2xl bg-white text-[#912D26] font-black text-lg mb-3 flex items-center justify-center gap-2 active:scale-95">
-                <Send className="w-5 h-5" /> SINCRONIZAR {connection.pendingCount} VENTAS
-              </button>
-            )}
             <button onClick={handleFinish}
               className="w-full py-4 rounded-2xl bg-white/20 text-white font-bold text-lg flex items-center justify-center gap-2 active:scale-95">
               {esUltima ? 'FINALIZAR' : 'CONTINUAR'} <ArrowRight className="w-5 h-5" />

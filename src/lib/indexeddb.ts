@@ -300,3 +300,54 @@ export async function updateEstadoFrecuencia(estadoId: string, updates: Partial<
   if (!existing) return;
   await saveEstadoFrecuencia({ ...existing, ...updates });
 }
+
+// ─── Sync silencioso (reutilizable) ───
+// Sincroniza todas las ventas pendientes al servidor.
+// Retorna { synced, failed, total }. Si no hay internet, retorna { synced: 0, failed: 0, total: N }.
+export async function syncVentasSilencioso(): Promise<{ synced: number; failed: number; total: number }> {
+  if (!navigator.onLine) {
+    const all = await getVentasPendientes();
+    return { synced: 0, failed: 0, total: all.length };
+  }
+
+  try {
+    await resetErroredToPending();
+  } catch { /* ignore */ }
+
+  const ventas = await getVentasPendientes();
+  const valid = ventas.filter(v => v && v.id && typeof v.cobrado === 'number');
+  let synced = 0;
+  let failed = 0;
+
+  for (const venta of valid) {
+    try {
+      const res = await fetch('/api/ventas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fecha: venta.fecha, vtCode: venta.vtCode, frecuenciaId: venta.frecuenciaId,
+          ruta: venta.ruta, parada: venta.parada, tipo: venta.tipo,
+          tarifaOficial: venta.tarifaOficial, cobrado: venta.cobrado,
+          hora: venta.hora, ayudanteId: venta.ayudanteId, ayudanteNombre: venta.ayudanteNombre,
+          createdAt: venta.createdAt, localId: venta.id,
+          ...(venta.lat != null ? { lat: venta.lat } : {}),
+          ...(venta.lng != null ? { lng: venta.lng } : {}),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        await markVentaSynced(venta.id, data.venta?.id || '');
+        synced++;
+      } else {
+        const err = await res.json().catch(() => ({}));
+        await markVentaError(venta.id, err.error || 'Error del servidor');
+        failed++;
+      }
+    } catch {
+      await markVentaError(venta.id, 'Sin conexion');
+      failed++;
+    }
+  }
+
+  return { synced, failed, total: valid.length };
+}

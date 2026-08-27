@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { type VTSession } from './types-boletos';
-import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer } from 'lucide-react';
+import { countVentasPendientes, syncVentasSilencioso } from '@/lib/indexeddb';
+import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
 const APP_VERSION = 'v3.15-aug16-vuelto-guide';
@@ -137,6 +138,32 @@ export function HomeScreenVT({ onSessionStart }: Props) {
       }
     } catch { /* ignore */ }
   }, []);
+
+  // ─── Bloqueo por ventas pendientes de VTs anteriores ───
+  const [pendingVentasCount, setPendingVentasCount] = useState(0);
+  const [syncingPending, setSyncingPending] = useState(false);
+  const [pendingCheckDone, setPendingCheckDone] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const count = await countVentasPendientes();
+        setPendingVentasCount(count);
+      } catch { /* ignore */ }
+      setPendingCheckDone(true);
+    })();
+  }, []);
+
+  const handleForceSync = async () => {
+    if (!navigator.onLine) return;
+    setSyncingPending(true);
+    try {
+      const result = await syncVentasSilencioso();
+      const remaining = await countVentasPendientes();
+      setPendingVentasCount(remaining);
+    } catch { /* ignore */ }
+    setSyncingPending(false);
+  };
 
   const startSession = (vtCode: string, forceNew = false) => {
     if (!ayudante) return;
@@ -484,16 +511,45 @@ export function HomeScreenVT({ onSessionStart }: Props) {
         )}
 
         {/* Boton Iniciar — grande y prominente */}
-        <button onClick={handleStart} disabled={!selectedVT || !ayudante}
+        <button onClick={handleStart} disabled={!selectedVT || !ayudante || pendingVentasCount > 0}
           className={`w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 transition-all ${
-            selectedVT && ayudante
+            selectedVT && ayudante && pendingVentasCount === 0
               ? 'bg-[#912D26] text-white shadow-xl shadow-red-300 active:scale-[0.97]'
               : 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed'
           }`}
         >
-          Iniciar Turno <ArrowRight className="w-6 h-6" />
+          {pendingVentasCount > 0
+            ? `ESPERANDO SYNC — ${pendingVentasCount} VENTAS`
+            : 'Iniciar Turno'
+          } <ArrowRight className="w-6 h-6" />
         </button>
       </div>
+
+      {/* Ventas pendientes — bloquear inicio de nuevo VT */}
+      {pendingVentasCount > 0 && pendingCheckDone && (
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-[#912D26] to-[#b33d34] p-4 shadow-2xl z-40">
+          <div className="max-w-lg mx-auto">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-5 h-5 text-white" />
+              <p className="text-white font-bold text-sm">Ventas sin sincronizar</p>
+            </div>
+            <p className="text-white/90 text-xs mb-3">
+              Tienes <strong>{pendingVentasCount} venta{pendingVentasCount !== 1 ? 's' : ''}</strong> pendiente{pendingVentasCount !== 1 ? 's' : ''} de un turno anterior. Debes sincronizar antes de iniciar uno nuevo.
+            </p>
+            {navigator.onLine ? (
+              <button onClick={handleForceSync} disabled={syncingPending}
+                className="w-full py-3 rounded-xl bg-white text-[#912D26] font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60">
+                {syncingPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
+                {syncingPending ? 'SINCRONIZANDO...' : `SINCRONIZAR ${pendingVentasCount} VENTAS`}
+              </button>
+            ) : (
+              <div className="w-full py-3 rounded-xl bg-white/20 text-white/80 text-sm flex items-center justify-center gap-2">
+                <WifiOff className="w-4 h-4" /> SIN INTERNET — CONECTA PARA SINCRONIZAR
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Existing unfinished session banner */}
       {existingUnfinished && existingSession && (
