@@ -6,6 +6,7 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
+    const limit = Math.min(Number(url.searchParams.get('limit')) || 30, 100);
 
     const where: Record<string, unknown> = {};
     if (from && to) {
@@ -15,6 +16,7 @@ export async function GET(req: NextRequest) {
     const records = await db.dailyRecord.findMany({
       where,
       orderBy: { date: 'desc' },
+      take: limit,
       include: {
         trips: { orderBy: { order: 'asc' } },
         expenses: { orderBy: { order: 'asc' } },
