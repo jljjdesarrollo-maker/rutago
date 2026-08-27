@@ -6,7 +6,7 @@ import { countVentasPendientes, syncVentasSilencioso } from '@/lib/indexeddb';
 import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.19-aug27-fix-413-records';
+const APP_VERSION = 'v3.20-aug27-fix-413-v2';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;

@@ -8,39 +8,39 @@ export async function GET(req: NextRequest) {
     const to = url.searchParams.get('to');
     const limit = Math.min(Number(url.searchParams.get('limit')) || 10, 50);
     const includeRelations = url.searchParams.get('include') === 'trips';
-    const includePhoto = url.searchParams.get('include') === 'photo';
 
     const where: Record<string, unknown> = {};
     if (from && to) {
       where.date = { gte: from, lte: to };
     }
 
-    // Build dynamic select/include
-    const queryOpts: any = {
+    const records = await db.dailyRecord.findMany({
       where,
       orderBy: { date: 'desc' },
       take: limit,
-    };
+    });
 
+    // Strip heavy fields — never return photoUrl in list
+    const clean = records.map(r => {
+      const { photoUrl, ...rest } = r;
+      return rest;
+    });
+
+    // If relations requested, fetch separately per record (avoid bloat)
     if (includeRelations) {
-      queryOpts.include = {
-        trips: { orderBy: { order: 'asc' } },
-        expenses: { orderBy: { order: 'asc' } },
-      };
-    } else {
-      // Exclude photoUrl by default (base64 bloat)
-      queryOpts.select = {
-        id: true, date: true, km: true, conductor: true,
-        ayudanteNombre: true, vtCode: true, production: true,
-        cajaComun: true, sobrante: true, tickets: true,
-        entregaAyudante: true, entregaCompania: true, totalGastos: true,
-        createdAt: true, updatedAt: true,
-        ...(includePhoto ? { photoUrl: true } : {}),
-      };
+      const withRelations = await db.dailyRecord.findMany({
+        where: { id: { in: clean.map(r => r.id) } },
+        orderBy: { date: 'desc' },
+        include: { trips: { orderBy: { order: 'asc' } }, expenses: { orderBy: { order: 'asc' } } },
+      });
+      const cleanWithRel = withRelations.map(r => {
+        const { photoUrl, ...rest } = r;
+        return rest;
+      });
+      return NextResponse.json(cleanWithRel);
     }
 
-    const records = await db.dailyRecord.findMany(queryOpts);
-    return NextResponse.json(records);
+    return NextResponse.json(clean);
   } catch (error) {
     console.error('Error fetching records:', error);
     return NextResponse.json({ error: 'Error al obtener registros' }, { status: 500 });
