@@ -79,9 +79,8 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     try {
       const { getVentasByFrecuencia } = await import('@/lib/indexeddb');
       const ventas = await getVentasByFrecuencia(estado.estadoId);
-      const unsynced = ventas.filter(v => v.syncStatus === 'pending' || v.syncStatus === 'error');
-      setVentasHoy(unsynced.length);
-      setTotalHoy(unsynced.reduce((sum, v) => sum + v.cobrado, 0));
+      setVentasHoy(ventas.length);
+      setTotalHoy(ventas.reduce((sum, v) => sum + v.cobrado, 0));
       setContadorVentasFrecuencia(ventas.length);
     } catch { /* ignore */ }
   }, [estado.estadoId]);

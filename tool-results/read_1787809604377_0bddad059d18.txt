@@ -1,0 +1,611 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useState, useEffect, useCallback, useRef } from 'react';
+     4→     4→import { type VTSession } from './types-boletos';
+     5→     5→import { countVentasPendientes, syncVentasSilencioso } from '@/lib/indexeddb';
+     6→     6→import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+     7→     7→
+     8→     8→// Version build — se actualiza con cada deploy
+     9→     9→const APP_VERSION = 'v3.20-aug27-fix-413-v2';
+    10→    10→
+    11→    11→interface Props {
+    12→    12→  onSessionStart: (session: VTSession) => void;
+    13→    13→}
+    14→    14→
+    15→    15→interface VTOption {
+    16→    16→  id: string;
+    17→    17→  codigo: string;
+    18→    18→  nombre: string;
+    19→    19→  frecuencias?: { routeFrom: string; routeTo: string; time: string }[];
+    20→    20→}
+    21→    21→
+    22→    22→type VTRouteType = 'vilcabamba' | 'el_tambo' | 'la_elvira' | 'yangana' | 'zahuayco';
+    23→    23→
+    24→    24→const ROUTE_STYLES: Record<VTRouteType, {
+    25→    25→  bg: string; border: string; text: string; subtext: string;
+    26→    26→  selectedBg: string; selectedRing: string;
+    27→    27→  label: string; badgeBg: string; badgeText: string;
+    28→    28→}> = {
+    29→    29→  vilcabamba: {
+    30→    30→    bg: 'bg-gray-100', border: 'border-gray-200', text: 'text-[#3A3A3A]', subtext: 'text-gray-400',
+    31→    31→    selectedBg: 'bg-[#912D26]', selectedRing: 'ring-red-400',
+    32→    32→    label: '', badgeBg: '', badgeText: '',
+    33→    33→  },
+    34→    34→  el_tambo: {
+    35→    35→    bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-900', subtext: 'text-amber-500',
+    36→    36→    selectedBg: 'bg-amber-700', selectedRing: 'ring-amber-400',
+    37→    37→    label: 'El Tambo', badgeBg: 'bg-amber-100', badgeText: 'text-amber-700',
+    38→    38→  },
+    39→    39→  la_elvira: {
+    40→    40→    bg: 'bg-violet-50', border: 'border-violet-300', text: 'text-violet-900', subtext: 'text-violet-400',
+    41→    41→    selectedBg: 'bg-violet-700', selectedRing: 'ring-violet-400',
+    42→    42→    label: 'La Elvira', badgeBg: 'bg-violet-100', badgeText: 'text-violet-700',
+    43→    43→  },
+    44→    44→  yangana: {
+    45→    45→    bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-900', subtext: 'text-emerald-400',
+    46→    46→    selectedBg: 'bg-emerald-700', selectedRing: 'ring-emerald-400',
+    47→    47→    label: 'Yangana', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700',
+    48→    48→  },
+    49→    49→  zahuayco: {
+    50→    50→    bg: 'bg-sky-50', border: 'border-sky-300', text: 'text-sky-900', subtext: 'text-sky-400',
+    51→    51→    selectedBg: 'bg-sky-700', selectedRing: 'ring-sky-400',
+    52→    52→    label: 'Zahuayco', badgeBg: 'bg-sky-100', badgeText: 'text-sky-700',
+    53→    53→  },
+    54→    54→};
+    55→    55→
+    56→    56→function getVTRouteType(frecuencias?: { routeFrom: string; routeTo: string }[]): VTRouteType {
+    57→    57→  if (!frecuencias || frecuencias.length === 0) return 'vilcabamba';
+    58→    58→  const allDests = [...frecuencias.map(f => f.routeTo), ...frecuencias.map(f => f.routeFrom)];
+    59→    59→  if (allDests.some(d => d === 'El Tambo')) return 'el_tambo';
+    60→    60→  if (allDests.some(d => d === 'La Elvira')) return 'la_elvira';
+    61→    61→  if (allDests.some(d => d === 'Yangana')) return 'yangana';
+    62→    62→  if (allDests.some(d => d === 'Zahuayco')) return 'zahuayco';
+    63→    63→  return 'vilcabamba';
+    64→    64→}
+    65→    65→
+    66→    66→interface AyudanteActivo {
+    67→    67→  id: string;
+    68→    68→  nombre: string;
+    69→    69→  pin: string;
+    70→    70→}
+    71→    71→
+    72→    72→export function HomeScreenVT({ onSessionStart }: Props) {
+    73→    73→  const [vts, setVts] = useState<VTOption[]>([]);
+    74→    74→  const [ayudante, setAyudante] = useState<AyudanteActivo | null>(null);
+    75→    75→  const [loading, setLoading] = useState(true);
+    76→    76→  const [selectedVT, setSelectedVT] = useState<string>('');
+    77→    77→  const [existingSession, setExistingSession] = useState<VTSession & { timestamp: number } | null>(null);
+    78→    78→  const [existingUnfinished, setExistingUnfinished] = useState(false);
+    79→    79→  const [confirmNewSession, setConfirmNewSession] = useState(false);
+    80→    80→  // Printer state
+    81→    81→  const [printerStatus, setPrinterStatus] = useState<'unknown' | 'connecting' | 'connected' | 'error' | 'unavailable'>('unknown');
+    82→    82→  const [printerName, setPrinterName] = useState<string>('');
+    83→    83→  const [printing, setPrinting] = useState(false);
+    84→    84→  const [printerLog, setPrinterLog] = useState<string[]>([]);
+    85→    85→  const printerDeviceRef = useRef<BluetoothDevice | null>(null);
+    86→    86→
+    87→    87→  const pLog = (msg: string) => {
+    88→    88→    const t = new Date().toLocaleTimeString();
+    89→    89→    setPrinterLog(prev => [...prev, `${t} ${msg}`]);
+    90→    90→    console.log('[Printer]', msg);
+    91→    91→  };
+    92→    92→
+    93→    93→  useEffect(() => {
+    94→    94→    Promise.all([
+    95→    95→      fetch('/api/bus-vts').then(res => res.json()),
+    96→    96→      fetch('/api/personas?rol=AYUDANTE&esActual=true').then(res => res.json()),
+    97→    97→    ])
+    98→    98→      .then(([vtsData, ayudanteData]) => {
+    99→    99→        if (Array.isArray(vtsData)) {
+   100→   100→          const mapped = vtsData.map((vt: any) => ({
+   101→   101→            id: vt.id,
+   102→   102→            codigo: vt.codigo,
+   103→   103→            nombre: vt.nombre,
+   104→   104→            frecuencias: vt.frecuencias || [],
+   105→   105→          }));
+   106→   106→          setVts(mapped);
+   107→   107→          if (mapped.length === 1) {
+   108→   108→            setSelectedVT(mapped[0].codigo);
+   109→   109→          }
+   110→   110→        }
+   111→   111→        const activos = Array.isArray(ayudanteData)
+   112→   112→          ? ayudanteData.filter((p: any) => p.esActual)
+   113→   113→          : [];
+   114→   114→        if (activos.length > 0) {
+   115→   115→          setAyudante({ id: activos[0].id, nombre: activos[0].nombre, pin: activos[0].pin });
+   116→   116→        }
+   117→   117→      })
+   118→   118→      .catch(err => console.error('Error cargando datos:', err))
+   119→   119→      .finally(() => setLoading(false));
+   120→   120→
+   121→   121→    // Check for existing unfinished VT session
+   122→   122→    try {
+   123→   123→      const stored = localStorage.getItem('rg_vt_session');
+   124→   124→      if (stored) {
+   125→   125→        const saved: VTSession & { timestamp: number } = JSON.parse(stored);
+   126→   126→        if (saved.vtCode && saved.fecha) {
+   127→   127→          const estadosKey = `rg_estados_${saved.vtCode}_${saved.fecha}`;
+   128→   128→          const estadosRaw = localStorage.getItem(estadosKey);
+   129→   129→          if (estadosRaw) {
+   130→   130→            const estados: { estado: string }[] = JSON.parse(estadosRaw);
+   131→   131→            const hasUnfinished = estados.some(e => e.estado === 'pendiente' || e.estado === 'abierta');
+   132→   132→            if (hasUnfinished) {
+   133→   133→              setExistingSession(saved);
+   134→   134→              setExistingUnfinished(true);
+   135→   135→            }
+   136→   136→          }
+   137→   137→        }
+   138→   138→      }
+   139→   139→    } catch { /* ignore */ }
+   140→   140→  }, []);
+   141→   141→
+   142→   142→  // ─── Bloqueo por ventas pendientes de VTs anteriores ───
+   143→   143→  const [pendingVentasCount, setPendingVentasCount] = useState(0);
+   144→   144→  const [syncingPending, setSyncingPending] = useState(false);
+   145→   145→  const [pendingCheckDone, setPendingCheckDone] = useState(false);
+   146→   146→
+   147→   147→  useEffect(() => {
+   148→   148→    (async () => {
+   149→   149→      try {
+   150→   150→        const count = await countVentasPendientes();
+   151→   151→        setPendingVentasCount(count);
+   152→   152→      } catch { /* ignore */ }
+   153→   153→      setPendingCheckDone(true);
+   154→   154→    })();
+   155→   155→  }, []);
+   156→   156→
+   157→   157→  const handleForceSync = async () => {
+   158→   158→    if (!navigator.onLine) return;
+   159→   159→    setSyncingPending(true);
+   160→   160→    try {
+   161→   161→      const result = await syncVentasSilencioso();
+   162→   162→      const remaining = await countVentasPendientes();
+   163→   163→      setPendingVentasCount(remaining);
+   164→   164→    } catch { /* ignore */ }
+   165→   165→    setSyncingPending(false);
+   166→   166→  };
+   167→   167→
+   168→   168→  const startSession = (vtCode: string, forceNew = false) => {
+   169→   169→    if (!ayudante) return;
+   170→   170→    // If there's an existing unfinished session and starting a different/new VT, warn first
+   171→   171→    if (existingUnfinished && !forceNew && existingSession) {
+   172→   172→      setConfirmNewSession(true);
+   173→   173→      return;
+   174→   174→    }
+   175→   175→    const vt = vts.find(v => v.codigo === vtCode)!;
+   176→   176→    const newSession: VTSession = {
+   177→   177→      vtCode: vt.codigo,
+   178→   178→      nombre: vt.nombre,
+   179→   179→      ayudanteId: ayudante.id,
+   180→   180→      ayudanteNombre: ayudante.nombre,
+   181→   181→      fecha: new Date().toISOString().split('T')[0],
+   182→   182→    };
+   183→   183→    const today = newSession.fecha;
+   184→   184→    // Limpiar estados previos del mismo VT/fecha por si quedaron huérfanos
+   185→   185→    localStorage.removeItem(`rg_estados_${vtCode}_${today}`);
+   186→   186→    localStorage.removeItem(`arqueo_general_${vtCode}_${today}`);
+   187→   187→    localStorage.setItem('rg_vt_session', JSON.stringify({
+   188→   188→      ...newSession,
+   189→   189→      timestamp: Date.now(),
+   190→   190→    }));
+   191→   191→    setConfirmNewSession(false);
+   192→   192→    setExistingUnfinished(false);
+   193→   193→    setExistingSession(null);
+   194→   194→    onSessionStart(newSession);
+   195→   195→  };
+   196→   196→
+   197→   197→  const handleResumeOld = () => {
+   198→   198→    if (!existingSession) return;
+   199→   199→    const { timestamp, ...sessionData } = existingSession;
+   200→   200→    onSessionStart(sessionData);
+   201→   201→  };
+   202→   202→
+   203→   203→  const handleForceNew = () => {
+   204→   204→    if (!selectedVT) return;
+   205→   205→    setConfirmNewSession(false);
+   206→   206→    startSession(selectedVT, true);
+   207→   207→  };
+   208→   208→
+   209→   209→  const handleStart = () => {
+   210→   210→    if (!selectedVT) return;
+   211→   211→    startSession(selectedVT);
+   212→   212→  };
+   213→   213→
+   214→   214→  // ─── Printer connection ───
+   215→   215→  const checkPrinterStatus = useCallback(async () => {
+   216→   216→    try {
+   217→   217→      const { isBluetoothAvailable, autoConnectPrinter, clearLastPrinter } = await import('@/lib/printer');
+   218→   218→      if (!isBluetoothAvailable()) {
+   219→   219→        setPrinterStatus('unavailable');
+   220→   220→        return;
+   221→   221→      }
+   222→   222→      const device = await autoConnectPrinter();
+   223→   223→      if (device) {
+   224→   224→        setPrinterName(device.name || 'Impresora');
+   225→   225→        setPrinterStatus('connected');
+   226→   226→      } else {
+   227→   227→        setPrinterStatus('unknown');
+   228→   228→      }
+   229→   229→    } catch {
+   230→   230→      setPrinterStatus('error');
+   231→   231→    }
+   232→   232→  }, []);
+   233→   233→
+   234→   234→  useEffect(() => { checkPrinterStatus(); }, [checkPrinterStatus]);
+   235→   235→
+   236→   236→  const [printerError, setPrinterError] = useState('');
+   237→   237→
+   238→   238→  const handleConnectPrinter = async () => {
+   239→   239→    setPrinterStatus('connecting');
+   240→   240→    setPrinterError('');
+   241→   241→    try {
+   242→   242→      const { isBluetoothAvailable, requestPrinter, setCachedDevice } = await import('@/lib/printer');
+   243→   243→      if (!isBluetoothAvailable()) {
+   244→   244→        setPrinterStatus('unavailable');
+   245→   245→        setPrinterError('Bluetooth no disponible en este navegador');
+   246→   246→        return;
+   247→   247→      }
+   248→   248→      const device = await requestPrinter();
+   249→   249→      if (device) {
+   250→   250→        setCachedDevice(device);
+   251→   251→        printerDeviceRef.current = device;
+   252→   252→        setPrinterName(device.name || 'Impresora');
+   253→   253→        setPrinterStatus('connected');
+   254→   254→        pLog(`Guardada referencia directa: ${device.name}`);
+   255→   255→      } else {
+   256→   256→        setPrinterStatus('error');
+   257→   257→        setPrinterError('No se selecciono ninguna impresora');
+   258→   258→      }
+   259→   259→    } catch (e) {
+   260→   260→      setPrinterStatus('error');
+   261→   261→      setPrinterError((e as Error).message || 'Error al conectar');
+   262→   262→    }
+   263→   263→  };
+   264→   264→
+   265→   265→  // ─── Test print (with detailed logging) ───
+   266→   266→  const handleTestPrint = async () => {
+   267→   267→    setPrinting(true);
+   268→   268→    setPrinterLog([]);
+   269→   269→    pLog('Iniciando prueba de impresion...');
+   270→   270→    try {
+   271→   271→      const { isBluetoothAvailable, getPrinterDevice } = await import('@/lib/printer');
+   272→   272→      const { generateTicketBytes } = await import('@/lib/ticket-escpos');
+   273→   273→      if (!isBluetoothAvailable()) {
+   274→   274→        pLog('ERROR: Web Bluetooth no disponible');
+   275→   275→        setPrinterStatus('unavailable'); setPrinting(false); return;
+   276→   276→      }
+   277→   277→
+   278→   278→      // Use cached device (fast, no getDevices lookup needed)
+   279→   279→      const device = printerDeviceRef.current || await getPrinterDevice();
+   280→   280→      if (!device) {
+   281→   281→        pLog('ERROR: No hay impresora guardada. Conectala primero.');
+   282→   282→        setPrinterStatus('error'); setPrinting(false); return;
+   283→   283→      }
+   284→   284→      pLog(`Device: ${device.name || 'sin nombre'}`);
+   285→   285→
+   286→   286→      // GATT connect
+   287→   287→      pLog('Conectando GATT...');
+   288→   288→      if (!device.gatt) {
+   289→   289→        pLog('ERROR: device.gatt es null');
+   290→   290→        setPrinterStatus('error'); setPrinting(false); return;
+   291→   291→      }
+   292→   292→      const gatt = device.gatt.connected ? device.gatt : await device.gatt.connect();
+   293→   293→      pLog('GATT conectado!');
+   294→   294→
+   295→   295→      // Find writable characteristic
+   296→   296→      pLog('Buscando servicio de impresion...');
+   297→   297→      const uuids = ['0000ff00-0000-1000-8000-00805f9b34fb','0000ff01-0000-1000-8000-00805f9b34fb','e7810a71-73ae-499d-8c15-faa9aef0c3f2','00001101-0000-1000-8000-00805f9b34fb'];
+   298→   298→      let writableChar: BluetoothRemoteGATTCharacteristic | null = null;
+   299→   299→      for (const uuid of uuids) {
+   300→   300→        try {
+   301→   301→          const svc = await gatt.getPrimaryService(uuid);
+   302→   302→          const chars = await svc.getCharacteristics();
+   303→   303→          for (const c of chars) {
+   304→   304→            if (c.properties.write || c.properties.writeWithoutResponse) {
+   305→   305→              writableChar = c;
+   306→   306→              pLog(`Char OK en servicio ${uuid.slice(4,8)}`);
+   307→   307→              break;
+   308→   308→            }
+   309→   309→          }
+   310→   310→          if (writableChar) break;
+   311→   311→        } catch { pLog(`Servicio ${uuid.slice(4,8)}: NO`); }
+   312→   312→      }
+   313→   313→      if (!writableChar) {
+   314→   314→        pLog('Fallo UUIDs. Enumerando todos los servicios...');
+   315→   315→        const svcs = await gatt.getPrimaryServices();
+   316→   316→        pLog(`${svcs.length} servicios encontrados`);
+   317→   317→        for (const s of svcs) {
+   318→   318→          try {
+   319→   319→            const cs = await s.getCharacteristics();
+   320→   320→            for (const c of cs) {
+   321→   321→              if ((c.properties.write || c.properties.writeWithoutResponse) && !writableChar) {
+   322→   322→                writableChar = c;
+   323→   323→                pLog(`Char encontrado en ${s.uuid.slice(4,8)}`);
+   324→   324→              }
+   325→   325→            }
+   326→   326→          } catch { /* skip */ }
+   327→   327→        }
+   328→   328→      }
+   329→   329→      if (!writableChar) {
+   330→   330→        pLog('ERROR: No se encontro char escribible');
+   331→   331→        await gatt.disconnect();
+   332→   332→        setPrinterStatus('error'); setPrinting(false); return;
+   333→   333→      }
+   334→   334→      pLog(`Char: writeNR=${writableChar.properties.writeWithoutResponse} write=${writableChar.properties.write}`);
+   335→   335→
+   336→   336→      // Send ticket
+   337→   337→      const bytes = generateTicketBytes({
+   338→   338→        ruta: 'Test Loja-Vilcabamba', horaFrecuencia: '12:00', fecha: '14/08/26',
+   339→   339→        hora: new Date().toTimeString().slice(0, 5), ayudanteNombre: 'Test',
+   340→   340→        destino: 'Prueba OK', tipoPasajero: 'Entero', tarifa: 0.00, boletoNum: 1,
+   341→   341→        esViajeGratis: false, textoPublicidad: 'Quieres RutaGo? 0997149000',
+   342→   342→      });
+   343→   343→      pLog(`Enviando ${bytes.length} bytes...`);
+   344→   344→      try {
+   345→   345→        if (writableChar.properties.writeWithoutResponse) {
+   346→   346→          await writableChar.writeValueWithoutResponse(bytes.buffer);
+   347→   347→        } else {
+   348→   348→          await writableChar.writeValue(bytes.buffer);
+   349→   349→        }
+   350→   350→        pLog('Datos enviados OK!');
+   351→   351→      } catch (sendErr) {
+   352→   352→        pLog(`ERROR al enviar: ${(sendErr as Error).message}`);
+   353→   353→        await gatt.disconnect();
+   354→   354→        setPrinterStatus('error'); setPrinting(false); return;
+   355→   355→      }
+   356→   356→      await gatt.disconnect();
+   357→   357→      pLog('Prueba completada!');
+   358→   358→      setPrinterStatus('connected');
+   359→   359→    } catch (e) {
+   360→   360→      pLog(`ERROR: ${(e as Error).message}`);
+   361→   361→      setPrinterStatus('error');
+   362→   362→    }
+   363→   363→    setPrinting(false);
+   364→   364→  };
+   365→   365→
+   366→   366→  if (loading) {
+   367→   367→    return (
+   368→   368→      <div className="flex flex-col min-h-[100dvh] bg-gray-50 items-center justify-center">
+   369→   369→        <Loader2 className="w-8 h-8 text-[#912D26] animate-spin" />
+   370→   370→        <p className="mt-3 text-[#3A3A3A] text-sm">Cargando...</p>
+   371→   371→      </div>
+   372→   372→    );
+   373→   373→  }
+   374→   374→
+   375→   375→  return (
+   376→   376→    <div className="flex flex-col min-h-[100dvh] bg-gray-50">
+   377→   377→      {/* Header compacto */}
+   378→   378→      <div className="bg-[#912D26] text-white px-5 py-5 rounded-b-2xl shadow-lg">
+   379→   379→        <div className="flex items-center gap-3 mb-1">
+   380→   380→          <Bus className="w-7 h-7" />
+   381→   381→          <h1 className="text-xl font-bold">RutaGo</h1>
+   382→   382→        </div>
+   383→   383→        <p className="text-red-100 text-xs">TRANSPORTES VILCABAMBA</p>
+   384→   384→        <p className="text-red-200/60 text-[9px] mt-0.5">{APP_VERSION}</p>
+   385→   385→      </div>
+   386→   386→
+   387→   387→      {/* ─── Printer status bar ─── */}
+   388→   388→      <div className="mx-5 mt-3">
+   389→   389→        {printerStatus === 'connected' ? (
+   390→   390→          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
+   391→   391→            <Printer className="w-4 h-4 text-green-600 flex-shrink-0" />
+   392→   392→            <div className="flex-1 min-w-0">
+   393→   393→              <p className="text-green-700 text-xs font-semibold truncate">{printerName}</p>
+   394→   394→              <p className="text-green-500 text-[9px]">Lista para imprimir</p>
+   395→   395→            </div>
+   396→   396→            <button onClick={handleTestPrint} disabled={printing}
+   397→   397→              className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-[10px] font-bold active:scale-95 transition-all disabled:opacity-50">
+   398→   398→              {printing ? 'Imprim...' : 'Probar'}
+   399→   399→            </button>
+   400→   400→          </div>
+   401→   401→        ) : printerStatus === 'connecting' ? (
+   402→   402→          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5">
+   403→   403→            <Loader2 className="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" />
+   404→   404→            <p className="text-blue-600 text-xs font-medium">Buscando impresora...</p>
+   405→   405→          </div>
+   406→   406→        ) : printerStatus === 'error' ? (
+   407→   407→          <button onClick={handleConnectPrinter}
+   408→   408→            className="w-full flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 active:scale-[0.98] transition-all">
+   409→   409→            <Printer className="w-4 h-4 text-red-500 flex-shrink-0" />
+   410→   410→            <div className="flex-1 text-left">
+   411→   411→              <p className="text-red-600 text-xs font-semibold">Reconectar impresora</p>
+   412→   412→              {printerError ? (
+   413→   413→                <p className="text-red-500 text-[9px] break-all mt-0.5">{printerError}</p>
+   414→   414→              ) : (
+   415→   415→                <p className="text-red-400 text-[9px]">Toca para seleccionar la impresora Bluetooth</p>
+   416→   416→              )}
+   417→   417→            </div>
+   418→   418→          </button>
+   419→   419→        ) : printerStatus === 'unavailable' ? (
+   420→   420→          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
+   421→   421→            <Printer className="w-4 h-4 text-gray-400 flex-shrink-0" />
+   422→   422→            <p className="text-gray-500 text-[10px]">Bluetooth no disponible en este navegador</p>
+   423→   423→          </div>
+   424→   424→        ) : (
+   425→   425→          <button onClick={handleConnectPrinter}
+   426→   426→            className="w-full flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 active:scale-[0.98] transition-all">
+   427→   427→            <Printer className="w-4 h-4 text-blue-500 flex-shrink-0" />
+   428→   428→            <div className="flex-1 text-left">
+   429→   429→              <p className="text-blue-600 text-xs font-semibold">Conectar impresora</p>
+   430→   430→              <p className="text-blue-400 text-[9px]">Toca para vincular la 3NStar PPT205BT</p>
+   431→   431→            </div>
+   432→   432→          </button>
+   433→   433→        )}
+   434→   434→
+   435→   435→        {/* ─── Printer debug log ─── */}
+   436→   436→        {printerLog.length > 0 && (
+   437→   437→          <div className="mt-2">
+   438→   438→            <button onClick={() => setPrinterLog([])} className="text-[9px] text-gray-400 mb-1">Limpiar log</button>
+   439→   439→            <div className="bg-gray-900 rounded-xl p-2.5 max-h-[140px] overflow-y-auto">
+   440→   440→              {printerLog.map((l, i) => (
+   441→   441→                <p key={i} className={`text-[9px] font-mono leading-relaxed ${
+   442→   442→                  l.includes('ERROR') ? 'text-red-400' :
+   443→   443→                  l.includes('OK') || l.includes('completada') ? 'text-green-400' :
+   444→   444→                  'text-gray-400'
+   445→   445→                }`}>{l}</p>
+   446→   446→              ))}
+   447→   447→            </div>
+   448→   448→          </div>
+   449→   449→        )}
+   450→   450→      </div>
+   451→   451→
+   452→   452→      <div className="flex-1 px-5 py-5 space-y-4">
+   453→   453→        {/* Ayudante activo — compacto */}
+   454→   454→        {ayudante ? (
+   455→   455→          <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+   456→   456→            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+   457→   457→            <div>
+   458→   458→              <p className="font-semibold text-green-800 text-sm">{ayudante.nombre}</p>
+   459→   459→              <p className="text-green-600 text-[10px]">Turno activo</p>
+   460→   460→            </div>
+   461→   461→          </div>
+   462→   462→        ) : (
+   463→   463→          <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3">
+   464→   464→            <p className="text-yellow-700 text-sm">No hay ayudante activo asignado</p>
+   465→   465→            <p className="text-yellow-600 text-xs mt-1">Configure un ayudante desde el panel de administracion</p>
+   466→   466→          </div>
+   467→   467→        )}
+   468→   468→
+   469→   469→        {/* Selector de VT — grid grande */}
+   470→   470→        {vts.length === 0 ? (
+   471→   471→          <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 text-center">
+   472→   472→            <p className="text-yellow-700 font-medium">No hay unidades activas</p>
+   473→   473→            <p className="text-yellow-600 text-sm mt-1">Ejecuta el seed: POST /api/seed-vts</p>
+   474→   474→          </div>
+   475→   475→        ) : (
+   476→   476→          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+   477→   477→            <h2 className="text-base font-bold text-[#3A3A3A] mb-3 flex items-center gap-2">
+   478→   478→              <Bus className="w-4 h-4 text-[#912D26]" /> Unidad
+   479→   479→            </h2>
+   480→   480→            <div className={`grid gap-3 ${vts.length <= 2 ? 'grid-cols-2' : vts.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+   481→   481→              {vts.map(vt => {
+   482→   482→                const routeType = getVTRouteType(vt.frecuencias);
+   483→   483→                const style = ROUTE_STYLES[routeType];
+   484→   484→                const isSelected = selectedVT === vt.codigo;
+   485→   485→                return (
+   486→   486→                  <button key={vt.codigo}
+   487→   487→                    onClick={() => vts.length === 1 ? startSession(vt.codigo) : setSelectedVT(vt.codigo)}
+   488→   488→                    className={`relative py-5 px-3 rounded-xl text-center transition-all active:scale-95 border ${
+   489→   489→                      isSelected
+   490→   490→                        ? `${style.selectedBg} text-white shadow-md ring-2 ${style.selectedRing}`
+   491→   491→                        : `${style.bg} ${style.border} ${style.text} hover:opacity-80 active:opacity-70`
+   492→   492→                    }`}
+   493→   493→                  >
+   494→   494→                    <div className="text-base font-bold">{vt.codigo}</div>
+   495→   495→                    <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/70' : style.subtext}`}>{vt.nombre}</div>
+   496→   496→                    {style.label && !isSelected && (
+   497→   497→                      <span className={`absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full ${style.badgeBg} ${style.badgeText} shadow-sm`}>
+   498→   498→                        {style.label}
+   499→   499→                      </span>
+   500→   500→                    )}
+   501→   501→                    {style.label && isSelected && (
+   502→   502→                      <span className="absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-white/25 text-white shadow-sm">
+   503→   503→                        {style.label}
+   504→   504→                      </span>
+   505→   505→                    )}
+   506→   506→                  </button>
+   507→   507→                );
+   508→   508→              })}
+   509→   509→            </div>
+   510→   510→          </div>
+   511→   511→        )}
+   512→   512→
+   513→   513→        {/* Boton Iniciar — grande y prominente */}
+   514→   514→        <button onClick={handleStart} disabled={!selectedVT || !ayudante || pendingVentasCount > 0}
+   515→   515→          className={`w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 transition-all ${
+   516→   516→            selectedVT && ayudante && pendingVentasCount === 0
+   517→   517→              ? 'bg-[#912D26] text-white shadow-xl shadow-red-300 active:scale-[0.97]'
+   518→   518→              : 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed'
+   519→   519→          }`}
+   520→   520→        >
+   521→   521→          {pendingVentasCount > 0
+   522→   522→            ? `ESPERANDO SYNC — ${pendingVentasCount} VENTAS`
+   523→   523→            : 'Iniciar Turno'
+   524→   524→          } <ArrowRight className="w-6 h-6" />
+   525→   525→        </button>
+   526→   526→      </div>
+   527→   527→
+   528→   528→      {/* Ventas pendientes — bloquear inicio de nuevo VT */}
+   529→   529→      {pendingVentasCount > 0 && pendingCheckDone && (
+   530→   530→        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-[#912D26] to-[#b33d34] p-4 shadow-2xl z-40">
+   531→   531→          <div className="max-w-lg mx-auto">
+   532→   532→            <div className="flex items-center gap-2 mb-2">
+   533→   533→              <AlertTriangle className="w-5 h-5 text-white" />
+   534→   534→              <p className="text-white font-bold text-sm">Ventas sin sincronizar</p>
+   535→   535→            </div>
+   536→   536→            <p className="text-white/90 text-xs mb-3">
+   537→   537→              Tienes <strong>{pendingVentasCount} venta{pendingVentasCount !== 1 ? 's' : ''}</strong> pendiente{pendingVentasCount !== 1 ? 's' : ''} de un turno anterior. Debes sincronizar antes de iniciar uno nuevo.
+   538→   538→            </p>
+   539→   539→            {navigator.onLine ? (
+   540→   540→              <button onClick={handleForceSync} disabled={syncingPending}
+   541→   541→                className="w-full py-3 rounded-xl bg-white text-[#912D26] font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60">
+   542→   542→                {syncingPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
+   543→   543→                {syncingPending ? 'SINCRONIZANDO...' : `SINCRONIZAR ${pendingVentasCount} VENTAS`}
+   544→   544→              </button>
+   545→   545→            ) : (
+   546→   546→              <div className="w-full py-3 rounded-xl bg-white/20 text-white/80 text-sm flex items-center justify-center gap-2">
+   547→   547→                <WifiOff className="w-4 h-4" /> SIN INTERNET — CONECTA PARA SINCRONIZAR
+   548→   548→              </div>
+   549→   549→            )}
+   550→   550→          </div>
+   551→   551→        </div>
+   552→   552→      )}
+   553→   553→
+   554→   554→      {/* Existing unfinished session banner */}
+   555→   555→      {existingUnfinished && existingSession && (
+   556→   556→        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-orange-500 to-red-500 p-4 shadow-2xl z-40">
+   557→   557→          <div className="max-w-lg mx-auto">
+   558→   558→            <div className="flex items-center gap-2 mb-2">
+   559→   559→              <AlertTriangle className="w-5 h-5 text-white" />
+   560→   560→              <p className="text-white font-bold text-sm">Turno sin terminar</p>
+   561→   561→            </div>
+   562→   562→            <p className="text-white/90 text-xs mb-3">
+   563→   563→              Tienes un turno pendiente en <strong>{existingSession.nombre}</strong> ({existingSession.vtCode}) con frecuencias abiertas.
+   564→   564→            </p>
+   565→   565→            <div className="flex gap-2">
+   566→   566→              <button onClick={handleResumeOld}
+   567→   567→                className="flex-1 py-2.5 rounded-xl bg-white text-orange-600 font-bold text-sm active:scale-[0.98]">
+   568→   568→                Continuar VT {existingSession.vtCode}
+   569→   569→              </button>
+   570→   570→              <button onClick={() => setConfirmNewSession(true)}
+   571→   571→                className="flex-1 py-2.5 rounded-xl bg-white/20 text-white font-semibold text-sm active:scale-[0.98]">
+   572→   572→                Iniciar nuevo
+   573→   573→              </button>
+   574→   574→            </div>
+   575→   575→          </div>
+   576→   576→        </div>
+   577→   577→      )}
+   578→   578→
+   579→   579→      {/* Confirm new session modal */}
+   580→   580→      {confirmNewSession && existingSession && (
+   581→   581→        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+   582→   582→          <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
+   583→   583→            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+   584→   584→              <AlertTriangle className="w-8 h-8 text-[#912D26]" />
+   585→   585→            </div>
+   586→   586→            <h3 className="text-lg font-bold text-[#3A3A3A] mb-2">Abandonar turno anterior?</h3>
+   587→   587→            <div className="bg-red-50 rounded-xl p-3 mb-4">
+   588→   588→              <p className="text-sm text-[#912D26] font-semibold">
+   589→   589→                El turno de {existingSession.nombre} ({existingSession.vtCode}) tiene frecuencias pendientes/abiertas que no se han completado.
+   590→   590→              </p>
+   591→   591→            </div>
+   592→   592→            <p className="text-sm text-gray-500 mb-5">
+   593→   593→              Los datos del turno anterior se conservaran en el dispositivo. Podras retomarlo mas tarde desde la pantalla de inicio.
+   594→   594→            </p>
+   595→   595→            <div className="flex gap-2">
+   596→   596→              <button onClick={() => setConfirmNewSession(false)}
+   597→   597→                className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-bold text-sm active:scale-[0.98] shadow-lg shadow-red-200">
+   598→   598→                Cancelar
+   599→   599→              </button>
+   600→   600→              <button onClick={handleForceNew}
+   601→   601→                className="flex-1 py-3 rounded-xl border-2 border-red-200 text-[#912D26] font-bold text-sm active:scale-[0.98]">
+   602→   602→                Nuevo Turno
+   603→   603→              </button>
+   604→   604→            </div>
+   605→   605→          </div>
+   606→   606→        </div>
+   607→   607→      )}
+   608→   608→    </div>
+   609→   609→  );
+   610→   610→}
+   611→   611→

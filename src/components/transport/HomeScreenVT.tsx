@@ -6,7 +6,7 @@ import { countVentasPendientes, syncVentasSilencioso } from '@/lib/indexeddb';
 import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.20-aug27-fix-413-v2';
+const APP_VERSION = 'v3.21-aug27-session-fix';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;
@@ -167,21 +167,50 @@ export function HomeScreenVT({ onSessionStart }: Props) {
 
   const startSession = (vtCode: string, forceNew = false) => {
     if (!ayudante) return;
+    const today = new Date().toISOString().split('T')[0];
+
+    // ─── REGLA: Solo 1 VT activa por fecha ───
+    // Detectar si ya existe una session para HOY (con cualquier VT)
+    const stored = localStorage.getItem('rg_vt_session');
+    if (stored && !forceNew) {
+      try {
+        const saved = JSON.parse(stored);
+        if (saved.fecha === today && saved.vtCode !== vtCode) {
+          // Ya hay una VT activa hoy — bloquear
+          setExistingSession(saved);
+          setExistingUnfinished(true);
+          setConfirmNewSession(true);
+          return;
+        }
+      } catch { /* ignore */ }
+    }
+
     // If there's an existing unfinished session and starting a different/new VT, warn first
     if (existingUnfinished && !forceNew && existingSession) {
       setConfirmNewSession(true);
       return;
     }
+
     const vt = vts.find(v => v.codigo === vtCode)!;
     const newSession: VTSession = {
       vtCode: vt.codigo,
       nombre: vt.nombre,
       ayudanteId: ayudante.id,
       ayudanteNombre: ayudante.nombre,
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: today,
     };
-    const today = newSession.fecha;
-    // Limpiar estados previos del mismo VT/fecha por si quedaron huérfanos
+
+    // ─── Limpieza completa al forzar nuevo VT ───
+    if (forceNew && existingSession) {
+      const oldFecha = existingSession.fecha;
+      const oldVtCode = existingSession.vtCode;
+      // Limpiar TODOS los datos del VT anterior
+      localStorage.removeItem(`rg_estados_${oldVtCode}_${oldFecha}`);
+      localStorage.removeItem(`arqueo_general_${oldVtCode}_${oldFecha}`);
+      localStorage.removeItem('rg_vt_session');
+    }
+
+    // Limpiar estados del mismo VT/fecha por si quedaron huérfanos
     localStorage.removeItem(`rg_estados_${vtCode}_${today}`);
     localStorage.removeItem(`arqueo_general_${vtCode}_${today}`);
     localStorage.setItem('rg_vt_session', JSON.stringify({
@@ -584,14 +613,16 @@ export function HomeScreenVT({ onSessionStart }: Props) {
               <AlertTriangle className="w-8 h-8 text-[#912D26]" />
             </div>
             <h3 className="text-lg font-bold text-[#3A3A3A] mb-2">Abandonar turno anterior?</h3>
-            <div className="bg-red-50 rounded-xl p-3 mb-4">
+            <div className="bg-red-50 rounded-xl p-3 mb-3">
               <p className="text-sm text-[#912D26] font-semibold">
-                El turno de {existingSession.nombre} ({existingSession.vtCode}) tiene frecuencias pendientes/abiertas que no se han completado.
+                {existingSession.nombre} ({existingSession.vtCode}) — frecuencias sin completar.
               </p>
             </div>
-            <p className="text-sm text-gray-500 mb-5">
-              Los datos del turno anterior se conservaran en el dispositivo. Podras retomarlo mas tarde desde la pantalla de inicio.
-            </p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
+              <p className="text-xs text-yellow-800 font-bold">
+                Se ELIMINARAN todos los datos del turno anterior. Solo puede haber un turno activo por dia.
+              </p>
+            </div>
             <div className="flex gap-2">
               <button onClick={() => setConfirmNewSession(false)}
                 className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-bold text-sm active:scale-[0.98] shadow-lg shadow-red-200">

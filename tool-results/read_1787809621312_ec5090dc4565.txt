@@ -1,0 +1,537 @@
+   301→    const estadoActual = estados.find(e => e.estadoId === estadoId);
+   302→    if (!estadoActual) return allFrecuencias;
+   303→    // Extraer origen de la ruta: "Vilcabamba - Loja" → "Vilcabamba"
+   304→    const partes = estadoActual.ruta.split(' - ');
+   305→    const origen = partes[0]?.trim().toLowerCase();
+   306→    if (!origen) return allFrecuencias;
+   307→    // Filtrar frecuencias que tengan el mismo origen y ordenar por hora
+   308→    return allFrecuencias
+   309→      .filter(f => {
+   310→        const fPartes = f.ruta.split(' - ');
+   311→        const fOrigen = fPartes[0]?.trim().toLowerCase();
+   312→        return fOrigen === origen;
+   313→      })
+   314→      .sort((a, b) => a.hora.localeCompare(b.hora));
+   315→  };
+   316→
+   317→  const handleReassign = async (estado: FrecuenciaEstado) => {
+   318→    // Cargar todas las frecuencias del sistema si no están cargadas
+   319→    if (allFrecuencias.length === 0) {
+   320→      try {
+   321→        const res = await fetch('/api/frecuencias?all=true');
+   322→        if (res.ok) {
+   323→          const data = await res.json();
+   324→          setAllFrecuencias(data);
+   325→        }
+   326→      } catch { /* usar las que tengamos */ }
+   327→    }
+   328→    setReassigning(estado.estadoId);
+   329→  };
+   330→
+   331→  const handleSelectReassignment = (targetFrec: FrecuenciaData) => {
+   332→    if (!reassigning) return;
+   333→    updateEstado(reassigning, {
+   334→      id: targetFrec.id, frecuenciaId: targetFrec.id,
+   335→      nombre: targetFrec.nombre, ruta: targetFrec.ruta,
+   336→      hora: targetFrec.hora, direccion: targetFrec.direccion,
+   337→      estado: 'pendiente', ventasCount: 0, totalRecaudado: 0,
+   338→    });
+   339→    setReassigning(null);
+   340→  };
+   341→
+   342→  const getStateIcon = (estado: string) => {
+   343→    switch (estado) {
+   344→      case 'pendiente': return <Clock className="w-4 h-4 text-gray-400" />;
+   345→      case 'abierta': return <Play className="w-4 h-4 text-green-500" />;
+   346→      case 'cerrada': return <CheckCircle2 className="w-4 h-4 text-blue-500" />;
+   347→      case 'no_realizada': return <XCircle className="w-4 h-4 text-orange-500" />;
+   348→      default: return null;
+   349→    }
+   350→  };
+   351→
+   352→  const getStateColor = (estado: string) => {
+   353→    switch (estado) {
+   354→      case 'pendiente': return 'bg-gray-100 border-gray-200';
+   355→      case 'abierta': return 'bg-green-50 border-green-200';
+   356→      case 'cerrada': return 'bg-blue-50 border-blue-200';
+   357→      case 'no_realizada': return 'bg-orange-50 border-orange-200';
+   358→      default: return 'bg-gray-100 border-gray-200';
+   359→    }
+   360→  };
+   361→
+   362→  const MOTIVOS_NO_REALIZADA = [
+   363→    { id: 'daño_unidad', label: 'Daño en la unidad', icon: <Truck className="w-4 h-4" />, color: 'text-red-500' },
+   364→    { id: 'mantenimiento', label: 'Mantenimiento', icon: <Wrench className="w-4 h-4" />, color: 'text-blue-500' },
+   365→    { id: 'clima', label: 'Clima / Lluvia', icon: <Droplets className="w-4 h-4" />, color: 'text-cyan-500' },
+   366→    { id: 'sin_pasajeros', label: 'Sin pasajeros', icon: <UserX className="w-4 h-4" />, color: 'text-purple-500' },
+   367→    { id: 'problema_ruta', label: 'Problema en la ruta', icon: <AlertTriangle className="w-4 h-4" />, color: 'text-yellow-500' },
+   368→    { id: 'orden_superior', label: 'Orden superior', icon: <Ban className="w-4 h-4" />, color: 'text-gray-600' },
+   369→    { id: 'otro', label: 'Otro motivo', icon: <FileText className="w-4 h-4" />, color: 'text-gray-500' },
+   370→  ];
+   371→
+   372→  const getEstadoBadge = (estado: string) => {
+   373→    switch (estado) {
+   374→      case 'pendiente': return <span className="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-600">Pendiente</span>;
+   375→      case 'abierta': return <span className="px-2 py-0.5 rounded-full text-xs bg-green-200 text-green-700">Abierta</span>;
+   376→      case 'cerrada': return <span className="px-2 py-0.5 rounded-full text-xs bg-blue-200 text-blue-700">Cerrada</span>;
+   377→      case 'no_realizada': return <span className="px-2 py-0.5 rounded-full text-xs bg-orange-200 text-orange-700">No Realizada</span>;
+   378→      default: return null;
+   379→    }
+   380→  };
+   381→
+   382→  if (loading) {
+   383→    return (
+   384→      <div className="flex flex-col min-h-[100dvh] bg-gray-50 items-center justify-center">
+   385→        <RefreshCw className="w-8 h-8 text-[#912D26] animate-spin mb-3" />
+   386→        <p className="text-[#3A3A3A]">Cargando frecuencias...</p>
+   387→      </div>
+   388→    );
+   389→  }
+   390→
+   391→  // Check if there are unfinished frequencies (for exit guard)
+   392→  const hasUnfinishedFrecuencias = estados.some(e => e.estado === 'pendiente' || e.estado === 'abierta');
+   393→
+   394→  const handleBack = () => {
+   395→    if (hasUnfinishedFrecuencias) {
+   396→      setExitModal(true);
+   397→    } else {
+   398→      onBack();
+   399→    }
+   400→  };
+   401→
+   402→  // Check if ALL frequencies are done (cerrada or no_realizada)
+   403→  const allFrecuenciasDone = estados.length > 0 && estados.every(e => e.estado === 'cerrada' || e.estado === 'no_realizada');
+   404→
+   405→  // Totals across all frequencies
+   406→  const totalVentasAll = estados.reduce((s, e) => s + e.ventasCount, 0);
+   407→  const totalRecaudadoAll = estados.reduce((s, e) => s + e.totalRecaudado, 0);
+   408→  const cerradasCount = estados.filter(e => e.estado === 'cerrada').length;
+   409→
+   410→  // SYNC control: ALWAYS block arqueo general if there are pending ventas
+   411→  const mustSyncBeforeArqueo = pendingCount > 0;
+   412→
+   413→  const handleSyncForArqueo = async () => {
+   414→    if (!isOnline || syncingForArqueo) return;
+   415→    setSyncingForArqueo(true);
+   416→    try {
+   417→      const result = await syncVentasSilencioso();
+   418→      const remaining = await countVentasPendientes();
+   419→      setPendingCount(remaining);
+   420→      if (remaining === 0) {
+   421→        setSyncDone(true);
+   422→        setTimeout(() => setSyncDone(false), 2000);
+   423→      }
+   424→    } catch { /* ignore */ }
+   425→    setSyncingForArqueo(false);
+   426→  };
+   427→
+   428→  return (
+   429→    <div className="flex flex-col min-h-[100dvh] bg-gray-50">
+   430→      {/* Header */}
+   431→      <div className="bg-[#912D26] text-white px-4 py-3">
+   432→        <div className="flex items-center justify-between mb-2">
+   433→          <div className="flex items-center gap-2">
+   434→            <button onClick={handleBack} className="text-red-100"><ArrowLeft className="w-5 h-5" /></button>
+   435→            <div>
+   436→              <h1 className="text-lg font-bold">Frecuencias</h1>
+   437→              <p className="text-red-100 text-xs">{session.nombre} - {session.ayudanteNombre}</p>
+   438→            </div>
+   439→          </div>
+   440→          <div className="flex items-center gap-2">
+   441→            {isOnline ? <Wifi className="w-4 h-4 text-green-300" /> : <WifiOff className="w-4 h-4 text-red-300" />}
+   442→          </div>
+   443→        </div>
+   444→        <div className="flex items-center gap-2">
+   445→          <div className="flex-1 bg-white/15 rounded-xl px-3 py-1.5 text-sm flex items-center gap-2">
+   446→            {pendingCount > 0 ? (
+   447→              <>
+   448→                <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>
+   449→                <span className="text-red-100 text-xs">pendientes</span>
+   450→              </>
+   451→            ) : (
+   452→              <span className="text-green-200 text-xs">Sin pendientes</span>
+   453→            )}
+   454→          </div>
+   455→          {pendingCount > 0 && isOnline && (
+   456→            <button onClick={onGoToSync} className="bg-green-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 active:scale-95">
+   457→              <Send className="w-3 h-3" /> SYNC
+   458→            </button>
+   459→          )}
+   460→          {pendingCount > 0 && !isOnline && (
+   461→            <div className="bg-white/10 text-red-200 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1">
+   462→              <WifiOff className="w-3 h-3" /> Sin red
+   463→            </div>
+   464→          )}
+   465→        </div>
+   466→      </div>
+   467→
+   468→      <div className="flex-1 px-4 py-3 space-y-2 overflow-y-auto pb-6">
+   469→        <div className="text-center text-xs text-gray-500 mb-1">
+   470→          {new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+   471→        </div>
+   472→
+   473→        {/* Modal Exit Warning */}
+   474→        {exitModal && (
+   475→          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+   476→            <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
+   477→              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+   478→                <AlertTriangle className="w-8 h-8 text-[#912D26]" />
+   479→              </div>
+   480→              <h3 className="text-lg font-bold text-[#3A3A3A] mb-2">Salir del turno?</h3>
+   481→              <div className="bg-red-50 rounded-xl p-3 mb-4">
+   482→                <p className="text-sm text-[#912D26] font-semibold">
+   483→                  Tienes {estados.filter(e => e.estado === 'abierta').length} frecuencia{estados.filter(e => e.estado === 'abierta').length !== 1 ? 's' : ''} abierta{estados.filter(e => e.estado === 'abierta').length !== 1 ? 's' : ''} y {estados.filter(e => e.estado === 'pendiente').length} pendiente{estados.filter(e => e.estado === 'pendiente').length !== 1 ? 's' : ''}
+   484→                </p>
+   485→              </div>
+   486→              <p className="text-sm text-gray-500 mb-5">
+   487→                Si sales, el progreso se conservará y podrás continuar cuando vuelvas a ingresar.
+   488→              </p>
+   489→              <div className="flex gap-2">
+   490→                <button onClick={() => setExitModal(false)}
+   491→                  className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-bold text-sm active:scale-[0.98] shadow-lg shadow-red-200">
+   492→                  Cancelar
+   493→                </button>
+   494→                <button onClick={() => { setExitModal(false); onBack(); }}
+   495→                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold text-sm active:scale-[0.98]">
+   496→                  Salir
+   497→                </button>
+   498→              </div>
+   499→            </div>
+   500→          </div>
+   501→        )}
+   502→
+   503→        {/* Reassign modal */}
+   504→        {reassigning && (
+   505→          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+   506→            <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 max-h-[80vh] overflow-y-auto">
+   507→              <h3 className="text-lg font-bold text-[#3A3A3A] mb-1">Reasignar Horario</h3>
+   508→              <p className="text-sm text-gray-500 mb-4">
+   509→                Rutas desde <strong className="text-[#912D26]">{estados.find(e => e.estadoId === reassigning)?.ruta.split(' - ')[0]?.trim()}</strong>
+   510→              </p>
+   511→              <div className="space-y-2">
+   512→                {getFrecuenciasParaReasignar(reassigning).map(target => (
+   513→                  <button key={target.id} onClick={() => handleSelectReassignment(target)}
+   514→                    className="w-full p-4 rounded-xl border border-gray-200 hover:bg-[#912D26]/5 hover:border-[#912D26]/30 transition-all text-left">
+   515→                    <div className="flex items-center justify-between">
+   516→                      <div>
+   517→                        <div className="font-semibold text-[#3A3A3A]">{target.nombre}</div>
+   518→                        <div className="text-sm text-gray-500">{target.ruta}</div>
+   519→                      </div>
+   520→                      <div className="text-right">
+   521→                        <div className="text-lg font-bold text-[#912D26]">{target.hora}</div>
+   522→                        <div className="text-xs text-gray-400">{target.direccion}</div>
+   523→                      </div>
+   524→                    </div>
+   525→                  </button>
+   526→                ))}
+   527→              </div>
+   528→              <button onClick={() => setReassigning(null)}
+   529→                className="w-full mt-4 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold">Cancelar</button>
+   530→            </div>
+   531→          </div>
+   532→        )}
+   533→
+   534→        {/* Modal No Realizada - Selección de motivo */}
+   535→        {noRealizadaModal && !confirmNoRealizada && (
+   536→          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+   537→            <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+   538→              <div className="flex items-center gap-3 mb-4">
+   539→                <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+   540→                  <XCircle className="w-5 h-5 text-orange-500" />
+   541→                </div>
+   542→                <div>
+   543→                  <h3 className="text-lg font-bold text-[#3A3A3A]">No Realizada</h3>
+   544→                  <p className="text-xs text-gray-500">{noRealizadaModal.hora} — {noRealizadaModal.nombre}</p>
+   545→                </div>
+   546→              </div>
+   547→              <p className="text-sm text-gray-600 mb-4">Selecciona el motivo por el cual no se realizó esta frecuencia:</p>
+   548→              <div className="space-y-2">
+   549→                {MOTIVOS_NO_REALIZADA.map(m => (
+   550→                  <button key={m.id} onClick={() => { setMotivoSeleccionado(m.id); if (m.id !== 'otro') setMotivoPersonalizado(''); }}
+   551→                    className={`w-full p-3 rounded-xl border-2 text-left flex items-center gap-3 transition-all active:scale-[0.98] ${
+   552→                      motivoSeleccionado === m.id ? 'border-orange-400 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+   553→                    }`}>
+   554→                    <span className={m.color}>{m.icon}</span>
+   555→                    <span className="text-sm font-semibold text-[#3A3A3A]">{m.label}</span>
+   556→                    {motivoSeleccionado === m.id && <span className="ml-auto text-orange-500 font-bold">✓</span>}
+   557→                  </button>
+   558→                ))}
+   559→              </div>
+   560→              {/* Campo personalizado */}
+   561→              {motivoSeleccionado === 'otro' && (
+   562→                <div className="mt-3">
+   563→                  <input type="text" placeholder="Escribe el motivo..." value={motivoPersonalizado}
+   564→                    onChange={e => setMotivoPersonalizado(e.target.value)}
+   565→                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm text-[#3A3A3A] focus:outline-none focus:border-orange-400"
+   566→                    autoFocus />
+   567→                </div>
+   568→              )}
+   569→              <div className="flex gap-2 mt-5">
+   570→                <button onClick={() => setNoRealizadaModal(null)}
+   571→                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Cancelar</button>
+   572→                <button
+   573→                  onClick={() => {
+   574→                    if (motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim())) {
+   575→                      confirmNoRealizadaAction();
+   576→                    }
+   577→                  }}
+   578→                  disabled={!motivoSeleccionado || (motivoSeleccionado === 'otro' && !motivoPersonalizado.trim())}
+   579→                  className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
+   580→                    motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim())
+   581→                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-200'
+   582→                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+   583→                  }`}>
+   584→                  <XCircle className="w-4 h-4" /> Confirmar
+   585→                </button>
+   586→              </div>
+   587→            </div>
+   588→          </div>
+   589→        )}
+   590→
+   591→        {/* ─── Modal Caja Común (Oficina Loja) ─── */}
+   592→        {cajaComunModal && (
+   593→          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+   594→            <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6">
+   595→              <div className="flex items-center gap-3 mb-4">
+   596→                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+   597→                  <DollarSign className="w-5 h-5 text-purple-600" />
+   598→                </div>
+   599→                <div>
+   600→                  <h3 className="text-lg font-bold text-[#3A3A3A]">Arqueo: {cajaComunModal.hora}</h3>
+   601→                  <p className="text-xs text-gray-500">{cajaComunModal.nombre}</p>
+   602→                </div>
+   603→              </div>
+   604→
+   605→              <p className="text-sm font-bold text-[#3A3A3A] mb-3">Caja Comun (Ofi. Loja)</p>
+   606→              <p className="text-xs text-gray-500 mb-3">Boletos fisicos recogidos de oficina Loja</p>
+   607→
+   608→              {/* Contador de pasajeros */}
+   609→              <div className="flex items-center gap-3 mb-4">
+   610→                <span className="text-sm text-gray-600 font-medium w-24">Pasajeros:</span>
+   611→                <div className="flex items-center gap-2">
+   612→                  <button onClick={() => setCajaComunCount(Math.max(0, cajaComunCount - 1))}
+   613→                    className="w-12 h-12 rounded-xl bg-gray-100 text-gray-600 font-black text-xl flex items-center justify-center active:scale-95 border-2 border-gray-200">-</button>
+   614→                  <span className="w-12 text-center font-black text-2xl text-[#3A3A3A]">{cajaComunCount}</span>
+   615→                  <button onClick={() => setCajaComunCount(cajaComunCount + 1)}
+   616→                    className="w-12 h-12 rounded-xl bg-purple-100 text-purple-700 font-black text-xl flex items-center justify-center active:scale-95 border-2 border-purple-200">+</button>
+   617→                </div>
+   618→              </div>
+   619→
+   620→              {/* Monto manual */}
+   621→              <div className="mb-5">
+   622→                <span className="text-sm text-gray-600 font-medium">Total (suma de boletos fisicos):</span>
+   623→                <div className="relative mt-1">
+   624→                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-black text-xl">$</span>
+   625→                  <input
+   626→                    type="number"
+   627→                    inputMode="decimal"
+   628→                    step="0.05"
+   629→                    placeholder="0.00"
+   630→                    value={cajaComunMonto}
+   631→                    onChange={e => setCajaComunMonto(e.target.value)}
+   632→                    className="w-full pl-10 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-xl font-black text-[#3A3A3A] text-center focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
+   633→                  />
+   634→                </div>
+   635→              </div>
+   636→
+   637→              <div className="flex gap-2">
+   638→                <button onClick={() => { setCajaComunModal(null); /* Skip caja comun, go directly to arqueo */ onGoToArqueo(cajaComunModal, cajaComunEsUltima); }}
+   639→                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Sin boletos</button>
+   640→                <button onClick={confirmCajaComun}
+   641→                  className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-black active:scale-[0.98] shadow-lg shadow-red-200">
+   642→                  Continuar
+   643→                </button>
+   644→              </div>
+   645→            </div>
+   646→          </div>
+   647→        )}
+   648→
+   649→        {estados.length === 0 ? (
+   650→          <div className="text-center py-12">
+   651→            <p className="text-gray-400">No hay frecuencias configuradas</p>
+   652→          </div>
+   653→        ) : (
+   654→          estados.map((estado, index) => {
+   655→            const disponible = isFrecuenciaDisponible(index);
+   656→            const esUltimaFrec = index === estados.length - 1;
+   657→            const bloqueada = !disponible && estado.estado === 'pendiente';
+   658→            const rutaColor = RUTA_BUTTON_COLORS[getRutaColorKey(estado.ruta)];
+   659→
+   660→            return (
+   661→              <div key={estado.estadoId} className={`rounded-2xl border border-l-4 p-3 transition-all ${
+   662→                bloqueada
+   663→                  ? 'bg-gray-50 border-gray-100 border-l-gray-300 opacity-50'
+   664→                  : estado.estado === 'abierta'
+   665→                    ? `${rutaColor.light} ${rutaColor.border}`
+   666→                    : `${getStateColor(estado.estado)} ${rutaColor.border}`
+   667→              }`}>
+   668→                <div className="flex items-center justify-between mb-2">
+   669→                  <div className="flex items-center gap-2">
+   670→                    {getStateIcon(estado.estado)}
+   671→                    <div>
+   672→                      <span className="font-bold text-[#3A3A3A]">{estado.hora}</span>
+   673→                      <span className="text-sm text-gray-500 ml-2">{estado.nombre}</span>
+   674→                    </div>
+   675→                  </div>
+   676→                  <div className="flex items-center gap-2">
+   677→                    {getEstadoBadge(estado.estado)}
+   678→                    {bloqueada && <span className="text-xs text-gray-400">🔒</span>}
+   679→                  </div>
+   680→                </div>
+   681→                <div className="text-xs text-gray-500 mb-1">{estado.ruta} · {estado.direccion}</div>
+   682→                {/* Stats bar: boletos + recaudado - visible when has sales or is cerrada */}
+   683→                {(estado.ventasCount > 0 || estado.estado === 'cerrada') && (
+   684→                  <div className="flex gap-3 mb-2">
+   685→                    <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold">
+   686→                      <Ticket className="w-3 h-3" />
+   687→                      <span>{estado.ventasCount} boleto{estado.ventasCount !== 1 ? 's' : ''}</span>
+   688→                    </div>
+   689→                    <div className={`flex items-center gap-1 ${rutaColor.badge} px-2 py-1 rounded-lg text-xs font-bold`}>
+   690→                      <DollarSign className="w-3 h-3" />
+   691→                      <span>${estado.totalRecaudado.toFixed(2)}</span>
+   692→                    </div>
+   693→                  </div>
+   694→                )}
+   695→                <div className="flex gap-2">
+   696→                  {/* PENDIENTE + disponible */}
+   697→                  {estado.estado === 'pendiente' && disponible && (
+   698→                    <>
+   699→                      <button onClick={() => handleOpen(estado)} className={`flex-1 py-3.5 rounded-xl ${rutaColor.bg} text-white font-bold text-sm flex items-center justify-center gap-1.5 active:scale-[0.97] shadow-md ${rutaColor.shadow}`}>
+   700→                        <Play className="w-4 h-4" /> Vender
+   701→                      </button>
+   702→                      <button onClick={() => handleNoRealizada(estado)} className="py-3.5 px-4 rounded-xl bg-orange-100 text-orange-600 font-bold text-sm flex items-center gap-1.5 active:scale-[0.97]" title="No Realizada">
+   703→                        <XCircle className="w-4 h-4" />
+   704→                      </button>
+   705→                      <button onClick={() => handleReassign(estado)} className="py-3.5 px-4 rounded-xl bg-gray-200 text-gray-600 font-bold text-sm flex items-center gap-1.5 active:scale-[0.97]" title="Reasignar">
+   706→                        <RotateCcw className="w-4 h-4" />
+   707→                      </button>
+   708→                    </>
+   709→                  )}
+   710→                  {/* ABIERTA: Seguir Vendiendo + Arqueo directo */}
+   711→                  {estado.estado === 'abierta' && (
+   712→                    <>
+   713→                      <button onClick={() => onOpenFrequency(estado)} className={`flex-1 py-2 rounded-xl ${rutaColor.bg} text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]`}>
+   714→                        <ChevronRight className="w-4 h-4" /> Seguir Vendiendo
+   715→                      </button>
+   716→                      <button onClick={() => handleGoToArqueo(estado, esUltimaFrec)} className="flex-1 py-2 rounded-xl bg-blue-600 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
+   717→                        <CheckCircle2 className="w-4 h-4" /> Arqueo
+   718→                      </button>
+   719→                    </>
+   720→                  )}
+   721→                  {/* CERRADA */}
+   722→                  {estado.estado === 'cerrada' && (
+   723→                    <div className="flex-1 flex items-center justify-center">
+   724→                      <span className="text-xs text-green-600 font-bold flex items-center gap-1">
+   725→                        <CheckCircle2 className="w-4 h-4" /> Cerrada
+   726→                      </span>
+   727→                    </div>
+   728→                  )}
+   729→                  {/* NO REALIZADA */}
+   730→                  {estado.estado === 'no_realizada' && (
+   731→                    <div className="text-sm text-orange-600 font-semibold flex items-center gap-1">
+   732→                      <XCircle className="w-4 h-4" />
+   733→                      {estado.motivoNoRealizada || 'No realizada'}
+   734→                    </div>
+   735→                  )}
+   736→                  {/* BLOQUEADA */}
+   737→                  {bloqueada && (
+   738→                    <div className="text-sm text-gray-400">Espera arqueo anterior</div>
+   739→                  )}
+   740→                </div>
+   741→              </div>
+   742→            );
+   743→          })
+   744→        )}
+   745→      </div>
+   746→
+   747→      {/* ─── Arqueo General del VT ─── */}
+   748→      {allFrecuenciasDone && cerradasCount > 0 && (
+   749→        <div className="px-4 pb-3">
+   750→          <div className="bg-gradient-to-r from-[#912D26] to-[#b33d34] rounded-2xl p-4 shadow-lg shadow-red-200/50">
+   751→            <div className="flex items-center gap-2 mb-3">
+   752→              <ClipboardCheck className="w-5 h-5 text-white" />
+   753→              <h3 className="text-white font-bold text-sm">Todas las frecuencias completadas</h3>
+   754→            </div>
+   755→            <div className="flex gap-4 mb-3 text-white">
+   756→              <div>
+   757→                <p className="text-white/60 text-[10px]">Total Boletos</p>
+   758→                <p className="font-black text-lg leading-tight">{totalVentasAll}</p>
+   759→              </div>
+   760→              <div>
+   761→                <p className="text-white/60 text-[10px]">Total Recaudado</p>
+   762→                <p className="font-black text-lg leading-tight">${totalRecaudadoAll.toFixed(2)}</p>
+   763→              </div>
+   764→              <div>
+   765→                <p className="text-white/60 text-[10px]">Cerradas</p>
+   766→                <p className="font-black text-lg leading-tight">{cerradasCount}/{estados.length}</p>
+   767→              </div>
+   768→            </div>
+   769→            {mustSyncBeforeArqueo ? (
+   770→              isOnline ? (
+   771→                <>
+   772→                  <div className="flex items-center gap-2 mb-2">
+   773→                    <AlertTriangle className="w-4 h-4 text-yellow-200" />
+   774→                    <p className="text-white/90 text-xs font-semibold">Tienes {pendingCount} venta{pendingCount !== 1 ? 's' : ''} sin sincronizar. Debes sincronizar antes del arqueo.</p>
+   775→                  </div>
+   776→                  {syncDone ? (
+   777→                    <div className="w-full py-4 rounded-xl bg-green-500 text-white font-black text-base flex items-center justify-center gap-2 shadow-md">
+   778→                      <CheckCircle className="w-5 h-5" />
+   779→                      ¡TODO SINCRONIZADO!
+   780→                    </div>
+   781→                  ) : (
+   782→                    <button
+   783→                      onClick={handleSyncForArqueo}
+   784→                      disabled={syncingForArqueo}
+   785→                      className="w-full py-4 rounded-xl bg-white text-[#912D26] font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] shadow-md disabled:opacity-70">
+   786→                      {syncingForArqueo ? (
+   787→                        <><RefreshCw className="w-5 h-5 animate-spin" /> SINCRONIZANDO {pendingCount} VENTAS...</>
+   788→                      ) : (
+   789→                        <><Send className="w-5 h-5" /> SINCRONIZAR {pendingCount} VENTAS</>
+   790→                      )}
+   791→                    </button>
+   792→                  )}
+   793→                </>
+   794→              ) : (
+   795→                <>
+   796→                  <div className="flex items-center gap-2 mb-2">
+   797→                    <WifiOff className="w-4 h-4 text-red-200" />
+   798→                    <p className="text-white/90 text-xs font-semibold">Tienes {pendingCount} venta{pendingCount !== 1 ? 's' : ''} sin sincronizar.</p>
+   799→                  </div>
+   800→                  <div className="w-full py-4 rounded-xl bg-white/20 text-white font-black text-base flex items-center justify-center gap-2">
+   801→                    <WifiOff className="w-5 h-5" />
+   802→                    SIN INTERNET — CONECTA PARA SINCRONIZAR
+   803→                  </div>
+   804→                </>
+   805→              )
+   806→            ) : (
+   807→              <button
+   808→                onClick={onGoToArqueoGeneral}
+   809→                className="w-full py-4 rounded-xl bg-white text-[#912D26] font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] shadow-md">
+   810→                <ClipboardCheck className="w-5 h-5" />
+   811→                ARQUEO GENERAL DEL {session.nombre}
+   812→              </button>
+   813→            )}
+   814→            {mustSyncBeforeArqueo && !isOnline && (
+   815→              <p className="text-white/60 text-[10px] text-center mt-2">Conecta a internet y sincroniza todas las ventas antes del arqueo general</p>
+   816→            )}
+   817→          </div>
+   818→        </div>
+   819→      )}
+   820→
+   821→      {/* Sync button */}
+   822→      {pendingCount > 0 && (
+   823→        <div className="p-3 border-t border-gray-200 bg-white">
+   824→          <button onClick={onGoToSync}
+   825→            className={`w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
+   826→              isOnline ? 'bg-green-600 text-white shadow-lg shadow-green-200' : 'bg-gray-200 text-gray-400'
+   827→            }`}
+   828→            disabled={!isOnline}>
+   829→            <Send className="w-5 h-5" />
+   830→            {isOnline ? `SINCRONIZAR ${pendingCount} VENTAS` : `SIN INTERNET — ${pendingCount} VENTAS PENDIENTES`}
+   831→          </button>
+   832→        </div>
+   833→      )}
+   834→    </div>
+   835→  );
+   836→}
+   837→
