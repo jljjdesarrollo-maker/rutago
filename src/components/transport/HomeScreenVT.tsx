@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { type VTSession } from './types-boletos';
-import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT } from '@/lib/indexeddb';
-import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVentasPendientesByVT } from '@/lib/indexeddb';
+import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.25-aug28-phase4-seguridad';
+const APP_VERSION = 'v3.26-aug28-datepicker';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;
@@ -144,6 +144,12 @@ export function HomeScreenVT({ onSessionStart }: Props) {
   const [syncingPending, setSyncingPending] = useState(false);
   const [pendingCheckDone, setPendingCheckDone] = useState(false);
 
+  // ─── Date picker ───
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [dateWarning, setDateWarning] = useState('');
+  const [checkingDate, setCheckingDate] = useState(false);
+
   useEffect(() => {
     (async () => {
       try {
@@ -167,16 +173,16 @@ export function HomeScreenVT({ onSessionStart }: Props) {
 
   const startSession = (vtCode: string, forceNew = false) => {
     if (!ayudante) return;
-    const today = new Date().toISOString().split('T')[0];
+
+    const sessionDate = selectedDate;
 
     // ─── REGLA: Solo 1 VT activa por fecha ───
-    // Detectar si ya existe una session para HOY (con cualquier VT)
+    // Detectar si ya existe una session para la MISMA FECHA (con cualquier VT)
     const stored = localStorage.getItem('rg_vt_session');
     if (stored && !forceNew) {
       try {
         const saved = JSON.parse(stored);
-        if (saved.fecha === today && saved.vtCode !== vtCode) {
-          // Ya hay una VT activa hoy — bloquear
+        if (saved.fecha === sessionDate && saved.vtCode !== vtCode) {
           setExistingSession(saved);
           setExistingUnfinished(true);
           setConfirmNewSession(true);
@@ -197,7 +203,7 @@ export function HomeScreenVT({ onSessionStart }: Props) {
       nombre: vt.nombre,
       ayudanteId: ayudante.id,
       ayudanteNombre: ayudante.nombre,
-      fecha: today,
+      fecha: sessionDate,
     };
 
     // ─── Limpieza completa al forzar nuevo VT ───
@@ -213,8 +219,8 @@ export function HomeScreenVT({ onSessionStart }: Props) {
     }
 
     // Limpiar estados del mismo VT/fecha por si quedaron huérfanos
-    localStorage.removeItem(`rg_estados_${vtCode}_${today}`);
-    localStorage.removeItem(`arqueo_general_${vtCode}_${today}`);
+    localStorage.removeItem(`rg_estados_${vtCode}_${sessionDate}`);
+    localStorage.removeItem(`arqueo_general_${vtCode}_${sessionDate}`);
     localStorage.setItem('rg_vt_session', JSON.stringify({
       ...newSession,
       timestamp: Date.now(),
@@ -496,6 +502,67 @@ export function HomeScreenVT({ onSessionStart }: Props) {
             <p className="text-yellow-600 text-xs mt-1">Configure un ayudante desde el panel de administracion</p>
           </div>
         )}
+
+        {/* Selector de fecha */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <h2 className="text-base font-bold text-[#3A3A3A] mb-3 flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-[#912D26]" /> Fecha del turno
+          </h2>
+          <input
+            type="date"
+            value={selectedDate}
+            max={todayStr}
+            onChange={(e) => {
+              const newDate = e.target.value;
+              setSelectedDate(newDate);
+              setDateWarning('');
+
+              // Validar si hay datos existentes para esa fecha + VT seleccionado
+              if (newDate && selectedVT) {
+                setCheckingDate(true);
+                const estadosKey = `rg_estados_${selectedVT}_${newDate}`;
+                const raw = localStorage.getItem(estadosKey);
+                if (raw) {
+                  try {
+                    const estados: { estado: string }[] = JSON.parse(raw);
+                    const hasData = estados.some(e => e.estado !== 'pendiente' || e.ventasCount > 0);
+                    if (hasData) {
+                      setDateWarning(`Ya existen datos para ${selectedVT} en esta fecha. Se eliminaran al iniciar.`);
+                    }
+                  } catch { /* ignore */ }
+                }
+                // Also check for ventas in IndexedDB
+                countVentasPendientesByVT(selectedVT, newDate).then(count => {
+                  if (count > 0) {
+                    setDateWarning(prev => prev
+                      ? `${prev} (${count} ventas pendientes)`
+                      : `Hay ${count} ventas sin sincronizar para esta fecha.`
+                    );
+                  }
+                  setCheckingDate(false);
+                }).catch(() => setCheckingDate(false));
+              }
+            }}
+            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-[#3A3A3A] font-semibold text-base focus:border-[#912D26] focus:outline-none transition-colors [color-scheme:light]"
+          />
+          {dateWarning && (
+            <div className="mt-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-amber-700 text-xs">{dateWarning}</p>
+            </div>
+          )}
+          {selectedDate !== todayStr && (
+            <p className="mt-2 text-xs text-blue-500 flex items-center gap-1">
+              <CalendarDays className="w-3 h-3" />
+              Fecha seleccionada: {selectedDate} (no es hoy)
+            </p>
+          )}
+          {checkingDate && (
+            <div className="mt-2 flex items-center gap-1.5 text-gray-400 text-xs">
+              <Loader2 className="w-3 h-3 animate-spin" /> Verificando datos...
+            </div>
+          )}
+        </div>
 
         {/* Selector de VT — grid grande */}
         {vts.length === 0 ? (

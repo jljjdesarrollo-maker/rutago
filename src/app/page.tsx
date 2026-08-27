@@ -175,6 +175,19 @@ export default function Home() {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
+  const handleViewRecord = async (record: SavedRecord) => {
+    // Fetch con foto incluida para evitar 413 en la lista general
+    try {
+      const res = await fetch(`/api/records/${record.id}?photo=true`);
+      if (res.ok) {
+        const withPhoto = await res.json();
+        setDetailRecord(withPhoto);
+        return;
+      }
+    } catch { /* fallback al record sin foto */ }
+    setDetailRecord(record);
+  };
+
   // Comprobante modal overlay
   if (comprobanteRecord) {
     return (
@@ -315,7 +328,7 @@ export default function Home() {
         <HistoryScreen
           isAdmin={isAdmin}
           onBack={() => setView('home')}
-          onViewRecord={(record) => setDetailRecord(record)}
+          onViewRecord={handleViewRecord}
         />
       );
     default:

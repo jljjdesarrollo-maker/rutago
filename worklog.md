@@ -101,3 +101,32 @@ Stage Summary:
 - Archivos modificados: auth/route.ts, personas/route.ts, personas/[id]/route.ts, HomeScreenVT.tsx
 - Build OK, listo para deploy
 - NOTA MIGRACIÓN: Los PINs existentes en plaintext se migran automáticamente al primer login exitoso de cada usuario
+
+---
+Task ID: 5
+Agent: Main
+Task: Date picker + fix 413 records
+
+Work Log:
+- Date picker en HomeScreenVT.tsx:
+  - Nuevo estado selectedDate (default hoy), dateWarning, checkingDate
+  - Input type="date" con max=hoy (no fechas futuras)
+  - Validación al cambiar fecha: verifica estados en localStorage + ventas pendientes en IndexedDB
+  - Warning amber si hay datos existentes para VT+fecha seleccionada
+  - Indicador azul si la fecha no es hoy
+  - startSession usa selectedDate en vez de today hardcodeado
+  - Regla "solo 1 VT por fecha" ahora funciona con la fecha seleccionada (no solo hoy)
+- Fix 413 FUNCTION_PAYLOAD_TOO_LARGE:
+  - Causa raíz: GET /api/records/[id] devolvía photoUrl (base64 ~200KB) sin stripping
+  - Fix: strip photoUrl por defecto, agregar ?photo=true para incluirlo
+  - page.tsx: handleViewRecord ahora fetch con ?photo=true al abrir detalle
+  - La lista general (GET /api/records) ya stripping photoUrl desde antes
+- Version bump: v3.25 → v3.26-aug28-datepicker
+- Build exitoso
+
+Stage Summary:
+- Version: v3.26-aug28-datepicker
+- Date picker funcional con validación de datos duplicados
+- Bug 413 resuelto: photoUrl nunca se incluye en listas, solo en detalle bajo demanda
+- Archivos modificados: HomeScreenVT.tsx, records/[id]/route.ts, page.tsx
+- Build OK, listo para deploy
