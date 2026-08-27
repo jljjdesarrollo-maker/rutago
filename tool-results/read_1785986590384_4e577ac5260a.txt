@@ -1,0 +1,567 @@
+     1→'use client';
+     2→
+     3→import { useState, useMemo, useRef, useEffect } from 'react';
+     4→import { ArrowLeft, Save, Plus, Trash2, Camera, X, Loader2, AlertTriangle } from 'lucide-react';
+     5→import { Button } from '@/components/ui/button';
+     6→import { Input } from '@/components/ui/input';
+     7→import { Label } from '@/components/ui/label';
+     8→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+     9→import { Separator } from '@/components/ui/separator';
+    10→import {
+    11→  AlertDialog,
+    12→  AlertDialogContent,
+    13→  AlertDialogHeader,
+    14→  AlertDialogTitle,
+    15→  AlertDialogDescription,
+    16→  AlertDialogFooter,
+    17→  AlertDialogCancel,
+    18→  AlertDialogAction,
+    19→} from '@/components/ui/alert-dialog';
+    20→import { type RecordFormData, type TripData, type ExpenseData, createEmptyFormData, num, getCurrentConductor, getCurrentAyudante } from './types';
+    21→import { routes, getRouteLabel, getTimesForRoute } from '@/lib/routes';
+    22→
+    23→interface RecordFormProps {
+    24→  saving: boolean;
+    25→  error: string | null;
+    26→  onBack: () => void;
+    27→  onSave: (data: RecordFormData, photoBase64: string | null) => void;
+    28→}
+    29→
+    30→export function RecordForm({ saving, error, onBack, onSave }: RecordFormProps) {
+    31→  const [form, setForm] = useState<RecordFormData>(createEmptyFormData());
+    32→  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    33→  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+    34→  const [showConfirm, setShowConfirm] = useState(false);
+    35→  const [loadedDefaults, setLoadedDefaults] = useState(false);
+    36→
+    37→  // Load current conductor and ayudante from DB
+    38→  useEffect(() => {
+    39→    if (loadedDefaults) return;
+    40→    Promise.all([getCurrentConductor(), getCurrentAyudante()]).then(([conductor, ayudante]) => {
+    41→      if (conductor || ayudante) {
+    42→        setForm(prev => ({
+    43→          ...prev,
+    44→          ...(conductor ? { conductor } : {}),
+    45→          ...(ayudante ? { ayudanteNombre: ayudante } : {}),
+    46→        }));
+    47→      }
+    48→      setLoadedDefaults(true);
+    49→    });
+    50→  }, [loadedDefaults]);
+    51→  const fileInputRef = useRef<HTMLInputElement>(null);
+    52→
+    53→  const updateField = (field: keyof RecordFormData, value: string) => {
+    54→    setForm((prev) => ({ ...prev, [field]: value }));
+    55→  };
+    56→
+    57→  const addTrip = () => {
+    58→    setForm((prev) => ({
+    59→      ...prev,
+    60→      trips: [...prev.trips, { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '', income: '0', boletos: '0' }],
+    61→    }));
+    62→  };
+    63→
+    64→  const removeTrip = (index: number) => {
+    65→    setForm((prev) => ({
+    66→      ...prev,
+    67→      trips: prev.trips.filter((_, i) => i !== index),
+    68→    }));
+    69→  };
+    70→
+    71→  const updateTrip = (index: number, field: keyof TripData, value: string) => {
+    72→    setForm((prev) => {
+    73→      const newTrips = [...prev.trips];
+    74→      newTrips[index] = { ...newTrips[index], [field]: value };
+    75→      return { ...prev, trips: newTrips };
+    76→    });
+    77→  };
+    78→
+    79→  const handleRouteSelect = (index: number, routeLabel: string) => {
+    80→    const route = routes.find((r) => getRouteLabel(r.from, r.to) === routeLabel);
+    81→    if (route) {
+    82→      setForm((prev) => {
+    83→        const newTrips = [...prev.trips];
+    84→        newTrips[index] = { ...newTrips[index], routeFrom: route.from, routeTo: route.to, time: '' };
+    85→        return { ...prev, trips: newTrips };
+    86→      });
+    87→    }
+    88→  };
+    89→
+    90→  const addExpense = () => {
+    91→    setForm((prev) => ({
+    92→      ...prev,
+    93→      expenses: [...prev.expenses, { description: '', amount: '0' }],
+    94→    }));
+    95→  };
+    96→
+    97→  const removeExpense = (index: number) => {
+    98→    setForm((prev) => ({
+    99→      ...prev,
+   100→      expenses: prev.expenses.filter((_, i) => i !== index),
+   101→    }));
+   102→  };
+   103→
+   104→  const updateExpense = (index: number, field: keyof ExpenseData, value: string) => {
+   105→    setForm((prev) => {
+   106→      const newExp = [...prev.expenses];
+   107→      newExp[index] = { ...newExp[index], [field]: value };
+   108→      return { ...prev, expenses: newExp };
+   109→    });
+   110→  };
+   111→
+   112→  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+   113→    const file = e.target.files?.[0];
+   114→    if (!file || !file.type.startsWith('image/')) return;
+   115→    const reader = new FileReader();
+   116→    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
+   117→    reader.readAsDataURL(file);
+   118→    e.target.value = '';
+   119→  };
+   120→
+   121→  const totals = useMemo(() => {
+   122→    const tripIncome = form.trips.reduce((s, t) => s + num(t.income), 0);
+   123→    const cajaComun = form.trips.reduce((s, t) => s + num(t.boletos), 0);
+   124→    const sobrante = num(form.sobrante);
+   125→    const production = tripIncome + sobrante;
+   126→    const totalGastos = form.expenses.reduce((s, e) => s + num(e.amount), 0);
+   127→    const tickets = num(form.tickets);
+   128→    const entregaAyudante = production - totalGastos;
+   129→    const entregaCompania = cajaComun - tickets;
+   130→    return { production, cajaComun, sobrante, totalGastos, tickets, entregaAyudante, entregaCompania };
+   131→  }, [form]);
+   132→
+   133→  const handleSave = () => {
+   134→    // Validaciones obligatorias
+   135→    const errors: string[] = [];
+   136→    if (!form.km.trim()) errors.push('Kilometraje es obligatorio');
+   137→    if (!photoPreview) errors.push('Foto del cuaderno es obligatoria');
+   138→    if (totals.totalGastos <= 0) errors.push('Total de gastos debe ser mayor a 0');
+   139→    if (totals.production <= 0) errors.push('Produccion total debe ser mayor a 0');
+   140→    if (errors.length > 0) {
+   141→      setValidationErrors(errors);
+   142→      return;
+   143→    }
+   144→    setValidationErrors([]);
+   145→    setShowConfirm(true);
+   146→  };
+   147→
+   148→  const handleConfirmSave = () => {
+   149→    setShowConfirm(false);
+   150→    onSave(form, photoPreview);
+   151→  };
+   152→
+   153→  const allRouteOptions = routes.map((r) => getRouteLabel(r.from, r.to));
+   154→
+   155→  const isOddTrip = (index: number) => (index + 1) % 2 !== 0;
+   156→
+   157→  return (
+   158→    <div className="flex flex-col min-h-[100dvh] bg-[#FAFAFA]">
+   159→      <header className="sticky top-0 z-10 bg-white border-b border-[#D6D6D6] px-4 py-3 flex items-center justify-between">
+   160→        <div className="flex items-center gap-3">
+   161→          <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl text-[#3A3A3A]">
+   162→            <ArrowLeft className="w-5 h-5" />
+   163→          </Button>
+   164→          <div>
+   165→            <h1 className="text-lg font-semibold text-[#3A3A3A]">Registro del Dia</h1>
+   166→          </div>
+   167→        </div>
+   168→        <Button
+   169→          onClick={handleSave}
+   170→          disabled={saving}
+   171→          className="h-10 px-4 rounded-xl bg-[#912D26] hover:bg-[#7A2520] text-white font-semibold text-sm"
+   172→        >
+   173→          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+   174→          {saving ? 'Guardando...' : 'Guardar'}
+   175→        </Button>
+   176→      </header>
+   177→
+   178→      <main className="flex-1 overflow-y-auto pb-8">
+   179→        <div className="px-4 py-4 space-y-4">
+   180→          {error && (
+   181→            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+   182→              {error}
+   183→            </div>
+   184→          )}
+   185→          {validationErrors.length > 0 && (
+   186→            <div className="p-3 rounded-xl bg-[#912D26]/10 border border-[#912D26]/30 text-[#912D26] text-sm space-y-1">
+   187→              <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Campos obligatorios:</p>
+   188→              {validationErrors.map((e, i) => <p key={i}>- {e}</p>)}
+   189→            </div>
+   190→          )}
+   191→
+   192→          {/* 1. Cabecera - Fechas y Km */}
+   193→          <Card className="rounded-2xl border border-[#D6D6D6] bg-white">
+   194→            <CardContent className="p-4 space-y-3">
+   195→              <div className="grid grid-cols-2 gap-3">
+   196→                <div className="space-y-1.5">
+   197→                  <Label className="text-xs font-medium text-[#3A3A3A]/60">Fecha de Registro</Label>
+   198→                  <Input
+   199→                    type="text"
+   200→                    value={new Date().toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+   201→                    readOnly
+   202→                    className="rounded-xl h-11 bg-[#F5F5F5] text-[#3A3A3A]/50 cursor-not-allowed border-[#D6D6D6]"
+   203→                  />
+   204→                </div>
+   205→                <div className="space-y-1.5">
+   206→                  <Label className="text-xs font-medium text-[#3A3A3A]/60">Fecha de Operacion</Label>
+   207→                  <Input
+   208→                    type="date"
+   209→                    value={form.date}
+   210→                    onChange={(e) => updateField('date', e.target.value)}
+   211→                    className="rounded-xl h-11 border-[#D6D6D6]"
+   212→                  />
+   213→                </div>
+   214→              </div>
+   215→              <div className="space-y-1.5">
+   216→                <Label className="text-xs font-medium text-[#3A3A3A]/60 flex items-center gap-1">
+   217→                  Kilometraje <span className="text-[#912D26]">*</span>
+   218→                </Label>
+   219→                <Input
+   220→                  type="text"
+   221→                  inputMode="numeric"
+   222→                  placeholder="877604"
+   223→                  value={form.km}
+   224→                  onChange={(e) => updateField('km', e.target.value)}
+   225→                  className={`rounded-xl h-11 border-[#D6D6D6] ${!form.km.trim() && validationErrors.length > 0 ? 'border-[#912D26] bg-[#912D26]/5' : ''}`}
+   226→                />
+   227→              </div>
+   228→              <div className="grid grid-cols-2 gap-3">
+   229→                <div className="space-y-1.5">
+   230→                  <Label className="text-xs font-medium text-[#3A3A3A]/60">Conductor</Label>
+   231→                  <Input
+   232→                    placeholder="Nombre del conductor"
+   233→                    value={form.conductor}
+   234→                    onChange={(e) => updateField('conductor', e.target.value)}
+   235→                    className="rounded-xl h-11 border-[#D6D6D6]"
+   236→                  />
+   237→                </div>
+   238→                <div className="space-y-1.5">
+   239→                  <Label className="text-xs font-medium text-[#3A3A3A]/60">Ayudante</Label>
+   240→                  <Input
+   241→                    placeholder="Nombre del ayudante"
+   242→                    value={form.ayudanteNombre}
+   243→                    onChange={(e) => updateField('ayudanteNombre', e.target.value)}
+   244→                    className="rounded-xl h-11 border-[#D6D6D6]"
+   245→                  />
+   246→                </div>
+   247→              </div>
+   248→
+   249→              {/* Foto obligatoria */}
+   250→              <div>
+   251→                <Label className="text-xs font-medium text-[#3A3A3A]/60 flex items-center gap-1">
+   252→                  Foto del Cuaderno <span className="text-[#912D26]">*</span>
+   253→                </Label>
+   254→                <div className="mt-1.5">
+   255→                  {photoPreview ? (
+   256→                    <div className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-[#912D26]">
+   257→                      <img src={photoPreview} alt="Foto" className="w-full h-full object-cover" />
+   258→                      <button
+   259→                        onClick={() => setPhotoPreview(null)}
+   260→                        className="absolute top-0 right-0 w-5 h-5 bg-[#912D26] text-white rounded-bl-lg flex items-center justify-center"
+   261→                      >
+   262→                        <X className="w-3 h-3" />
+   263→                      </button>
+   264→                    </div>
+   265→                  ) : (
+   266→                    <Button
+   267→                      type="button"
+   268→                      variant="outline"
+   269→                      className="h-10 px-4 rounded-xl text-xs border-[#D6D6D6] text-[#3A3A3A]"
+   270→                      onClick={() => fileInputRef.current?.click()}
+   271→                    >
+   272→                      <Camera className="w-4 h-4 mr-1" />
+   273→                      Tomar/Adjuntar Foto
+   274→                    </Button>
+   275→                  )}
+   276→                </div>
+   277→              </div>
+   278→            </CardContent>
+   279→          </Card>
+   280→
+   281→          {/* 2. Frecuencias */}
+   282→          <Card className="rounded-2xl border border-[#D6D6D6] bg-white">
+   283→            <CardHeader className="pb-2 pt-4 px-4">
+   284→              <div className="flex items-center justify-between">
+   285→                <CardTitle className="text-base font-semibold text-[#3A3A3A]">Frecuencias del Dia</CardTitle>
+   286→                <Button onClick={addTrip} size="sm" variant="outline" className="h-8 rounded-lg text-xs border-dashed border-[#D6D6D6] text-[#3A3A3A]">
+   287→                  <Plus className="w-3.5 h-3.5 mr-1" /> Agregar
+   288→                </Button>
+   289→              </div>
+   290→            </CardHeader>
+   291→            <CardContent className="px-4 pb-4 space-y-3">
+   292→              {form.trips.length === 0 && (
+   293→                <div className="text-center py-6 text-[#3A3A3A]/40 text-sm">
+   294→                  <p>Toca &quot;Agregar&quot; para registrar frecuencias</p>
+   295→                </div>
+   296→              )}
+   297→              {form.trips.map((trip, index) => {
+   298→                const tripTimes = getTimesForRoute(trip.routeFrom, trip.routeTo);
+   299→                const odd = isOddTrip(index);
+   300→                return (
+   301→                  <div key={index} className={`rounded-xl p-3 space-y-2 border-l-4 ${odd ? 'border-l-[#912D26] bg-[#912D26]/5' : 'border-l-[#3A3A3A] bg-[#3A3A3A]/5'}`}>
+   302→                    <div className="flex items-center justify-between">
+   303→                      <span className={`text-xs font-bold ${odd ? 'text-[#912D26]' : 'text-[#3A3A3A]'}`}>
+   304→                        Frecuencia #{index + 1} {odd ? '(Loja → Vilca)' : '(Vilca → Loja)'}
+   305→                      </span>
+   306→                      <Button onClick={() => removeTrip(index)} variant="ghost" size="icon" className="h-7 w-7 text-[#3A3A3A]/40 hover:text-red-500">
+   307→                        <Trash2 className="w-3.5 h-3.5" />
+   308→                      </Button>
+   309→                    </div>
+   310→
+   311→                    <div className="space-y-1">
+   312→                      <Label className="text-[10px] text-[#3A3A3A]/50">Ruta</Label>
+   313→                      <select
+   314→                        value={getRouteLabel(trip.routeFrom, trip.routeTo)}
+   315→                        onChange={(e) => handleRouteSelect(index, e.target.value)}
+   316→                        className="w-full h-9 rounded-lg border border-[#D6D6D6] bg-white px-2 text-sm text-[#3A3A3A]"
+   317→                      >
+   318→                        {allRouteOptions.map((opt) => (
+   319→                          <option key={opt} value={opt}>{opt}</option>
+   320→                        ))}
+   321→                      </select>
+   322→                    </div>
+   323→
+   324→                    <div className="space-y-1">
+   325→                      <Label className="text-[10px] text-[#3A3A3A]/50">Hora de Salida</Label>
+   326→                      {tripTimes.length > 0 ? (
+   327→                        <select
+   328→                          value={trip.time}
+   329→                          onChange={(e) => updateTrip(index, 'time', e.target.value)}
+   330→                          className="w-full h-9 rounded-lg border border-[#D6D6D6] bg-white px-2 text-sm text-[#3A3A3A]"
+   331→                        >
+   332→                          <option value="">-- Seleccionar --</option>
+   333→                          {tripTimes.map((t) => (
+   334→                            <option key={t} value={t}>{t}</option>
+   335→                          ))}
+   336→                        </select>
+   337→                      ) : (
+   338→                        <Input
+   339→                          placeholder="HH:MM"
+   340→                          value={trip.time}
+   341→                          onChange={(e) => updateTrip(index, 'time', e.target.value)}
+   342→                          className="h-9 text-sm rounded-lg border-[#D6D6D6]"
+   343→                        />
+   344→                      )}
+   345→                    </div>
+   346→
+   347→                    <div className="grid grid-cols-2 gap-2">
+   348→                      <div className="space-y-1">
+   349→                        <Label className="text-[10px] text-[#3A3A3A]/50">Ingreso (Produccion)</Label>
+   350→                        <Input
+   351→                          type="number"
+   352→                          inputMode="decimal"
+   353→                          value={trip.income}
+   354→                          onChange={(e) => updateTrip(index, 'income', e.target.value)}
+   355→                          className="h-9 text-sm rounded-lg border-[#D6D6D6]"
+   356→                        />
+   357→                      </div>
+   358→                      <div className="space-y-1">
+   359→                        <Label className="text-[10px] text-[#3A3A3A]/50">Boletos (Caja Comun)</Label>
+   360→                        <Input
+   361→                          type="number"
+   362→                          inputMode="decimal"
+   363→                          value={trip.boletos}
+   364→                          onChange={(e) => updateTrip(index, 'boletos', e.target.value)}
+   365→                          className="h-9 text-sm rounded-lg border-[#D6D6D6]"
+   366→                        />
+   367→                      </div>
+   368→                    </div>
+   369→                  </div>
+   370→                );
+   371→              })}
+   372→
+   373→              {/* Sobrante / Ajuste */}
+   374→              <div className="pt-2 border-t border-[#D6D6D6]">
+   375→                <div className="space-y-1">
+   376→                  <Label className="text-xs font-medium text-[#3A3A3A]/60">Sobrante / Ajuste</Label>
+   377→                  <Input
+   378→                    type="number"
+   379→                    inputMode="decimal"
+   380→                    placeholder="0.00"
+   381→                    value={form.sobrante}
+   382→                    onChange={(e) => updateField('sobrante', e.target.value)}
+   383→                    className="h-10 text-sm rounded-lg border-[#D6D6D6]"
+   384→                  />
+   385→                  <p className="text-[10px] text-[#3A3A3A]/40">Dinero sobrante al contar (positivo o negativo)</p>
+   386→                </div>
+   387→              </div>
+   388→            </CardContent>
+   389→          </Card>
+   390→
+   391→          {/* 3. Gastos */}
+   392→          <Card className="rounded-2xl border border-[#D6D6D6] bg-white">
+   393→            <CardHeader className="pb-2 pt-4 px-4">
+   394→              <div className="flex items-center justify-between">
+   395→                <CardTitle className="text-base font-semibold text-red-600">Gastos</CardTitle>
+   396→                <Button onClick={addExpense} size="sm" variant="outline" className="h-8 rounded-lg text-xs border-dashed border-[#D6D6D6] text-[#3A3A3A]">
+   397→                  <Plus className="w-3.5 h-3.5 mr-1" /> Agregar
+   398→                </Button>
+   399→              </div>
+   400→            </CardHeader>
+   401→            <CardContent className="px-4 pb-4 space-y-2">
+   402→              {form.expenses.map((exp, index) => (
+   403→                <div key={index} className="flex items-center gap-2">
+   404→                  <Input
+   405→                    placeholder="Descripcion"
+   406→                    value={exp.description}
+   407→                    onChange={(e) => updateExpense(index, 'description', e.target.value)}
+   408→                    className="h-10 text-sm rounded-lg flex-1 border-[#D6D6D6]"
+   409→                  />
+   410→                  <Input
+   411→                    type="number"
+   412→                    inputMode="decimal"
+   413→                    placeholder="0.00"
+   414→                    value={exp.amount}
+   415→                    onChange={(e) => updateExpense(index, 'amount', e.target.value)}
+   416→                    className="h-10 text-sm rounded-lg w-24 border-[#D6D6D6]"
+   417→                  />
+   418→                  {index >= 4 && (
+   419→                    <Button onClick={() => removeExpense(index)} variant="ghost" size="icon" className="h-8 w-8 text-[#3A3A3A]/40 hover:text-red-500 shrink-0">
+   420→                      <Trash2 className="w-3.5 h-3.5" />
+   421→                    </Button>
+   422→                  )}
+   423→                </div>
+   424→              ))}
+   425→              <div className="pt-2 flex justify-between text-sm font-semibold text-red-600">
+   426→                <span>Total Gastos</span>
+   427→                <span>S/ {totals.totalGastos.toFixed(2)}</span>
+   428→              </div>
+   429→            </CardContent>
+   430→          </Card>
+   431→
+   432→          {/* 4. Tickets - despues de Gastos, antes del Resumen */}
+   433→          <Card className="rounded-2xl border border-[#D6D6D6] bg-white">
+   434→            <CardContent className="p-4">
+   435→              <Label className="text-xs font-medium text-[#3A3A3A]/60 mb-3 block">Tickets</Label>
+   436→              <div className="grid grid-cols-3 gap-3">
+   437→                <button
+   438→                  type="button"
+   439→                  onClick={() => updateField('tickets', '4.50')}
+   440→                  className={`h-14 rounded-xl text-base font-bold border-2 transition-all active:scale-95 ${form.tickets === '4.50' ? 'bg-[#912D26] border-[#912D26] text-white shadow-lg shadow-[#912D26]/20' : 'bg-white border-[#D6D6D6] text-[#3A3A3A] hover:border-[#912D26]'}`}
+   441→                >
+   442→                  $4.50
+   443→                </button>
+   444→                <button
+   445→                  type="button"
+   446→                  onClick={() => updateField('tickets', '6.00')}
+   447→                  className={`h-14 rounded-xl text-base font-bold border-2 transition-all active:scale-95 ${form.tickets === '6.00' ? 'bg-[#912D26] border-[#912D26] text-white shadow-lg shadow-[#912D26]/20' : 'bg-white border-[#D6D6D6] text-[#3A3A3A] hover:border-[#912D26]'}`}
+   448→                >
+   449→                  $6.00
+   450→                </button>
+   451→                <button
+   452→                  type="button"
+   453→                  onClick={() => updateField('tickets', '')}
+   454→                  className={`h-14 rounded-xl text-base font-bold border-2 transition-all active:scale-95 ${form.tickets === '' ? 'bg-[#3A3A3A] border-[#3A3A3A] text-white' : 'bg-white border-[#D6D6D6] text-[#3A3A3A]/40 hover:border-[#3A3A3A]'}`}
+   455→                >
+   456→                  Ninguno
+   457→                </button>
+   458→              </div>
+   459→            </CardContent>
+   460→          </Card>
+   461→
+   462→          {/* 5. Resumen - en zona inferior para one-handed */}
+   463→          <Card className="rounded-2xl bg-[#3A3A3A] text-white">
+   464→            <CardContent className="p-4 space-y-3">
+   465→              <p className="text-xs font-bold uppercase tracking-wider text-white/50">Liquidacion del Dia</p>
+   466→              <div className="flex justify-between text-sm">
+   467→                <span className="text-white/60">Produccion</span>
+   468→                <span className="font-semibold">S/ {totals.production.toFixed(2)}</span>
+   469→              </div>
+   470→              {totals.sobrante !== 0 && (
+   471→                <div className="flex justify-between text-sm">
+   472→                  <span className="text-white/60">Sobrante</span>
+   473→                  <span className="font-semibold text-[#4ADE80]">S/ {totals.sobrante.toFixed(2)}</span>
+   474→                </div>
+   475→              )}
+   476→              <div className="flex justify-between text-sm">
+   477→                <span className="text-white/60">Caja Comun (Boletos)</span>
+   478→                <span className="font-semibold">S/ {totals.cajaComun.toFixed(2)}</span>
+   479→              </div>
+   480→              <Separator className="bg-white/10" />
+   481→              <div className="flex justify-between text-sm">
+   482→                <span className="text-white/60">Total Gastos</span>
+   483→                <span className="font-semibold text-red-400">S/ {totals.totalGastos.toFixed(2)}</span>
+   484→              </div>
+   485→              <div className="flex justify-between text-sm">
+   486→                <span className="text-white/60">Tickets</span>
+   487→                <span className="font-semibold">S/ {totals.tickets.toFixed(2)}</span>
+   488→              </div>
+   489→              <Separator className="bg-white/10" />
+   490→              <div className="flex justify-between">
+   491→                <span className="text-sm text-white/80">Entrega Ayudante</span>
+   492→                <span className={`font-bold ${totals.entregaAyudante >= 0 ? 'text-[#4ADE80]' : 'text-red-400'}`}>
+   493→                  S/ {totals.entregaAyudante.toFixed(2)}
+   494→                </span>
+   495→              </div>
+   496→              <p className="text-[10px] text-white/30">Produccion - Total Gastos</p>
+   497→              <div className="flex justify-between">
+   498→                <span className="text-sm text-white/80">Entrega Compania</span>
+   499→                <span className={`font-bold ${totals.entregaCompania >= 0 ? 'text-[#4ADE80]' : 'text-red-400'}`}>
+   500→                  S/ {totals.entregaCompania.toFixed(2)}
+   501→                </span>
+   502→              </div>
+   503→              <p className="text-[10px] text-white/30">Caja Comun - Tickets</p>
+   504→            </CardContent>
+   505→          </Card>
+   506→
+   507→          {/* Boton Guardar - zona inferior */}
+   508→          <Button
+   509→            onClick={handleSave}
+   510→            disabled={saving}
+   511→            className="w-full h-14 text-base font-semibold rounded-2xl bg-[#912D26] hover:bg-[#7A2520] text-white shadow-lg shadow-[#912D26]/20 active:scale-[0.98] transition-transform"
+   512→          >
+   513→            {saving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
+   514→            {saving ? 'Guardando...' : 'Guardar Registro'}
+   515→          </Button>
+   516→        </div>
+   517→      </main>
+   518→
+   519→      {/* Dialogo de confirmacion antes de guardar */}
+   520→      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+   521→        <AlertDialogContent className="rounded-2xl max-w-md">
+   522→          <AlertDialogHeader>
+   523→            <AlertDialogTitle className="text-[#3A3A3A] text-lg">Confirmar Cierre de Caja</AlertDialogTitle>
+   524→            <AlertDialogDescription className="text-[#3A3A3A]/70 text-sm space-y-3 pt-2">
+   525→              <p>Revise los valores calculados antes de confirmar:</p>
+   526→              <div className="rounded-xl bg-[#F5F5F5] p-3 space-y-2">
+   527→                <div className="flex justify-between text-sm">
+   528→                  <span className="text-[#3A3A3A]/60">Produccion</span>
+   529→                  <span className="font-semibold text-[#3A3A3A]">S/ {totals.production.toFixed(2)}</span>
+   530→                </div>
+   531→                <div className="flex justify-between text-sm">
+   532→                  <span className="text-[#3A3A3A]/60">Caja Comun</span>
+   533→                  <span className="font-semibold text-[#3A3A3A]">S/ {totals.cajaComun.toFixed(2)}</span>
+   534→                </div>
+   535→                <div className="flex justify-between text-sm">
+   536→                  <span className="text-[#3A3A3A]/60">Total Gastos</span>
+   537→                  <span className="font-semibold text-red-600">S/ {totals.totalGastos.toFixed(2)}</span>
+   538→                </div>
+   539→              </div>
+   540→              <p className="font-medium text-[#912D26]">
+   541→                Va a entregar la Compania <strong>S/ {totals.entregaCompania.toFixed(2)}</strong> y valor a entregar el ayudante <strong>S/ {totals.entregaAyudante.toFixed(2)}</strong>. Es correcto?
+   542→              </p>
+   543→            </AlertDialogDescription>
+   544→          </AlertDialogHeader>
+   545→          <AlertDialogFooter className="gap-2">
+   546→            <AlertDialogCancel className="rounded-xl h-11">Cancelar</AlertDialogCancel>
+   547→            <AlertDialogAction
+   548→              onClick={handleConfirmSave}
+   549→              className="rounded-xl h-11 bg-[#912D26] hover:bg-[#7A2520] text-white font-semibold"
+   550→            >
+   551→              Confirmar y Guardar
+   552→            </AlertDialogAction>
+   553→          </AlertDialogFooter>
+   554→        </AlertDialogContent>
+   555→      </AlertDialog>
+   556→
+   557→      <input
+   558→        ref={fileInputRef}
+   559→        type="file"
+   560→        accept="image/*"
+   561→        className="hidden"
+   562→        onChange={handlePhotoChange}
+   563→      />
+   564→    </div>
+   565→  );
+   566→}
+   567→
