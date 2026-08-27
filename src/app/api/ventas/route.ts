@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
-      fecha, vtCode, frecuenciaId, ruta, parada, tipo,
+      fecha, vtCode, frecuenciaId, ruta, parada, tipo, pasajeroTipo,
       tarifaOficial, cobrado, hora, ayudanteId, ayudanteNombre,
       createdAt, localId, lat, lng
     } = body;
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
         ruta,
         parada,
         tipo,
+        pasajeroTipo: pasajeroTipo || 'normal',
         tarifaOficial: parseFloat(tarifaOficial) || 0,
         cobrado: parseFloat(cobrado) || 0,
         hora,

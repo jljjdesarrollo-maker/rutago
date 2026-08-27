@@ -20,9 +20,9 @@ export function CloseFrequencyScreen({ session, estado, connection, onClosed, on
   const [confirmClose, setConfirmClose] = useState(false);
 
   const loadVentas = useCallback(async () => {
+    // Mostrar TODAS las ventas (incluidas sync) para liquidación correcta
     const all = await getVentasByFrecuencia(estado.estadoId);
-    const unsynced = all.filter(v => v.syncStatus === 'pending' || v.syncStatus === 'error');
-    setVentas(unsynced);
+    setVentas(all);
   }, [estado.estadoId]);
 
   useEffect(() => { loadVentas(); }, [loadVentas]);
@@ -86,7 +86,7 @@ export function CloseFrequencyScreen({ session, estado, connection, onClosed, on
             </div>
             <div className={`rounded-lg p-2 text-center ${diferencia > 0 ? 'bg-amber-50' : 'bg-gray-50'}`}>
               <div className={`text-sm font-bold ${diferencia > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
-                {diferencia > 0 ? '-$' : ''}{Math.abs(diferencia).toFixed(2)}
+                {diferencia > 0 ? '+$' : ''}{Math.abs(diferencia).toFixed(2)}
               </div>
               <div className="text-[10px] text-gray-500">Diferencia</div>
             </div>

@@ -103,6 +103,7 @@ model VentaBoleto {
   ruta            String
   parada          String
   tipo            String   // "ida" | "vuelta"
+  pasajeroTipo    String   @default("normal") // "normal" | "media"
   tarifaOficial   Float
   cobrado         Float
   hora            String

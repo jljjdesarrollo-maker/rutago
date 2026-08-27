@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { type FrecuenciaEstado, type VTSession } from './types-boletos';
 import { getVentasByFrecuencia, countVentasPendientes, syncVentasSilencioso } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
@@ -25,6 +25,7 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ synced: number; failed: number; total: number } | null>(null);
   const [noInternet, setNoInternet] = useState(false);
+  const submitLock = useRef(false); // Anti double-tap
 
   const loadVentas = useCallback(async () => {
     const all = await getVentasByFrecuencia(estado.estadoId);
@@ -37,7 +38,9 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
   const totalSistema = ventas.reduce((sum, v) => sum + v.cobrado, 0);
   const enteros = ventas.filter(v => v.pasajeroTipo !== 'media').length;
   const medias = ventas.filter(v => v.pasajeroTipo === 'media').length;
-  const efectivoNum = parseFloat(efectivo) || 0;
+  // Permitir NaN temporalmente mientras escribe (evita parpadeo)
+  const efectivoRaw = parseFloat(efectivo);
+  const efectivoNum = isNaN(efectivoRaw) ? -1 : efectivoRaw;
   const diferencia = efectivoNum - totalSistema;
   // Caja Común (Oficina Loja)
   const cajaComunCount = (estado as any).cajaComunCount || 0;
@@ -48,6 +51,8 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
   const cuadra = Math.abs(diferencia) < 0.01 && efectivoNum > 0;
 
   const handleConfirm = async () => {
+    if (submitLock.current) return;
+    submitLock.current = true;
     setSaving(true);
     try {
       // GPS invisible: capture coordinates when frequency closes
@@ -99,6 +104,7 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
       console.error('Error guardando arqueo:', err);
     } finally {
       setSaving(false);
+      setTimeout(() => { submitLock.current = false; }, 500);
     }
   };
 
@@ -269,8 +275,8 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
           </div>
         </div>
 
-        {/* Resultado del arqueo */}
-        {efectivoNum > 0 && (
+        {/* Resultado del arqueo — mostrar si el usuario ingresó un valor válido */}
+        {efectivoNum >= 0 && efectivo.trim() !== '' && (
           <div className={`rounded-2xl border-2 p-4 ${
             cuadra ? 'bg-green-50 border-green-300' :
             faltante ? 'bg-red-50 border-red-300' :
@@ -336,9 +342,9 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
         {/* Boton confirmar */}
         <button
           onClick={handleConfirm}
-          disabled={!efectivo || efectivoNum <= 0 || saving}
+          disabled={!efectivo || efectivoNum < 0 || (efectivoNum === 0 && totalSistema > 0) || saving}
           className={`w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-2 transition-all active:scale-95 ${
-            efectivo && efectivoNum > 0 && !saving
+            efectivo && efectivoNum >= 0 && !saving && !(efectivoNum === 0 && totalSistema > 0)
               ? (esUltima ? 'bg-[#912D26] text-white shadow-lg shadow-red-200' : 'bg-green-600 text-white shadow-lg shadow-green-200')
               : 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed'
           }`}

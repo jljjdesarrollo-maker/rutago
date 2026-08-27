@@ -192,6 +192,83 @@ export async function countVentasPendientes(): Promise<number> {
   });
 }
 
+// ─── Cleanup functions ───
+
+/** Eliminar todas las ventas de una frecuencia específica */
+export async function deleteVentasByEstadoId(estadoId: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('ventas_pendientes', 'readwrite');
+    const store = tx.objectStore('ventas_pendientes');
+    if (store.indexNames.contains('estadoId')) {
+      const index = store.index('estadoId');
+      const request = index.openCursor(IDBKeyRange.only(estadoId));
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        }
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    } else {
+      // Fallback: full scan
+      const request = store.openCursor();
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result;
+        if (cursor) {
+          if (cursor.value.estadoId === estadoId) cursor.delete();
+          cursor.continue();
+        }
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }
+  });
+}
+
+/** Eliminar todas las ventas de un VT+fecha (todas las frecuencias) */
+export async function deleteVentasByVT(vtCode: string, fecha: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('ventas_pendientes', 'readwrite');
+    const store = tx.objectStore('ventas_pendientes');
+    const prefix = `${fecha}_`;
+    const request = store.openCursor();
+    request.onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest).result;
+      if (cursor) {
+        const v = cursor.value as VentaLocal;
+        if (v.vtCode === vtCode && v.fecha === fecha) {
+          cursor.delete();
+        }
+        cursor.continue();
+      }
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/** Contar ventas pendientes de un VT+fecha específico */
+export async function countVentasPendientesByVT(vtCode: string, fecha: string): Promise<number> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('ventas_pendientes', 'readonly');
+    const store = tx.objectStore('ventas_pendientes');
+    const request = store.getAll();
+    request.onsuccess = () => {
+      const all: VentaLocal[] = request.result;
+      resolve(all.filter(v => 
+        (v.syncStatus === 'pending' || v.syncStatus === 'error') &&
+        v.vtCode === vtCode && v.fecha === fecha
+      ).length);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
 export interface TarifaCache {
   id: string; vtCode: string; tarifas: any[]; updatedAt: string;
 }
@@ -327,6 +404,7 @@ export async function syncVentasSilencioso(): Promise<{ synced: number; failed: 
         body: JSON.stringify({
           fecha: venta.fecha, vtCode: venta.vtCode, frecuenciaId: venta.frecuenciaId,
           ruta: venta.ruta, parada: venta.parada, tipo: venta.tipo,
+          pasajeroTipo: venta.pasajeroTipo,
           tarifaOficial: venta.tarifaOficial, cobrado: venta.cobrado,
           hora: venta.hora, ayudanteId: venta.ayudanteId, ayudanteNombre: venta.ayudanteNombre,
           createdAt: venta.createdAt, localId: venta.id,

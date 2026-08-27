@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { type VTSession, type FrecuenciaEstado, type FrecuenciaData, loadPromoConfig } from './types-boletos';
-import { getVentasByFrecuencia, countVentasPendientes, syncVentasSilencioso } from '@/lib/indexeddb';
+import { getVentasByFrecuencia, countVentasPendientes, syncVentasSilencioso, deleteVentasByEstadoId } from '@/lib/indexeddb';
 import { matchRuta } from '@/lib/tarifas-data';
 import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck, AlertTriangle, Wrench, Droplets, UserX, Ban, FileText, Truck, CheckCircle } from 'lucide-react';
 
@@ -263,6 +263,8 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   const confirmNoRealizadaAction = () => {
     if (!noRealizadaModal) return;
     const motivo = motivoSeleccionado === 'otro' ? motivoPersonalizado.trim() : motivoSeleccionado;
+    // Eliminar ventas de esta frecuencia de IndexedDB (no se realizaron)
+    deleteVentasByEstadoId(noRealizadaModal.estadoId).catch(() => {});
     updateEstado(noRealizadaModal.estadoId, {
       estado: 'no_realizada',
       ventasCount: 0,

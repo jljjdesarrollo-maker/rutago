@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { type VTSession } from './types-boletos';
-import { countVentasPendientes, syncVentasSilencioso } from '@/lib/indexeddb';
+import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT } from '@/lib/indexeddb';
 import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.21-aug27-session-fix';
+const APP_VERSION = 'v3.22-aug27-fase1-critical-fixes';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;
@@ -204,10 +204,12 @@ export function HomeScreenVT({ onSessionStart }: Props) {
     if (forceNew && existingSession) {
       const oldFecha = existingSession.fecha;
       const oldVtCode = existingSession.vtCode;
-      // Limpiar TODOS los datos del VT anterior
+      // Limpiar TODOS los datos del VT anterior (localStorage + IndexedDB)
       localStorage.removeItem(`rg_estados_${oldVtCode}_${oldFecha}`);
       localStorage.removeItem(`arqueo_general_${oldVtCode}_${oldFecha}`);
       localStorage.removeItem('rg_vt_session');
+      // Eliminar ventas del VT anterior de IndexedDB
+      deleteVentasByVT(oldVtCode, oldFecha).catch(() => {});
     }
 
     // Limpiar estados del mismo VT/fecha por si quedaron huérfanos

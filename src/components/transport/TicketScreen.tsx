@@ -38,6 +38,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
   const [cobrado, setCobrado] = useState('');
   const [pasajeroTipo, setPasajeroTipo] = useState<TipoPasajero>('normal');
   const montoInputRef = useRef<HTMLInputElement>(null);
+  const submitLockRef = useRef(false); // Anti double-tap + double viaje gratis
   const [lastSale, setLastSale] = useState<{ parada: string; monto: number; tipo: string; cantidad?: number } | null>(null);
   const [ventasHoy, setVentasHoy] = useState(0);
   const [totalHoy, setTotalHoy] = useState(0);
@@ -117,12 +118,16 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
   };
 
   const handleVenta = async () => {
+    if (submitLockRef.current) return; // Anti double-tap
     if (!parada.trim() || !cobrado.trim()) return;
     const cobradoNum = parseFloat(cobrado) || 0;
-    if (cobradoNum < TARIFA_MINIMA) return;
+    if (cobradoNum <= 0) return; // No permitir ventas de $0
 
+    submitLockRef.current = true;
+    try {
     // ─── Viaje Gratis: check if this passenger is the winner ───
     const promoConfig = loadPromoConfig();
+    // Optimistic increment to prevent double viaje gratis
     const nuevaPosicion = contadorVentasFrecuencia + 1;
     const esGanador = promoConfig.activa && ganadorPosicion != null && nuevaPosicion === ganadorPosicion;
     const cantidadEfectiva = esGanador ? 1 : cantidad; // Viaje gratis siempre es 1
@@ -216,11 +221,16 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     } else {
       setLastSale({ parada: parada.trim(), monto: cobradoNum * cantidadEfectiva, tipo: pasajeroTipo === 'normal' ? 'ENTERO' : 'MEDIA', cantidad: cantidadEfectiva });
     }
+    // Optimistic counter increment (antes del async loadStats)
+    setContadorVentasFrecuencia(prev => prev + cantidadEfectiva);
     setParada('');
     setCobrado('');
     setCantidad(1);
     loadStats();
     setTimeout(() => setLastSale(null), esGanador ? 2500 : 1200);
+    } finally {
+      setTimeout(() => { submitLockRef.current = false; }, 400); // Cooldown 400ms
+    }
   };
 
   const direccionLabel = tipo === 'ida' ? 'IDA' : 'VUELTA';
@@ -255,7 +265,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
 
   const cobradoNum = cobrado ? parseFloat(cobrado) : 0;
   const totalCobrado = cobradoNum * cantidad;
-  const canRegister = parada.trim() && cobrado.trim() && cobradoNum >= TARIFA_MINIMA;
+  const canRegister = parada.trim() && cobrado.trim() && cobradoNum > 0;
 
   return (
     <div className="flex flex-col h-[100dvh] bg-gray-50">
