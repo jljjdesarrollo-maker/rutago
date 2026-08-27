@@ -12,7 +12,7 @@ export interface TarifaItem {
   media: number;
 }
 
-export const TARIFA_MINIMA = 0; // Media tarifa más baja
+export const TARIFA_MINIMA = 0.40; // Media tarifa más baja (Capulí/Dos Puentes)
 
 // ─── Zonas por parada (para cuadrícula coloreada) ───
 // green  = cerca de Loja (inicio del recorrido)

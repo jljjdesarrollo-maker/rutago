@@ -1,0 +1,644 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback, useRef } from 'react';
+     4→import { type VTSession } from './types-boletos';
+     5→import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT } from '@/lib/indexeddb';
+     6→import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+     7→
+     8→// Version build — se actualiza con cada deploy
+     9→const APP_VERSION = 'v3.22-aug27-fase1-critical-fixes';
+    10→
+    11→interface Props {
+    12→  onSessionStart: (session: VTSession) => void;
+    13→}
+    14→
+    15→interface VTOption {
+    16→  id: string;
+    17→  codigo: string;
+    18→  nombre: string;
+    19→  frecuencias?: { routeFrom: string; routeTo: string; time: string }[];
+    20→}
+    21→
+    22→type VTRouteType = 'vilcabamba' | 'el_tambo' | 'la_elvira' | 'yangana' | 'zahuayco';
+    23→
+    24→const ROUTE_STYLES: Record<VTRouteType, {
+    25→  bg: string; border: string; text: string; subtext: string;
+    26→  selectedBg: string; selectedRing: string;
+    27→  label: string; badgeBg: string; badgeText: string;
+    28→}> = {
+    29→  vilcabamba: {
+    30→    bg: 'bg-gray-100', border: 'border-gray-200', text: 'text-[#3A3A3A]', subtext: 'text-gray-400',
+    31→    selectedBg: 'bg-[#912D26]', selectedRing: 'ring-red-400',
+    32→    label: '', badgeBg: '', badgeText: '',
+    33→  },
+    34→  el_tambo: {
+    35→    bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-900', subtext: 'text-amber-500',
+    36→    selectedBg: 'bg-amber-700', selectedRing: 'ring-amber-400',
+    37→    label: 'El Tambo', badgeBg: 'bg-amber-100', badgeText: 'text-amber-700',
+    38→  },
+    39→  la_elvira: {
+    40→    bg: 'bg-violet-50', border: 'border-violet-300', text: 'text-violet-900', subtext: 'text-violet-400',
+    41→    selectedBg: 'bg-violet-700', selectedRing: 'ring-violet-400',
+    42→    label: 'La Elvira', badgeBg: 'bg-violet-100', badgeText: 'text-violet-700',
+    43→  },
+    44→  yangana: {
+    45→    bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-900', subtext: 'text-emerald-400',
+    46→    selectedBg: 'bg-emerald-700', selectedRing: 'ring-emerald-400',
+    47→    label: 'Yangana', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700',
+    48→  },
+    49→  zahuayco: {
+    50→    bg: 'bg-sky-50', border: 'border-sky-300', text: 'text-sky-900', subtext: 'text-sky-400',
+    51→    selectedBg: 'bg-sky-700', selectedRing: 'ring-sky-400',
+    52→    label: 'Zahuayco', badgeBg: 'bg-sky-100', badgeText: 'text-sky-700',
+    53→  },
+    54→};
+    55→
+    56→function getVTRouteType(frecuencias?: { routeFrom: string; routeTo: string }[]): VTRouteType {
+    57→  if (!frecuencias || frecuencias.length === 0) return 'vilcabamba';
+    58→  const allDests = [...frecuencias.map(f => f.routeTo), ...frecuencias.map(f => f.routeFrom)];
+    59→  if (allDests.some(d => d === 'El Tambo')) return 'el_tambo';
+    60→  if (allDests.some(d => d === 'La Elvira')) return 'la_elvira';
+    61→  if (allDests.some(d => d === 'Yangana')) return 'yangana';
+    62→  if (allDests.some(d => d === 'Zahuayco')) return 'zahuayco';
+    63→  return 'vilcabamba';
+    64→}
+    65→
+    66→interface AyudanteActivo {
+    67→  id: string;
+    68→  nombre: string;
+    69→  pin: string;
+    70→}
+    71→
+    72→export function HomeScreenVT({ onSessionStart }: Props) {
+    73→  const [vts, setVts] = useState<VTOption[]>([]);
+    74→  const [ayudante, setAyudante] = useState<AyudanteActivo | null>(null);
+    75→  const [loading, setLoading] = useState(true);
+    76→  const [selectedVT, setSelectedVT] = useState<string>('');
+    77→  const [existingSession, setExistingSession] = useState<VTSession & { timestamp: number } | null>(null);
+    78→  const [existingUnfinished, setExistingUnfinished] = useState(false);
+    79→  const [confirmNewSession, setConfirmNewSession] = useState(false);
+    80→  // Printer state
+    81→  const [printerStatus, setPrinterStatus] = useState<'unknown' | 'connecting' | 'connected' | 'error' | 'unavailable'>('unknown');
+    82→  const [printerName, setPrinterName] = useState<string>('');
+    83→  const [printing, setPrinting] = useState(false);
+    84→  const [printerLog, setPrinterLog] = useState<string[]>([]);
+    85→  const printerDeviceRef = useRef<BluetoothDevice | null>(null);
+    86→
+    87→  const pLog = (msg: string) => {
+    88→    const t = new Date().toLocaleTimeString();
+    89→    setPrinterLog(prev => [...prev, `${t} ${msg}`]);
+    90→    console.log('[Printer]', msg);
+    91→  };
+    92→
+    93→  useEffect(() => {
+    94→    Promise.all([
+    95→      fetch('/api/bus-vts').then(res => res.json()),
+    96→      fetch('/api/personas?rol=AYUDANTE&esActual=true').then(res => res.json()),
+    97→    ])
+    98→      .then(([vtsData, ayudanteData]) => {
+    99→        if (Array.isArray(vtsData)) {
+   100→          const mapped = vtsData.map((vt: any) => ({
+   101→            id: vt.id,
+   102→            codigo: vt.codigo,
+   103→            nombre: vt.nombre,
+   104→            frecuencias: vt.frecuencias || [],
+   105→          }));
+   106→          setVts(mapped);
+   107→          if (mapped.length === 1) {
+   108→            setSelectedVT(mapped[0].codigo);
+   109→          }
+   110→        }
+   111→        const activos = Array.isArray(ayudanteData)
+   112→          ? ayudanteData.filter((p: any) => p.esActual)
+   113→          : [];
+   114→        if (activos.length > 0) {
+   115→          setAyudante({ id: activos[0].id, nombre: activos[0].nombre, pin: activos[0].pin });
+   116→        }
+   117→      })
+   118→      .catch(err => console.error('Error cargando datos:', err))
+   119→      .finally(() => setLoading(false));
+   120→
+   121→    // Check for existing unfinished VT session
+   122→    try {
+   123→      const stored = localStorage.getItem('rg_vt_session');
+   124→      if (stored) {
+   125→        const saved: VTSession & { timestamp: number } = JSON.parse(stored);
+   126→        if (saved.vtCode && saved.fecha) {
+   127→          const estadosKey = `rg_estados_${saved.vtCode}_${saved.fecha}`;
+   128→          const estadosRaw = localStorage.getItem(estadosKey);
+   129→          if (estadosRaw) {
+   130→            const estados: { estado: string }[] = JSON.parse(estadosRaw);
+   131→            const hasUnfinished = estados.some(e => e.estado === 'pendiente' || e.estado === 'abierta');
+   132→            if (hasUnfinished) {
+   133→              setExistingSession(saved);
+   134→              setExistingUnfinished(true);
+   135→            }
+   136→          }
+   137→        }
+   138→      }
+   139→    } catch { /* ignore */ }
+   140→  }, []);
+   141→
+   142→  // ─── Bloqueo por ventas pendientes de VTs anteriores ───
+   143→  const [pendingVentasCount, setPendingVentasCount] = useState(0);
+   144→  const [syncingPending, setSyncingPending] = useState(false);
+   145→  const [pendingCheckDone, setPendingCheckDone] = useState(false);
+   146→
+   147→  useEffect(() => {
+   148→    (async () => {
+   149→      try {
+   150→        const count = await countVentasPendientes();
+   151→        setPendingVentasCount(count);
+   152→      } catch { /* ignore */ }
+   153→      setPendingCheckDone(true);
+   154→    })();
+   155→  }, []);
+   156→
+   157→  const handleForceSync = async () => {
+   158→    if (!navigator.onLine) return;
+   159→    setSyncingPending(true);
+   160→    try {
+   161→      const result = await syncVentasSilencioso();
+   162→      const remaining = await countVentasPendientes();
+   163→      setPendingVentasCount(remaining);
+   164→    } catch { /* ignore */ }
+   165→    setSyncingPending(false);
+   166→  };
+   167→
+   168→  const startSession = (vtCode: string, forceNew = false) => {
+   169→    if (!ayudante) return;
+   170→    const today = new Date().toISOString().split('T')[0];
+   171→
+   172→    // ─── REGLA: Solo 1 VT activa por fecha ───
+   173→    // Detectar si ya existe una session para HOY (con cualquier VT)
+   174→    const stored = localStorage.getItem('rg_vt_session');
+   175→    if (stored && !forceNew) {
+   176→      try {
+   177→        const saved = JSON.parse(stored);
+   178→        if (saved.fecha === today && saved.vtCode !== vtCode) {
+   179→          // Ya hay una VT activa hoy — bloquear
+   180→          setExistingSession(saved);
+   181→          setExistingUnfinished(true);
+   182→          setConfirmNewSession(true);
+   183→          return;
+   184→        }
+   185→      } catch { /* ignore */ }
+   186→    }
+   187→
+   188→    // If there's an existing unfinished session and starting a different/new VT, warn first
+   189→    if (existingUnfinished && !forceNew && existingSession) {
+   190→      setConfirmNewSession(true);
+   191→      return;
+   192→    }
+   193→
+   194→    const vt = vts.find(v => v.codigo === vtCode)!;
+   195→    const newSession: VTSession = {
+   196→      vtCode: vt.codigo,
+   197→      nombre: vt.nombre,
+   198→      ayudanteId: ayudante.id,
+   199→      ayudanteNombre: ayudante.nombre,
+   200→      fecha: today,
+   201→    };
+   202→
+   203→    // ─── Limpieza completa al forzar nuevo VT ───
+   204→    if (forceNew && existingSession) {
+   205→      const oldFecha = existingSession.fecha;
+   206→      const oldVtCode = existingSession.vtCode;
+   207→      // Limpiar TODOS los datos del VT anterior (localStorage + IndexedDB)
+   208→      localStorage.removeItem(`rg_estados_${oldVtCode}_${oldFecha}`);
+   209→      localStorage.removeItem(`arqueo_general_${oldVtCode}_${oldFecha}`);
+   210→      localStorage.removeItem('rg_vt_session');
+   211→      // Eliminar ventas del VT anterior de IndexedDB
+   212→      deleteVentasByVT(oldVtCode, oldFecha).catch(() => {});
+   213→    }
+   214→
+   215→    // Limpiar estados del mismo VT/fecha por si quedaron huérfanos
+   216→    localStorage.removeItem(`rg_estados_${vtCode}_${today}`);
+   217→    localStorage.removeItem(`arqueo_general_${vtCode}_${today}`);
+   218→    localStorage.setItem('rg_vt_session', JSON.stringify({
+   219→      ...newSession,
+   220→      timestamp: Date.now(),
+   221→    }));
+   222→    setConfirmNewSession(false);
+   223→    setExistingUnfinished(false);
+   224→    setExistingSession(null);
+   225→    onSessionStart(newSession);
+   226→  };
+   227→
+   228→  const handleResumeOld = () => {
+   229→    if (!existingSession) return;
+   230→    const { timestamp, ...sessionData } = existingSession;
+   231→    onSessionStart(sessionData);
+   232→  };
+   233→
+   234→  const handleForceNew = () => {
+   235→    if (!selectedVT) return;
+   236→    setConfirmNewSession(false);
+   237→    startSession(selectedVT, true);
+   238→  };
+   239→
+   240→  const handleStart = () => {
+   241→    if (!selectedVT) return;
+   242→    startSession(selectedVT);
+   243→  };
+   244→
+   245→  // ─── Printer connection ───
+   246→  const checkPrinterStatus = useCallback(async () => {
+   247→    try {
+   248→      const { isBluetoothAvailable, autoConnectPrinter, clearLastPrinter } = await import('@/lib/printer');
+   249→      if (!isBluetoothAvailable()) {
+   250→        setPrinterStatus('unavailable');
+   251→        return;
+   252→      }
+   253→      const device = await autoConnectPrinter();
+   254→      if (device) {
+   255→        setPrinterName(device.name || 'Impresora');
+   256→        setPrinterStatus('connected');
+   257→      } else {
+   258→        setPrinterStatus('unknown');
+   259→      }
+   260→    } catch {
+   261→      setPrinterStatus('error');
+   262→    }
+   263→  }, []);
+   264→
+   265→  useEffect(() => { checkPrinterStatus(); }, [checkPrinterStatus]);
+   266→
+   267→  const [printerError, setPrinterError] = useState('');
+   268→
+   269→  const handleConnectPrinter = async () => {
+   270→    setPrinterStatus('connecting');
+   271→    setPrinterError('');
+   272→    try {
+   273→      const { isBluetoothAvailable, requestPrinter, setCachedDevice } = await import('@/lib/printer');
+   274→      if (!isBluetoothAvailable()) {
+   275→        setPrinterStatus('unavailable');
+   276→        setPrinterError('Bluetooth no disponible en este navegador');
+   277→        return;
+   278→      }
+   279→      const device = await requestPrinter();
+   280→      if (device) {
+   281→        setCachedDevice(device);
+   282→        printerDeviceRef.current = device;
+   283→        setPrinterName(device.name || 'Impresora');
+   284→        setPrinterStatus('connected');
+   285→        pLog(`Guardada referencia directa: ${device.name}`);
+   286→      } else {
+   287→        setPrinterStatus('error');
+   288→        setPrinterError('No se selecciono ninguna impresora');
+   289→      }
+   290→    } catch (e) {
+   291→      setPrinterStatus('error');
+   292→      setPrinterError((e as Error).message || 'Error al conectar');
+   293→    }
+   294→  };
+   295→
+   296→  // ─── Test print (with detailed logging) ───
+   297→  const handleTestPrint = async () => {
+   298→    setPrinting(true);
+   299→    setPrinterLog([]);
+   300→    pLog('Iniciando prueba de impresion...');
+   301→    try {
+   302→      const { isBluetoothAvailable, getPrinterDevice } = await import('@/lib/printer');
+   303→      const { generateTicketBytes } = await import('@/lib/ticket-escpos');
+   304→      if (!isBluetoothAvailable()) {
+   305→        pLog('ERROR: Web Bluetooth no disponible');
+   306→        setPrinterStatus('unavailable'); setPrinting(false); return;
+   307→      }
+   308→
+   309→      // Use cached device (fast, no getDevices lookup needed)
+   310→      const device = printerDeviceRef.current || await getPrinterDevice();
+   311→      if (!device) {
+   312→        pLog('ERROR: No hay impresora guardada. Conectala primero.');
+   313→        setPrinterStatus('error'); setPrinting(false); return;
+   314→      }
+   315→      pLog(`Device: ${device.name || 'sin nombre'}`);
+   316→
+   317→      // GATT connect
+   318→      pLog('Conectando GATT...');
+   319→      if (!device.gatt) {
+   320→        pLog('ERROR: device.gatt es null');
+   321→        setPrinterStatus('error'); setPrinting(false); return;
+   322→      }
+   323→      const gatt = device.gatt.connected ? device.gatt : await device.gatt.connect();
+   324→      pLog('GATT conectado!');
+   325→
+   326→      // Find writable characteristic
+   327→      pLog('Buscando servicio de impresion...');
+   328→      const uuids = ['0000ff00-0000-1000-8000-00805f9b34fb','0000ff01-0000-1000-8000-00805f9b34fb','e7810a71-73ae-499d-8c15-faa9aef0c3f2','00001101-0000-1000-8000-00805f9b34fb'];
+   329→      let writableChar: BluetoothRemoteGATTCharacteristic | null = null;
+   330→      for (const uuid of uuids) {
+   331→        try {
+   332→          const svc = await gatt.getPrimaryService(uuid);
+   333→          const chars = await svc.getCharacteristics();
+   334→          for (const c of chars) {
+   335→            if (c.properties.write || c.properties.writeWithoutResponse) {
+   336→              writableChar = c;
+   337→              pLog(`Char OK en servicio ${uuid.slice(4,8)}`);
+   338→              break;
+   339→            }
+   340→          }
+   341→          if (writableChar) break;
+   342→        } catch { pLog(`Servicio ${uuid.slice(4,8)}: NO`); }
+   343→      }
+   344→      if (!writableChar) {
+   345→        pLog('Fallo UUIDs. Enumerando todos los servicios...');
+   346→        const svcs = await gatt.getPrimaryServices();
+   347→        pLog(`${svcs.length} servicios encontrados`);
+   348→        for (const s of svcs) {
+   349→          try {
+   350→            const cs = await s.getCharacteristics();
+   351→            for (const c of cs) {
+   352→              if ((c.properties.write || c.properties.writeWithoutResponse) && !writableChar) {
+   353→                writableChar = c;
+   354→                pLog(`Char encontrado en ${s.uuid.slice(4,8)}`);
+   355→              }
+   356→            }
+   357→          } catch { /* skip */ }
+   358→        }
+   359→      }
+   360→      if (!writableChar) {
+   361→        pLog('ERROR: No se encontro char escribible');
+   362→        await gatt.disconnect();
+   363→        setPrinterStatus('error'); setPrinting(false); return;
+   364→      }
+   365→      pLog(`Char: writeNR=${writableChar.properties.writeWithoutResponse} write=${writableChar.properties.write}`);
+   366→
+   367→      // Send ticket
+   368→      const bytes = generateTicketBytes({
+   369→        ruta: 'Test Loja-Vilcabamba', horaFrecuencia: '12:00', fecha: '14/08/26',
+   370→        hora: new Date().toTimeString().slice(0, 5), ayudanteNombre: 'Test',
+   371→        destino: 'Prueba OK', tipoPasajero: 'Entero', tarifa: 0.00, boletoNum: 1,
+   372→        esViajeGratis: false, textoPublicidad: 'Quieres RutaGo? 0997149000',
+   373→      });
+   374→      pLog(`Enviando ${bytes.length} bytes...`);
+   375→      try {
+   376→        if (writableChar.properties.writeWithoutResponse) {
+   377→          await writableChar.writeValueWithoutResponse(bytes.buffer);
+   378→        } else {
+   379→          await writableChar.writeValue(bytes.buffer);
+   380→        }
+   381→        pLog('Datos enviados OK!');
+   382→      } catch (sendErr) {
+   383→        pLog(`ERROR al enviar: ${(sendErr as Error).message}`);
+   384→        await gatt.disconnect();
+   385→        setPrinterStatus('error'); setPrinting(false); return;
+   386→      }
+   387→      await gatt.disconnect();
+   388→      pLog('Prueba completada!');
+   389→      setPrinterStatus('connected');
+   390→    } catch (e) {
+   391→      pLog(`ERROR: ${(e as Error).message}`);
+   392→      setPrinterStatus('error');
+   393→    }
+   394→    setPrinting(false);
+   395→  };
+   396→
+   397→  if (loading) {
+   398→    return (
+   399→      <div className="flex flex-col min-h-[100dvh] bg-gray-50 items-center justify-center">
+   400→        <Loader2 className="w-8 h-8 text-[#912D26] animate-spin" />
+   401→        <p className="mt-3 text-[#3A3A3A] text-sm">Cargando...</p>
+   402→      </div>
+   403→    );
+   404→  }
+   405→
+   406→  return (
+   407→    <div className="flex flex-col min-h-[100dvh] bg-gray-50">
+   408→      {/* Header compacto */}
+   409→      <div className="bg-[#912D26] text-white px-5 py-5 rounded-b-2xl shadow-lg">
+   410→        <div className="flex items-center gap-3 mb-1">
+   411→          <Bus className="w-7 h-7" />
+   412→          <h1 className="text-xl font-bold">RutaGo</h1>
+   413→        </div>
+   414→        <p className="text-red-100 text-xs">TRANSPORTES VILCABAMBA</p>
+   415→        <p className="text-red-200/60 text-[9px] mt-0.5">{APP_VERSION}</p>
+   416→      </div>
+   417→
+   418→      {/* ─── Printer status bar ─── */}
+   419→      <div className="mx-5 mt-3">
+   420→        {printerStatus === 'connected' ? (
+   421→          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
+   422→            <Printer className="w-4 h-4 text-green-600 flex-shrink-0" />
+   423→            <div className="flex-1 min-w-0">
+   424→              <p className="text-green-700 text-xs font-semibold truncate">{printerName}</p>
+   425→              <p className="text-green-500 text-[9px]">Lista para imprimir</p>
+   426→            </div>
+   427→            <button onClick={handleTestPrint} disabled={printing}
+   428→              className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-[10px] font-bold active:scale-95 transition-all disabled:opacity-50">
+   429→              {printing ? 'Imprim...' : 'Probar'}
+   430→            </button>
+   431→          </div>
+   432→        ) : printerStatus === 'connecting' ? (
+   433→          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5">
+   434→            <Loader2 className="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" />
+   435→            <p className="text-blue-600 text-xs font-medium">Buscando impresora...</p>
+   436→          </div>
+   437→        ) : printerStatus === 'error' ? (
+   438→          <button onClick={handleConnectPrinter}
+   439→            className="w-full flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 active:scale-[0.98] transition-all">
+   440→            <Printer className="w-4 h-4 text-red-500 flex-shrink-0" />
+   441→            <div className="flex-1 text-left">
+   442→              <p className="text-red-600 text-xs font-semibold">Reconectar impresora</p>
+   443→              {printerError ? (
+   444→                <p className="text-red-500 text-[9px] break-all mt-0.5">{printerError}</p>
+   445→              ) : (
+   446→                <p className="text-red-400 text-[9px]">Toca para seleccionar la impresora Bluetooth</p>
+   447→              )}
+   448→            </div>
+   449→          </button>
+   450→        ) : printerStatus === 'unavailable' ? (
+   451→          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
+   452→            <Printer className="w-4 h-4 text-gray-400 flex-shrink-0" />
+   453→            <p className="text-gray-500 text-[10px]">Bluetooth no disponible en este navegador</p>
+   454→          </div>
+   455→        ) : (
+   456→          <button onClick={handleConnectPrinter}
+   457→            className="w-full flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 active:scale-[0.98] transition-all">
+   458→            <Printer className="w-4 h-4 text-blue-500 flex-shrink-0" />
+   459→            <div className="flex-1 text-left">
+   460→              <p className="text-blue-600 text-xs font-semibold">Conectar impresora</p>
+   461→              <p className="text-blue-400 text-[9px]">Toca para vincular la 3NStar PPT205BT</p>
+   462→            </div>
+   463→          </button>
+   464→        )}
+   465→
+   466→        {/* ─── Printer debug log ─── */}
+   467→        {printerLog.length > 0 && (
+   468→          <div className="mt-2">
+   469→            <button onClick={() => setPrinterLog([])} className="text-[9px] text-gray-400 mb-1">Limpiar log</button>
+   470→            <div className="bg-gray-900 rounded-xl p-2.5 max-h-[140px] overflow-y-auto">
+   471→              {printerLog.map((l, i) => (
+   472→                <p key={i} className={`text-[9px] font-mono leading-relaxed ${
+   473→                  l.includes('ERROR') ? 'text-red-400' :
+   474→                  l.includes('OK') || l.includes('completada') ? 'text-green-400' :
+   475→                  'text-gray-400'
+   476→                }`}>{l}</p>
+   477→              ))}
+   478→            </div>
+   479→          </div>
+   480→        )}
+   481→      </div>
+   482→
+   483→      <div className="flex-1 px-5 py-5 space-y-4">
+   484→        {/* Ayudante activo — compacto */}
+   485→        {ayudante ? (
+   486→          <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+   487→            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+   488→            <div>
+   489→              <p className="font-semibold text-green-800 text-sm">{ayudante.nombre}</p>
+   490→              <p className="text-green-600 text-[10px]">Turno activo</p>
+   491→            </div>
+   492→          </div>
+   493→        ) : (
+   494→          <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3">
+   495→            <p className="text-yellow-700 text-sm">No hay ayudante activo asignado</p>
+   496→            <p className="text-yellow-600 text-xs mt-1">Configure un ayudante desde el panel de administracion</p>
+   497→          </div>
+   498→        )}
+   499→
+   500→        {/* Selector de VT — grid grande */}
+   501→        {vts.length === 0 ? (
+   502→          <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 text-center">
+   503→            <p className="text-yellow-700 font-medium">No hay unidades activas</p>
+   504→            <p className="text-yellow-600 text-sm mt-1">Ejecuta el seed: POST /api/seed-vts</p>
+   505→          </div>
+   506→        ) : (
+   507→          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+   508→            <h2 className="text-base font-bold text-[#3A3A3A] mb-3 flex items-center gap-2">
+   509→              <Bus className="w-4 h-4 text-[#912D26]" /> Unidad
+   510→            </h2>
+   511→            <div className={`grid gap-3 ${vts.length <= 2 ? 'grid-cols-2' : vts.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+   512→              {vts.map(vt => {
+   513→                const routeType = getVTRouteType(vt.frecuencias);
+   514→                const style = ROUTE_STYLES[routeType];
+   515→                const isSelected = selectedVT === vt.codigo;
+   516→                return (
+   517→                  <button key={vt.codigo}
+   518→                    onClick={() => vts.length === 1 ? startSession(vt.codigo) : setSelectedVT(vt.codigo)}
+   519→                    className={`relative py-5 px-3 rounded-xl text-center transition-all active:scale-95 border ${
+   520→                      isSelected
+   521→                        ? `${style.selectedBg} text-white shadow-md ring-2 ${style.selectedRing}`
+   522→                        : `${style.bg} ${style.border} ${style.text} hover:opacity-80 active:opacity-70`
+   523→                    }`}
+   524→                  >
+   525→                    <div className="text-base font-bold">{vt.codigo}</div>
+   526→                    <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/70' : style.subtext}`}>{vt.nombre}</div>
+   527→                    {style.label && !isSelected && (
+   528→                      <span className={`absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full ${style.badgeBg} ${style.badgeText} shadow-sm`}>
+   529→                        {style.label}
+   530→                      </span>
+   531→                    )}
+   532→                    {style.label && isSelected && (
+   533→                      <span className="absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-white/25 text-white shadow-sm">
+   534→                        {style.label}
+   535→                      </span>
+   536→                    )}
+   537→                  </button>
+   538→                );
+   539→              })}
+   540→            </div>
+   541→          </div>
+   542→        )}
+   543→
+   544→        {/* Boton Iniciar — grande y prominente */}
+   545→        <button onClick={handleStart} disabled={!selectedVT || !ayudante || pendingVentasCount > 0}
+   546→          className={`w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 transition-all ${
+   547→            selectedVT && ayudante && pendingVentasCount === 0
+   548→              ? 'bg-[#912D26] text-white shadow-xl shadow-red-300 active:scale-[0.97]'
+   549→              : 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed'
+   550→          }`}
+   551→        >
+   552→          {pendingVentasCount > 0
+   553→            ? `ESPERANDO SYNC — ${pendingVentasCount} VENTAS`
+   554→            : 'Iniciar Turno'
+   555→          } <ArrowRight className="w-6 h-6" />
+   556→        </button>
+   557→      </div>
+   558→
+   559→      {/* Ventas pendientes — bloquear inicio de nuevo VT */}
+   560→      {pendingVentasCount > 0 && pendingCheckDone && (
+   561→        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-[#912D26] to-[#b33d34] p-4 shadow-2xl z-40">
+   562→          <div className="max-w-lg mx-auto">
+   563→            <div className="flex items-center gap-2 mb-2">
+   564→              <AlertTriangle className="w-5 h-5 text-white" />
+   565→              <p className="text-white font-bold text-sm">Ventas sin sincronizar</p>
+   566→            </div>
+   567→            <p className="text-white/90 text-xs mb-3">
+   568→              Tienes <strong>{pendingVentasCount} venta{pendingVentasCount !== 1 ? 's' : ''}</strong> pendiente{pendingVentasCount !== 1 ? 's' : ''} de un turno anterior. Debes sincronizar antes de iniciar uno nuevo.
+   569→            </p>
+   570→            {navigator.onLine ? (
+   571→              <button onClick={handleForceSync} disabled={syncingPending}
+   572→                className="w-full py-3 rounded-xl bg-white text-[#912D26] font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60">
+   573→                {syncingPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
+   574→                {syncingPending ? 'SINCRONIZANDO...' : `SINCRONIZAR ${pendingVentasCount} VENTAS`}
+   575→              </button>
+   576→            ) : (
+   577→              <div className="w-full py-3 rounded-xl bg-white/20 text-white/80 text-sm flex items-center justify-center gap-2">
+   578→                <WifiOff className="w-4 h-4" /> SIN INTERNET — CONECTA PARA SINCRONIZAR
+   579→              </div>
+   580→            )}
+   581→          </div>
+   582→        </div>
+   583→      )}
+   584→
+   585→      {/* Existing unfinished session banner */}
+   586→      {existingUnfinished && existingSession && (
+   587→        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-orange-500 to-red-500 p-4 shadow-2xl z-40">
+   588→          <div className="max-w-lg mx-auto">
+   589→            <div className="flex items-center gap-2 mb-2">
+   590→              <AlertTriangle className="w-5 h-5 text-white" />
+   591→              <p className="text-white font-bold text-sm">Turno sin terminar</p>
+   592→            </div>
+   593→            <p className="text-white/90 text-xs mb-3">
+   594→              Tienes un turno pendiente en <strong>{existingSession.nombre}</strong> ({existingSession.vtCode}) con frecuencias abiertas.
+   595→            </p>
+   596→            <div className="flex gap-2">
+   597→              <button onClick={handleResumeOld}
+   598→                className="flex-1 py-2.5 rounded-xl bg-white text-orange-600 font-bold text-sm active:scale-[0.98]">
+   599→                Continuar VT {existingSession.vtCode}
+   600→              </button>
+   601→              <button onClick={() => setConfirmNewSession(true)}
+   602→                className="flex-1 py-2.5 rounded-xl bg-white/20 text-white font-semibold text-sm active:scale-[0.98]">
+   603→                Iniciar nuevo
+   604→              </button>
+   605→            </div>
+   606→          </div>
+   607→        </div>
+   608→      )}
+   609→
+   610→      {/* Confirm new session modal */}
+   611→      {confirmNewSession && existingSession && (
+   612→        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+   613→          <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
+   614→            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+   615→              <AlertTriangle className="w-8 h-8 text-[#912D26]" />
+   616→            </div>
+   617→            <h3 className="text-lg font-bold text-[#3A3A3A] mb-2">Abandonar turno anterior?</h3>
+   618→            <div className="bg-red-50 rounded-xl p-3 mb-3">
+   619→              <p className="text-sm text-[#912D26] font-semibold">
+   620→                {existingSession.nombre} ({existingSession.vtCode}) — frecuencias sin completar.
+   621→              </p>
+   622→            </div>
+   623→            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
+   624→              <p className="text-xs text-yellow-800 font-bold">
+   625→                Se ELIMINARAN todos los datos del turno anterior. Solo puede haber un turno activo por dia.
+   626→              </p>
+   627→            </div>
+   628→            <div className="flex gap-2">
+   629→              <button onClick={() => setConfirmNewSession(false)}
+   630→                className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-bold text-sm active:scale-[0.98] shadow-lg shadow-red-200">
+   631→                Cancelar
+   632→              </button>
+   633→              <button onClick={handleForceNew}
+   634→                className="flex-1 py-3 rounded-xl border-2 border-red-200 text-[#912D26] font-bold text-sm active:scale-[0.98]">
+   635→                Nuevo Turno
+   636→              </button>
+   637→            </div>
+   638→          </div>
+   639→        </div>
+   640→      )}
+   641→    </div>
+   642→  );
+   643→}
+   644→
