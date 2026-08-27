@@ -1,0 +1,790 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback } from 'react';
+     4→import { type VTSession, type FrecuenciaEstado, type FrecuenciaData, loadPromoConfig } from './types-boletos';
+     5→import { getVentasByFrecuencia, countVentasPendientes } from '@/lib/indexeddb';
+     6→import { matchRuta } from '@/lib/tarifas-data';
+     7→import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck, AlertTriangle, Wrench, Droplets, UserX, Ban, FileText, Truck } from 'lucide-react';
+     8→
+     9→interface Props {
+    10→  session: VTSession;
+    11→  onOpenFrequency: (estado: FrecuenciaEstado) => void;
+    12→  onGoToArqueo: (estado: FrecuenciaEstado, esUltima: boolean) => void;
+    13→  onGoToArqueoGeneral: () => void;
+    14→  onBack: () => void;
+    15→  onGoToSync: () => void;
+    16→}
+    17→
+    18→const today = () => new Date().toISOString().split('T')[0];
+    19→
+    20→// ─── Colores por ruta para botones de frecuencia ───
+    21→type RutaColorKey = 'el_tambo' | 'la_elvira' | 'yangana' | 'zahuayco' | 'vilcabamba';
+    22→
+    23→const RUTA_BUTTON_COLORS: Record<RutaColorKey, { bg: string; shadow: string; border: string; badge: string; text: string; light: string }> = {
+    24→  el_tambo: {
+    25→    bg: 'bg-blue-600',
+    26→    shadow: 'shadow-blue-200',
+    27→    border: 'border-l-blue-600',
+    28→    badge: 'bg-blue-100 text-blue-700',
+    29→    text: 'text-blue-600',
+    30→    light: 'bg-blue-50',
+    31→  },
+    32→  la_elvira: {
+    33→    bg: 'bg-purple-600',
+    34→    shadow: 'shadow-purple-200',
+    35→    border: 'border-l-purple-600',
+    36→    badge: 'bg-purple-100 text-purple-700',
+    37→    text: 'text-purple-600',
+    38→    light: 'bg-purple-50',
+    39→  },
+    40→  yangana: {
+    41→    bg: 'bg-emerald-600',
+    42→    shadow: 'shadow-emerald-200',
+    43→    border: 'border-l-emerald-600',
+    44→    badge: 'bg-emerald-100 text-emerald-700',
+    45→    text: 'text-emerald-600',
+    46→    light: 'bg-emerald-50',
+    47→  },
+    48→  zahuayco: {
+    49→    bg: 'bg-amber-600',
+    50→    shadow: 'shadow-amber-200',
+    51→    border: 'border-l-amber-600',
+    52→    badge: 'bg-amber-100 text-amber-700',
+    53→    text: 'text-amber-600',
+    54→    light: 'bg-amber-50',
+    55→  },
+    56→  vilcabamba: {
+    57→    bg: 'bg-[#912D26]',
+    58→    shadow: 'shadow-red-200',
+    59→    border: 'border-l-[#912D26]',
+    60→    badge: 'bg-red-100 text-[#912D26]',
+    61→    text: 'text-[#912D26]',
+    62→    light: 'bg-red-50',
+    63→  },
+    64→};
+    65→
+    66→function getRutaColorKey(rutaNombre: string): RutaColorKey {
+    67→  const ruta = matchRuta(rutaNombre).toLowerCase();
+    68→  if (ruta.includes('el tambo')) return 'el_tambo';
+    69→  if (ruta.includes('la elvira')) return 'la_elvira';
+    70→  if (ruta.includes('yangana')) return 'yangana';
+    71→  if (ruta.includes('zahuayco')) return 'zahuayco';
+    72→  return 'vilcabamba';
+    73→}
+    74→
+    75→// ─── LocalStorage helpers for estados (synchronous, reliable) ───
+    76→
+    77→function estadosKey(vtCode: string, fecha: string) {
+    78→  return `rg_estados_${vtCode}_${fecha}`;
+    79→}
+    80→
+    81→function saveEstadosToLS(vtCode: string, fecha: string, estados: FrecuenciaEstado[]) {
+    82→  try {
+    83→    localStorage.setItem(estadosKey(vtCode, fecha), JSON.stringify(estados));
+    84→  } catch (e) { console.error('Error saving estados to LS:', e); }
+    85→}
+    86→
+    87→function loadEstadosFromLS(vtCode: string, fecha: string): FrecuenciaEstado[] | null {
+    88→  try {
+    89→    const raw = localStorage.getItem(estadosKey(vtCode, fecha));
+    90→    return raw ? JSON.parse(raw) : null;
+    91→  } catch { return null; }
+    92→}
+    93→
+    94→function updateEstadoInLS(vtCode: string, fecha: string, estadoId: string, updates: Partial<FrecuenciaEstado>) {
+    95→  const all = loadEstadosFromLS(vtCode, fecha);
+    96→  if (!all) return;
+    97→  const idx = all.findIndex(e => e.estadoId === estadoId);
+    98→  if (idx >= 0) {
+    99→    all[idx] = { ...all[idx], ...updates };
+   100→    saveEstadosToLS(vtCode, fecha, all);
+   101→  }
+   102→}
+   103→
+   104→export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onGoToArqueoGeneral, onBack, onGoToSync }: Props) {
+   105→  const [estados, setEstados] = useState<FrecuenciaEstado[]>([]);
+   106→  const [frecuencias, setFrecuencias] = useState<FrecuenciaData[]>([]);
+   107→  const [loading, setLoading] = useState(true);
+   108→  const [reassigning, setReassigning] = useState<string | null>(null);
+   109→  const [pendingCount, setPendingCount] = useState(0);
+   110→  const [isOnline, setIsOnline] = useState(navigator.onLine);
+   111→  const [noRealizadaModal, setNoRealizadaModal] = useState<FrecuenciaEstado | null>(null);
+   112→  const [motivoSeleccionado, setMotivoSeleccionado] = useState('');
+   113→  const [motivoPersonalizado, setMotivoPersonalizado] = useState('');
+   114→  const [confirmNoRealizada, setConfirmNoRealizada] = useState(false);
+   115→  const [allFrecuencias, setAllFrecuencias] = useState<FrecuenciaData[]>([]);
+   116→  const [exitModal, setExitModal] = useState(false);
+   117→  const [cajaComunModal, setCajaComunModal] = useState<FrecuenciaEstado | null>(null);
+   118→  const [cajaComunCount, setCajaComunCount] = useState(0);
+   119→  const [cajaComunMonto, setCajaComunMonto] = useState('');
+   120→  const [cajaComunEsUltima, setCajaComunEsUltima] = useState(false);
+   121→  const fecha = today();
+   122→
+   123→  useEffect(() => {
+   124→    const handle = () => setIsOnline(navigator.onLine);
+   125→    window.addEventListener('online', handle);
+   126→    window.addEventListener('offline', handle);
+   127→    return () => { window.removeEventListener('online', handle); window.removeEventListener('offline', handle); };
+   128→  }, []);
+   129→
+   130→  const loadFrecuencias = useCallback(async () => {
+   131→    try {
+   132→      const res = await fetch(`/api/frecuencias?vtCode=${session.vtCode}`);
+   133→      if (res.ok) {
+   134→        const data = await res.json();
+   135→        setFrecuencias(data);
+   136→
+   137→        // Try loading saved estados from localStorage first
+   138→        const saved = loadEstadosFromLS(session.vtCode, fecha);
+   139→        if (saved && saved.length === data.length) {
+   140→          setEstados(saved);
+   141→        } else {
+   142→          // Create fresh pendiente estados
+   143→          const newEstados: FrecuenciaEstado[] = data.map((f: FrecuenciaData) => ({
+   144→            id: f.id,
+   145→            estadoId: `${fecha}_${f.id}`,
+   146→            frecuenciaId: f.id,
+   147→            nombre: f.nombre,
+   148→            ruta: f.ruta,
+   149→            hora: f.hora,
+   150→            direccion: f.direccion,
+   151→            estado: 'pendiente' as const,
+   152→            ventasCount: 0,
+   153→            totalRecaudado: 0,
+   154→          }));
+   155→          setEstados(newEstados);
+   156→          saveEstadosToLS(session.vtCode, fecha, newEstados);
+   157→        }
+   158→      }
+   159→    } catch (error) {
+   160→      console.error('Error cargando frecuencias:', error);
+   161→      // Fallback: try to restore from localStorage only
+   162→      const saved = loadEstadosFromLS(session.vtCode, fecha);
+   163→      if (saved) setEstados(saved);
+   164→    } finally {
+   165→      setLoading(false);
+   166→    }
+   167→  }, [session.vtCode, fecha]);
+   168→
+   169→  const loadPendingCount = useCallback(async () => {
+   170→    try {
+   171→      const count = await countVentasPendientes();
+   172→      setPendingCount(count);
+   173→    } catch { /* ignore */ }
+   174→  }, []);
+   175→
+   176→  // Reload ventas counts from IndexedDB periodically
+   177→  const refreshVentasCounts = useCallback(async () => {
+   178→    for (const estado of estados) {
+   179→      try {
+   180→        const ventas = await getVentasByFrecuencia(estado.estadoId);
+   181→        // Count ALL ventas (including synced) for display in arqueo
+   182→        const newCount = ventas.length;
+   183→        const newTotal = ventas.reduce((s, v) => s + v.cobrado, 0);
+   184→        if (newCount !== estado.ventasCount || Math.abs(newTotal - estado.totalRecaudado) > 0.01) {
+   185→          updateEstadoInLS(session.vtCode, fecha, estado.estadoId, { ventasCount: newCount, totalRecaudado: newTotal });
+   186→          setEstados(prev => prev.map(e =>
+   187→            e.estadoId === estado.estadoId ? { ...e, ventasCount: newCount, totalRecaudado: newTotal } : e
+   188→          ));
+   189→        }
+   190→      } catch { /* ignore */ }
+   191→    }
+   192→  }, [estados, session.vtCode, fecha]);
+   193→
+   194→  useEffect(() => {
+   195→    loadFrecuencias();
+   196→    loadPendingCount();
+   197→    const interval = setInterval(() => { loadPendingCount(); }, 5000);
+   198→    return () => clearInterval(interval);
+   199→  }, [loadFrecuencias, loadPendingCount]);
+   200→
+   201→  // Refresh counts after initial load and periodically
+   202→  useEffect(() => {
+   203→    if (!loading && estados.length > 0) {
+   204→      refreshVentasCounts();
+   205→      const interval = setInterval(refreshVentasCounts, 5000);
+   206→      return () => clearInterval(interval);
+   207→    }
+   208→  }, [loading, estados.length, refreshVentasCounts]);
+   209→
+   210→  const updateEstado = (estadoId: string, updates: Partial<FrecuenciaEstado>) => {
+   211→    // Update in-memory state
+   212→    setEstados(prev => prev.map(e => e.estadoId === estadoId ? { ...e, ...updates } : e));
+   213→    // Persist to localStorage (synchronous, always reliable)
+   214→    updateEstadoInLS(session.vtCode, fecha, estadoId, updates);
+   215→  };
+   216→
+   217→  // Sequential: frequency available if previous are all cerrada/no_realizada
+   218→  const isFrecuenciaDisponible = (index: number): boolean => {
+   219→    const estado = estados[index];
+   220→    if (!estado) return false;
+   221→    if (estado.estado === 'cerrada' || estado.estado === 'no_realizada') return false;
+   222→    for (let i = 0; i < index; i++) {
+   223→      const prev = estados[i];
+   224→      if (prev && prev.estado !== 'cerrada' && prev.estado !== 'no_realizada') {
+   225→        return false;
+   226→      }
+   227→    }
+   228→    return true;
+   229→  };
+   230→
+   231→  const handleOpen = async (estado: FrecuenciaEstado) => {
+   232→    // GPS invisible: capture coordinates when frequency opens
+   233→    const { getGPSPosition } = await import('@/lib/gps');
+   234→    const gps = await getGPSPosition();
+   235→
+   236→    // Generate random winner position for Viaje Gratis
+   237→    const promoConfig = loadPromoConfig();
+   238→    let ganadorPosicion: number | null = null;
+   239→    if (promoConfig.activa) {
+   240→      const min = promoConfig.rangoMin || 3;
+   241→      const max = promoConfig.rangoMax || 30;
+   242→      ganadorPosicion = Math.floor(Math.random() * (max - min + 1)) + min;
+   243→    }
+   244→
+   245→    const updatedEstado = { ...estado, estado: 'abierta' as const, ganadorPosicion };
+   246→    updateEstado(estado.estadoId, {
+   247→      estado: 'abierta',
+   248→      ganadorPosicion,
+   249→      ...(gps ? { gpsLatStart: gps.lat, gpsLngStart: gps.lng } : {}),
+   250→    });
+   251→    onOpenFrequency(updatedEstado);
+   252→  };
+   253→
+   254→  const handleNoRealizada = (estado: FrecuenciaEstado) => {
+   255→    setNoRealizadaModal(estado);
+   256→    setMotivoSeleccionado('');
+   257→    setMotivoPersonalizado('');
+   258→    setConfirmNoRealizada(false);
+   259→  };
+   260→
+   261→  const confirmNoRealizadaAction = () => {
+   262→    if (!noRealizadaModal) return;
+   263→    const motivo = motivoSeleccionado === 'otro' ? motivoPersonalizado.trim() : motivoSeleccionado;
+   264→    updateEstado(noRealizadaModal.estadoId, {
+   265→      estado: 'no_realizada',
+   266→      ventasCount: 0,
+   267→      totalRecaudado: 0,
+   268→      motivoNoRealizada: motivo || 'Sin especificar',
+   269→    });
+   270→    setNoRealizadaModal(null);
+   271→  };
+   272→
+   273→  // ─── Caja Común (Oficina Loja) ───
+   274→  const handleGoToArqueo = (estado: FrecuenciaEstado, esUltima: boolean) => {
+   275→    // Open caja común modal first, then proceed to arqueo
+   276→    setCajaComunModal(estado);
+   277→    setCajaComunEsUltima(esUltima);
+   278→    // Restore previous values if reopening
+   279→    setCajaComunCount(estado.cajaComunCount || 0);
+   280→    setCajaComunMonto(estado.cajaComunMonto ? estado.cajaComunMonto.toString() : '');
+   281→  };
+   282→
+   283→  const confirmCajaComun = () => {
+   284→    if (!cajaComunModal) return;
+   285→    const montoNum = parseFloat(cajaComunMonto) || 0;
+   286→    // Save caja común data to the estado
+   287→    updateEstado(cajaComunModal.estadoId, {
+   288→      cajaComunCount: cajaComunCount,
+   289→      cajaComunMonto: montoNum,
+   290→    });
+   291→    setCajaComunModal(null);
+   292→    // Proceed to arqueo with the updated estado
+   293→    const updatedEstado = { ...cajaComunModal, cajaComunCount: cajaComunCount, cajaComunMonto: montoNum };
+   294→    onGoToArqueo(updatedEstado, cajaComunEsUltima);
+   295→  };
+   296→
+   297→  // Filtrar frecuencias por origen para reasignación (usa TODAS las frecuencias del sistema)
+   298→  const getFrecuenciasParaReasignar = (estadoId: string): FrecuenciaData[] => {
+   299→    const estadoActual = estados.find(e => e.estadoId === estadoId);
+   300→    if (!estadoActual) return allFrecuencias;
+   301→    // Extraer origen de la ruta: "Vilcabamba - Loja" → "Vilcabamba"
+   302→    const partes = estadoActual.ruta.split(' - ');
+   303→    const origen = partes[0]?.trim().toLowerCase();
+   304→    if (!origen) return allFrecuencias;
+   305→    // Filtrar frecuencias que tengan el mismo origen y ordenar por hora
+   306→    return allFrecuencias
+   307→      .filter(f => {
+   308→        const fPartes = f.ruta.split(' - ');
+   309→        const fOrigen = fPartes[0]?.trim().toLowerCase();
+   310→        return fOrigen === origen;
+   311→      })
+   312→      .sort((a, b) => a.hora.localeCompare(b.hora));
+   313→  };
+   314→
+   315→  const handleReassign = async (estado: FrecuenciaEstado) => {
+   316→    // Cargar todas las frecuencias del sistema si no están cargadas
+   317→    if (allFrecuencias.length === 0) {
+   318→      try {
+   319→        const res = await fetch('/api/frecuencias?all=true');
+   320→        if (res.ok) {
+   321→          const data = await res.json();
+   322→          setAllFrecuencias(data);
+   323→        }
+   324→      } catch { /* usar las que tengamos */ }
+   325→    }
+   326→    setReassigning(estado.estadoId);
+   327→  };
+   328→
+   329→  const handleSelectReassignment = (targetFrec: FrecuenciaData) => {
+   330→    if (!reassigning) return;
+   331→    updateEstado(reassigning, {
+   332→      id: targetFrec.id, frecuenciaId: targetFrec.id,
+   333→      nombre: targetFrec.nombre, ruta: targetFrec.ruta,
+   334→      hora: targetFrec.hora, direccion: targetFrec.direccion,
+   335→      estado: 'pendiente', ventasCount: 0, totalRecaudado: 0,
+   336→    });
+   337→    setReassigning(null);
+   338→  };
+   339→
+   340→  const getStateIcon = (estado: string) => {
+   341→    switch (estado) {
+   342→      case 'pendiente': return <Clock className="w-4 h-4 text-gray-400" />;
+   343→      case 'abierta': return <Play className="w-4 h-4 text-green-500" />;
+   344→      case 'cerrada': return <CheckCircle2 className="w-4 h-4 text-blue-500" />;
+   345→      case 'no_realizada': return <XCircle className="w-4 h-4 text-orange-500" />;
+   346→      default: return null;
+   347→    }
+   348→  };
+   349→
+   350→  const getStateColor = (estado: string) => {
+   351→    switch (estado) {
+   352→      case 'pendiente': return 'bg-gray-100 border-gray-200';
+   353→      case 'abierta': return 'bg-green-50 border-green-200';
+   354→      case 'cerrada': return 'bg-blue-50 border-blue-200';
+   355→      case 'no_realizada': return 'bg-orange-50 border-orange-200';
+   356→      default: return 'bg-gray-100 border-gray-200';
+   357→    }
+   358→  };
+   359→
+   360→  const MOTIVOS_NO_REALIZADA = [
+   361→    { id: 'daño_unidad', label: 'Daño en la unidad', icon: <Truck className="w-4 h-4" />, color: 'text-red-500' },
+   362→    { id: 'mantenimiento', label: 'Mantenimiento', icon: <Wrench className="w-4 h-4" />, color: 'text-blue-500' },
+   363→    { id: 'clima', label: 'Clima / Lluvia', icon: <Droplets className="w-4 h-4" />, color: 'text-cyan-500' },
+   364→    { id: 'sin_pasajeros', label: 'Sin pasajeros', icon: <UserX className="w-4 h-4" />, color: 'text-purple-500' },
+   365→    { id: 'problema_ruta', label: 'Problema en la ruta', icon: <AlertTriangle className="w-4 h-4" />, color: 'text-yellow-500' },
+   366→    { id: 'orden_superior', label: 'Orden superior', icon: <Ban className="w-4 h-4" />, color: 'text-gray-600' },
+   367→    { id: 'otro', label: 'Otro motivo', icon: <FileText className="w-4 h-4" />, color: 'text-gray-500' },
+   368→  ];
+   369→
+   370→  const getEstadoBadge = (estado: string) => {
+   371→    switch (estado) {
+   372→      case 'pendiente': return <span className="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-600">Pendiente</span>;
+   373→      case 'abierta': return <span className="px-2 py-0.5 rounded-full text-xs bg-green-200 text-green-700">Abierta</span>;
+   374→      case 'cerrada': return <span className="px-2 py-0.5 rounded-full text-xs bg-blue-200 text-blue-700">Cerrada</span>;
+   375→      case 'no_realizada': return <span className="px-2 py-0.5 rounded-full text-xs bg-orange-200 text-orange-700">No Realizada</span>;
+   376→      default: return null;
+   377→    }
+   378→  };
+   379→
+   380→  if (loading) {
+   381→    return (
+   382→      <div className="flex flex-col min-h-[100dvh] bg-gray-50 items-center justify-center">
+   383→        <RefreshCw className="w-8 h-8 text-[#912D26] animate-spin mb-3" />
+   384→        <p className="text-[#3A3A3A]">Cargando frecuencias...</p>
+   385→      </div>
+   386→    );
+   387→  }
+   388→
+   389→  // Check if there are unfinished frequencies (for exit guard)
+   390→  const hasUnfinishedFrecuencias = estados.some(e => e.estado === 'pendiente' || e.estado === 'abierta');
+   391→
+   392→  const handleBack = () => {
+   393→    if (hasUnfinishedFrecuencias) {
+   394→      setExitModal(true);
+   395→    } else {
+   396→      onBack();
+   397→    }
+   398→  };
+   399→
+   400→  // Check if ALL frequencies are done (cerrada or no_realizada)
+   401→  const allFrecuenciasDone = estados.length > 0 && estados.every(e => e.estado === 'cerrada' || e.estado === 'no_realizada');
+   402→
+   403→  // Totals across all frequencies
+   404→  const totalVentasAll = estados.reduce((s, e) => s + e.ventasCount, 0);
+   405→  const totalRecaudadoAll = estados.reduce((s, e) => s + e.totalRecaudado, 0);
+   406→  const cerradasCount = estados.filter(e => e.estado === 'cerrada').length;
+   407→
+   408→  // SYNC control: if online with pending ventas, block arqueo
+   409→  const mustSyncBeforeArqueo = isOnline && pendingCount > 0;
+   410→
+   411→  return (
+   412→    <div className="flex flex-col min-h-[100dvh] bg-gray-50">
+   413→      {/* Header */}
+   414→      <div className="bg-[#912D26] text-white px-4 py-3">
+   415→        <div className="flex items-center justify-between mb-2">
+   416→          <div className="flex items-center gap-2">
+   417→            <button onClick={handleBack} className="text-red-100"><ArrowLeft className="w-5 h-5" /></button>
+   418→            <div>
+   419→              <h1 className="text-lg font-bold">Frecuencias</h1>
+   420→              <p className="text-red-100 text-xs">{session.nombre} - {session.ayudanteNombre}</p>
+   421→            </div>
+   422→          </div>
+   423→          <div className="flex items-center gap-2">
+   424→            {isOnline ? <Wifi className="w-4 h-4 text-green-300" /> : <WifiOff className="w-4 h-4 text-red-300" />}
+   425→          </div>
+   426→        </div>
+   427→        <div className="flex items-center gap-2">
+   428→          <div className="flex-1 bg-white/15 rounded-xl px-3 py-1.5 text-sm flex items-center gap-2">
+   429→            {pendingCount > 0 ? (
+   430→              <>
+   431→                <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>
+   432→                <span className="text-red-100 text-xs">pendientes</span>
+   433→              </>
+   434→            ) : (
+   435→              <span className="text-green-200 text-xs">Sin pendientes</span>
+   436→            )}
+   437→          </div>
+   438→          {pendingCount > 0 && isOnline && (
+   439→            <button onClick={onGoToSync} className="bg-green-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 active:scale-95">
+   440→              <Send className="w-3 h-3" /> SYNC
+   441→            </button>
+   442→          )}
+   443→          {pendingCount > 0 && !isOnline && (
+   444→            <div className="bg-white/10 text-red-200 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1">
+   445→              <WifiOff className="w-3 h-3" /> Sin red
+   446→            </div>
+   447→          )}
+   448→        </div>
+   449→      </div>
+   450→
+   451→      <div className="flex-1 px-4 py-3 space-y-2 overflow-y-auto pb-6">
+   452→        <div className="text-center text-xs text-gray-500 mb-1">
+   453→          {new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+   454→        </div>
+   455→
+   456→        {/* Modal Exit Warning */}
+   457→        {exitModal && (
+   458→          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+   459→            <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
+   460→              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+   461→                <AlertTriangle className="w-8 h-8 text-[#912D26]" />
+   462→              </div>
+   463→              <h3 className="text-lg font-bold text-[#3A3A3A] mb-2">Salir del turno?</h3>
+   464→              <div className="bg-red-50 rounded-xl p-3 mb-4">
+   465→                <p className="text-sm text-[#912D26] font-semibold">
+   466→                  Tienes {estados.filter(e => e.estado === 'abierta').length} frecuencia{estados.filter(e => e.estado === 'abierta').length !== 1 ? 's' : ''} abierta{estados.filter(e => e.estado === 'abierta').length !== 1 ? 's' : ''} y {estados.filter(e => e.estado === 'pendiente').length} pendiente{estados.filter(e => e.estado === 'pendiente').length !== 1 ? 's' : ''}
+   467→                </p>
+   468→              </div>
+   469→              <p className="text-sm text-gray-500 mb-5">
+   470→                Si sales, el progreso se conservará y podrás continuar cuando vuelvas a ingresar.
+   471→              </p>
+   472→              <div className="flex gap-2">
+   473→                <button onClick={() => setExitModal(false)}
+   474→                  className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-bold text-sm active:scale-[0.98] shadow-lg shadow-red-200">
+   475→                  Cancelar
+   476→                </button>
+   477→                <button onClick={() => { setExitModal(false); onBack(); }}
+   478→                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold text-sm active:scale-[0.98]">
+   479→                  Salir
+   480→                </button>
+   481→              </div>
+   482→            </div>
+   483→          </div>
+   484→        )}
+   485→
+   486→        {/* Reassign modal */}
+   487→        {reassigning && (
+   488→          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+   489→            <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 max-h-[80vh] overflow-y-auto">
+   490→              <h3 className="text-lg font-bold text-[#3A3A3A] mb-1">Reasignar Horario</h3>
+   491→              <p className="text-sm text-gray-500 mb-4">
+   492→                Rutas desde <strong className="text-[#912D26]">{estados.find(e => e.estadoId === reassigning)?.ruta.split(' - ')[0]?.trim()}</strong>
+   493→              </p>
+   494→              <div className="space-y-2">
+   495→                {getFrecuenciasParaReasignar(reassigning).map(target => (
+   496→                  <button key={target.id} onClick={() => handleSelectReassignment(target)}
+   497→                    className="w-full p-4 rounded-xl border border-gray-200 hover:bg-[#912D26]/5 hover:border-[#912D26]/30 transition-all text-left">
+   498→                    <div className="flex items-center justify-between">
+   499→                      <div>
+   500→                        <div className="font-semibold text-[#3A3A3A]">{target.nombre}</div>
+   501→                        <div className="text-sm text-gray-500">{target.ruta}</div>
+   502→                      </div>
+   503→                      <div className="text-right">
+   504→                        <div className="text-lg font-bold text-[#912D26]">{target.hora}</div>
+   505→                        <div className="text-xs text-gray-400">{target.direccion}</div>
+   506→                      </div>
+   507→                    </div>
+   508→                  </button>
+   509→                ))}
+   510→              </div>
+   511→              <button onClick={() => setReassigning(null)}
+   512→                className="w-full mt-4 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold">Cancelar</button>
+   513→            </div>
+   514→          </div>
+   515→        )}
+   516→
+   517→        {/* Modal No Realizada - Selección de motivo */}
+   518→        {noRealizadaModal && !confirmNoRealizada && (
+   519→          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+   520→            <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+   521→              <div className="flex items-center gap-3 mb-4">
+   522→                <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+   523→                  <XCircle className="w-5 h-5 text-orange-500" />
+   524→                </div>
+   525→                <div>
+   526→                  <h3 className="text-lg font-bold text-[#3A3A3A]">No Realizada</h3>
+   527→                  <p className="text-xs text-gray-500">{noRealizadaModal.hora} — {noRealizadaModal.nombre}</p>
+   528→                </div>
+   529→              </div>
+   530→              <p className="text-sm text-gray-600 mb-4">Selecciona el motivo por el cual no se realizó esta frecuencia:</p>
+   531→              <div className="space-y-2">
+   532→                {MOTIVOS_NO_REALIZADA.map(m => (
+   533→                  <button key={m.id} onClick={() => { setMotivoSeleccionado(m.id); if (m.id !== 'otro') setMotivoPersonalizado(''); }}
+   534→                    className={`w-full p-3 rounded-xl border-2 text-left flex items-center gap-3 transition-all active:scale-[0.98] ${
+   535→                      motivoSeleccionado === m.id ? 'border-orange-400 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+   536→                    }`}>
+   537→                    <span className={m.color}>{m.icon}</span>
+   538→                    <span className="text-sm font-semibold text-[#3A3A3A]">{m.label}</span>
+   539→                    {motivoSeleccionado === m.id && <span className="ml-auto text-orange-500 font-bold">✓</span>}
+   540→                  </button>
+   541→                ))}
+   542→              </div>
+   543→              {/* Campo personalizado */}
+   544→              {motivoSeleccionado === 'otro' && (
+   545→                <div className="mt-3">
+   546→                  <input type="text" placeholder="Escribe el motivo..." value={motivoPersonalizado}
+   547→                    onChange={e => setMotivoPersonalizado(e.target.value)}
+   548→                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm text-[#3A3A3A] focus:outline-none focus:border-orange-400"
+   549→                    autoFocus />
+   550→                </div>
+   551→              )}
+   552→              <div className="flex gap-2 mt-5">
+   553→                <button onClick={() => setNoRealizadaModal(null)}
+   554→                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Cancelar</button>
+   555→                <button
+   556→                  onClick={() => {
+   557→                    if (motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim())) {
+   558→                      confirmNoRealizadaAction();
+   559→                    }
+   560→                  }}
+   561→                  disabled={!motivoSeleccionado || (motivoSeleccionado === 'otro' && !motivoPersonalizado.trim())}
+   562→                  className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
+   563→                    motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim())
+   564→                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-200'
+   565→                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+   566→                  }`}>
+   567→                  <XCircle className="w-4 h-4" /> Confirmar
+   568→                </button>
+   569→              </div>
+   570→            </div>
+   571→          </div>
+   572→        )}
+   573→
+   574→        {/* ─── Modal Caja Común (Oficina Loja) ─── */}
+   575→        {cajaComunModal && (
+   576→          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+   577→            <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6">
+   578→              <div className="flex items-center gap-3 mb-4">
+   579→                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+   580→                  <DollarSign className="w-5 h-5 text-purple-600" />
+   581→                </div>
+   582→                <div>
+   583→                  <h3 className="text-lg font-bold text-[#3A3A3A]">Arqueo: {cajaComunModal.hora}</h3>
+   584→                  <p className="text-xs text-gray-500">{cajaComunModal.nombre}</p>
+   585→                </div>
+   586→              </div>
+   587→
+   588→              <p className="text-sm font-bold text-[#3A3A3A] mb-3">Caja Comun (Ofi. Loja)</p>
+   589→              <p className="text-xs text-gray-500 mb-3">Boletos fisicos recogidos de oficina Loja</p>
+   590→
+   591→              {/* Contador de pasajeros */}
+   592→              <div className="flex items-center gap-3 mb-4">
+   593→                <span className="text-sm text-gray-600 font-medium w-24">Pasajeros:</span>
+   594→                <div className="flex items-center gap-2">
+   595→                  <button onClick={() => setCajaComunCount(Math.max(0, cajaComunCount - 1))}
+   596→                    className="w-12 h-12 rounded-xl bg-gray-100 text-gray-600 font-black text-xl flex items-center justify-center active:scale-95 border-2 border-gray-200">-</button>
+   597→                  <span className="w-12 text-center font-black text-2xl text-[#3A3A3A]">{cajaComunCount}</span>
+   598→                  <button onClick={() => setCajaComunCount(cajaComunCount + 1)}
+   599→                    className="w-12 h-12 rounded-xl bg-purple-100 text-purple-700 font-black text-xl flex items-center justify-center active:scale-95 border-2 border-purple-200">+</button>
+   600→                </div>
+   601→              </div>
+   602→
+   603→              {/* Monto manual */}
+   604→              <div className="mb-5">
+   605→                <span className="text-sm text-gray-600 font-medium">Total (suma de boletos fisicos):</span>
+   606→                <div className="relative mt-1">
+   607→                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-black text-xl">$</span>
+   608→                  <input
+   609→                    type="number"
+   610→                    inputMode="decimal"
+   611→                    step="0.05"
+   612→                    placeholder="0.00"
+   613→                    value={cajaComunMonto}
+   614→                    onChange={e => setCajaComunMonto(e.target.value)}
+   615→                    className="w-full pl-10 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-xl font-black text-[#3A3A3A] text-center focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
+   616→                  />
+   617→                </div>
+   618→              </div>
+   619→
+   620→              <div className="flex gap-2">
+   621→                <button onClick={() => { setCajaComunModal(null); /* Skip caja comun, go directly to arqueo */ onGoToArqueo(cajaComunModal, cajaComunEsUltima); }}
+   622→                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Sin boletos</button>
+   623→                <button onClick={confirmCajaComun}
+   624→                  className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-black active:scale-[0.98] shadow-lg shadow-red-200">
+   625→                  Continuar
+   626→                </button>
+   627→              </div>
+   628→            </div>
+   629→          </div>
+   630→        )}
+   631→
+   632→        {estados.length === 0 ? (
+   633→          <div className="text-center py-12">
+   634→            <p className="text-gray-400">No hay frecuencias configuradas</p>
+   635→          </div>
+   636→        ) : (
+   637→          estados.map((estado, index) => {
+   638→            const disponible = isFrecuenciaDisponible(index);
+   639→            const esUltimaFrec = index === estados.length - 1;
+   640→            const bloqueada = !disponible && estado.estado === 'pendiente';
+   641→            const rutaColor = RUTA_BUTTON_COLORS[getRutaColorKey(estado.ruta)];
+   642→
+   643→            return (
+   644→              <div key={estado.estadoId} className={`rounded-2xl border border-l-4 p-3 transition-all ${
+   645→                bloqueada
+   646→                  ? 'bg-gray-50 border-gray-100 border-l-gray-300 opacity-50'
+   647→                  : estado.estado === 'abierta'
+   648→                    ? `${rutaColor.light} ${rutaColor.border}`
+   649→                    : `${getStateColor(estado.estado)} ${rutaColor.border}`
+   650→              }`}>
+   651→                <div className="flex items-center justify-between mb-2">
+   652→                  <div className="flex items-center gap-2">
+   653→                    {getStateIcon(estado.estado)}
+   654→                    <div>
+   655→                      <span className="font-bold text-[#3A3A3A]">{estado.hora}</span>
+   656→                      <span className="text-sm text-gray-500 ml-2">{estado.nombre}</span>
+   657→                    </div>
+   658→                  </div>
+   659→                  <div className="flex items-center gap-2">
+   660→                    {getEstadoBadge(estado.estado)}
+   661→                    {bloqueada && <span className="text-xs text-gray-400">🔒</span>}
+   662→                  </div>
+   663→                </div>
+   664→                <div className="text-xs text-gray-500 mb-1">{estado.ruta} · {estado.direccion}</div>
+   665→                {/* Stats bar: boletos + recaudado - visible when has sales or is cerrada */}
+   666→                {(estado.ventasCount > 0 || estado.estado === 'cerrada') && (
+   667→                  <div className="flex gap-3 mb-2">
+   668→                    <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold">
+   669→                      <Ticket className="w-3 h-3" />
+   670→                      <span>{estado.ventasCount} boleto{estado.ventasCount !== 1 ? 's' : ''}</span>
+   671→                    </div>
+   672→                    <div className={`flex items-center gap-1 ${rutaColor.badge} px-2 py-1 rounded-lg text-xs font-bold`}>
+   673→                      <DollarSign className="w-3 h-3" />
+   674→                      <span>${estado.totalRecaudado.toFixed(2)}</span>
+   675→                    </div>
+   676→                  </div>
+   677→                )}
+   678→                <div className="flex gap-2">
+   679→                  {/* PENDIENTE + disponible */}
+   680→                  {estado.estado === 'pendiente' && disponible && (
+   681→                    <>
+   682→                      <button onClick={() => handleOpen(estado)} className={`flex-1 py-3.5 rounded-xl ${rutaColor.bg} text-white font-bold text-sm flex items-center justify-center gap-1.5 active:scale-[0.97] shadow-md ${rutaColor.shadow}`}>
+   683→                        <Play className="w-4 h-4" /> Vender
+   684→                      </button>
+   685→                      <button onClick={() => handleNoRealizada(estado)} className="py-3.5 px-4 rounded-xl bg-orange-100 text-orange-600 font-bold text-sm flex items-center gap-1.5 active:scale-[0.97]" title="No Realizada">
+   686→                        <XCircle className="w-4 h-4" />
+   687→                      </button>
+   688→                      <button onClick={() => handleReassign(estado)} className="py-3.5 px-4 rounded-xl bg-gray-200 text-gray-600 font-bold text-sm flex items-center gap-1.5 active:scale-[0.97]" title="Reasignar">
+   689→                        <RotateCcw className="w-4 h-4" />
+   690→                      </button>
+   691→                    </>
+   692→                  )}
+   693→                  {/* ABIERTA: Seguir Vendiendo + Arqueo directo */}
+   694→                  {estado.estado === 'abierta' && (
+   695→                    <>
+   696→                      <button onClick={() => onOpenFrequency(estado)} className={`flex-1 py-2 rounded-xl ${rutaColor.bg} text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]`}>
+   697→                        <ChevronRight className="w-4 h-4" /> Seguir Vendiendo
+   698→                      </button>
+   699→                      <button onClick={() => handleGoToArqueo(estado, esUltimaFrec)} className="flex-1 py-2 rounded-xl bg-blue-600 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
+   700→                        <CheckCircle2 className="w-4 h-4" /> Arqueo
+   701→                      </button>
+   702→                    </>
+   703→                  )}
+   704→                  {/* CERRADA */}
+   705→                  {estado.estado === 'cerrada' && (
+   706→                    <div className="flex-1 flex items-center justify-center">
+   707→                      <span className="text-xs text-green-600 font-bold flex items-center gap-1">
+   708→                        <CheckCircle2 className="w-4 h-4" /> Cerrada
+   709→                      </span>
+   710→                    </div>
+   711→                  )}
+   712→                  {/* NO REALIZADA */}
+   713→                  {estado.estado === 'no_realizada' && (
+   714→                    <div className="text-sm text-orange-600 font-semibold flex items-center gap-1">
+   715→                      <XCircle className="w-4 h-4" />
+   716→                      {estado.motivoNoRealizada || 'No realizada'}
+   717→                    </div>
+   718→                  )}
+   719→                  {/* BLOQUEADA */}
+   720→                  {bloqueada && (
+   721→                    <div className="text-sm text-gray-400">Espera arqueo anterior</div>
+   722→                  )}
+   723→                </div>
+   724→              </div>
+   725→            );
+   726→          })
+   727→        )}
+   728→      </div>
+   729→
+   730→      {/* ─── Arqueo General del VT ─── */}
+   731→      {allFrecuenciasDone && cerradasCount > 0 && (
+   732→        <div className="px-4 pb-3">
+   733→          <div className="bg-gradient-to-r from-[#912D26] to-[#b33d34] rounded-2xl p-4 shadow-lg shadow-red-200/50">
+   734→            <div className="flex items-center gap-2 mb-3">
+   735→              <ClipboardCheck className="w-5 h-5 text-white" />
+   736→              <h3 className="text-white font-bold text-sm">Todas las frecuencias completadas</h3>
+   737→            </div>
+   738→            <div className="flex gap-4 mb-3 text-white">
+   739→              <div>
+   740→                <p className="text-white/60 text-[10px]">Total Boletos</p>
+   741→                <p className="font-black text-lg leading-tight">{totalVentasAll}</p>
+   742→              </div>
+   743→              <div>
+   744→                <p className="text-white/60 text-[10px]">Total Recaudado</p>
+   745→                <p className="font-black text-lg leading-tight">${totalRecaudadoAll.toFixed(2)}</p>
+   746→              </div>
+   747→              <div>
+   748→                <p className="text-white/60 text-[10px]">Cerradas</p>
+   749→                <p className="font-black text-lg leading-tight">{cerradasCount}/{estados.length}</p>
+   750→              </div>
+   751→            </div>
+   752→            {mustSyncBeforeArqueo ? (
+   753→              <button
+   754→                onClick={onGoToSync}
+   755→                className="w-full py-4 rounded-xl bg-orange-400 text-white font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] shadow-md">
+   756→                <Send className="w-5 h-5" />
+   757→                SINCRONIZAR {pendingCount} VENTAS PRIMERO
+   758→              </button>
+   759→            ) : (
+   760→              <button
+   761→                onClick={onGoToArqueoGeneral}
+   762→                className="w-full py-4 rounded-xl bg-white text-[#912D26] font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] shadow-md">
+   763→                <ClipboardCheck className="w-5 h-5" />
+   764→                ARQUEO GENERAL DEL {session.nombre}
+   765→              </button>
+   766→            )}
+   767→            {mustSyncBeforeArqueo && (
+   768→              <p className="text-white/60 text-[10px] text-center mt-2">Debes sincronizar todas las ventas antes del arqueo general</p>
+   769→            )}
+   770→          </div>
+   771→        </div>
+   772→      )}
+   773→
+   774→      {/* Sync button */}
+   775→      {pendingCount > 0 && (
+   776→        <div className="p-3 border-t border-gray-200 bg-white">
+   777→          <button onClick={onGoToSync}
+   778→            className={`w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
+   779→              isOnline ? 'bg-green-600 text-white shadow-lg shadow-green-200' : 'bg-gray-200 text-gray-400'
+   780→            }`}
+   781→            disabled={!isOnline}>
+   782→            <Send className="w-5 h-5" />
+   783→            {isOnline ? `SINCRONIZAR ${pendingCount} VENTAS` : `SIN INTERNET — ${pendingCount} VENTAS PENDIENTES`}
+   784→          </button>
+   785→        </div>
+   786→      )}
+   787→    </div>
+   788→  );
+   789→}
+   790→

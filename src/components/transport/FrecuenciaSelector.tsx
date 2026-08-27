@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { type VTSession, type FrecuenciaEstado, type FrecuenciaData, loadPromoConfig } from './types-boletos';
-import { getVentasByFrecuencia, countVentasPendientes } from '@/lib/indexeddb';
+import { getVentasByFrecuencia, countVentasPendientes, syncVentasSilencioso } from '@/lib/indexeddb';
 import { matchRuta } from '@/lib/tarifas-data';
-import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck, AlertTriangle, Wrench, Droplets, UserX, Ban, FileText, Truck } from 'lucide-react';
+import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck, AlertTriangle, Wrench, Droplets, UserX, Ban, FileText, Truck, CheckCircle } from 'lucide-react';
 
 interface Props {
   session: VTSession;
@@ -108,6 +108,8 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   const [reassigning, setReassigning] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [syncingForArqueo, setSyncingForArqueo] = useState(false);
+  const [syncDone, setSyncDone] = useState(false);
   const [noRealizadaModal, setNoRealizadaModal] = useState<FrecuenciaEstado | null>(null);
   const [motivoSeleccionado, setMotivoSeleccionado] = useState('');
   const [motivoPersonalizado, setMotivoPersonalizado] = useState('');
@@ -405,8 +407,23 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   const totalRecaudadoAll = estados.reduce((s, e) => s + e.totalRecaudado, 0);
   const cerradasCount = estados.filter(e => e.estado === 'cerrada').length;
 
-  // SYNC control: if online with pending ventas, block arqueo
-  const mustSyncBeforeArqueo = isOnline && pendingCount > 0;
+  // SYNC control: ALWAYS block arqueo general if there are pending ventas
+  const mustSyncBeforeArqueo = pendingCount > 0;
+
+  const handleSyncForArqueo = async () => {
+    if (!isOnline || syncingForArqueo) return;
+    setSyncingForArqueo(true);
+    try {
+      const result = await syncVentasSilencioso();
+      const remaining = await countVentasPendientes();
+      setPendingCount(remaining);
+      if (remaining === 0) {
+        setSyncDone(true);
+        setTimeout(() => setSyncDone(false), 2000);
+      }
+    } catch { /* ignore */ }
+    setSyncingForArqueo(false);
+  };
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-gray-50">
@@ -750,12 +767,42 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
               </div>
             </div>
             {mustSyncBeforeArqueo ? (
-              <button
-                onClick={onGoToSync}
-                className="w-full py-4 rounded-xl bg-orange-400 text-white font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] shadow-md">
-                <Send className="w-5 h-5" />
-                SINCRONIZAR {pendingCount} VENTAS PRIMERO
-              </button>
+              isOnline ? (
+                <>
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-4 h-4 text-yellow-200" />
+                    <p className="text-white/90 text-xs font-semibold">Tienes {pendingCount} venta{pendingCount !== 1 ? 's' : ''} sin sincronizar. Debes sincronizar antes del arqueo.</p>
+                  </div>
+                  {syncDone ? (
+                    <div className="w-full py-4 rounded-xl bg-green-500 text-white font-black text-base flex items-center justify-center gap-2 shadow-md">
+                      <CheckCircle className="w-5 h-5" />
+                      ¡TODO SINCRONIZADO!
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleSyncForArqueo}
+                      disabled={syncingForArqueo}
+                      className="w-full py-4 rounded-xl bg-white text-[#912D26] font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] shadow-md disabled:opacity-70">
+                      {syncingForArqueo ? (
+                        <><RefreshCw className="w-5 h-5 animate-spin" /> SINCRONIZANDO {pendingCount} VENTAS...</>
+                      ) : (
+                        <><Send className="w-5 h-5" /> SINCRONIZAR {pendingCount} VENTAS</>
+                      )}
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 mb-2">
+                    <WifiOff className="w-4 h-4 text-red-200" />
+                    <p className="text-white/90 text-xs font-semibold">Tienes {pendingCount} venta{pendingCount !== 1 ? 's' : ''} sin sincronizar.</p>
+                  </div>
+                  <div className="w-full py-4 rounded-xl bg-white/20 text-white font-black text-base flex items-center justify-center gap-2">
+                    <WifiOff className="w-5 h-5" />
+                    SIN INTERNET — CONECTA PARA SINCRONIZAR
+                  </div>
+                </>
+              )
             ) : (
               <button
                 onClick={onGoToArqueoGeneral}
@@ -764,8 +811,8 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
                 ARQUEO GENERAL DEL {session.nombre}
               </button>
             )}
-            {mustSyncBeforeArqueo && (
-              <p className="text-white/60 text-[10px] text-center mt-2">Debes sincronizar todas las ventas antes del arqueo general</p>
+            {mustSyncBeforeArqueo && !isOnline && (
+              <p className="text-white/60 text-[10px] text-center mt-2">Conecta a internet y sincroniza todas las ventas antes del arqueo general</p>
             )}
           </div>
         </div>

@@ -278,7 +278,6 @@ export default function Home() {
           }
         }}
         onBack={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }}
-        onGoToSync={() => setView('boletos_sync')}
       />
     );
   }
