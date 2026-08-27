@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { hashPin } from '@/lib/pin-hash';
 
 // GET /api/personas/[id] — Get single persona
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const persona = await db.persona.findUnique({ where: { id } });
+    const persona = await db.persona.findUnique({ where: { id }, select: { id: true, nombre: true, cedula: true, telefono: true, rol: true, esActual: true, createdAt: true, updatedAt: true } });
     if (!persona) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
     }
@@ -29,10 +30,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     // If changing PIN, check uniqueness
-    if (pin && pin !== existing.pin) {
-      const pinExists = await db.persona.findUnique({ where: { pin } });
-      if (pinExists) {
-        return NextResponse.json({ error: 'El PIN ya esta en uso' }, { status: 400 });
+    if (pin) {
+      const pinHash = hashPin(pin);
+      // Solo verificar unicidad si el hash es diferente al almacenado
+      if (pinHash !== existing.pin) {
+        const pinExists = await db.persona.findUnique({ where: { pin: pinHash } });
+        if (pinExists) {
+          return NextResponse.json({ error: 'El PIN ya esta en uso' }, { status: 400 });
+        }
       }
     }
 
@@ -51,12 +56,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         ...(cedula !== undefined && { cedula: cedula || null }),
         ...(telefono !== undefined && { telefono: telefono || null }),
         ...(rol && { rol }),
-        ...(pin && { pin }),
+        ...(pin && { pin: hashPin(pin) }),
         ...(esActual !== undefined && { esActual }),
       },
     });
 
-    return NextResponse.json(persona);
+    const { pin: _pin, ...safePersona } = persona;
+    return NextResponse.json(safePersona);
   } catch (error) {
     console.error('Error updating persona:', error);
     return NextResponse.json({ error: 'Error al actualizar personal' }, { status: 500 });

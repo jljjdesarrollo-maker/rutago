@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { hashPin } from '@/lib/pin-hash';
 
 // GET /api/personas — List all personas
 export async function GET() {
   try {
     const personas = await db.persona.findMany({
       orderBy: { createdAt: 'desc' },
+      select: { id: true, nombre: true, cedula: true, telefono: true, rol: true, esActual: true, createdAt: true, updatedAt: true },
     });
     return NextResponse.json(personas);
   } catch (error) {
@@ -24,8 +26,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nombre y PIN son obligatorios' }, { status: 400 });
     }
 
-    // Check if PIN already exists
-    const existing = await db.persona.findUnique({ where: { pin } });
+    const pinHash = hashPin(pin);
+
+    // Check if PIN already exists (by hash)
+    const existing = await db.persona.findUnique({ where: { pin: pinHash } });
     if (existing) {
       return NextResponse.json({ error: 'El PIN ya esta en uso' }, { status: 400 });
     }
@@ -45,12 +49,13 @@ export async function POST(req: NextRequest) {
         cedula: cedula || null,
         telefono: telefono || null,
         rol: rol || 'CONDUCTOR',
-        pin,
+        pin: pinHash,
         esActual,
       },
     });
 
-    return NextResponse.json(persona, { status: 201 });
+    const { pin: _pin, ...safePersona } = persona;
+    return NextResponse.json(safePersona, { status: 201 });
   } catch (error) {
     console.error('Error creating persona:', error);
     return NextResponse.json({ error: 'Error al crear personal' }, { status: 500 });

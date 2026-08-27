@@ -71,3 +71,33 @@ Stage Summary:
 - Fase 3 completa (5/5 items, 3 ya existían + 2 nuevos)
 - Archivos modificados: LoginScreen.tsx, ventas/batch/route.ts, ventas/route.ts, records/route.ts
 - Pendiente: build + deploy
+
+---
+Task ID: 4
+Agent: Main
+Task: Fase 4 — Seguridad (3 items)
+
+Work Log:
+- Item 1 (Hash PINs):
+  - Creado src/lib/pin-hash.ts (SHA-256 via Node crypto)
+  - auth/route.ts: hash incoming PIN, migration automática plaintext→hash al hacer login
+  - personas/route.ts POST: hash PIN antes de almacenar
+  - personas/[id]/route.ts PUT: hash PIN, comparar con hash almacenado para unicidad
+  - GET personas: select sin campo pin (nunca expuesto al frontend)
+  - POST/PUT personas: response sin campo pin
+- Item 2 (Whitelist PATCH frecuencias): ya estaba implementado
+- Item 3 (Rate limiting /api/auth):
+  - In-memory rate limiter: 5 intentos fallidos por IP en ventana de 5 minutos
+  - HTTP 429 con mensaje "Demasiados intentos. Espere 5 minutos."
+  - Cleanup automático de entries stale cada 10 minutos
+  - Detección de IP via x-forwarded-for → x-real-ip → fallback 'unknown'
+- Version bump: v3.24 → v3.25-aug28-phase4-seguridad
+- Build exitoso (rm -rf .next && npx next build)
+
+Stage Summary:
+- Version: v3.25-aug28-phase4-seguridad
+- Fase 4 completa (3/3 items)
+- Archivos nuevos: src/lib/pin-hash.ts
+- Archivos modificados: auth/route.ts, personas/route.ts, personas/[id]/route.ts, HomeScreenVT.tsx
+- Build OK, listo para deploy
+- NOTA MIGRACIÓN: Los PINs existentes en plaintext se migran automáticamente al primer login exitoso de cada usuario
