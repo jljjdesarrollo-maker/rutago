@@ -74,7 +74,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       const raw = localStorage.getItem(lsKey);
       if (!raw) { setLoading(false); return; }
       const estadosLS = JSON.parse(raw) as FrecuenciaEstado[];
-      const cerradas = estadosLS.filter(e => e.estado === 'cerrada' || e.estado === 'no_realizada');
+      const cerradas = estadosLS.filter(e => e.estado === 'cerrada');
 
       const resumenes: FrecuenciaResumen[] = await Promise.all(
         cerradas.map(async (e) => {
@@ -159,10 +159,26 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setFotoPreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
     e.target.value = '';
+    // Comprimir imagen antes de almacenar (max ~200KB base64)
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX_DIM = 1200;
+      const QUALITY = 0.6;
+      let w = img.width, h = img.height;
+      if (w > MAX_DIM || h > MAX_DIM) {
+        if (w > h) { h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
+        else { w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+      setFotoPreview(canvas.toDataURL('image/jpeg', QUALITY));
+    };
+    img.onerror = () => URL.revokeObjectURL(url);
+    img.src = url;
   };
 
   const handleSaveOffline = () => {
@@ -170,7 +186,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     if (!km.trim()) errs.push('Kilometraje es obligatorio');
     if (!fotoPreview) errs.push('Foto del cuaderno es obligatoria');
     if (frecuencias.length === 0) errs.push('No hay frecuencias cerradas');
-    if (totalGastos <= 0) errs.push('Total de gastos debe ser mayor a 0');
+    // Gastos pueden ser $0 si no hubo (ej. unidad parada)
     if (errs.length > 0) {
       setErrors(errs);
       return;
@@ -340,9 +356,9 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                 className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-bold active:scale-95">
                 Cancelar
               </button>
-              <button onClick={handleConfirmSave}
-                className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-black active:scale-95">
-                CONFIRMAR
+              <button onClick={handleConfirmSave} disabled={saving}
+                className={`flex-1 py-3 rounded-xl font-black active:scale-95 ${saving ? 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed' : 'bg-[#912D26] text-white'}`}>
+                {saving ? 'Guardando...' : 'CONFIRMAR'}
               </button>
             </div>
           </div>
@@ -610,7 +626,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           {sobranteNum !== 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-white/60">Ajuste Manual</span>
-              <span className="font-semibold text-green-400">${sobranteNum.toFixed(2)}</span>
+              <span className={`font-semibold ${sobranteNum >= 0 ? 'text-green-400' : 'text-red-400'}`}>${sobranteNum.toFixed(2)}</span>
             </div>
           )}
           <hr className="border-white/10" />
@@ -659,8 +675,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         <button
           onClick={handleSaveOffline}
           disabled={saving}
-          className={`w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all ${
-            saving ? 'bg-[#D6D6D6] text-gray-400' : 'bg-[#912D26] text-white shadow-red-200'
+          className={`w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-2 shadow-lg ${
+            saving ? 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed' : 'bg-[#912D26] text-white shadow-red-200 active:scale-95 transition-all'
           }`}>
           {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
           {saving ? 'Guardando...' : 'GUARDAR ARQUEO GENERAL'}

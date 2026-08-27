@@ -84,9 +84,9 @@ export function CloseFrequencyScreen({ session, estado, connection, onClosed, on
               <div className="text-sm font-bold text-[#3A3A3A]">{medias}</div>
               <div className="text-[10px] text-gray-500">Medias</div>
             </div>
-            <div className={`rounded-lg p-2 text-center ${diferencia > 0 ? 'bg-amber-50' : 'bg-gray-50'}`}>
-              <div className={`text-sm font-bold ${diferencia > 0 ? 'text-amber-600' : 'text-gray-400'}`}>
-                {diferencia > 0 ? '+$' : ''}{Math.abs(diferencia).toFixed(2)}
+            <div className={`rounded-lg p-2 text-center ${diferencia > 0 ? 'bg-green-50' : diferencia < 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
+              <div className={`text-sm font-bold ${diferencia > 0 ? 'text-green-600' : diferencia < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                {diferencia > 0 ? '+$' : diferencia < 0 ? '-$' : '$'}{Math.abs(diferencia).toFixed(2)}
               </div>
               <div className="text-[10px] text-gray-500">Diferencia</div>
             </div>

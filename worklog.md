@@ -22,3 +22,29 @@ Stage Summary:
 - Cada ruta tiene color distinto: El Tambo (blue-600), La Elvira (purple-600), Yangana (emerald-600), Zahuayco (amber-600), Vilcabamba (#912D26)
 - Servidor de producción activo en puerto 3000
 - Código pushed a GitHub (main)
+
+---
+Task ID: 2
+Agent: Main
+Task: Fase 1 — Emergente (7 fixes críticos) + Fase 2 — Estabilidad (7 fixes)
+
+Work Log:
+- Verificados todos los archivos de Fase 1: 6 de 7 fixes ya estaban aplicados en sesión anterior
+- Único fix pendiente: TARIFA_MINIMA cambiada de 0 a 0.40 (media tarifa más baja: Capulí/Dos Puentes)
+- Fase 2 aplicada en ArqueoGeneralScreen.tsx:
+  - Excluir frecuencias no_realizada del arqueo general (solo cerradas)
+  - Removido mandatory gastos block (totalGastos puede ser $0)
+  - Double-tap guard en botón CONFIRMAR del diálogo de confirmación
+- Photo compression: canvas resize max 1200px + JPEG quality 0.6 (de ~8MB raw a ~200KB)
+- Sobrante negativo ahora muestra en rojo (antes siempre verde)
+- Botón GUARDAR ARQUEO GENERAL: cursor-not-allowed cuando está saving
+- CloseFrequencyScreen: diferencia con signo correcto (+ verde/- rojo) y colores coherentes
+- Version bump: v3.22 → v3.23-aug28-phase2-estabilidad
+- Build exitoso (rm -rf .next && npx next build)
+
+Stage Summary:
+- Version: v3.23-aug28-phase2-estabilidad
+- Fase 1 completa (7/7 fixes)
+- Fase 2 completa (7/7 fixes)
+- Archivos modificados: tarifas-data.ts, ArqueoGeneralScreen.tsx, CloseFrequencyScreen.tsx, HomeScreenVT.tsx
+- Build OK, listo para deploy
