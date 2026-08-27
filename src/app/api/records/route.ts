@@ -6,7 +6,8 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
-    const limit = Math.min(Number(url.searchParams.get('limit')) || 30, 100);
+    const limit = Math.min(Number(url.searchParams.get('limit')) || 10, 50);
+    const includeRelations = url.searchParams.get('include') === 'trips';
 
     const where: Record<string, unknown> = {};
     if (from && to) {
@@ -17,10 +18,10 @@ export async function GET(req: NextRequest) {
       where,
       orderBy: { date: 'desc' },
       take: limit,
-      include: {
+      include: includeRelations ? {
         trips: { orderBy: { order: 'asc' } },
         expenses: { orderBy: { order: 'asc' } },
-      },
+      } : undefined,
     });
     return NextResponse.json(records);
   } catch (error) {

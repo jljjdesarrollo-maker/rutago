@@ -75,6 +75,7 @@ export function HistoryScreen({ isAdmin, onBack, onViewRecord }: HistoryScreenPr
       const params = new URLSearchParams();
       if (dateRange.from) params.set('from', dateRange.from);
       if (dateRange.to) params.set('to', dateRange.to);
+      params.set('include', 'trips');
       const query = params.toString() ? `?${params.toString()}` : '';
       const res = await fetch(`/api/records${query}`);
       const data = await res.json();

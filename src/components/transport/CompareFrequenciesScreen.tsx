@@ -59,7 +59,7 @@ export function CompareFrequenciesScreen({ onBack }: CompareFrequenciesScreenPro
 
   // Load unique frequencies from records
   useEffect(() => {
-    fetch('/api/records').then(r => r.json()).then(data => {
+    fetch('/api/records?include=trips').then(r => r.json()).then(data => {
       if (!Array.isArray(data)) return;
       const freqMap = new Map<string, FrecOption>();
       for (const record of data) {
