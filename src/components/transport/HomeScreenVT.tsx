@@ -6,7 +6,7 @@ import { countVentasPendientes, syncVentasSilencioso } from '@/lib/indexeddb';
 import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.16-aug27-sync-obligatorio';
+const APP_VERSION = 'v3.17-aug27-fix-arqueo-flow';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;

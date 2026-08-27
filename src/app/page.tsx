@@ -270,12 +270,7 @@ export default function Home() {
         esUltima={esUltimaFrecuencia}
         onArqueoConfirmado={() => {
           setCurrentEstado(null);
-          // Si era la ultima frecuencia, ir al arqueo general
-          if (esUltimaFrecuencia) {
-            setView('boletos_arqueo_general');
-          } else {
-            setView('boletos_frecuencias');
-          }
+          setView('boletos_frecuencias');
         }}
         onBack={() => { setCurrentEstado(null); setView('boletos_frecuencias'); }}
       />
