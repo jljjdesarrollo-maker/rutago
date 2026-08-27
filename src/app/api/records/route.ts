@@ -8,21 +8,38 @@ export async function GET(req: NextRequest) {
     const to = url.searchParams.get('to');
     const limit = Math.min(Number(url.searchParams.get('limit')) || 10, 50);
     const includeRelations = url.searchParams.get('include') === 'trips';
+    const includePhoto = url.searchParams.get('include') === 'photo';
 
     const where: Record<string, unknown> = {};
     if (from && to) {
       where.date = { gte: from, lte: to };
     }
 
-    const records = await db.dailyRecord.findMany({
+    // Build dynamic select/include
+    const queryOpts: any = {
       where,
       orderBy: { date: 'desc' },
       take: limit,
-      include: includeRelations ? {
+    };
+
+    if (includeRelations) {
+      queryOpts.include = {
         trips: { orderBy: { order: 'asc' } },
         expenses: { orderBy: { order: 'asc' } },
-      } : undefined,
-    });
+      };
+    } else {
+      // Exclude photoUrl by default (base64 bloat)
+      queryOpts.select = {
+        id: true, date: true, km: true, conductor: true,
+        ayudanteNombre: true, vtCode: true, production: true,
+        cajaComun: true, sobrante: true, tickets: true,
+        entregaAyudante: true, entregaCompania: true, totalGastos: true,
+        createdAt: true, updatedAt: true,
+        ...(includePhoto ? { photoUrl: true } : {}),
+      };
+    }
+
+    const records = await db.dailyRecord.findMany(queryOpts);
     return NextResponse.json(records);
   } catch (error) {
     console.error('Error fetching records:', error);
