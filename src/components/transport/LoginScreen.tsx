@@ -31,6 +31,26 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
   const submitPin = async (pinValue: string) => {
     setLoading(true);
+
+    // ─── Offline login: usar sesión cacheada ───
+    if (!navigator.onLine) {
+      try {
+        const cached = localStorage.getItem('ct_session');
+        if (cached) {
+          const session = JSON.parse(cached);
+          if (session && session.id && session.nombre) {
+            onLogin(session);
+            return;
+          }
+        }
+      } catch { /* corrupted cache */ }
+      setError('Sin internet y sin sesion guardada');
+      setPin('');
+      setLoading(false);
+      return;
+    }
+
+    // ─── Online login ───
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
@@ -46,11 +66,11 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         return;
       }
 
-      // Save session to localStorage
+      // Save session to localStorage for offline use
       localStorage.setItem('ct_session', JSON.stringify(data));
       onLogin(data);
     } catch {
-      setError(navigator.onLine ? 'Error del servidor' : 'Sin internet — necesitas conexion para el primer ingreso');
+      setError('Error del servidor');
       setPin('');
     } finally {
       setLoading(false);

@@ -20,6 +20,10 @@ export async function POST(request: NextRequest) {
     if (isNaN(cobradoNum) || cobradoNum < 0) {
       return NextResponse.json({ error: 'cobrado debe ser un numero >= 0' }, { status: 400 });
     }
+    const tarifaNum = parseFloat(tarifaOficial) || 0;
+    if (tarifaNum < 0) {
+      return NextResponse.json({ error: 'tarifaOficial debe ser >= 0' }, { status: 400 });
+    }
 
     let validFrecuenciaId: string | null = null;
     if (frecuenciaId) {
@@ -40,7 +44,7 @@ export async function POST(request: NextRequest) {
         parada,
         tipo,
         pasajeroTipo: pasajeroTipo || 'normal',
-        tarifaOficial: parseFloat(tarifaOficial) || 0,
+        tarifaOficial: tarifaNum,
         cobrado: parseFloat(cobrado) || 0,
         hora,
         ayudanteId,

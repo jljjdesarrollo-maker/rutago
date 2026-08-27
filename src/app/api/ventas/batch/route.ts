@@ -28,6 +28,17 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
+        // Validación financiera server-side
+        if (cobrado < 0) {
+          results.push({ localId: (localId as string) || '', serverId: '', ok: false, error: 'cobrado no puede ser negativo' });
+          continue;
+        }
+        const tarifaNum = typeof tarifaOficial === 'number' ? tarifaOficial : 0;
+        if (tarifaNum < 0) {
+          results.push({ localId: (localId as string) || '', serverId: '', ok: false, error: 'tarifaOficial no puede ser negativa' });
+          continue;
+        }
+
         let validFrecuenciaId: string | null = null;
         if (frecuenciaId && typeof frecuenciaId === 'string') {
           try {

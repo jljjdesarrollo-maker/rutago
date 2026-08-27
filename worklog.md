@@ -48,3 +48,26 @@ Stage Summary:
 - Fase 2 completa (7/7 fixes)
 - Archivos modificados: tarifas-data.ts, ArqueoGeneralScreen.tsx, CloseFrequencyScreen.tsx, HomeScreenVT.tsx
 - Build OK, listo para deploy
+
+---
+Task ID: 3
+Agent: Main
+Task: Fase 3 — Robustez (5 items)
+
+Work Log:
+- Items 2-4 ya estaban implementados:
+  - Batch sync: syncVentasSilencioso() usa lotes de 20 con fallback a individual
+  - Retry cap: MAX_RETRIES=3 en resetErroredToPending()
+  - Cleanup: deleteOldSyncedVentas() elimina ventas synced >1h
+- Item 1 (Offline login): LoginScreen.tsx modificado para usar sesión cacheada en localStorage cuando no hay internet
+- Item 5 (Server-side validation):
+  - /api/ventas/batch: cobrado >= 0, tarifaOficial >= 0
+  - /api/ventas: tarifaOficial >= 0 agregado, cobrado validation mejorada
+  - /api/records POST: income, efectivoReal, boletos, amounts, tickets >= 0
+- Nota: frecuencias/route.ts PATCH ya tenía whitelist (Phase 4 item 2 pre-aplicado)
+
+Stage Summary:
+- Version: v3.24-aug28-phase3-robustez
+- Fase 3 completa (5/5 items, 3 ya existían + 2 nuevos)
+- Archivos modificados: LoginScreen.tsx, ventas/batch/route.ts, ventas/route.ts, records/route.ts
+- Pendiente: build + deploy

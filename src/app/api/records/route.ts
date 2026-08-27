@@ -52,6 +52,26 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { date, km, conductor, ayudanteNombre, vtCode, trips, expenses, tickets, sobrante, photoUrl } = body;
 
+    // Validación server-side: valores financieros no negativos
+    if (Array.isArray(trips)) {
+      for (let i = 0; i < trips.length; i++) {
+        const t = trips[i];
+        if ((Number(t.income) || 0) < 0 || (Number(t.efectivoReal) || 0) < 0 || (Number(t.boletos) || 0) < 0) {
+          return NextResponse.json({ error: `Trip ${i + 1}: income, efectivoReal y boletos deben ser >= 0` }, { status: 400 });
+        }
+      }
+    }
+    if (Array.isArray(expenses)) {
+      for (let i = 0; i < expenses.length; i++) {
+        if ((Number(expenses[i].amount) || 0) < 0) {
+          return NextResponse.json({ error: `Gasto ${i + 1}: amount debe ser >= 0` }, { status: 400 });
+        }
+      }
+    }
+    if ((Number(tickets) || 0) < 0) {
+      return NextResponse.json({ error: 'tickets debe ser >= 0' }, { status: 400 });
+    }
+
     const tripIncome = (trips || []).reduce((s: number, t: { income: number | string }) => s + (Number(t.income) || 0), 0);
     const tripEfectivoReal = (trips || []).reduce((s: number, t: { efectivoReal: number | string }) => s + (Number(t.efectivoReal) || 0), 0);
     const cajaComun = (trips || []).reduce((s: number, t: { boletos: number | string }) => s + (Number(t.boletos) || 0), 0);
