@@ -21,6 +21,7 @@ export interface VentaLocal {
   syncStatus: 'pending' | 'synced' | 'error';
   serverId?: string;
   syncError?: string;
+  retryCount?: number;
 }
 
 const DB_NAME = 'RutaGoOffline';
@@ -99,6 +100,8 @@ export async function getVentasErrored(): Promise<VentaLocal[]> {
   });
 }
 
+const MAX_RETRIES = 3;
+
 export async function resetErroredToPending(): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -110,9 +113,12 @@ export async function resetErroredToPending(): Promise<void> {
       const cursor = (event.target as IDBRequest).result;
       if (cursor) {
         const venta = cursor.value;
-        venta.syncStatus = 'pending';
-        venta.syncError = undefined;
-        cursor.update(venta);
+        const retries = venta.retryCount || 0;
+        if (retries < MAX_RETRIES) {
+          venta.syncStatus = 'pending';
+          venta.syncError = undefined;
+          cursor.update(venta);
+        }
         cursor.continue();
       }
     };
@@ -170,6 +176,7 @@ export async function markVentaError(id: string, error: string): Promise<void> {
         const venta = request.result;
         venta.syncStatus = 'error';
         venta.syncError = error;
+        venta.retryCount = (venta.retryCount || 0) + 1;
         store.put(venta);
       }
     };
@@ -378,8 +385,8 @@ export async function updateEstadoFrecuencia(estadoId: string, updates: Partial<
   await saveEstadoFrecuencia({ ...existing, ...updates });
 }
 
-// ─── Sync silencioso (reutilizable) ───
-// Sincroniza todas las ventas pendientes al servidor.
+// ─── Sync silencioso (batch) ───
+// Sincroniza ventas pendientes al servidor en lotes de 20.
 // Retorna { synced, failed, total }. Si no hay internet, retorna { synced: 0, failed: 0, total: N }.
 export async function syncVentasSilencioso(): Promise<{ synced: number; failed: number; total: number }> {
   if (!navigator.onLine) {
@@ -393,39 +400,123 @@ export async function syncVentasSilencioso(): Promise<{ synced: number; failed: 
 
   const ventas = await getVentasPendientes();
   const valid = ventas.filter(v => v && v.id && typeof v.cobrado === 'number');
+  if (valid.length === 0) return { synced: 0, failed: 0, total: 0 };
+
   let synced = 0;
   let failed = 0;
+  const BATCH_SIZE = 20;
 
-  for (const venta of valid) {
-    try {
-      const res = await fetch('/api/ventas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fecha: venta.fecha, vtCode: venta.vtCode, frecuenciaId: venta.frecuenciaId,
-          ruta: venta.ruta, parada: venta.parada, tipo: venta.tipo,
-          pasajeroTipo: venta.pasajeroTipo,
-          tarifaOficial: venta.tarifaOficial, cobrado: venta.cobrado,
-          hora: venta.hora, ayudanteId: venta.ayudanteId, ayudanteNombre: venta.ayudanteNombre,
-          createdAt: venta.createdAt, localId: venta.id,
-          ...(venta.lat != null ? { lat: venta.lat } : {}),
-          ...(venta.lng != null ? { lng: venta.lng } : {}),
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        await markVentaSynced(venta.id, data.venta?.id || '');
-        synced++;
-      } else {
-        const err = await res.json().catch(() => ({}));
-        await markVentaError(venta.id, err.error || 'Error del servidor');
-        failed++;
+  // Try batch sync first
+  try {
+    for (let i = 0; i < valid.length; i += BATCH_SIZE) {
+      const batch = valid.slice(i, i + BATCH_SIZE);
+      try {
+        const res = await fetch('/api/ventas/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ventas: batch.map(v => ({
+              fecha: v.fecha, vtCode: v.vtCode, frecuenciaId: v.frecuenciaId,
+              ruta: v.ruta, parada: v.parada, tipo: v.tipo,
+              pasajeroTipo: v.pasajeroTipo,
+              tarifaOficial: v.tarifaOficial, cobrado: v.cobrado,
+              hora: v.hora, ayudanteId: v.ayudanteId, ayudanteNombre: v.ayudanteNombre,
+              createdAt: v.createdAt, localId: v.id,
+              ...(v.lat != null ? { lat: v.lat } : {}),
+              ...(v.lng != null ? { lng: v.lng } : {}),
+            })),
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json().catch(() => ({ results: [] }));
+          for (const r of (data.results || [])) {
+            if (r.ok) {
+              await markVentaSynced(r.localId, r.serverId);
+              synced++;
+            } else {
+              await markVentaError(r.localId, r.error || 'Error batch');
+              failed++;
+            }
+          }
+        } else {
+          // Batch endpoint failed — fall back to individual sync for this batch
+          for (const venta of batch) {
+            try {
+              const singleRes = await fetch('/api/ventas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  fecha: venta.fecha, vtCode: venta.vtCode, frecuenciaId: venta.frecuenciaId,
+                  ruta: venta.ruta, parada: venta.parada, tipo: venta.tipo,
+                  pasajeroTipo: venta.pasajeroTipo,
+                  tarifaOficial: venta.tarifaOficial, cobrado: venta.cobrado,
+                  hora: venta.hora, ayudanteId: venta.ayudanteId, ayudanteNombre: venta.ayudanteNombre,
+                  createdAt: venta.createdAt, localId: venta.id,
+                  ...(venta.lat != null ? { lat: venta.lat } : {}),
+                  ...(venta.lng != null ? { lng: venta.lng } : {}),
+                }),
+              });
+              if (singleRes.ok) {
+                const d = await singleRes.json().catch(() => ({}));
+                await markVentaSynced(venta.id, d.venta?.id || '');
+                synced++;
+              } else {
+                const err = await singleRes.json().catch(() => ({}));
+                await markVentaError(venta.id, err.error || 'Error del servidor');
+                failed++;
+              }
+            } catch {
+              await markVentaError(venta.id, 'Sin conexion');
+              failed++;
+            }
+          }
+        }
+      } catch {
+        // Network error on this batch
+        for (const venta of batch) {
+          await markVentaError(venta.id, 'Sin conexion');
+          failed++;
+        }
       }
-    } catch {
-      await markVentaError(venta.id, 'Sin conexion');
+    }
+  } catch {
+    // Catastrophic failure
+    for (const venta of valid) {
+      await markVentaError(venta.id, 'Error desconocido');
       failed++;
     }
   }
 
+  // Cleanup: delete synced ventas older than 1 hour to free space
+  try {
+    await deleteOldSyncedVentas();
+  } catch { /* ignore */ }
+
   return { synced, failed, total: valid.length };
+}
+
+/** Delete ventas synced more than 1 hour ago */
+async function deleteOldSyncedVentas(): Promise<void> {
+  const db = await openDB();
+  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('ventas_pendientes', 'readwrite');
+    const store = tx.objectStore('ventas_pendientes');
+    const request = store.openCursor();
+    request.onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest).result;
+      if (cursor) {
+        const v = cursor.value as VentaLocal;
+        if (v.syncStatus === 'synced') {
+          const created = new Date(v.createdAt).getTime();
+          if (created < oneHourAgo) {
+            cursor.delete();
+          }
+        }
+        cursor.continue();
+      }
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
 }

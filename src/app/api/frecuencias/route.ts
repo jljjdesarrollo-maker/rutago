@@ -116,9 +116,16 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'id requerido' }, { status: 400 });
     }
 
+    // Whitelist: solo permitir actualizar estos campos
+    const ALLOWED: (keyof Record<string, unknown>)[] = ['hora', 'ruta', 'direccion', 'nombre', 'activo', 'vtCode'];
+    const safeData: Record<string, unknown> = {};
+    for (const key of ALLOWED) {
+      if (key in data) safeData[key] = data[key];
+    }
+
     const frecuencia = await prisma.frecuencia.update({
       where: { id },
-      data,
+      data: safeData,
     });
 
     return NextResponse.json(frecuencia);

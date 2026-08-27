@@ -50,7 +50,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       localStorage.setItem('ct_session', JSON.stringify(data));
       onLogin(data);
     } catch {
-      setError('Error de conexion');
+      setError(navigator.onLine ? 'Error del servidor' : 'Sin internet — necesitas conexion para el primer ingreso');
       setPin('');
     } finally {
       setLoading(false);

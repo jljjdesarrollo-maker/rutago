@@ -12,6 +12,15 @@ export async function POST(request: NextRequest) {
       createdAt, localId, lat, lng
     } = body;
 
+    // Validacion server-side
+    if (!fecha || !vtCode) {
+      return NextResponse.json({ error: 'fecha y vtCode son obligatorios' }, { status: 400 });
+    }
+    const cobradoNum = parseFloat(cobrado);
+    if (isNaN(cobradoNum) || cobradoNum < 0) {
+      return NextResponse.json({ error: 'cobrado debe ser un numero >= 0' }, { status: 400 });
+    }
+
     let validFrecuenciaId: string | null = null;
     if (frecuenciaId) {
       try {
