@@ -419,7 +419,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
 // ─── Precios VUELTA específicos: EL TAMBO → LOJA ───
 // Directos desde El Tambo hacia cada parada
 const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = {
-  'El Tambo': { normal: 0, media: 0 },
+  
   'San Bernaved': { normal: 0.75, media: 0.4 },
   'La Capilla': { normal: 0.75, media: 0.4 },
   'La Era': { normal: 1.0, media: 0.5 },
@@ -681,7 +681,7 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'Mal→S.Agust', 'Mal→LaEra', 'Mal→LaCap', 'Mal→S.Bern', 'Mal→ElTambo',
     ],
     vuelta: [
-          'El Tambo', 'San Bernaved', 'La Capilla', 'La Era', 'San Agustín', 'La Merced', 'Zhotahuayco',
+          'Loja', 'San Bernaved', 'La Capilla', 'La Era', 'San Agustín', 'La Merced', 'Zhotahuayco',
           'Naranjo Dulce', 'Santo Domingo', 'San José', 'Ceibopamba', 'Trinidad', 'Malacatos',
           'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba',
           'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
