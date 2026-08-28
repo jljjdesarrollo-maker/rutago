@@ -130,3 +130,18 @@ Stage Summary:
 - Bug 413 resuelto: photoUrl nunca se incluye en listas, solo en detalle bajo demanda
 - Archivos modificados: HomeScreenVT.tsx, records/[id]/route.ts, page.tsx
 - Build OK, listo para deploy
+
+---
+Task ID: PENDIENTE-1
+Agent: Main
+Task: Formulario de Carga Histórica de Registros
+
+Work Log:
+- (pendiente - usuario pidió pausar hasta validar la app)
+
+Stage Summary:
+- Formulario simplificado en admin para cargar registros históricos (agosto y anteriores)
+- Sin boletos individuales: solo resumen por viaje (Trip) + gastos
+- Usa el mismo POST /api/records existente (mismo modelo DailyRecord + Trip)
+- Los datos cargados funcionan con el reporte de comparar frecuencias existente
+- Opcional: VLM para auto-extraer datos de fotos de registros en papel
