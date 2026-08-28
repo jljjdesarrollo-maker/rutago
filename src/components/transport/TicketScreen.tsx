@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { type FrecuenciaEstado, type VTSession, loadPromoConfig } from './types-boletos';
 import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta, type TipoPasajero,
-         getZonaParada, isParadaPrincipal, ZONA_COLORS, type ZonaColor } from '@/lib/tarifas-data';
+         getZonaParada, isParadaPrincipal, ZONA_COLORS, type ZonaColor, PARADA_ZONA } from '@/lib/tarifas-data';
 import { saveVenta } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
 import { Check, User, UserRound, Printer, Bluetooth } from 'lucide-react';
@@ -47,6 +47,28 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
   const [tab, setTab] = useState<'principal' | 'intermedia'>('principal');
   const [cantidad, setCantidad] = useState(1);
   const printer = usePrinterStatus();
+
+  // ─── Autocomplete paradas ───
+  const PARADAS_NOMBRES = Object.keys(PARADA_ZONA);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar sugerencias al tocar fuera
+  useEffect(() => {
+    if (!showSuggestions) return;
+    const handler = (e: TouchEvent | MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
+  }, [showSuggestions]);
 
   const tipo = estado.direccion as 'ida' | 'vuelta';
   const ruta = estado.ruta;
@@ -97,12 +119,41 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
   const handleParadaManualChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setParada(val);
+
+    // Autocomplete: filtrar paradas mientras escribe
+    if (val.trim().length >= 2) {
+      const query = val.trim().toLowerCase();
+      const filtered = PARADAS_NOMBRES.filter(n =>
+        n.toLowerCase().includes(query)
+      ).slice(0, 5);
+      setSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setShowSuggestions(false);
+      setSuggestions([]);
+    }
+
     const isKnownParada = allParadas.find(p => p.parada.toLowerCase() === val.toLowerCase());
     if (!isKnownParada) {
       setCobrado('');
       if (val.trim().length > 2) {
         setTimeout(() => montoInputRef.current?.focus(), 100);
       }
+    }
+  };
+
+  const handleSuggestionSelect = (name: string) => {
+    setParada(name);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    // Si la parada tiene tarifa conocida, auto-llenar precio
+    const pData = allParadas.find(p => p.parada.toLowerCase() === name.toLowerCase());
+    if (pData) {
+      const tarifa = pasajeroTipo === 'media' ? pData.media : pData.normal;
+      setCobrado(tarifa.toString());
+    } else {
+      setCobrado('');
+      setTimeout(() => montoInputRef.current?.focus(), 100);
     }
   };
 
@@ -461,14 +512,30 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
       {/* ─── BARRA FIJA INFERIOR: Parada manual + Monto + REGISTRAR ─── */}
       <div className="bg-white border-t-2 border-gray-100 px-3 py-2 shadow-[0_-4px_12px_rgba(0,0,0,0.08)]">
         {/* Parada manual — siempre accesible sin scroll */}
-        <div className="mb-2">
+        <div className="mb-2 relative" ref={suggestionsRef}>
           <input
             type="text"
             placeholder="Parada o destino..."
             value={parada}
             onChange={handleParadaManualChange}
+            autoComplete="off"
             className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm text-[#3A3A3A] placeholder-gray-400 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#912D26]/30 focus:border-[#912D26]/40"
           />
+          {/* Dropdown de sugerencias */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="absolute bottom-full left-0 right-0 mb-1 bg-white rounded-lg border border-gray-200 shadow-lg z-50 max-h-40 overflow-y-auto">
+              {suggestions.map(name => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => handleSuggestionSelect(name)}
+                  className="w-full text-left px-3 py-2.5 text-sm text-[#3A3A3A] hover:bg-[#912D26]/10 active:bg-[#912D26]/20 transition-colors border-b border-gray-50 last:border-b-0"
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="relative mb-2">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-lg">$</span>
