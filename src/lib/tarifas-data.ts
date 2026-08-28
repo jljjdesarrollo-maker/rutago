@@ -639,7 +639,7 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'P.Nuevo→Vilc', 'Caja→Vilc', 'D.Puen→Vilc', 'Capulí→Vilc',
     ],
     vuelta: [
-          'Vilcabamba', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
+          'Loja', 'San Pedro', 'Cararango', 'Cavianga', 'Taxiche', 'Malacatos', 'La Peña', 'Landangui',
           'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba', 'Rumizhitana', 'Tres Leguas',
           'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
           // Intermedios desde Malacatos hacia Loja (orange, cerca→lejos)
