@@ -544,7 +544,6 @@ const preciosVueltaYangana: Record<string, { normal: number; media: number }> = 
 // ─── Precios VUELTA específicos: VILCABAMBA → LOJA ───
 // Directos desde Vilcabamba hacia cada parada
 const preciosVueltaVilcabamba: Record<string, { normal: number; media: number }> = {
-  'Vilcabamba': { normal: 0, media: 0 },
   'San Pedro': { normal: 0.75, media: 0.4 },
   'Cararango': { normal: 0.75, media: 0.4 },
   'Cavianga': { normal: 0.75, media: 0.4 },
