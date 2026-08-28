@@ -370,6 +370,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'D.Puen→Loja': { normal: 0.75, media: 0.4 },
   'Capulí→Loja': { normal: 0.75, media: 0.4 },
   // Intermedios El Tambo vuelta (desde Malacatos hacia El Tambo)
+  
   'Mal→Ceibop': { normal: 0, media: 0 },
   'Mal→Trinidad': { normal: 0, media: 0 },
   'Mal→S.Jose': { normal: 0, media: 0 },
@@ -447,6 +448,7 @@ const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = 
   'Capulí': { normal: 4.0, media: 2.0 },
   'Loja': { normal: 4.00, media: 2.00 },
   // Intermedios El Tambo IDA (desde Malacatos hacia El Tambo)
+  'Mal→Peña': { normal: 0.75, media: 0.4 },
   'Mal→Ceibop': { normal: 0, media: 0 },
   'Mal→Trinidad': { normal: 0, media: 0 },
   'Mal→S.Jose': { normal: 0, media: 0 },
@@ -460,8 +462,8 @@ const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = 
   'Mal→S.Bern': { normal: 0, media: 0 },
   'Mal→ElTambo': { normal: 0, media: 0 },
   // Intermedios El Tambo vuelta: X → Loja (troncal usa preciosVuelta compartido)
-  'LaCap→Loja': { normal: 0, media: 0 },
-  'S.Bern→Loja': { normal: 0, media: 0 },
+  'LaCap→Loja': { normal: 3.50, media: 1.75 },
+  'S.Bern→Loja': { normal: 4.00, media: 2.00 },
 };
 // ─── Precios VUELTA específicos: ZAHUAYCO → LOJA ───
 // Directos desde Zahuayco hacia cada parada
@@ -686,7 +688,7 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'La Peña', 'Landangui', 'Chorrillos', 'Nangora', 'Porvenir', 'Granadillo', 'Yamba',
           'Rumizhitana', 'Tres Leguas', 'Pueblo Nuevo', 'Cajánuma', 'Dos Puentes', 'Capulí',
           // Intermedios desde Malacatos hacia Loja (orange, cerca→lejos)
-          'Mal→LaPeña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
+          'Mal→Peña', 'Mal→Land', 'Mal→Chorri', 'Mal→Nango', 'Mal→Porv',
           'Mal→Gran', 'Mal→Yamba', 'Mal→Rumi', 'Mal→T.Leguas', 'Mal→P.Nuevo',
           'Mal→Caja', 'Mal→D.Puen', 'Mal→Capulí',
           // Intermedios desde parada hacia Loja (troncal)
