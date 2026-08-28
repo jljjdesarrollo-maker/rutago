@@ -145,3 +145,16 @@ Stage Summary:
 - Usa el mismo POST /api/records existente (mismo modelo DailyRecord + Trip)
 - Los datos cargados funcionan con el reporte de comparar frecuencias existente
 - Opcional: VLM para auto-extraer datos de fotos de registros en papel
+
+---
+Task ID: PENDIENTE-2
+Agent: Main
+Task: Combobox para paradas intermedias (en vez de input manual)
+
+Work Log:
+- (pendiente - usuario pidió pausar hasta validar la app)
+
+Stage Summary:
+- Actualmente en INTERMEDIOS el ayudante escribe manualmente el nombre de la parada
+- Cambiar a combobox/dropdown con los nombres de paradas del listado de precios de la ruta
+- Beneficio: elimina errores de tipeo, más rápido, datos consistentes para reportes
