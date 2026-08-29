@@ -254,17 +254,9 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     if (esGanador) {
       if (promoConfig.sonidoGanador) {
         try {
-          const audioCtx = new AudioContext();
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.frequency.value = 880;
-          gain.gain.value = 0.3;
-          osc.start();
-          setTimeout(() => { osc.frequency.value = 1100; }, 150);
-          setTimeout(() => { osc.frequency.value = 1320; }, 300);
-          setTimeout(() => { osc.stop(); audioCtx.close(); }, 500);
+          const audio = new Audio('/audio/ganador.mp3');
+          audio.volume = 1.0;
+          audio.play().catch(() => {});
         } catch { /* ignore audio errors */ }
       }
       setLastSale({ parada: parada.trim(), monto: 0, tipo: 'VIAJE GRATIS!' });
