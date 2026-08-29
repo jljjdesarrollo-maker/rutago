@@ -123,10 +123,7 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
       push(NEWLINE);
     }
 
-    // Margin before cut (6 lines ~19mm for safe blade clearance)
-    push(NEWLINE);
-    push(NEWLINE);
-    push(NEWLINE);
+    // Margin before cut (3 lines para arrancar papel)
     push(NEWLINE);
     push(NEWLINE);
     push(NEWLINE);
@@ -200,10 +197,7 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
       push(NEWLINE);
     }
 
-    // Margin before cut (6 lines ~19mm for safe blade clearance)
-    push(NEWLINE);
-    push(NEWLINE);
-    push(NEWLINE);
+    // Margin before cut (3 lines para arrancar papel)
     push(NEWLINE);
     push(NEWLINE);
     push(NEWLINE);
