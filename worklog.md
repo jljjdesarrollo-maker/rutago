@@ -158,3 +158,20 @@ Stage Summary:
 - Actualmente en INTERMEDIOS el ayudante escribe manualmente el nombre de la parada
 - Cambiar a combobox/dropdown con los nombres de paradas del listado de precios de la ruta
 - Beneficio: elimina errores de tipeo, más rápido, datos consistentes para reportes
+---
+Task ID: 1
+Agent: main
+Task: Aplicar 31 Troncales Ida Compartidas a ruta Loja-Yangana IDA
+
+Work Log:
+- Leido RUTA_PARADAS en tarifas-data.ts para verificar estado actual
+- Confirmado que precios ya existen en preciosIda (compartidos con Vilcabamba)
+- Agregados 31 troncales al array ida de Loja-Yangana: 13 hasta Malacatos + 18 hasta Vilcabamba
+- Total paradas IDA Yangana: 28 → 59
+- Bump version a v3.28-aug29-troncales-yangana-ida
+- Build exitoso, commit y push a main
+
+Stage Summary:
+- 31 Troncales Ida Compartidas aplicadas a Loja-Yangana IDA
+- Deploy a Vercel en curso (6da4cd4)
+- Pendiente: inconsistency La Peña vs Peña, 23 ramales adicionales IDA, VUELTA prices
