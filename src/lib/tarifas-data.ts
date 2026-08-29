@@ -705,6 +705,15 @@ export const RUTA_PARADAS: Record<string, { ida: string[]; vuelta: string[] }> =
           'Granadillo', 'Porvenir', 'Nangora', 'Chorrillos', 'Landangui', 'La Peña', 'Malacatos',
           'Taxiche', 'Cavianga', 'Cararango', 'San Pedro', 'Vilcabamba', 'Cucanama', 'Linderos',
           'Santorum', 'Solanda', 'Moyococha', 'Tumianuma', 'Quinara', 'Comunidades', 'La Elvira',
+          // Troncales Ida Compartidas (13 hasta Malacatos)
+          'Peña→Mal', 'Land→Mal', 'Chorri→Mal', 'Nango→Mal', 'Porv→Mal', 'Gran→Mal',
+          'Yamba→Mal', 'Rumi→Mal', 'T.Leguas→Mal', 'P.Nuevo→Mal', 'Caja→Mal', 'D.Puen→Mal',
+          'Capulí→Mal',
+          // Troncales Ida Compartidas (18 hasta Vilcabamba)
+          'S.Pedro→Vilc', 'Carar→Vilc', 'Cavian→Vilc', 'Taxich→Vilc', 'Mal→Vilc', 'Land→Vilc',
+          'Peña→Vilc', 'Chorri→Vilc', 'Nango→Vilc', 'Porv→Vilc', 'Gran→Vilc', 'Yamba→Vilc',
+          'Rumi→Vilc', 'T.Leguas→Vilc', 'P.Nuevo→Vilc', 'Caja→Vilc', 'D.Puen→Vilc', 'Capulí→Vilc',
+          // Ramal La Elvira (desde Vilcabamba y Malacatos)
           'Mal→Cucan', 'Mal→Lind', 'Mal→Santo', 'Mal→Solan', 'Mal→Moyoc', 'Mal→Tumia', 'Mal→Quina',
           'Mal→Comun', 'Mal→Elvira', 'Vilc→Cucan', 'Vilc→Lind', 'Vilc→Santo', 'Vilc→Solan',
           'Vilc→Moyoc', 'Vilc→Tumia', 'Vilc→Quina', 'Vilc→Comun', 'Vilc→Elvira',
