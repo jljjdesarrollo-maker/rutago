@@ -91,14 +91,10 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
     }
     push(NEWLINE);
 
-    // Line 7: Paga $0.00 — 3 líneas en doble tamaño + bold
+    // Line 7: Paga $0.00 — 1 línea, doble tamaño + bold
     push(BOLD_ON);
     push(DBL);
-    push(centerDbl('Paga'));
-    push(NEWLINE);
-    push(centerDbl('$'));
-    push(NEWLINE);
-    push(centerDbl('0.00'));
+    push(centerDbl('Paga $0.00'));
     push(NORM);
     push(BOLD_OFF);
     push(NEWLINE);
@@ -164,7 +160,7 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
     push(`Dest: ${t.destino}  ${t.tipoPasajero}${cant}`);
     push(NEWLINE);
 
-    // Line 5: Tarifa — 3 líneas en doble tamaño + bold
+    // Line 5: Tarifa — 1 línea, doble tamaño + bold, lo más grande posible
     const totalStr = (t.cantidad && t.cantidad > 1)
       ? (t.tarifa * t.cantidad).toFixed(2)
       : t.tarifa.toFixed(2);
@@ -172,14 +168,9 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
       push(`${t.tarifa.toFixed(2)} x${t.cantidad}`);
       push(NEWLINE);
     }
-    const [intPart, decPart] = totalStr.split('.');
     push(BOLD_ON);
     push(DBL);
-    push(centerDbl('$'));
-    push(NEWLINE);
-    push(centerDbl(intPart));
-    push(NEWLINE);
-    push(centerDbl(`.${decPart}`));
+    push(centerDbl(`$${totalStr}`));
     push(NORM);
     push(BOLD_OFF);
     push(NEWLINE);
