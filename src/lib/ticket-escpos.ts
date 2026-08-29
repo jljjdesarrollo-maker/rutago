@@ -107,9 +107,9 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
     push(BOLD_OFF);
     push(NEWLINE);
 
-    // Line 9: Boleto number — double height
+    // Line 9: Número de boleto — doble altura
     push(DBL_H);
-    push(center(`Boleto ${String(t.boletoNum).padStart(4, '0')}`));
+    push(center(String(t.boletoNum).padStart(4, '0')));
     push(NORM);
     push(NEWLINE);
 
@@ -181,8 +181,8 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
     // Line 7: Espacio
     push(NEWLINE);
 
-    // Line 8: Boleto number — tamaño normal
-    push(center(`Boleto ${String(t.boletoNum).padStart(4, '0')}${t.cantidad && t.cantidad > 1 ? `-${String(t.boletoNum + t.cantidad - 1).padStart(4, '0')}` : ''}`));
+    // Line 8: Número de boleto — tamaño normal
+    push(center(`${String(t.boletoNum).padStart(4, '0')}${t.cantidad && t.cantidad > 1 ? `-${String(t.boletoNum + t.cantidad - 1).padStart(4, '0')}` : ''}`));
     push(NEWLINE);
 
     // Line 9: Espacio
