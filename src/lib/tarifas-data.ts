@@ -146,7 +146,7 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'Granadillo': { normal: 1.4, media: 0.7 },
   'Porvenir': { normal: 1.4, media: 0.7 },
   'Nangora': { normal: 1.5, media: 0.75 },
-  'Chorrillos': { normal: 1.5, media: 0.75 },
+  'Chorrillos': { normal: 1.75, media: 0.90 },
   'Landangui': { normal: 1.75, media: 0.9 },
   'La Peña': { normal: 1.75, media: 0.9 },
   'Malacatos': { normal: 2.0, media: 1.0 },
@@ -160,14 +160,14 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'Land→Mal': { normal: 0.75, media: 0.40 },
   'Chorri→Mal': { normal: 0.75, media: 0.40 },
   'Nango→Mal': { normal: 0.75, media: 0.40 },
-  'Porv→Mal': { normal: 1.10, media: 0.55 },
+  'Porv→Mal': { normal: 1.00, media: 0.50 },
   'Gran→Mal': { normal: 1.10, media: 0.55 },
   'Yamba→Mal': { normal: 1.10, media: 0.55 },
   'Rumi→Mal': { normal: 1.10, media: 0.55 },
-  'T.Leguas→Mal': { normal: 1.10, media: 0.55 },
-  'P.Nuevo→Mal': { normal: 1.10, media: 0.55 },
-  'Caja→Mal': { normal: 1.50, media: 0.75 },
-  'D.Puen→Mal': { normal: 1.50, media: 0.75 },
+  'T.Leguas→Mal': { normal: 1.25, media: 0.65 },
+  'P.Nuevo→Mal': { normal: 1.25, media: 0.65 },
+  'Caja→Mal': { normal: 1.75, media: 0.90 },
+  'D.Puen→Mal': { normal: 1.75, media: 0.90 },
   'Capulí→Mal': { normal: 2.00, media: 1.00 },
   // Tramos intermedios ida (desde parada hacia Vilcabamba)
   'S.Pedro→Vilc': { normal: 0.75, media: 0.40 },
@@ -228,23 +228,23 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'Peña→ElTambo': { normal: 2.5, media: 1.25 },
   // ═══ LOJA - ZAHUAYCO (pasa por Vilcabamba) ═══
   'Masanamaca': { normal: 3.0, media: 1.5 },
-  'Quinara': { normal: 3.25, media: 1.65 },
+  'Quinara': { normal: 3.50, media: 1.75 },
   'Chumberos': { normal: 3.75, media: 1.9 },
   'Palmira': { normal: 3.75, media: 1.9 },
   'Zahuayco': { normal: 4.0, media: 2.0 },
   // Intermedios Zahuayco/Yangana IDA (desde Vilcabamba)
-  'Vilc→Masan': { normal: 1.1, media: 0.55 },
+  'Vilc→Masan': { normal: 1.0, media: 0.50 },
   'Vilc→Quina': { normal: 2.0, media: 1.0 },
-  'Vilc→Chumb': { normal: 2.0, media: 1.0 },
+  'Vilc→Chumb': { normal: 2.25, media: 1.15 },
   'Vilc→Palm': { normal: 2.25, media: 1.15 },
   'Vilc→Zahua': { normal: 2.5, media: 1.25 },
   'Vilc→Suro': { normal: 1.60, media: 0.80 },
   'Vilc→Yangana': { normal: 2.00, media: 1.00 },
   // Intermedios Zahuayco/Yangana IDA (desde Malacatos)
   'Mal→Masan': { normal: 2.0, media: 1.0 },
-  'Mal→Quina': { normal: 2.0, media: 1.0 },
-  'Mal→Chumb': { normal: 2.5, media: 1.25 },
-  'Mal→Palm': { normal: 2.9, media: 1.45 },
+  'Mal→Quina': { normal: 2.50, media: 1.25 },
+  'Mal→Chumb': { normal: 2.75, media: 1.40 },
+  'Mal→Palm': { normal: 2.75, media: 1.40 },
   'Mal→Zahua': { normal: 3.15, media: 1.6 },
   'Mal→Suro': { normal: 2.00, media: 1.00 },
   'Mal→Yangana': { normal: 2.50, media: 1.25 },
@@ -275,7 +275,7 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'Vilc→Moyoc': { normal: 1.50, media: 0.75 },
   'Vilc→Tumia': { normal: 2.00, media: 1.00 },
   'Vilc→Quina': { normal: 2.00, media: 1.00 },
-  'Vilc→Comun': { normal: 2.00, media: 1.00 },
+  'Vilc→Comun': { normal: 2.20, media: 1.10 },
   'Vilc→Elvira': { normal: 2.40, media: 1.20 },
   // ═══ LOJA - YANGANA (pasa por Vilcabamba) ═══
   'Suro': { normal: 3.25, media: 1.65 },
@@ -288,8 +288,8 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   // Troncal Loja ↔ Vilcabamba (compartida por Zahuayco, La Elvira, Yangana)
   'Dos Puentes': { normal: 2.0, media: 1.0 },       // ✅
   'Cajánuma': { normal: 2.0, media: 1.0 },       // ✅
-  'Pueblo Nuevo': { normal: 1.5, media: 0.75 },       // ✅
-  'Tres Leguas': { normal: 1.5, media: 0.75 },       // ✅
+  'Pueblo Nuevo': { normal: 1.75, media: 0.90 },       // ✅
+  'Tres Leguas': { normal: 1.75, media: 0.90 },       // ✅
   'Rumizhitana': { normal: 1.5, media: 0.75 },       // ✅
   'Yamba': { normal: 1.5, media: 0.75 },       // ✅
   'Granadillo': { normal: 1.5, media: 0.75 },       // ✅
@@ -341,12 +341,12 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'Mal→Land': { normal: 0.75, media: 0.4 },
   'Mal→Chorri': { normal: 0.75, media: 0.4 },
   'Mal→Nango': { normal: 0.75, media: 0.4 },
-  'Mal→Porv': { normal: 1.1, media: 0.55 },
+  'Mal→Porv': { normal: 1.0, media: 0.50 },
   'Mal→Gran': { normal: 1.1, media: 0.55 },
   'Mal→Yamba': { normal: 1.1, media: 0.55 },
   'Mal→Rumi': { normal: 1.1, media: 0.55 },
-  'Mal→T.Leguas': { normal: 1.1, media: 0.55 },
-  'Mal→P.Nuevo': { normal: 1.1, media: 0.55 },
+  'Mal→T.Leguas': { normal: 1.25, media: 0.65 },
+  'Mal→P.Nuevo': { normal: 1.25, media: 0.65 },
   'Mal→Caja': { normal: 1.5, media: 0.75 },
   'Mal→D.Puen': { normal: 1.5, media: 0.75 },
   'Mal→Capulí': { normal: 2.0, media: 1.0 },
@@ -358,7 +358,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'Mal→Loja': { normal: 2.0, media: 1.0 },
   'Peña→Loja': { normal: 1.75, media: 0.9 },
   'Land→Loja': { normal: 1.75, media: 0.9 },
-  'Chorri→Loja': { normal: 1.5, media: 0.75 },
+  'Chorri→Loja': { normal: 1.75, media: 0.90 },
   'Nango→Loja': { normal: 1.5, media: 0.75 },
   'Porv→Loja': { normal: 1.4, media: 0.7 },
   'Gran→Loja': { normal: 1.4, media: 0.7 },
@@ -468,10 +468,10 @@ const preciosVueltaElTambo: Record<string, { normal: number; media: number }> = 
 // ─── Precios VUELTA específicos: ZAHUAYCO → LOJA ───
 // Directos desde Zahuayco hacia cada parada
 const preciosVueltaZahuayco: Record<string, { normal: number; media: number }> = {
-  'Loja': { normal: 3.50, media: 1.75 },
-  'Capulí': { normal: 3.50, media: 1.75 },
-  'Dos Puentes': { normal: 3.50, media: 1.75 },
-  'Cajánuma': { normal: 3.50, media: 1.75 },
+  'Loja': { normal: 4.00, media: 2.00 },
+  'Capulí': { normal: 4.00, media: 2.00 },
+  'Dos Puentes': { normal: 3.75, media: 1.90 },
+  'Cajánuma': { normal: 3.75, media: 1.90 },
   'Pueblo Nuevo': { normal: 3.50, media: 1.75 },
   'Tres Leguas': { normal: 3.50, media: 1.75 },
   'Rumizhitana': { normal: 3.50, media: 1.75 },
@@ -487,7 +487,7 @@ const preciosVueltaZahuayco: Record<string, { normal: number; media: number }> =
   'Cavianga': { normal: 2.75, media: 1.40 },
   'Cararango': { normal: 2.75, media: 1.40 },
   'San Pedro': { normal: 2.75, media: 1.40 },
-  'Vilcabamba': { normal: 2.00, media: 1.00 },
+  'Vilcabamba': { normal: 2.50, media: 1.25 },
   'Masanamaca': { normal: 1.25, media: 0.65 },
   'Quinara': { normal: 1.00, media: 0.50 },
   'Chumberos': { normal: 1.00, media: 0.50 },
@@ -495,13 +495,13 @@ const preciosVueltaZahuayco: Record<string, { normal: number; media: number }> =
   // Intermedios Zahuayco VUELTA
   'Mal→Loja': { normal: 2.00, media: 1.00 },
   'Mal→Masan': { normal: 2.00, media: 1.00 },
-  'Mal→Quina': { normal: 2.00, media: 1.00 },
-  'Mal→Chumb': { normal: 2.50, media: 1.25 },
-  'Mal→Palm': { normal: 2.90, media: 1.45 },
+  'Mal→Quina': { normal: 2.50, media: 1.25 },
+  'Mal→Chumb': { normal: 2.75, media: 1.40 },
+  'Mal→Palm': { normal: 2.75, media: 1.40 },
   'Mal→Zahua': { normal: 3.15, media: 1.60 },
-  'Vilc→Masan': { normal: 1.10, media: 0.55 },
+  'Vilc→Masan': { normal: 1.00, media: 0.50 },
   'Vilc→Quina': { normal: 2.00, media: 1.00 },
-  'Vilc→Chumb': { normal: 2.00, media: 1.00 },
+  'Vilc→Chumb': { normal: 2.25, media: 1.15 },
   'Vilc→Palm': { normal: 2.25, media: 1.15 },
   'Vilc→Zahua': { normal: 2.50, media: 1.25 },
 };
@@ -618,10 +618,10 @@ const preciosVueltaLaElvira: Record<string, { normal: number; media: number }> =
   'Vilc→Moyoc': { normal: 1.50, media: 0.75 },
   'Vilc→Tumia': { normal: 2.00, media: 1.00 },
   'Vilc→Quina': { normal: 2.00, media: 1.00 },
-  'Vilc→Comun': { normal: 2.00, media: 1.00 },
+  'Vilc→Comun': { normal: 2.20, media: 1.10 },
   'Vilc→Elvira': { normal: 2.40, media: 1.20 },
   // Vilc→Loja es específico de La Elvira ($2.25 vs $2.50 troncal Vilcabamba)
-  'Vilc→Loja': { normal: 2.25, media: 1.15 },
+  'Vilc→Loja': { normal: 2.50, media: 1.25 },
 };
 
 // ─── Paradas por ruta según dirección ───
