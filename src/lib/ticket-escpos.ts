@@ -160,7 +160,10 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
     push(`Dest: ${t.destino}  ${t.tipoPasajero}${cant}`);
     push(NEWLINE);
 
-    // Line 5: Tarifa — 1 línea, doble tamaño + bold, lo más grande posible
+    // Line 5: Espacio
+    push(NEWLINE);
+
+    // Line 6: Tarifa — 1 línea, doble tamaño + bold, lo más grande posible
     const totalStr = (t.cantidad && t.cantidad > 1)
       ? (t.tarifa * t.cantidad).toFixed(2)
       : t.tarifa.toFixed(2);
@@ -175,13 +178,17 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
     push(BOLD_OFF);
     push(NEWLINE);
 
-    // Line 6: Boleto number — double height
-    push(DBL_H);
-    push(center(`Boleto ${String(t.boletoNum).padStart(4, '0')}${t.cantidad && t.cantidad > 1 ? `-${String(t.boletoNum + t.cantidad - 1).padStart(4, '0')}` : ''}`));
-    push(NORM);
+    // Line 7: Espacio
     push(NEWLINE);
 
-    // Line 7: Promo reminder — bold
+    // Line 8: Boleto number — tamaño normal
+    push(center(`Boleto ${String(t.boletoNum).padStart(4, '0')}${t.cantidad && t.cantidad > 1 ? `-${String(t.boletoNum + t.cantidad - 1).padStart(4, '0')}` : ''}`));
+    push(NEWLINE);
+
+    // Line 9: Espacio
+    push(NEWLINE);
+
+    // Line 10: Promo reminder — bold
     push(BOLD_ON);
     push(center('Proximo puede ser GRATIS'));
     push(BOLD_OFF);
