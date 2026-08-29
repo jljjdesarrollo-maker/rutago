@@ -20,7 +20,8 @@ function buildTestTicket(): Uint8Array {
     tipoPasajero: 'Entero',
     tarifa: 2.50,
     boletoNum: 47,
-    esViajeGratis: false,
+    esViajeGratis: true,
+    tarifaOriginal: 2.50,
     textoPublicidad: 'Quieres RutaGo? 0997149000',
   };
   return generateTicketBytes(data);
@@ -166,6 +167,16 @@ export default function PrintTestPage() {
       // Small delay for printer buffer
       await new Promise(r => setTimeout(r, 500));
       log('Datos enviados OK!');
+
+      // ─── Buzzer ganador: 3 pitidos largos ───
+      log('Enviando buzzer ganador (3 pitidos x 0.9s)...');
+      const BUZZER = new Uint8Array([0x1B, 0x42, 0x03, 0x09]);
+      if (writableChar.properties.writeWithoutResponse) {
+        await writableChar.writeValueWithoutResponse(BUZZER.buffer);
+      } else {
+        await writableChar.writeValue(BUZZER.buffer);
+      }
+      log('Buzzer enviado!');
       await gatt.disconnect();
       setStep('done');
       log('Impresion completada!');
