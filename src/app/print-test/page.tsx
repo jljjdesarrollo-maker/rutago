@@ -200,6 +200,7 @@ export default function PrintTestPage() {
       <div className="bg-[#912D26] text-white px-4 py-4">
         <h1 className="text-lg font-bold">Prueba de Impresora</h1>
         <p className="text-red-100 text-xs mt-0.5">3NStar PPT205BT - Bluetooth Test</p>
+        <p className="text-red-200/60 text-[9px]">TEST-GANADOR-v1</p>
       </div>
 
       {/* Checklist antes de probar */}
