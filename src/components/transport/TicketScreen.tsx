@@ -180,7 +180,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     const promoConfig = loadPromoConfig();
     // Optimistic increment to prevent double viaje gratis
     const nuevaPosicion = contadorVentasFrecuencia + 1;
-    const esGanador = promoConfig.activa && ganadorPosicion != null && nuevaPosicion === ganadorPosicion;
+    const esGanador = cantidad === 1 && promoConfig.activa && ganadorPosicion != null && nuevaPosicion === ganadorPosicion;
     const cantidadEfectiva = esGanador ? 1 : cantidad; // Viaje gratis siempre es 1
 
     if (esGanador) {
