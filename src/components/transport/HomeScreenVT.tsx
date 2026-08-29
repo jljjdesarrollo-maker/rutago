@@ -6,7 +6,7 @@ import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVen
 import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.27-aug29-autocomplete-paradas';
+const APP_VERSION = 'v3.28-aug29-troncales-yangana-ida';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;
