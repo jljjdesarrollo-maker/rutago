@@ -305,37 +305,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'San Pedro': { normal: 0.75, media: 0.4 },       // ✅
   'Capulí': { normal: 2.5, media: 1.25 },       // ✅
   'Loja': { normal: 2.5, media: 1.25 },       // ✅
-  // Zona El Tambo (solo usada si no encuentra en preciosVueltaElTambo)
-  'Ceibopamba': { normal: 0, media: 0 },          // ⏳ TEMPORAL
-  'Trinidad': { normal: 0, media: 0 },            // ⏳ TEMPORAL
-  'San José': { normal: 0, media: 0 },             // ⏳ TEMPORAL
-  'Santo Domingo': { normal: 0, media: 0 },        // ⏳ TEMPORAL
-  'Naranjo Dulce': { normal: 0, media: 0 },        // ⏳ TEMPORAL
-  'Zhotahuayco': { normal: 0, media: 0 },         // ⏳ TEMPORAL
-  'La Merced': { normal: 0, media: 0 },            // ⏳ TEMPORAL
-  'San Agustín': { normal: 0, media: 0 },          // ⏳ TEMPORAL
-  'La Era': { normal: 0, media: 0 },               // ⏳ TEMPORAL
-  'La Capilla': { normal: 0, media: 0 },            // ⏳ TEMPORAL
-  'San Bernaved': { normal: 0, media: 0 },          // ⏳ TEMPORAL
-  'El Tambo': { normal: 0, media: 0 },              // ⏳ TEMPORAL
-  // Zona Zahuayco
-  'Masanamaca': { normal: 0, media: 0 },           // ⏳ TEMPORAL
-  'Quinara': { normal: 0, media: 0 },              // ⏳ TEMPORAL
-  'Chumberos': { normal: 0, media: 0 },            // ⏳ TEMPORAL
-  'Palmira': { normal: 0, media: 0 },              // ⏳ TEMPORAL
-  'Zahuayco': { normal: 0, media: 0 },            // ⏳ TEMPORAL
-  // Zona La Elvira
-  'Cucanama': { normal: 0, media: 0 },             // ⏳ TEMPORAL
-  'Linderos': { normal: 0, media: 0 },              // ⏳ TEMPORAL
-  'Santorum': { normal: 0, media: 0 },             // ⏳ TEMPORAL
-  'Solanda': { normal: 0, media: 0 },               // ⏳ TEMPORAL
-  'Moyococha': { normal: 0, media: 0 },            // ⏳ TEMPORAL
-  'Tumianuma': { normal: 0, media: 0 },            // ⏳ TEMPORAL
-  'Comunidades': { normal: 0, media: 0 },          // ⏳ TEMPORAL
-  'La Elvira': { normal: 0, media: 0 },            // ✅
-  // Zona Yangana (precios vuelta específicos en preciosVueltaYangana)
-  'Suro': { normal: 0, media: 0 },                 // ⏳ TEMPORAL (Zahuayco usa este)
-  'Yangana': { normal: 0, media: 0 },              // ⏳ TEMPORAL (respaldo, Yangana usa preciosVueltaYangana)
+
   // Intermedios vuelta: desde Malacatos hacia Loja (Mal→X)
   'Mal→Peña': { normal: 0.75, media: 0.4 },
   'Mal→Land': { normal: 0.75, media: 0.4 },
@@ -369,52 +339,7 @@ const preciosVuelta: Record<string, { normal: number; media: number }> = {
   'Caja→Loja': { normal: 1.25, media: 0.65 },
   'D.Puen→Loja': { normal: 0.75, media: 0.4 },
   'Capulí→Loja': { normal: 0.75, media: 0.4 },
-  // Intermedios El Tambo vuelta (desde Malacatos hacia El Tambo)
-  
-  'Mal→Ceibop': { normal: 0, media: 0 },
-  'Mal→Trinidad': { normal: 0, media: 0 },
-  'Mal→S.Jose': { normal: 0, media: 0 },
-  'Mal→StoDom': { normal: 0, media: 0 },
-  'Mal→N.Dulce': { normal: 0, media: 0 },
-  'Mal→Zhotahu': { normal: 0, media: 0 },
-  'Mal→LaMerc': { normal: 0, media: 0 },
-  'Mal→S.Agust': { normal: 0, media: 0 },
-  'Mal→LaEra': { normal: 0, media: 0 },
-  'Mal→LaCap': { normal: 0, media: 0 },
-  'Mal→S.Bern': { normal: 0, media: 0 },
-  'Mal→ElTambo': { normal: 0, media: 0 },
-  // Intermedios Zahuayco/Yangana vuelta (desde Vilcabamba/Malacatos)
-  'Vilc→Masan': { normal: 0, media: 0 },
-  'Vilc→Quina': { normal: 0, media: 0 },
-  'Vilc→Chumb': { normal: 0, media: 0 },
-  'Vilc→Palm': { normal: 0, media: 0 },
-  'Vilc→Zahua': { normal: 0, media: 0 },
-  'Vilc→Suro': { normal: 0, media: 0 },
-  'Vilc→Yangana': { normal: 0, media: 0 },
-  'Mal→Masan': { normal: 0, media: 0 },
-  'Mal→Quina': { normal: 0, media: 0 },
-  'Mal→Chumb': { normal: 0, media: 0 },
-  'Mal→Palm': { normal: 0, media: 0 },
-  'Mal→Zahua': { normal: 0, media: 0 },
-  'Mal→Suro': { normal: 0, media: 0 },
-  'Mal→Yangana': { normal: 0, media: 0 },
-  // Intermedios La Elvira vuelta (desde Vilcabamba/Malacatos)
-  'Mal→Cucan': { normal: 0, media: 0 },
-  'Mal→Lind': { normal: 0, media: 0 },
-  'Mal→Santo': { normal: 0, media: 0 },
-  'Mal→Solan': { normal: 0, media: 0 },
-  'Mal→Moyoc': { normal: 0, media: 0 },
-  'Mal→Tumia': { normal: 0, media: 0 },
-  'Mal→Comun': { normal: 0, media: 0 },
-  'Mal→Elvira': { normal: 0, media: 0 },
-  'Vilc→Cucan': { normal: 0, media: 0 },
-  'Vilc→Lind': { normal: 0, media: 0 },
-  'Vilc→Santo': { normal: 0, media: 0 },
-  'Vilc→Solan': { normal: 0, media: 0 },
-  'Vilc→Moyoc': { normal: 0, media: 0 },
-  'Vilc→Tumia': { normal: 0, media: 0 },
-  'Vilc→Comun': { normal: 0, media: 0 },
-  'Vilc→Elvira': { normal: 0, media: 0 },
+ 
 };
 
 // ─── Precios VUELTA específicos: EL TAMBO → LOJA ───
