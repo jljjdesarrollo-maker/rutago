@@ -120,7 +120,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   const [cajaComunCount, setCajaComunCount] = useState(0);
   const [cajaComunMonto, setCajaComunMonto] = useState('');
   const [cajaComunEsUltima, setCajaComunEsUltima] = useState(false);
-  const fecha = today();
+  const fecha = session.fecha || today();
 
   useEffect(() => {
     const handle = () => setIsOnline(navigator.onLine);
