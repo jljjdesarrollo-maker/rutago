@@ -175,3 +175,44 @@ Stage Summary:
 - 31 Troncales Ida Compartidas aplicadas a Loja-Yangana IDA
 - Deploy a Vercel en curso (6da4cd4)
 - Pendiente: inconsistency La Peña vs Peña, 23 ramales adicionales IDA, VUELTA prices
+
+---
+Task ID: PENDIENTE-3
+Agent: Main
+Task: Reporte Gerencial Comparativo de Producción (análisis cross-bus)
+
+Work Log:
+- (pendiente - idea a futuro, no implementar ahora)
+
+Stage Summary:
+- Comparar producción promedio por bus/VT en ventanas de 15 días (la ronda)
+- Detectar ayudantes que producen menos de lo esperado cuando las condiciones son similares
+- Reporte de frecuencias perdidas/no operadas por ayudante
+- Cruzar datos de ayudante vs bus para determinar si el problema es el bus o el ayudante
+- Alertas automáticas de desviaciones significativas
+- Requiere: la app instalada en varios buses para tener datos comparativos
+
+---
+Task ID: PENDIENTE-4
+Agent: Main
+Task: Formulario de Carga Histórica — Importar desde Excel
+
+Work Log:
+- Template Excel creado, pero import functionality no construida aún
+
+Stage Summary:
+- Crear UI en admin para subir archivo Excel (.xlsx) con datos históricos
+- Mapear columnas del Excel al modelo DailyRecord + Trip
+- Opcional: columna "Origen Tickets" en sheet Cierre del template
+
+---
+Task ID: PENDIENTE-5
+Agent: Main
+Task: Revertir /print-test a pantalla normal
+
+Work Log:
+- (pendiente)
+
+Stage Summary:
+- La página /print-test fue modificada temporalmente para pruebas
+- Revertir a su estado original
