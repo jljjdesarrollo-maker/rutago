@@ -141,7 +141,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const sobranteNum = parseFloat(sobrante) || 0;
   // PRODUCCION = efectivo real contado por el ayudante + caja comun + sobrante ajuste manual
   const production = totalEfectivoReal + totalCajaComunMonto + sobranteNum;
-  const entregaAyudante = production - totalGastos;
+  // ENTREGA AYUDANTE = efectivo real + sobrante - gastos (la caja común NO pasa por el ayudante)
+  const entregaAyudante = totalEfectivoReal + sobranteNum - totalGastos;
   // Lógica dual: si hay caja común se descuentan tickets, si no (pre-Jun 2026) entrega compañía = 0
   const entregaCompania = totalCajaComunMonto > 0 ? totalCajaComunMonto - ticketsNum : 0;
 
@@ -639,7 +640,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
               ${entregaAyudante.toFixed(2)}
             </span>
           </div>
-          <p className="text-[10px] text-white/30">Producción - Total Gastos</p>
+          <p className="text-[10px] text-white/30">Efectivo Real - Total Gastos</p>
           <div className="flex justify-between">
             <span className="text-sm text-white/80">Entrega Compañía</span>
             <span className={`font-bold ${entregaCompania >= 0 ? 'text-green-400' : 'text-red-400'}`}>

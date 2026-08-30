@@ -79,7 +79,8 @@ export async function POST(req: NextRequest) {
     // PRODUCCION = efectivo real contado + caja comun + sobrante
     const production = tripEfectivoReal + cajaComun + sobranteNum;
     const totalGastos = (expenses || []).reduce((s: number, e: { amount: number | string }) => s + (Number(e.amount) || 0), 0);
-    const entregaAyudante = production - totalGastos;
+    // ENTREGA AYUDANTE = efectivo real + sobrante - gastos (la caja común NO pasa por el ayudante)
+    const entregaAyudante = tripEfectivoReal + sobranteNum - totalGastos;
     const ticketsNum = Number(tickets) || 0;
     // Lógica dual: si hay caja común se descuentan tickets, si no (pre-Jun 2026) entrega compañía = 0
     const entregaCompania = cajaComun > 0 ? cajaComun - ticketsNum : 0;
