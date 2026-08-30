@@ -21,6 +21,8 @@ export interface FrecuenciaEstado {
   ventasCount: number;
   totalRecaudado: number;
   motivoNoRealizada?: string;
+  ingresoEspecialNota?: string;     // nota libre (ej: "Viaje al Cisne")
+  ingresoEspecialMonto?: number;     // monto recaudado en viaje especial
   ganadorPosicion?: number | null;  // random position for free trip winner
   cajaComunCount?: number;          // boletos vendidos en oficina Loja (caja común)
   cajaComunMonto?: number;         // monto total de boletos caja común (suma manual)

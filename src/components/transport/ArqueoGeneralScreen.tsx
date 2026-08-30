@@ -6,7 +6,7 @@ import { getVentasByFrecuencia } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
 import {
   ChevronLeft, DollarSign, Camera, X, Save, Loader2,
-  CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus
+  CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles
 } from 'lucide-react';
 
 interface Props {
@@ -29,6 +29,8 @@ interface FrecuenciaResumen {
   diferencia: number;             // efectivoContado - totalRecaudado
   boletosCaja: number;
   cajaComunMonto?: number;
+  isIngresoEspecial?: boolean;
+  ingresoEspecialNota?: string;
 }
 
 interface GastoItem {
@@ -74,6 +76,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       if (!raw) { setLoading(false); return; }
       const estadosLS = JSON.parse(raw) as FrecuenciaEstado[];
       const cerradas = estadosLS.filter(e => e.estado === 'cerrada');
+      // Ingresos especiales (no_realizada con monto > 0)
+      const especiales = estadosLS.filter(e => e.estado === 'no_realizada' && (e.ingresoEspecialMonto || 0) > 0);
 
       const resumenes: FrecuenciaResumen[] = await Promise.all(
         cerradas.map(async (e) => {
@@ -99,6 +103,25 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           };
         })
       );
+
+      // Add ingresos especiales as virtual rows
+      especiales.forEach(e => {
+        resumenes.push({
+          estadoId: e.estadoId,
+          nombre: e.nombre,
+          ruta: e.ruta,
+          hora: e.hora,
+          direccion: e.direccion,
+          ventasCount: 0,
+          totalRecaudado: e.ingresoEspecialMonto || 0,
+          efectivoContado: e.ingresoEspecialMonto || 0,
+          diferencia: 0,
+          boletosCaja: 0,
+          cajaComunMonto: 0,
+          isIngresoEspecial: true,
+          ingresoEspecialNota: e.ingresoEspecialNota,
+        });
+      });
       setFrecuencias(resumenes);
     } catch (err) {
       console.error('Error cargando resumen:', err);
@@ -411,6 +434,28 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
               </div>
               {frecuencias.map((f, i) => {
                 const hasDiff = Math.abs(f.diferencia) >= 0.01;
+                if (f.isIngresoEspecial) {
+                  return (
+                    <div key={f.estadoId} className="flex items-center justify-between py-2 px-3 rounded-xl bg-amber-50 border border-amber-200">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-amber-800 truncate">{f.hora} — {f.ingresoEspecialNota || 'Ingreso especial'}</div>
+                          <div className="text-[10px] text-amber-500">Viaje especial</div>
+                        </div>
+                      </div>
+                      <div className="w-20 text-right">
+                        <div className="font-black text-amber-700">${f.totalRecaudado.toFixed(2)}</div>
+                      </div>
+                      <div className="w-20 text-right">
+                        <div className="font-black text-amber-700">${f.efectivoContado.toFixed(2)}</div>
+                      </div>
+                      <div className="w-16 text-right">
+                        <span className="text-xs text-gray-400">—</span>
+                      </div>
+                    </div>
+                  );
+                }
                 return (
                   <div key={f.estadoId} className={`flex items-center justify-between py-2 px-3 rounded-xl ${i % 2 === 0 ? 'bg-[#912D26]/5' : 'bg-gray-50'}`}>
                     <div className="flex items-center gap-2 flex-1 min-w-0">

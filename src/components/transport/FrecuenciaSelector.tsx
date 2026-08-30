@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { type VTSession, type FrecuenciaEstado, type FrecuenciaData, loadPromoConfig } from './types-boletos';
 import { getVentasByFrecuencia, countVentasPendientes, syncVentasSilencioso, deleteVentasByEstadoId } from '@/lib/indexeddb';
 import { matchRuta } from '@/lib/tarifas-data';
-import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck, AlertTriangle, Wrench, Droplets, UserX, Ban, FileText, Truck, CheckCircle } from 'lucide-react';
+import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck, AlertTriangle, Wrench, Droplets, UserX, Ban, FileText, Truck, CheckCircle, Sparkles } from 'lucide-react';
 
 interface Props {
   session: VTSession;
@@ -113,6 +113,8 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   const [noRealizadaModal, setNoRealizadaModal] = useState<FrecuenciaEstado | null>(null);
   const [motivoSeleccionado, setMotivoSeleccionado] = useState('');
   const [motivoPersonalizado, setMotivoPersonalizado] = useState('');
+  const [ingresoEspecialNota, setIngresoEspecialNota] = useState('');
+  const [ingresoEspecialMonto, setIngresoEspecialMonto] = useState('');
   const [confirmNoRealizada, setConfirmNoRealizada] = useState(false);
   const [allFrecuencias, setAllFrecuencias] = useState<FrecuenciaData[]>([]);
   const [exitModal, setExitModal] = useState(false);
@@ -257,19 +259,25 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     setNoRealizadaModal(estado);
     setMotivoSeleccionado('');
     setMotivoPersonalizado('');
+    setIngresoEspecialNota('');
+    setIngresoEspecialMonto('');
     setConfirmNoRealizada(false);
   };
 
   const confirmNoRealizadaAction = () => {
     if (!noRealizadaModal) return;
     const motivo = motivoSeleccionado === 'otro' ? motivoPersonalizado.trim() : motivoSeleccionado;
+    const montoEspecial = parseFloat(ingresoEspecialMonto) || 0;
+    const notaEspecial = ingresoEspecialNota.trim();
     // Eliminar ventas de esta frecuencia de IndexedDB (no se realizaron)
     deleteVentasByEstadoId(noRealizadaModal.estadoId).catch(() => {});
     updateEstado(noRealizadaModal.estadoId, {
       estado: 'no_realizada',
       ventasCount: 0,
-      totalRecaudado: 0,
+      totalRecaudado: montoEspecial,  // si hay ingreso especial, suma al total
       motivoNoRealizada: motivo || 'Sin especificar',
+      ingresoEspecialNota: notaEspecial || undefined,
+      ingresoEspecialMonto: montoEspecial > 0 ? montoEspecial : undefined,
     });
     setNoRealizadaModal(null);
   };
@@ -368,6 +376,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     { id: 'sin_pasajeros', label: 'Sin pasajeros', icon: <UserX className="w-4 h-4" />, color: 'text-purple-500' },
     { id: 'problema_ruta', label: 'Problema en la ruta', icon: <AlertTriangle className="w-4 h-4" />, color: 'text-yellow-500' },
     { id: 'orden_superior', label: 'Orden superior', icon: <Ban className="w-4 h-4" />, color: 'text-gray-600' },
+    { id: 'ingreso_especial', label: 'Ingreso especial', icon: <Sparkles className="w-4 h-4" />, color: 'text-amber-500' },
     { id: 'otro', label: 'Otro motivo', icon: <FileText className="w-4 h-4" />, color: 'text-gray-500' },
   ];
 
@@ -559,7 +568,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
                   </button>
                 ))}
               </div>
-              {/* Campo personalizado */}
+              {/* Campo personalizado (Otro) */}
               {motivoSeleccionado === 'otro' && (
                 <div className="mt-3">
                   <input type="text" placeholder="Escribe el motivo..." value={motivoPersonalizado}
@@ -568,19 +577,50 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
                     autoFocus />
                 </div>
               )}
+              {/* Campos Ingreso Especial */}
+              {motivoSeleccionado === 'ingreso_especial' && (
+                <div className="mt-3 space-y-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                  <p className="text-xs text-amber-700 font-semibold">Registra el ingreso de este viaje especial</p>
+                  <input type="text" placeholder="Nota (ej: Viaje al Cisne, Contratación...)" value={ingresoEspecialNota}
+                    onChange={e => setIngresoEspecialNota(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-amber-200 text-sm text-[#3A3A3A] focus:outline-none focus:border-amber-400 bg-white"
+                    autoFocus />
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-black text-lg">$</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.05"
+                      placeholder="0.00"
+                      value={ingresoEspecialMonto}
+                      onChange={e => setIngresoEspecialMonto(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-amber-200 text-lg font-black text-[#3A3A3A] text-center focus:outline-none focus:border-amber-400 bg-white"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="flex gap-2 mt-5">
                 <button onClick={() => setNoRealizadaModal(null)}
                   className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Cancelar</button>
                 <button
                   onClick={() => {
-                    if (motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim())) {
+                    const isValid = motivoSeleccionado &&
+                      (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim()) &&
+                      (motivoSeleccionado !== 'ingreso_especial' || ingresoEspecialNota.trim());
+                    if (isValid) {
                       confirmNoRealizadaAction();
                     }
                   }}
-                  disabled={!motivoSeleccionado || (motivoSeleccionado === 'otro' && !motivoPersonalizado.trim())}
+                  disabled={
+                    !motivoSeleccionado ||
+                    (motivoSeleccionado === 'otro' && !motivoPersonalizado.trim()) ||
+                    (motivoSeleccionado === 'ingreso_especial' && !ingresoEspecialNota.trim())
+                  }
                   className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
-                    motivoSeleccionado && (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim())
-                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-200'
+                    motivoSeleccionado &&
+                    (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim()) &&
+                    (motivoSeleccionado !== 'ingreso_especial' || ingresoEspecialNota.trim())
+                      ? (motivoSeleccionado === 'ingreso_especial' ? 'bg-amber-500 text-white shadow-lg shadow-amber-200' : 'bg-orange-500 text-white shadow-lg shadow-orange-200')
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}>
                   <XCircle className="w-4 h-4" /> Confirmar
@@ -730,9 +770,19 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
                   )}
                   {/* NO REALIZADA */}
                   {estado.estado === 'no_realizada' && (
-                    <div className="text-sm text-orange-600 font-semibold flex items-center gap-1">
-                      <XCircle className="w-4 h-4" />
-                      {estado.motivoNoRealizada || 'No realizada'}
+                    <div className="flex-1 flex items-center gap-1.5">
+                      {estado.ingresoEspecialMonto && estado.ingresoEspecialMonto > 0 ? (
+                        <>
+                          <Sparkles className="w-4 h-4 text-amber-500" />
+                          <span className="text-xs font-bold text-amber-700 truncate">{estado.ingresoEspecialNota || 'Ingreso especial'}</span>
+                          <span className="text-xs font-black text-amber-600 ml-auto">${estado.ingresoEspecialMonto.toFixed(2)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-4 h-4" />
+                          <span className="text-sm text-orange-600 font-semibold">{estado.motivoNoRealizada || 'No realizada'}</span>
+                        </>
+                      )}
                     </div>
                   )}
                   {/* BLOQUEADA */}
