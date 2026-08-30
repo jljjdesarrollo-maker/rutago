@@ -1,20 +1,40 @@
 import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { VT_DATA } from '@/lib/seed-vts';
 
 const prisma = new PrismaClient();
 
-// GET all active VTs
+// GET all active VTs (auto-seeds first to ensure DB is up to date)
 export async function GET() {
   try {
+    // Auto-seed: ensure all VT_DATA entries exist in DB
+    for (const vt of VT_DATA) {
+      const existing = await prisma.busVT.findUnique({
+        where: { codigo: vt.codigo },
+      });
+      if (!existing) {
+        await prisma.busVT.create({
+          data: {
+            codigo: vt.codigo,
+            nombre: vt.nombre,
+            frecuencias: vt.frecuencias as any,
+            activo: true,
+          },
+        });
+      }
+    }
+
     const vts = await prisma.busVT.findMany({
       where: { activo: true },
     });
 
-    // Sort numerically by VT number
+    // Sort: VTs by number first, then P units by number
     const sorted = vts.sort((a, b) => {
-      const numA = parseInt(a.codigo.replace('VT', '')) || 0;
-      const numB = parseInt(b.codigo.replace('VT', '')) || 0;
-      return numA - numB;
+      const numA = parseInt(a.codigo.replace(/^(VT|P)/, '')) || 0;
+      const numB = parseInt(b.codigo.replace(/^(VT|P)/, '')) || 0;
+      const isPA = a.codigo.startsWith('P') ? 1 : 0;
+      const isPB = b.codigo.startsWith('P') ? 1 : 0;
+      return isPA !== isPB ? isPA - isPB : numA - numB;
     });
 
     return NextResponse.json(sorted);
