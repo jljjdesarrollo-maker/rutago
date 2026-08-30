@@ -6,7 +6,7 @@ import { getVentasByFrecuencia } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
 import {
   ChevronLeft, DollarSign, Camera, X, Save, Loader2,
-  CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles
+  CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles, Pencil
 } from 'lucide-react';
 
 interface Props {
@@ -66,7 +66,38 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const [errors, setErrors] = useState<string[]>([]);
   const [guardadoOffline, setGuardadoOffline] = useState(false);
 
+  // Inline edit caja común
+  const [editingCajaComun, setEditingCajaComun] = useState<string | null>(null);
+  const [editCajaComunValue, setEditCajaComunValue] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const saveCajaComunToLS = useCallback((estadoId: string, newMonto: number) => {
+    const fecha = workDate(session);
+    const lsKey = `rg_estados_${session.vtCode}_${fecha}`;
+    try {
+      const raw = localStorage.getItem(lsKey);
+      if (raw) {
+        const all = JSON.parse(raw);
+        const idx = all.findIndex((e: any) => e.estadoId === estadoId);
+        if (idx >= 0) {
+          all[idx].cajaComunMonto = newMonto;
+          localStorage.setItem(lsKey, JSON.stringify(all));
+        }
+      }
+    } catch (e) { console.error('LS error:', e); }
+    setFrecuencias(prev => prev.map(f =>
+      f.estadoId === estadoId
+        ? { ...f, cajaComunMonto: newMonto }
+        : f
+    ));
+    setEditingCajaComun(null);
+  }, [session]);
+
+  const startEditCajaComun = (estadoId: string, currentMonto: number) => {
+    setEditingCajaComun(estadoId);
+    setEditCajaComunValue(currentMonto > 0 ? currentMonto.toFixed(2) : '');
+  };
+
   const loadData = useCallback(async () => {
     try {
       const fecha = workDate(session);
@@ -457,7 +488,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                   );
                 }
                 return (
-                  <div key={f.estadoId} className={`flex items-center justify-between py-2 px-3 rounded-xl ${i % 2 === 0 ? 'bg-[#912D26]/5' : 'bg-gray-50'}`}>
+                  <div key={f.estadoId}>
+                  <div className={`flex items-center justify-between py-2 px-3 rounded-xl ${i % 2 === 0 ? 'bg-[#912D26]/5' : 'bg-gray-50'}`}>
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${i % 2 === 0 ? 'bg-[#912D26] text-white' : 'bg-[#3A3A3A] text-white'}`}>
                         {i + 1}
@@ -482,6 +514,38 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                         <span className="text-xs text-gray-400">—</span>
                       )}
                     </div>
+                  </div>
+                  {/* Caja Común editable sub-row */}
+                  {f.boletosCaja > 0 && (
+                    <div className="ml-7 mr-3 mb-1 flex items-center gap-2">
+                      <span className="text-[10px] text-purple-600 font-medium">C.Común: {f.boletosCaja} boletos</span>
+                      <span className="text-[10px] text-purple-400">·</span>
+                      {editingCajaComun === f.estadoId ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-purple-600">$</span>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            step="0.05"
+                            value={editCajaComunValue}
+                            onChange={e => setEditCajaComunValue(e.target.value)}
+                            onBlur={() => saveCajaComunToLS(f.estadoId, parseFloat(editCajaComunValue) || 0)}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveCajaComunToLS(f.estadoId, parseFloat(editCajaComunValue) || 0); } }}
+                            className="w-16 h-6 text-xs font-bold text-purple-800 bg-purple-100 border border-purple-300 rounded px-1 text-center focus:outline-none focus:ring-1 focus:ring-purple-400"
+                            autoFocus
+                          />
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => startEditCajaComun(f.estadoId, f.cajaComunMonto || 0)}
+                          className="text-[11px] font-bold text-purple-800 flex items-center gap-0.5 active:opacity-70"
+                        >
+                          ${(f.cajaComunMonto || 0).toFixed(2)}
+                          <Pencil className="w-2.5 h-2.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                   </div>
                 );
               })}
