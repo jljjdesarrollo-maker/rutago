@@ -146,15 +146,10 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     setParada(name);
     setShowSuggestions(false);
     setSuggestions([]);
-    // Si la parada tiene tarifa conocida, auto-llenar precio
-    const pData = allParadas.find(p => p.parada.toLowerCase() === name.toLowerCase());
-    if (pData) {
-      const tarifa = pasajeroTipo === 'media' ? pData.media : pData.normal;
-      setCobrado(tarifa.toString());
-    } else {
-      setCobrado('');
-      setTimeout(() => montoInputRef.current?.focus(), 100);
-    }
+    // El autocompletado es para paradas NO registradas en intermedios
+    // Siempre dejar el precio vacío para que el ayudante ingrese el valor
+    setCobrado('');
+    setTimeout(() => montoInputRef.current?.focus(), 100);
   };
 
   const handleTipoChange = (nuevoTipo: TipoPasajero) => {
