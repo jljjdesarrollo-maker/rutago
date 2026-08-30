@@ -68,6 +68,18 @@ export const VT_DATA: VTData[] = [
     ],
   },
   {
+    codigo: 'VT5',
+    nombre: 'VT5',
+    frecuencias: [
+      { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '10:15' },
+      { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '12:15' },
+      { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '14:30' },
+      { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '16:30' },
+      { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '21:00' },
+      { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '07:20' },
+    ],
+  },
+  {
     codigo: 'VT6',
     nombre: 'VT6',
     frecuencias: [
