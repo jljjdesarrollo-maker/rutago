@@ -102,7 +102,7 @@ export const VT_DATA: VTData[] = [
       { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '15:15' },
       { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '17:10' },
       { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '18:55' },
-      { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '21:30' },
+      { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '21:15' },
     ],
   },
   {
@@ -234,7 +234,7 @@ export const VT_DATA: VTData[] = [
       { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '08:15' },
       { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '10:20' },
       { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '13:30' },
-      { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '15:30' },
+      { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '15:15' },
       { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '18:15' },
       { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '19:45' },
     ],
