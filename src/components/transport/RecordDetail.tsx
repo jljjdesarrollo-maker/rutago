@@ -141,7 +141,7 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
                 <div className="w-16 text-right">Real</div>
                 <div className="w-14 text-right">Dif.</div>
               </div>
-              {rec.trips.map((trip, i) => {
+              {(rec.trips || []).map((trip, i) => {
                 const odd = (i + 1) % 2 !== 0;
                 const diff = trip.efectivoReal - trip.income;
                 const hasDiff = Math.abs(diff) >= 0.01;
@@ -183,7 +183,7 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
               <CardTitle className="text-base font-semibold text-red-600">Gastos</CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-1">
-              {rec.expenses.map((exp) => (
+              {(rec.expenses || []).map((exp) => (
                 <div key={exp.id} className="flex justify-between text-sm py-1">
                   <span className="text-[#3A3A3A]/60">{exp.description}</span>
                   <span className="font-medium text-[#3A3A3A]">S/ {exp.amount.toFixed(2)}</span>

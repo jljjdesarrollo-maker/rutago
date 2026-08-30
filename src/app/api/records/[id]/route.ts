@@ -11,7 +11,7 @@ export async function GET(
 
     const record = await db.dailyRecord.findUnique({
       where: { id },
-      include: { trips: { orderBy: { order: 'asc' } } },
+      include: { trips: { orderBy: { order: 'asc' } }, expenses: { orderBy: { order: 'asc' } } },
     });
     if (!record) {
       return NextResponse.json({ error: 'Registro no encontrado' }, { status: 404 });
