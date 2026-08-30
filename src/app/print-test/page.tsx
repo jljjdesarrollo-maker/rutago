@@ -20,7 +20,8 @@ function buildTestTicket(): Uint8Array {
     tipoPasajero: 'Entero',
     tarifa: 2.50,
     boletoNum: 47,
-    esViajeGratis: false,
+    esViajeGratis: true,
+    tarifaOriginal: 2.50,
     textoPublicidad: 'Quieres RutaGo? 0997149000',
   };
   return generateTicketBytes(data);
@@ -149,11 +150,21 @@ export default function PrintTestPage() {
         throw new Error('No se encontro servicio escribible. La impresora no es compatible con Web Bluetooth.');
       }
 
-      // Send test ticket
+      // Send test ticket (GANADOR)
       setStep('printing');
-      log('Enviando ticket de prueba...');
+      log('Enviando ticket GANADOR de prueba...');
       const ticket = buildTestTicket();
-      log(`Tamano: ${ticket.length} bytes (precio 3 lineas)`);
+      log(`Tamano: ${ticket.length} bytes`);
+
+      // Reproducir audio del ganador
+      try {
+        const audio = new Audio('/audio/ganador.mp3');
+        audio.volume = 1.0;
+        audio.play().catch(() => log('Audio no se reprodujo (autoplay bloqueado)'));
+        log('Reproduciendo audio ganador...');
+      } catch {
+        log('Error al reproducir audio');
+      }
 
       if (writableChar.properties.writeWithoutResponse) {
         await writableChar.writeValueWithoutResponse(ticket.buffer);
@@ -166,7 +177,6 @@ export default function PrintTestPage() {
       // Small delay for printer buffer
       await new Promise(r => setTimeout(r, 500));
       log('Datos enviados OK!');
-
 
       await gatt.disconnect();
       setStep('done');
@@ -189,8 +199,8 @@ export default function PrintTestPage() {
     <div className="min-h-[100dvh] bg-gray-50 flex flex-col">
       {/* Header */}
       <div className="bg-[#912D26] text-white px-4 py-4">
-        <h1 className="text-lg font-bold">Prueba de Impresora</h1>
-        <p className="text-red-100 text-xs mt-0.5">3NStar PPT205BT - Bluetooth Test</p>
+        <h1 className="text-lg font-bold">Prueba Impresora - GANADOR</h1>
+        <p className="text-red-100 text-xs mt-0.5">3NStar PPT205BT - Boleto ganador + audio</p>
 
       </div>
 
