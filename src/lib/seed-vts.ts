@@ -203,4 +203,40 @@ export const VT_DATA: VTData[] = [
       { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '18:10' },
     ],
   },
+  {
+    codigo: 'P1',
+    nombre: 'P1',
+    frecuencias: [
+      { routeFrom: 'Loja', routeTo: 'Zahuayco', time: '06:05' },
+      { routeFrom: 'Zahuayco', routeTo: 'Loja', time: '09:30' },
+      { routeFrom: 'Loja', routeTo: 'Zahuayco', time: '12:55' },
+      { routeFrom: 'Zahuayco', routeTo: 'Loja', time: '16:10' },
+      { routeFrom: 'Loja', routeTo: 'Zahuayco', time: '18:05' },
+      { routeFrom: 'Zahuayco', routeTo: 'Loja', time: '06:45' },
+    ],
+  },
+  {
+    codigo: 'P2',
+    nombre: 'P2',
+    frecuencias: [
+      { routeFrom: 'Loja', routeTo: 'Zahuayco', time: '08:55' },
+      { routeFrom: 'Zahuayco', routeTo: 'Loja', time: '13:45' },
+      { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '15:30' },
+      { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '17:20' },
+      { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '19:15' },
+      { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '06:50' },
+    ],
+  },
+  {
+    codigo: 'P3',
+    nombre: 'P3',
+    frecuencias: [
+      { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '08:15' },
+      { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '10:20' },
+      { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '13:30' },
+      { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '15:30' },
+      { routeFrom: 'Loja', routeTo: 'Vilcabamba', time: '18:15' },
+      { routeFrom: 'Vilcabamba', routeTo: 'Loja', time: '19:45' },
+    ],
+  },
 ];
