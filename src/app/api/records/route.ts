@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { date, km, conductor, ayudanteNombre, vtCode, trips, expenses, tickets, sobrante, photoUrl } = body;
+    const { date, km, conductor, ayudanteNombre, vtCode, trips, expenses, tickets, cajaComun: cajaComunBody, sobrante, photoUrl } = body;
 
     // Validación server-side: valores financieros no negativos
     if (Array.isArray(trips)) {
@@ -74,14 +74,15 @@ export async function POST(req: NextRequest) {
 
     const tripIncome = (trips || []).reduce((s: number, t: { income: number | string }) => s + (Number(t.income) || 0), 0);
     const tripEfectivoReal = (trips || []).reduce((s: number, t: { efectivoReal: number | string }) => s + (Number(t.efectivoReal) || 0), 0);
-    const cajaComun = (trips || []).reduce((s: number, t: { boletos: number | string }) => s + (Number(t.boletos) || 0), 0);
+    const cajaComun = Number(cajaComunBody) || 0;
     const sobranteNum = Number(sobrante) || 0;
-    // PRODUCCION = efectivo real contado + sobrante (no sistema)
-    const production = tripEfectivoReal + sobranteNum;
+    // PRODUCCION = efectivo real contado + caja comun + sobrante
+    const production = tripEfectivoReal + cajaComun + sobranteNum;
     const totalGastos = (expenses || []).reduce((s: number, e: { amount: number | string }) => s + (Number(e.amount) || 0), 0);
     const entregaAyudante = production - totalGastos;
     const ticketsNum = Number(tickets) || 0;
-    const entregaCompania = cajaComun - ticketsNum;
+    // Lógica dual: si hay caja común se descuentan tickets, si no (pre-Jun 2026) entrega compañía = 0
+    const entregaCompania = cajaComun > 0 ? cajaComun - ticketsNum : 0;
 
     const record = await db.dailyRecord.create({
       data: {

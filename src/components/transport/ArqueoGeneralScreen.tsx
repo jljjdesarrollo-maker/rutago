@@ -56,7 +56,6 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const [km, setKm] = useState('');
   const [gastos, setGastos] = useState<GastoItem[]>(GASTOS_DEFAULT);
   const [tickets, setTickets] = useState('');
-  const [boletosCajaTotal, setBoletosCajaTotal] = useState('');
   const [sobrante, setSobrante] = useState('');
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -139,12 +138,12 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     [gastos]
   );
   const ticketsNum = parseFloat(tickets) || 0;
-  const boletosCajaNum = parseFloat(boletosCajaTotal) || 0;
   const sobranteNum = parseFloat(sobrante) || 0;
   // PRODUCCION = efectivo real contado por el ayudante + caja comun + sobrante ajuste manual
   const production = totalEfectivoReal + totalCajaComunMonto + sobranteNum;
   const entregaAyudante = production - totalGastos;
-  const entregaCompania = boletosCajaNum - ticketsNum;
+  // Lógica dual: si hay caja común se descuentan tickets, si no (pre-Jun 2026) entrega compañía = 0
+  const entregaCompania = totalCajaComunMonto > 0 ? totalCajaComunMonto - ticketsNum : 0;
 
   const addGasto = () => setGastos(prev => [...prev, { description: '', amount: '0' }]);
   const removeGasto = (i: number) => setGastos(prev => prev.filter((_, idx) => idx !== i));
@@ -221,6 +220,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         trips,
         expenses: gastos,
         tickets: tickets || '0',
+        cajaComun: totalCajaComunMonto,
         sobrante: sobrante || '0',
         photoUrl: fotoPreview,
       };
@@ -328,10 +328,6 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Total Gastos</span>
                 <span className="font-bold text-red-600">${totalGastos.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Boletos (Caja Común)</span>
-                <span className="font-bold text-[#3A3A3A]">${boletosCajaNum.toFixed(2)}</span>
               </div>
               <hr className="border-gray-200" />
               <div className="flex justify-between text-sm">
@@ -557,23 +553,9 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           </div>
         </div>
 
-        {/* 4. BOLETOS CAJA COMUN + TICKETS + SOBRANTE */}
+        {/* 4. TICKETS + SOBRANTE */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
           <h3 className="font-bold text-[#3A3A3A] text-sm uppercase">Ajustes</h3>
-          <div>
-            <label className="text-xs font-medium text-gray-500">Boletos (Caja Común)</label>
-            <div className="relative mt-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                placeholder="0.00"
-                value={boletosCajaTotal}
-                onChange={e => setBoletosCajaTotal(e.target.value)}
-                className="w-full h-11 rounded-xl border border-[#D6D6D6] pl-7 pr-3 text-sm font-semibold text-[#3A3A3A]"
-              />
-            </div>
-          </div>
           <div>
             <label className="text-xs font-medium text-gray-500">Tickets</label>
             <div className="grid grid-cols-3 gap-2 mt-1">
@@ -641,10 +623,6 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
               <span className="font-semibold text-purple-300">${totalCajaComunMonto.toFixed(2)}</span>
             </div>
           )}
-          <div className="flex justify-between text-sm">
-            <span className="text-white/60">Caja Común (Boletos)</span>
-            <span className="font-semibold">${boletosCajaNum.toFixed(2)}</span>
-          </div>
           <hr className="border-white/10" />
           <div className="flex justify-between text-sm">
             <span className="text-white/60">Total Gastos</span>
@@ -668,7 +646,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
               ${entregaCompania.toFixed(2)}
             </span>
           </div>
-          <p className="text-[10px] text-white/30">Caja Común - Tickets</p>
+          <p className="text-[10px] text-white/30">{totalCajaComunMonto > 0 ? 'Caja Común - Tickets' : 'Sin Caja Común (antes de Jun 2026)'}</p>
         </div>
 
         {/* BOTON GUARDAR */}

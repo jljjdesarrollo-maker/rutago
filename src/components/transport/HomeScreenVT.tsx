@@ -6,7 +6,7 @@ import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVen
 import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.37-aug30-audio-print-ganador';
+const APP_VERSION = 'v3.38-aug30-arqueo-dual-logic';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;
