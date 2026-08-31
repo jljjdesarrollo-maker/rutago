@@ -6,7 +6,7 @@ import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVen
 import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.44.0-sep01-fix-descuadre-pdf';
+const APP_VERSION = 'v3.44.1-sep01-fix-pdf-pagination';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;

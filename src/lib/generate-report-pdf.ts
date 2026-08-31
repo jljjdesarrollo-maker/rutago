@@ -267,8 +267,29 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   y += 8;
 
   // Data rows
+  const pageH = doc.internal.pageSize.getHeight();
+  const footerY = 14; // space reserved for footer
+  const tableHeaderH = 12; // space to re-draw header on new page
+  const minY = 15; // top margin after page break
+
   data.dailySummaries.forEach((day, idx) => {
     const rowH = 6;
+    // Page break: if current row + totals row doesn't fit, start new page
+    if (y + rowH + 14 > pageH - footerY) {
+      doc.addPage();
+      y = minY;
+      // Re-draw table header on new page
+      doc.setFillColor(...COLORS.dark);
+      let hdrTx = ml;
+      colWidths.forEach((cwi, i) => {
+        doc.rect(hdrTx, y - 3, cwi, 7, 'F');
+        const align = colAlign[i];
+        const xPos = align === 'right' ? hdrTx + cwi - 2 : hdrTx + 2;
+        addText(colLabels[i], xPos, y + 1.5, { size: 7, color: COLORS.white, bold: true });
+        hdrTx += cwi;
+      });
+      y += 8;
+    }
     if (idx % 2 === 0) {
       doc.setFillColor(...COLORS.lightRed);
       tx = ml;
@@ -361,6 +382,11 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
         y += 7;
 
         record.trips.forEach((trip: any, ti: number) => {
+          // Page break before trip row
+          if (y + 7 > pageH - footerY) {
+            doc.addPage();
+            y = minY;
+          }
           const tVals = [
             `${ti + 1}`,
             `${trip.routeFrom} - ${trip.routeTo}`,
