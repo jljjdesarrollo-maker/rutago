@@ -102,7 +102,7 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
       ? doc.splitTextToSize(text, maxWidth)
       : [text];
     lines.forEach((line: string, i: number) => {
-      const xPos = align === 'center' ? ml + cw / 2 : align === 'right' ? w - mr : x;
+      const xPos = align === 'center' ? ml + cw / 2 : x;
       doc.text(line, xPos, yy + i * (size * 0.35), { align });
     });
     return lines.length * size * 0.35;
@@ -250,7 +250,8 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   y += 4;
 
   // Table header: Fecha | Produccion | Gastos | E.Compa | E.Ayuda | Total Ent | Km
-  const colWidths = [22, 27, 27, 27, 27, 27, 27];
+  // 22+28+26+28+28+28+20 = 180mm (exacto al area util cw)
+  const colWidths = [22, 28, 26, 28, 28, 28, 20];
   const colLabels = ['Fecha', 'Produccion', 'Gastos', 'E. Compania', 'E. Ayudante', 'Total Ent.', 'Km'];
   const colAlign: ('left' | 'right')[] = ['left', 'right', 'right', 'right', 'right', 'right', 'right'];
 
