@@ -76,6 +76,27 @@ export async function GET(req: NextRequest) {
       byDate.set(r.date, list);
     });
 
+    // ─── OPERATIONAL DATA: frecuencias programadas por VT ───
+    const uniqueVtCodes = [...new Set(records.map(r => r.vtCode).filter(Boolean))];
+    const vtFrecCounts: Record<string, number> = {};
+    if (uniqueVtCodes.length > 0) {
+      const frecCounts = await Promise.all(
+        uniqueVtCodes.map(vt =>
+          db.frecuencia.count({ where: { vtCode: vt, activo: true } })
+            .then(c => ({ vt, count: c }))
+        )
+      );
+      frecCounts.forEach(f => { vtFrecCounts[f.vt] = f.count; });
+    }
+
+    // Calculate days in period
+    let daysInPeriod = 1;
+    if (startDate && endDate) {
+      const d1 = new Date(startDate);
+      const d2 = new Date(endDate);
+      daysInPeriod = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    }
+
     // Compute daily summaries
     const dailySummaries = Array.from(byDate.entries()).map(([date, recs]) => {
       const totalProduction = recs.reduce((s, r) => s + r.production, 0);
@@ -86,6 +107,9 @@ export async function GET(req: NextRequest) {
       const totalTickets = recs.reduce((s, r) => s + r.tickets, 0);
       const totalCajaComun = recs.reduce((s, r) => s + r.cajaComun, 0);
       const totalSobrante = recs.reduce((s, r) => s + (r.sobrante || 0), 0);
+      // Operational: frecuencias programadas (sum of VT freq count per record)
+      const frecProgramadas = recs.reduce((s, r) => s + (vtFrecCounts[r.vtCode || ''] || 0), 0);
+      const frecRealizadas = recs.reduce((s, r) => s + r.trips.length, 0);
       return {
         date,
         records: recs,
@@ -98,6 +122,8 @@ export async function GET(req: NextRequest) {
         totalTickets,
         totalCajaComun,
         totalSobrante,
+        frecProgramadas,
+        frecRealizadas,
       };
     });
 
@@ -110,14 +136,21 @@ export async function GET(req: NextRequest) {
 
     const conductorNames = allAyudantes.map(c => c.ayudanteNombre).filter(Boolean);
 
+    // Aggregate operational totals
+    const totalFrecProgramadas = dailySummaries.reduce((s, d) => s + d.frecProgramadas, 0);
+    const totalFrecRealizadas = dailySummaries.reduce((s, d) => s + d.frecRealizadas, 0);
+    const daysWorked = dailySummaries.length;
+    const totalProduction = records.reduce((s, r) => s + r.production, 0);
+    const totalGastos = records.reduce((s, r) => s + r.totalGastos, 0);
+
     return NextResponse.json({
       type,
       startDate,
       endDate,
       dailySummaries,
       totals: {
-        production: records.reduce((s, r) => s + r.production, 0),
-        gastos: records.reduce((s, r) => s + r.totalGastos, 0),
+        production: totalProduction,
+        gastos: totalGastos,
         km: records.reduce((s, r) => s + (parseFloat(r.km || '0') || 0), 0),
         entregaCompania: records.reduce((s, r) => s + r.entregaCompania, 0),
         entregaAyudante: records.reduce((s, r) => s + r.entregaAyudante, 0),
@@ -125,7 +158,16 @@ export async function GET(req: NextRequest) {
         cajaComun: records.reduce((s, r) => s + r.cajaComun, 0),
         sobrante: records.reduce((s, r) => s + (r.sobrante || 0), 0),
         recordCount: records.length,
-        daysWorked: dailySummaries.length,
+        daysWorked,
+        daysInPeriod,
+        frecProgramadas: totalFrecProgramadas,
+        frecRealizadas: totalFrecRealizadas,
+        // Derived KPIs
+        asistencia: daysInPeriod > 0 ? daysWorked / daysInPeriod : 0,
+        cumplimiento: totalFrecProgramadas > 0 ? totalFrecRealizadas / totalFrecProgramadas : 0,
+        ingresoPorFrecuencia: totalFrecRealizadas > 0 ? totalProduction / totalFrecRealizadas : 0,
+        ingresoPorDia: daysWorked > 0 ? totalProduction / daysWorked : 0,
+        utilidadNeta: totalProduction - totalGastos - records.reduce((s, r) => s + r.tickets, 0),
       },
       conductorNames,
     });

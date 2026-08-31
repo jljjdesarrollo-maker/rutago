@@ -1,10 +1,16 @@
 /**
  * Generador de PDF de Reportes Consolidados (A4)
- * Formatos: Diario, Semanal, Mensual, por Conductor
+ * Formatos: Diario, Semanal, Mensual, por Conductor, Rango
  * Paleta corporativa: Rojo Vinotinto #912D26, Gris Antracita #3A3A3A, Plata #D6D6D6, White
  *
- * Diseño aprobado: 3 bloques en Resumen Ejecutivo (Ingresos / Egresos / Entregas)
- * Sin seccion "SUMATORIA DE ENTREGAS" redundante
+ * Estructura orientada a toma de decisiones empresariales:
+ *   1. OPERATIVO  - Se operó? (asistencia, frecuencias)
+ *   2. INGRESOS   - Cuánto entró?
+ *   3. EGRESOS    - Cuánto salió?
+ *   4. ENTREGAS   - Dónde quedó el dinero?
+ *   5. INDICADORES - KPIs clave para decisiones
+ *   6. VALIDACION - Cuadre de caja
+ *   7. TABLA POR DÍA + DETALLE (páginas siguientes)
  */
 
 const COLORS = {
@@ -14,6 +20,7 @@ const COLORS = {
   white: [255, 255, 255] as const,
   lightRed: [245, 235, 234] as const,
   green: [34, 139, 34] as const,
+  amber: [180, 120, 20] as const,      // For mid-range indicators
 };
 
 function formatDate(dateStr: string): string {
@@ -23,6 +30,10 @@ function formatDate(dateStr: string): string {
 
 function formatMoney(val: number): string {
   return `S/ ${val.toFixed(2)}`;
+}
+
+function formatPct(val: number): string {
+  return `${(val * 100).toFixed(1)}%`;
 }
 
 interface DailySummary {
@@ -37,6 +48,8 @@ interface DailySummary {
   totalTickets: number;
   totalCajaComun: number;
   totalSobrante: number;
+  frecProgramadas?: number;
+  frecRealizadas?: number;
 }
 
 interface ReportData {
@@ -55,6 +68,14 @@ interface ReportData {
     sobrante: number;
     recordCount: number;
     daysWorked: number;
+    daysInPeriod?: number;
+    frecProgramadas?: number;
+    frecRealizadas?: number;
+    asistencia?: number;
+    cumplimiento?: number;
+    ingresoPorFrecuencia?: number;
+    ingresoPorDia?: number;
+    utilidadNeta?: number;
   };
   conductorNames?: string[];
 }
@@ -83,10 +104,11 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   const w = 210;
   const ml = 15;
   const mr = 15;
-  const cw = w - ml - mr;
+  const cw = w - ml - mr; // 180mm
   let y = 0;
 
-  // Helper: text
+  // ==================== HELPERS ====================
+
   const addText = (text: string, x: number, yy: number, opts: {
     size?: number;
     color?: readonly number[];
@@ -108,199 +130,188 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
     return lines.length * size * 0.35;
   };
 
-  // Helper: horizontal line
   const addLine = (x1: number, x2: number, yy: number, color?: readonly number[]) => {
     doc.setDrawColor(...(color || COLORS.plata));
     doc.setLineWidth(0.3);
     doc.line(x1, yy, x2, yy);
   };
 
-  // Helper: draw a card with label + value
-  const drawCard = (cx: number, cy: number, cw2: number, ch: number, label: string, value: string, valueColor: readonly number[]) => {
+  // Card dimensions
+  const cardH = 18;
+  const gap = 3;
+
+  const drawCard = (cx: number, cy: number, cw2: number, label: string, value: string, valueColor: readonly number[]) => {
     doc.setFillColor(...COLORS.lightRed);
-    doc.roundedRect(cx, cy, cw2, ch, 3, 3, 'F');
-    addText(label, cx + 3, cy + 5, { size: 7, color: COLORS.dark });
-    addText(value, cx + 3, cy + 14, { size: 11, color: valueColor, bold: true });
+    doc.roundedRect(cx, cy, cw2, cardH, 2, 2, 'F');
+    addText(label, cx + 3, cy + 4, { size: 6.5, color: COLORS.dark });
+    addText(value, cx + 3, cy + 12, { size: 10, color: valueColor, bold: true });
   };
 
-  // Helper: draw block title
   const drawBlockTitle = (title: string) => {
-    addText(title, ml, y, { size: 9, color: COLORS.primary, bold: true });
-    y += 2;
+    addText(title, ml, y, { size: 8, color: COLORS.primary, bold: true });
+    y += 1.5;
     addLine(ml, w - mr, y);
-    y += 4;
+    y += 3;
   };
 
-  // ============================
-  // HEADER BAND
-  // ============================
+  const drawCardRow = (cards: { label: string; value: string; color: readonly number[] }[], cols: number) => {
+    const cardW = (cw - gap * (cols - 1)) / cols;
+    cards.forEach((card, i) => {
+      const cx = ml + i * (cardW + gap);
+      drawCard(cx, y, cardW, card.label, card.value, card.color);
+    });
+    y += cardH + gap;
+  };
+
+  // Color helper for percentages: green >= 80%, amber >= 60%, red < 60%
+  const pctColor = (pct: number): readonly number[] => {
+    if (pct >= 0.8) return COLORS.green;
+    if (pct >= 0.6) return COLORS.amber;
+    return [220, 50, 50];
+  };
+
+  // ==================== HEADER ====================
   doc.setFillColor(...COLORS.primary);
-  doc.rect(0, 0, w, 32, 'F');
-
-  addText('REPORTE DE CONTROL', ml + cw / 2, y + 10, {
-    size: 18, color: COLORS.white, bold: true, align: 'center',
+  doc.rect(0, 0, w, 28, 'F');
+  addText('REPORTE DE CONTROL', ml + cw / 2, y + 9, {
+    size: 16, color: COLORS.white, bold: true, align: 'center',
   });
-  addText('TRANSPORTE', ml + cw / 2, y + 18, {
-    size: 12, color: COLORS.white, align: 'center',
+  addText('TRANSPORTE', ml + cw / 2, y + 17, {
+    size: 11, color: COLORS.white, align: 'center',
   });
-  y += 28;
+  y += 24;
 
-  // Title subtitle
   doc.setFillColor(...COLORS.dark);
-  doc.rect(0, y, w, 12, 'F');
-  addText(getReportTitle(data), ml + cw / 2, y + 8, {
-    size: 10, color: COLORS.white, bold: true, align: 'center',
+  doc.rect(0, y, w, 10, 'F');
+  addText(getReportTitle(data), ml + cw / 2, y + 7, {
+    size: 9, color: COLORS.white, bold: true, align: 'center',
   });
-  y += 18;
+  y += 15;
 
-  // ============================
-  // RESUMEN EJECUTIVO — 3 bloques
-  // ============================
-  addText('RESUMEN EJECUTIVO', ml, y, { size: 12, color: COLORS.primary, bold: true });
-  y += 2;
-  addLine(ml, w - mr, y);
-  y += 6;
+  // ==================== PRE-COMPUTED VALUES ====================
+  const t = data.totals;
+  const totalIngresos = t.production;
+  const efectivoRuta = t.production - t.cajaComun - t.sobrante;
+  const totalEgresos = t.gastos + t.tickets;
+  const utilidadNeta = t.utilidadNeta ?? (totalIngresos - totalEgresos);
+  const daysInPeriod = t.daysInPeriod ?? t.daysWorked;
+  const daysWorked = t.daysWorked;
+  const asistencia = t.asistencia ?? (daysInPeriod > 0 ? daysWorked / daysInPeriod : 0);
+  const frecProg = t.frecProgramadas ?? 0;
+  const frecReal = t.frecRealizadas ?? 0;
+  const cumplimiento = t.cumplimiento ?? (frecProg > 0 ? frecReal / frecProg : 0);
+  const ingPorFrec = t.ingresoPorFrecuencia ?? (frecReal > 0 ? totalIngresos / frecReal : 0);
+  const ingPorDia = t.ingresoPorDia ?? (daysWorked > 0 ? totalIngresos / daysWorked : 0);
 
-  const cardW = (cw - 8) / 3;
-  const cardH = 22;
-  const gap = 4;
-  // production ya incluye cajaComun + efectivoReal + sobrante
-  const totalIngresos = data.totals.production;
-  const efectivoRuta = data.totals.production - data.totals.cajaComun - data.totals.sobrante;
-  const totalEgresos = data.totals.gastos + data.totals.tickets;
+  // ==================== 1. OPERATIVO ====================
+  drawBlockTitle('OPERATIVO');
+  const opCards = [
+    { label: 'Dias del Periodo', value: `${daysInPeriod}`, color: COLORS.dark },
+    { label: 'Dias Laborados', value: `${daysWorked}`, color: COLORS.dark },
+    { label: 'Asistencia', value: formatPct(asistencia), color: pctColor(asistencia) },
+    { label: 'Frec. Programadas', value: `${frecProg}`, color: COLORS.dark },
+    { label: 'Frec. Realizadas', value: `${frecReal}`, color: COLORS.dark },
+    { label: 'Cumplimiento', value: formatPct(cumplimiento), color: pctColor(cumplimiento) },
+  ];
+  drawCardRow(opCards, 6);
 
-  // ---- BLOQUE 1: INGRESOS ----
+  // ==================== 2. INGRESOS ====================
   drawBlockTitle('INGRESOS');
-  const ingresoCards: { label: string; value: string; color: readonly number[] }[] = [
+  const ingCards: { label: string; value: string; color: readonly number[] }[] = [
     { label: 'Total Ingresos', value: formatMoney(totalIngresos), color: COLORS.primary },
     { label: 'Efectivo Ruta', value: formatMoney(efectivoRuta), color: COLORS.dark },
-    { label: 'Total Caja Comun', value: formatMoney(data.totals.cajaComun), color: COLORS.dark },
+    { label: 'Caja Comun', value: formatMoney(t.cajaComun), color: COLORS.dark },
   ];
-  // Sobrante only if non-zero
-  if (data.totals.sobrante !== 0) {
-    ingresoCards.push({ label: 'Total Sobrante', value: formatMoney(data.totals.sobrante), color: COLORS.green });
+  if (t.sobrante !== 0) {
+    ingCards.push({ label: 'Sobrante', value: formatMoney(t.sobrante), color: COLORS.green });
   }
+  drawCardRow(ingCards, ingCards.length);
 
-  const ingresoCols = ingresoCards.length >= 4 ? 4 : 3;
-  const ingresoCardW = ingresoCards.length >= 4 ? (cw - gap * 3) / 4 : cardW;
-  ingresoCards.forEach((card, i) => {
-    const cx = ml + i * (ingresoCardW + gap);
-    drawCard(cx, y, ingresoCardW, cardH, card.label, card.value, card.color);
-  });
-  y += cardH + 8;
-
-  // ---- BLOQUE 2: EGRESOS ----
+  // ==================== 3. EGRESOS ====================
   drawBlockTitle('EGRESOS');
-  const egresoCards: { label: string; value: string; color: readonly number[] }[] = [
+  drawCardRow([
     { label: 'Total Egresos', value: formatMoney(totalEgresos), color: COLORS.dark },
-    { label: 'Total Gastos', value: formatMoney(data.totals.gastos), color: COLORS.dark },
-    { label: 'Total Tickets', value: formatMoney(data.totals.tickets), color: COLORS.dark },
-  ];
-  const egresoCols = 3;
-  const egresoCardW = (cw - gap * 2) / 3;
-  egresoCards.forEach((card, i) => {
-    const cx = ml + i * (egresoCardW + gap);
-    drawCard(cx, y, egresoCardW, cardH, card.label, card.value, card.color);
-  });
-  y += cardH + 8;
+    { label: 'Total Gastos', value: formatMoney(t.gastos), color: COLORS.dark },
+    { label: 'Total Tickets', value: formatMoney(t.tickets), color: COLORS.dark },
+  ], 3);
 
-  // ---- BLOQUE 3: ENTREGAS ----
+  // ==================== 4. ENTREGAS ====================
   drawBlockTitle('ENTREGAS');
-  const entregaCards: { label: string; value: string; color: readonly number[] }[] = [
-    { label: 'Entrega Compania', value: formatMoney(data.totals.entregaCompania), color: COLORS.primary },
-    { label: 'Entrega Ayudante', value: formatMoney(data.totals.entregaAyudante), color: COLORS.primary },
-    { label: 'Total Entregado', value: formatMoney(data.totals.entregaCompania + data.totals.entregaAyudante), color: COLORS.primary },
-    { label: 'Dias Trabajados', value: `${data.totals.daysWorked}`, color: COLORS.dark },
-  ];
-  const entregaCardW = (cw - gap * 3) / 4;
-  entregaCards.forEach((card, i) => {
-    const cx = ml + i * (entregaCardW + gap);
-    drawCard(cx, y, entregaCardW, cardH, card.label, card.value, card.color);
-  });
-  y += cardH + 6;
+  drawCardRow([
+    { label: 'Ent. Compania', value: formatMoney(t.entregaCompania), color: COLORS.primary },
+    { label: 'Ent. Ayudante', value: formatMoney(t.entregaAyudante), color: COLORS.primary },
+    { label: 'Total Entregado', value: formatMoney(t.entregaCompania + t.entregaAyudante), color: COLORS.primary },
+  ], 3);
 
-  // ============================
-  // VALIDACION
-  // ============================
-  // Formula: (Produccion - Gastos - Tickets) = (Ent. Ayudante + Ent. Compania)
-  // Nota: production ya incluye cajaComun, por lo tanto NO se suma de nuevo
-  const saldoA = data.totals.production - data.totals.gastos - data.totals.tickets;
-  const saldoB = data.totals.entregaAyudante + data.totals.entregaCompania;
+  // ==================== 5. INDICADORES ====================
+  drawBlockTitle('INDICADORES');
+  const gastoPct = totalIngresos > 0 ? totalEgresos / totalIngresos : 0;
+  drawCardRow([
+    { label: 'Utilidad Neta', value: formatMoney(utilidadNeta), color: utilidadNeta >= 0 ? COLORS.green : [220, 50, 50] },
+    { label: 'Ingreso / Frecuencia', value: formatMoney(ingPorFrec), color: COLORS.dark },
+    { label: 'Ingreso / Dia Lab.', value: formatMoney(ingPorDia), color: COLORS.dark },
+    { label: 'Gasto / Ingreso', value: formatPct(gastoPct), color: gastoPct <= 0.5 ? COLORS.green : gastoPct <= 0.7 ? COLORS.amber : [220, 50, 50] },
+  ], 4);
+
+  // ==================== 6. VALIDACION ====================
+  drawBlockTitle('VALIDACION');
+  const saldoA = t.production - t.gastos - t.tickets;
+  const saldoB = t.entregaAyudante + t.entregaCompania;
   const cuadra = Math.abs(saldoA - saldoB) < 0.01;
-
-  addText('VALIDACION', ml, y, { size: 9, color: COLORS.primary, bold: true });
-  y += 5;
-  addText(`(Produccion ${formatMoney(data.totals.production)}) - (Gastos ${formatMoney(data.totals.gastos)} + Tickets ${formatMoney(data.totals.tickets)}) = ${formatMoney(saldoA)}`, ml, y, { size: 7, color: COLORS.dark });
-  y += 4;
-  addText(`Ent. Ayudante (${formatMoney(data.totals.entregaAyudante)}) + Ent. Compania (${formatMoney(data.totals.entregaCompania)}) = ${formatMoney(saldoB)}`, ml, y, { size: 7, color: COLORS.dark });
+  addText(`(Produccion ${formatMoney(t.production)}) - (Gastos ${formatMoney(t.gastos)} + Tickets ${formatMoney(t.tickets)}) = ${formatMoney(saldoA)}`, ml, y, { size: 6.5, color: COLORS.dark });
+  y += 3.5;
+  addText(`Ent. Ayudante (${formatMoney(t.entregaAyudante)}) + Ent. Compania (${formatMoney(t.entregaCompania)}) = ${formatMoney(saldoB)}`, ml, y, { size: 6.5, color: COLORS.dark });
   y += 4;
   addText(cuadra ? 'Cuadra correctamente' : 'DESCUADRE - verificar registros', ml, y, {
-    size: 8,
-    color: cuadra ? COLORS.green : [248, 113, 113],
-    bold: true,
+    size: 7.5, color: cuadra ? COLORS.green : [248, 113, 113], bold: true,
   });
   y += 8;
 
-  // ============================
-  // TABLA RESUMEN POR DIA
-  // ============================
-  addText('TABLA RESUMEN POR DIA', ml, y, { size: 12, color: COLORS.primary, bold: true });
-  y += 2;
+  // ==================== 7. TABLA RESUMEN POR DIA ====================
+  addText('TABLA RESUMEN POR DIA', ml, y, { size: 10, color: COLORS.primary, bold: true });
+  y += 1.5;
   addLine(ml, w - mr, y);
-  y += 4;
+  y += 3;
 
-  // Table header: Fecha | Produccion | Gastos | E.Compa | E.Ayuda | Total Ent | Km
-  // 22+28+26+28+28+28+20 = 180mm (exacto al area util cw)
-  const colWidths = [22, 28, 26, 28, 28, 28, 20];
+  // Columns: Fecha | Prod. | Gastos | E.Compa | E.Ayuda | Total Ent | Km
+  const colWidths = [22, 28, 26, 28, 28, 28, 20]; // sum = 180
   const colLabels = ['Fecha', 'Produccion', 'Gastos', 'E. Compania', 'E. Ayudante', 'Total Ent.', 'Km'];
   const colAlign: ('left' | 'right')[] = ['left', 'right', 'right', 'right', 'right', 'right', 'right'];
 
-  // Helper: draw one table row (header or data)
   const drawTableRow = (values: string[], isHeader: boolean, isAlt: boolean) => {
-    if (isAlt && !isHeader) {
-      doc.setFillColor(...COLORS.lightRed);
+    const rowH = isHeader ? 7 : 6;
+    if (isAlt || isHeader) {
+      doc.setFillColor(...(isHeader ? COLORS.dark : COLORS.lightRed));
       let rx = ml;
-      colWidths.forEach(cwi => { doc.rect(rx, y - 3, cwi, isHeader ? 7 : 6, 'F'); rx += cwi; });
-    } else if (isHeader) {
-      doc.setFillColor(...COLORS.dark);
-      let rx = ml;
-      colWidths.forEach(cwi => { doc.rect(rx, y - 3, cwi, 7, 'F'); rx += cwi; });
+      colWidths.forEach(cwi => { doc.rect(rx, y - 3, cwi, rowH, 'F'); rx += cwi; });
     }
     let rx = ml;
     values.forEach((val, i) => {
       const align = colAlign[i];
       const xPos = align === 'right' ? rx + colWidths[i] - 2 : rx + 2;
       addText(val, xPos, y + 1.5, {
-        size: 7,
-        color: isHeader ? COLORS.white : COLORS.dark,
-        bold: isHeader,
-        align: align,
+        size: 7, color: isHeader ? COLORS.white : COLORS.dark, bold: isHeader, align,
       });
       rx += colWidths[i];
     });
-    y += (isHeader ? 7 : 6) + 1;
+    y += rowH + 1;
   };
 
-  // Header row
   drawTableRow(colLabels, true, false);
-  y += 8;
+  y += 2;
 
-  // Data rows
   const pageH = doc.internal.pageSize.getHeight();
-  const footerY = 14; // space reserved for footer
-  const tableHeaderH = 12; // space to re-draw header on new page
-  const minY = 15; // top margin after page break
+  const footerY = 14;
+  const minY = 15;
 
   data.dailySummaries.forEach((day, idx) => {
-    const rowH = 6;
-    // Page break: if current row + totals row doesn't fit, start new page
-    if (y + rowH + 14 > pageH - footerY) {
+    if (y + 20 > pageH - footerY) {
       doc.addPage();
       y = minY;
-      // Re-draw table header on new page
       drawTableRow(colLabels, true, false);
+      y += 2;
     }
-    const rowValues = [
+    drawTableRow([
       formatDate(day.date),
       formatMoney(day.totalProduction),
       formatMoney(day.totalGastos),
@@ -308,29 +319,24 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
       formatMoney(day.totalEntregaAyudante),
       formatMoney(day.totalEntregaCompania + day.totalEntregaAyudante),
       day.totalKm.toFixed(0),
-    ];
-    drawTableRow(rowValues, false, idx % 2 === 0);
+    ], false, idx % 2 === 0);
   });
 
   // TOTALS row
   addLine(ml, w - mr, y - 1);
-  // Draw red background for totals
   doc.setFillColor(...COLORS.primary);
   let totalRx = ml;
   colWidths.forEach(cwi => { doc.rect(totalRx, y - 3, cwi, 7, 'F'); totalRx += cwi; });
-
-  const totalValues = [
-    'TOTAL',
-    formatMoney(data.totals.production),
-    formatMoney(data.totals.gastos),
-    formatMoney(data.totals.entregaCompania),
-    formatMoney(data.totals.entregaAyudante),
-    formatMoney(data.totals.entregaCompania + data.totals.entregaAyudante),
-    data.totals.km.toFixed(0),
-  ];
-
   let totalTx = ml;
-  totalValues.forEach((val, i) => {
+  [
+    'TOTAL',
+    formatMoney(t.production),
+    formatMoney(t.gastos),
+    formatMoney(t.entregaCompania),
+    formatMoney(t.entregaAyudante),
+    formatMoney(t.entregaCompania + t.entregaAyudante),
+    t.km.toFixed(0),
+  ].forEach((val, i) => {
     const align = colAlign[i];
     const xPos = align === 'right' ? totalTx + colWidths[i] - 2 : totalTx + 2;
     addText(val, xPos, y + 1.5, { size: 7, color: COLORS.white, bold: true, align });
@@ -338,22 +344,15 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   });
   y += 10;
 
-  // ============================
-  // DETALLE DE FRECUENCIAS (only for diario)
-  // ============================
+  // ==================== 8. DETALLE DE FRECUENCIAS (diario) ====================
   if (data.type === 'diario' && data.dailySummaries.length > 0) {
     const daySummary = data.dailySummaries[0];
+    if (y > 220) { doc.addPage(); y = minY; }
 
-    // Check if we need a new page
-    if (y > 220) {
-      doc.addPage();
-      y = 15;
-    }
-
-    addText('DETALLE DE FRECUENCIAS', ml, y, { size: 12, color: COLORS.primary, bold: true });
-    y += 2;
+    addText('DETALLE DE FRECUENCIAS', ml, y, { size: 10, color: COLORS.primary, bold: true });
+    y += 1.5;
     addLine(ml, w - mr, y);
-    y += 4;
+    y += 3;
 
     daySummary.records.forEach(record => {
       if (record.trips && record.trips.length > 0) {
@@ -362,7 +361,6 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
 
         const tripCols = [10, 50, 50, 35, 35];
         const tripHeaders = ['#', 'Ruta', 'Retorno', 'Produccion', 'Caja Com.'];
-
         doc.setFillColor(...COLORS.dark);
         let ttx = ml;
         tripCols.forEach((cwi, i) => {
@@ -373,27 +371,21 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
         y += 7;
 
         record.trips.forEach((trip: any, ti: number) => {
-          // Page break before trip row
-          if (y + 7 > pageH - footerY) {
-            doc.addPage();
-            y = minY;
-          }
-          const tVals = [
+          if (y + 7 > pageH - footerY) { doc.addPage(); y = minY; }
+          ttx = ml;
+          [
             `${ti + 1}`,
             `${trip.routeFrom} - ${trip.routeTo}`,
             trip.time || '-',
             formatMoney(trip.income),
             formatMoney(trip.boletos),
-          ];
-          ttx = ml;
-          tripCols.forEach((cwi, i) => {
-            addText(tVals[i], ttx + 2, y + 0.5, { size: 7, color: COLORS.dark, align: i >= 3 ? 'right' : 'left' });
-            ttx += cwi;
+          ].forEach((val, i) => {
+            addText(val, ttx + 2, y + 0.5, { size: 7, color: COLORS.dark, align: i >= 3 ? 'right' : 'left' });
+            ttx += tripCols[i];
           });
           y += 5;
         });
 
-        // Trip totals
         const tripTotalProd = record.trips.reduce((s: number, t: any) => s + t.income, 0);
         const tripTotalCaja = record.trips.reduce((s: number, t: any) => s + t.boletos, 0);
         ttx = ml;
@@ -404,24 +396,20 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
         addText(formatMoney(tripTotalCaja), ttx + 2, y + 0.5, { size: 7, color: COLORS.dark, bold: true });
         y += 7;
 
-        // Sobrante (only if non-zero)
         if (record.sobrante && record.sobrante !== 0) {
           addText(`Sobrante: ${formatMoney(record.sobrante)}`, ml, y + 0.5, { size: 7, color: COLORS.green, bold: true });
           y += 6;
         }
       }
 
-      // Expenses
       if (record.expenses && record.expenses.length > 0) {
         addText('Gastos:', ml, y, { size: 8, color: COLORS.dark, bold: true });
         y += 5;
-
         record.expenses.forEach((exp: any) => {
           addText(exp.description, ml + 4, y + 0.5, { size: 7, color: COLORS.dark });
           addText(formatMoney(exp.amount), w - mr - 2, y + 0.5, { size: 7, color: COLORS.dark, align: 'right' });
           y += 4;
         });
-
         addLine(ml, w - mr, y);
         addText('Total Gastos', ml + 4, y + 3, { size: 7, color: COLORS.primary, bold: true });
         addText(formatMoney(record.totalGastos), w - mr - 2, y + 3, { size: 7, color: COLORS.primary, bold: true, align: 'right' });
@@ -430,18 +418,16 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
     });
   }
 
-  // ============================
-  // FOOTER
-  // ============================
+  // ==================== FOOTER ====================
   const totalPages = doc.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
-    const pageH = doc.internal.pageSize.getHeight();
-    addLine(ml, w - mr, pageH - 12);
-    addText('Control de Transporte', ml + cw / 2, pageH - 7, {
+    const ph = doc.internal.pageSize.getHeight();
+    addLine(ml, w - mr, ph - 12);
+    addText('Control de Transporte', ml + cw / 2, ph - 7, {
       size: 7, color: COLORS.plata, align: 'center',
     });
-    addText(`Pagina ${p} de ${totalPages}`, w - mr, pageH - 7, {
+    addText(`Pagina ${p} de ${totalPages}`, w - mr, ph - 7, {
       size: 7, color: COLORS.plata, align: 'right',
     });
   }
