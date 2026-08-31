@@ -255,16 +255,34 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   const colLabels = ['Fecha', 'Produccion', 'Gastos', 'E. Compania', 'E. Ayudante', 'Total Ent.', 'Km'];
   const colAlign: ('left' | 'right')[] = ['left', 'right', 'right', 'right', 'right', 'right', 'right'];
 
+  // Helper: draw one table row (header or data)
+  const drawTableRow = (values: string[], isHeader: boolean, isAlt: boolean) => {
+    if (isAlt && !isHeader) {
+      doc.setFillColor(...COLORS.lightRed);
+      let rx = ml;
+      colWidths.forEach(cwi => { doc.rect(rx, y - 3, cwi, isHeader ? 7 : 6, 'F'); rx += cwi; });
+    } else if (isHeader) {
+      doc.setFillColor(...COLORS.dark);
+      let rx = ml;
+      colWidths.forEach(cwi => { doc.rect(rx, y - 3, cwi, 7, 'F'); rx += cwi; });
+    }
+    let rx = ml;
+    values.forEach((val, i) => {
+      const align = colAlign[i];
+      const xPos = align === 'right' ? rx + colWidths[i] - 2 : rx + 2;
+      addText(val, xPos, y + 1.5, {
+        size: 7,
+        color: isHeader ? COLORS.white : COLORS.dark,
+        bold: isHeader,
+        align: align,
+      });
+      rx += colWidths[i];
+    });
+    y += (isHeader ? 7 : 6) + 1;
+  };
+
   // Header row
-  doc.setFillColor(...COLORS.dark);
-  let tx = ml;
-  colWidths.forEach((cwi, i) => {
-    doc.rect(tx, y - 3, cwi, 7, 'F');
-    const align = colAlign[i];
-    const xPos = align === 'right' ? tx + cwi - 2 : tx + 2;
-    addText(colLabels[i], xPos, y + 1.5, { size: 7, color: COLORS.white, bold: true });
-    tx += cwi;
-  });
+  drawTableRow(colLabels, true, false);
   y += 8;
 
   // Data rows
@@ -280,26 +298,8 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
       doc.addPage();
       y = minY;
       // Re-draw table header on new page
-      doc.setFillColor(...COLORS.dark);
-      let hdrTx = ml;
-      colWidths.forEach((cwi, i) => {
-        doc.rect(hdrTx, y - 3, cwi, 7, 'F');
-        const align = colAlign[i];
-        const xPos = align === 'right' ? hdrTx + cwi - 2 : hdrTx + 2;
-        addText(colLabels[i], xPos, y + 1.5, { size: 7, color: COLORS.white, bold: true });
-        hdrTx += cwi;
-      });
-      y += 8;
+      drawTableRow(colLabels, true, false);
     }
-    if (idx % 2 === 0) {
-      doc.setFillColor(...COLORS.lightRed);
-      tx = ml;
-      colWidths.forEach(cwi => {
-        doc.rect(tx, y - 3, cwi, rowH, 'F');
-        tx += cwi;
-      });
-    }
-
     const rowValues = [
       formatDate(day.date),
       formatMoney(day.totalProduction),
@@ -309,25 +309,15 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
       formatMoney(day.totalEntregaCompania + day.totalEntregaAyudante),
       day.totalKm.toFixed(0),
     ];
-
-    tx = ml;
-    colWidths.forEach((cwi, i) => {
-      const align = colAlign[i];
-      const xPos = align === 'right' ? tx + cwi - 2 : tx + 2;
-      addText(rowValues[i], xPos, y + 1.5, { size: 7, color: COLORS.dark });
-      tx += cwi;
-    });
-    y += rowH + 1;
+    drawTableRow(rowValues, false, idx % 2 === 0);
   });
 
   // TOTALS row
   addLine(ml, w - mr, y - 1);
+  // Draw red background for totals
   doc.setFillColor(...COLORS.primary);
-  tx = ml;
-  colWidths.forEach(cwi => {
-    doc.rect(tx, y - 3, cwi, 7, 'F');
-    tx += cwi;
-  });
+  let totalRx = ml;
+  colWidths.forEach(cwi => { doc.rect(totalRx, y - 3, cwi, 7, 'F'); totalRx += cwi; });
 
   const totalValues = [
     'TOTAL',
@@ -339,12 +329,12 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
     data.totals.km.toFixed(0),
   ];
 
-  tx = ml;
-  colWidths.forEach((cwi, i) => {
+  let totalTx = ml;
+  totalValues.forEach((val, i) => {
     const align = colAlign[i];
-    const xPos = align === 'right' ? tx + cwi - 2 : tx + 2;
-    addText(totalValues[i], xPos, y + 1.5, { size: 7, color: COLORS.white, bold: true });
-    tx += cwi;
+    const xPos = align === 'right' ? totalTx + colWidths[i] - 2 : totalTx + 2;
+    addText(val, xPos, y + 1.5, { size: 7, color: COLORS.white, bold: true, align });
+    totalTx += colWidths[i];
   });
   y += 10;
 

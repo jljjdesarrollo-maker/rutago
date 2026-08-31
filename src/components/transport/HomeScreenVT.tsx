@@ -6,7 +6,7 @@ import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVen
 import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.44.2-sep01-fix-headers-pdf';
+const APP_VERSION = 'v3.44.3-sep01-fix-header-align-pdf';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;
