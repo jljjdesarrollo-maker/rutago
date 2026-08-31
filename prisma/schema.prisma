@@ -43,15 +43,17 @@ model DailyRecord {
 }
 
 model Trip {
-  id           String  @id @default(cuid())
-  recordId     String
-  order        Int
-  routeFrom    String
-  routeTo      String
-  time         String?
-  income       Float   @default(0)
-  efectivoReal Float   @default(0)
-  boletos      Float   @default(0)
+  id                 String  @id @default(cuid())
+  recordId           String
+  order              Int
+  routeFrom          String
+  routeTo            String
+  time               String?
+  income             Float   @default(0)
+  efectivoReal       Float   @default(0)
+  boletos            Float   @default(0)
+  cajaComunPasajeros Int    @default(0)
+  cajaComunMonto     Float   @default(0)
 
   record DailyRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
 }

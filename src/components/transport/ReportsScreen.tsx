@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
-type ReportType = 'diario' | 'semanal' | 'mensual' | 'conductor' | 'rango';
+type ReportType = 'diario' | 'semanal' | 'mensual' | 'conductor' | 'rango' | 'caja-comun';
 
 interface ReportsScreenProps {
   onBack: () => void;
@@ -54,7 +54,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
       } else if (reportType === 'conductor') {
         params.set('conductorId', conductorName);
         if (month) params.set('month', month);
-      } else if (reportType === 'rango') {
+      } else if (reportType === 'rango' || reportType === 'caja-comun') {
         params.set('from', rangeFrom);
         params.set('to', rangeTo);
       }
@@ -63,6 +63,28 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
       if (!res.ok) throw new Error('Error al generar reporte');
 
       const data = await res.json();
+
+      // Caja comun has different data structure
+      if (reportType === 'caja-comun') {
+        if (!data.groups || data.groups.length === 0) {
+          setNoData(true);
+          setGenerating(false);
+          return;
+        }
+        const { generateCajaComunPDF } = await import('@/lib/generate-caja-comun-pdf');
+        const blob = await generateCajaComunPDF(data);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reporte_caja_comun_${rangeFrom}_${rangeTo}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast({ title: 'Reporte generado', description: 'PDF de caja comun descargado.' });
+        setGenerating(false);
+        return;
+      }
 
       if (!data.dailySummaries || data.dailySummaries.length === 0) {
         setNoData(true);
@@ -108,7 +130,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
       else if (reportType === 'conductor') {
         params.set('conductorId', conductorName);
         if (month) params.set('month', month);
-      } else if (reportType === 'rango') {
+      } else if (reportType === 'rango' || reportType === 'caja-comun') {
         params.set('from', rangeFrom);
         params.set('to', rangeTo);
       }
@@ -149,10 +171,11 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
     { key: 'mensual', label: 'Mensual', icon: 'Mes', desc: 'Resumen del mes' },
     { key: 'conductor', label: 'Ayudante', icon: 'Ayud', desc: 'Rendimiento por ayudante' },
     { key: 'rango', label: 'Rango', icon: 'Rgo', desc: 'Desde una fecha hasta otra' },
+    { key: 'caja-comun', label: 'Caja Comun', icon: 'C.C', desc: 'Detalle por frecuencia' },
   ];
 
   // Disable generate button if range missing dates
-  const canGenerate = reportType === 'rango'
+  const canGenerate = reportType === 'rango' || reportType === 'caja-comun'
     ? rangeFrom !== '' && rangeTo !== '' && rangeFrom <= rangeTo
     : true;
 
@@ -233,7 +256,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
               </div>
             )}
 
-            {reportType === 'rango' && (
+            {(reportType === 'rango' || reportType === 'caja-comun') && (
               <div className="space-y-2">
                 <label className="text-xs font-medium text-[#3A3A3A]/70">Desde</label>
                 <Input
@@ -313,6 +336,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
             )}
           </Button>
 
+          {reportType !== 'caja-comun' && (
           <Button
             onClick={handleShareWhatsApp}
             variant="outline"
@@ -321,6 +345,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
             <Share2 className="w-4 h-4 mr-2 text-green-600" />
             Comprimir por WhatsApp
           </Button>
+          )}
         </div>
       </main>
     </div>
