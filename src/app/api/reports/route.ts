@@ -155,6 +155,8 @@ interface CajaComunDayGroup {
   rows: CajaComunTripRow[];
   totalBoletos: number;
   totalMonto: number;
+  entregaCompania: number;
+  tickets: number;
 }
 
 async function handleCajaComunReport(from: string, to: string) {
@@ -211,6 +213,8 @@ async function handleCajaComunReport(from: string, to: string) {
         rows,
         totalBoletos: rows.reduce((s, r) => s + r.boletos, 0),
         totalMonto: rows.reduce((s, r) => s + r.monto, 0),
+        entregaCompania: rec.entregaCompania || 0,
+        tickets: rec.tickets || 0,
       });
     } else if (rec.cajaComun > 0) {
       // Historical: only daily total available
@@ -231,12 +235,16 @@ async function handleCajaComunReport(from: string, to: string) {
         }],
         totalBoletos: 0,
         totalMonto: rec.cajaComun,
+        entregaCompania: rec.entregaCompania || 0,
+        tickets: rec.tickets || 0,
       });
     }
   }
 
   const grandTotalBoletos = groups.reduce((s, g) => s + g.totalBoletos, 0);
   const grandTotalMonto = groups.reduce((s, g) => s + g.totalMonto, 0);
+  const grandTotalEntregaCompania = groups.reduce((s, g) => s + g.entregaCompania, 0);
+  const grandTotalTickets = groups.reduce((s, g) => s + g.tickets, 0);
 
   return NextResponse.json({
     type: 'caja-comun',
@@ -246,6 +254,8 @@ async function handleCajaComunReport(from: string, to: string) {
     totals: {
       boletos: grandTotalBoletos,
       monto: grandTotalMonto,
+      entregaCompania: grandTotalEntregaCompania,
+      tickets: grandTotalTickets,
       recordCount: groups.length,
     },
   });
