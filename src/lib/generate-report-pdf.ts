@@ -164,14 +164,16 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   const cardW = (cw - 8) / 3;
   const cardH = 22;
   const gap = 4;
-  const totalIngresos = data.totals.production + data.totals.cajaComun;
+  // production ya incluye cajaComun + efectivoReal + sobrante
+  const totalIngresos = data.totals.production;
+  const efectivoRuta = data.totals.production - data.totals.cajaComun - data.totals.sobrante;
   const totalEgresos = data.totals.gastos + data.totals.tickets;
 
   // ---- BLOQUE 1: INGRESOS ----
   drawBlockTitle('INGRESOS');
   const ingresoCards: { label: string; value: string; color: readonly number[] }[] = [
     { label: 'Total Ingresos', value: formatMoney(totalIngresos), color: COLORS.primary },
-    { label: 'Total Produccion', value: formatMoney(data.totals.production), color: COLORS.dark },
+    { label: 'Efectivo Ruta', value: formatMoney(efectivoRuta), color: COLORS.dark },
     { label: 'Total Caja Comun', value: formatMoney(data.totals.cajaComun), color: COLORS.dark },
   ];
   // Sobrante only if non-zero
@@ -220,14 +222,15 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   // ============================
   // VALIDACION
   // ============================
-  // Formula: (Produccion + CajaComun - Gastos - Tickets) = (Ent. Ayudante + Ent. Compania)
-  const saldoA = data.totals.production + data.totals.cajaComun - data.totals.gastos - data.totals.tickets;
+  // Formula: (Produccion - Gastos - Tickets) = (Ent. Ayudante + Ent. Compania)
+  // Nota: production ya incluye cajaComun, por lo tanto NO se suma de nuevo
+  const saldoA = data.totals.production - data.totals.gastos - data.totals.tickets;
   const saldoB = data.totals.entregaAyudante + data.totals.entregaCompania;
   const cuadra = Math.abs(saldoA - saldoB) < 0.01;
 
   addText('VALIDACION', ml, y, { size: 9, color: COLORS.primary, bold: true });
   y += 5;
-  addText(`(Produccion ${formatMoney(data.totals.production)} + Caja Com. ${formatMoney(data.totals.cajaComun)}) - (Gastos ${formatMoney(data.totals.gastos)} + Tickets ${formatMoney(data.totals.tickets)}) = ${formatMoney(saldoA)}`, ml, y, { size: 7, color: COLORS.dark });
+  addText(`(Produccion ${formatMoney(data.totals.production)}) - (Gastos ${formatMoney(data.totals.gastos)} + Tickets ${formatMoney(data.totals.tickets)}) = ${formatMoney(saldoA)}`, ml, y, { size: 7, color: COLORS.dark });
   y += 4;
   addText(`Ent. Ayudante (${formatMoney(data.totals.entregaAyudante)}) + Ent. Compania (${formatMoney(data.totals.entregaCompania)}) = ${formatMoney(saldoB)}`, ml, y, { size: 7, color: COLORS.dark });
   y += 4;

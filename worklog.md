@@ -216,3 +216,24 @@ Work Log:
 Stage Summary:
 - La página /print-test fue modificada temporalmente para pruebas
 - Revertir a su estado original
+
+---
+Task ID: 6
+Agent: Main
+Task: Fix doble conteo Caja Común en validación del reporte PDF
+
+Work Log:
+- Analizado descuadre reportado por usuario: 4979.10 vs 3776.70 = gap de 1202.40 (exacto monto caja común)
+- Identificada causa raíz: `production` ya incluye `cajaComun`, pero la fórmula de validación en generate-report-pdf.ts lo sumaba de nuevo
+- Corregido línea 224: `saldoA = production - gastos - tickets` (sin sumar cajaComun de nuevo)
+- Corregido línea 167: `totalIngresos = production` (sin doble conteo)
+- Corregido tarjeta INGRESOS: "Total Produccion" renombrada a "Efectivo Ruta" (muestra production - cajaComun - sobrante)
+- Corregido texto de fórmula impresa en PDF (quitado "+ Caja Com." redundante)
+- Comentario aclaratorio agregado: "production ya incluye cajaComun"
+- Build verificado: cero errores en src/
+
+Stage Summary:
+- Archivo modificado: src/lib/generate-report-pdf.ts
+- Bug: saldoA sumaba cajaComun dos veces (production ya lo contiene)
+- Fix: 4 ediciones (líneas 167, 174-177, 225, 233)
+- Validación ahora cuadra correctamente: (Producción) - (Gastos + Tickets) = Ent. Ayudante + Ent. Compañía
