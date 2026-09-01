@@ -108,22 +108,18 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       const raw = localStorage.getItem(lsKey);
       if (!raw) { setLoading(false); return; }
       const estadosLS = JSON.parse(raw) as FrecuenciaEstado[];
-      const cerradas = estadosLS.filter(e => e.estado === 'cerrada');
-      // Ingresos especiales (no_realizada con monto > 0)
-      const especiales = estadosLS.filter(e => e.estado === 'no_realizada' && (e.ingresoEspecialMonto || 0) > 0);
-      // No realizadas sin ingreso especial
-      const noRealizadas = estadosLS.filter(e => e.estado === 'no_realizada' && (e.ingresoEspecialMonto || 0) <= 0);
-
-      const resumenes: FrecuenciaResumen[] = await Promise.all(
-        cerradas.map(async (e) => {
+      // Preservar el orden original de estadosLS (orden cronologico configurado para el VT,
+      // que incluye frecuencias que cruzan medianoche ej: 23:30 -> 05:10)
+      const resumenes: FrecuenciaResumen[] = [];
+      for (const e of estadosLS) {
+        if (e.estado === 'cerrada') {
           const ventas = await getVentasByFrecuencia(e.estadoId);
           const sistemaTotal = ventas.reduce((s, v) => s + v.cobrado, 0);
-          // Use arqueo data if available (what helper actually counted), else system total
           const efectivo = (e as any).arqueoEfectivo ?? sistemaTotal;
           const diff = efectivo - sistemaTotal;
           const ccCount = (e as any).cajaComunCount || 0;
           const ccMonto = (e as any).cajaComunMonto || 0;
-          return {
+          resumenes.push({
             estadoId: e.estadoId,
             nombre: e.nombre,
             ruta: e.ruta,
@@ -135,50 +131,43 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
             diferencia: diff,
             boletosCaja: ccCount,
             cajaComunMonto: ccMonto,
-          };
-        })
-      );
-
-      // Add ingresos especiales as virtual rows
-      especiales.forEach(e => {
-        resumenes.push({
-          estadoId: e.estadoId,
-          nombre: e.nombre,
-          ruta: e.ruta,
-          hora: e.hora,
-          direccion: e.direccion,
-          ventasCount: 0,
-          totalRecaudado: e.ingresoEspecialMonto || 0,
-          efectivoContado: e.ingresoEspecialMonto || 0,
-          diferencia: 0,
-          boletosCaja: 0,
-          cajaComunMonto: 0,
-          isIngresoEspecial: true,
-          ingresoEspecialNota: e.ingresoEspecialNota,
-          isNoRealizada: true,
-          motivoNoRealizada: e.motivoNoRealizada,
-        });
-      });
-      // Add no realizadas (sin ingreso) as virtual rows
-      noRealizadas.forEach(e => {
-        resumenes.push({
-          estadoId: e.estadoId,
-          nombre: e.nombre,
-          ruta: e.ruta,
-          hora: e.hora,
-          direccion: e.direccion,
-          ventasCount: 0,
-          totalRecaudado: 0,
-          efectivoContado: 0,
-          diferencia: 0,
-          boletosCaja: 0,
-          cajaComunMonto: 0,
-          isNoRealizada: true,
-          motivoNoRealizada: e.motivoNoRealizada,
-        });
-      });
-      // Ordenar cronologicamente por hora
-      resumenes.sort((a, b) => a.hora.localeCompare(b.hora));
+          });
+        } else if (e.estado === 'no_realizada' && (e.ingresoEspecialMonto || 0) > 0) {
+          resumenes.push({
+            estadoId: e.estadoId,
+            nombre: e.nombre,
+            ruta: e.ruta,
+            hora: e.hora,
+            direccion: e.direccion,
+            ventasCount: 0,
+            totalRecaudado: e.ingresoEspecialMonto || 0,
+            efectivoContado: e.ingresoEspecialMonto || 0,
+            diferencia: 0,
+            boletosCaja: 0,
+            cajaComunMonto: 0,
+            isIngresoEspecial: true,
+            ingresoEspecialNota: e.ingresoEspecialNota,
+            isNoRealizada: true,
+            motivoNoRealizada: e.motivoNoRealizada,
+          });
+        } else if (e.estado === 'no_realizada') {
+          resumenes.push({
+            estadoId: e.estadoId,
+            nombre: e.nombre,
+            ruta: e.ruta,
+            hora: e.hora,
+            direccion: e.direccion,
+            ventasCount: 0,
+            totalRecaudado: 0,
+            efectivoContado: 0,
+            diferencia: 0,
+            boletosCaja: 0,
+            cajaComunMonto: 0,
+            isNoRealizada: true,
+            motivoNoRealizada: e.motivoNoRealizada,
+          });
+        }
+      }
       setFrecuencias(resumenes);
     } catch (err) {
       console.error('Error cargando resumen:', err);

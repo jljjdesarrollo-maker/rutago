@@ -1,0 +1,889 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback } from 'react';
+     4→import { type VTSession, type FrecuenciaEstado, type FrecuenciaData, loadPromoConfig } from './types-boletos';
+     5→import { getVentasByFrecuencia, countVentasPendientes, syncVentasSilencioso, deleteVentasByEstadoId } from '@/lib/indexeddb';
+     6→import { matchRuta } from '@/lib/tarifas-data';
+     7→import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck, AlertTriangle, Wrench, Droplets, UserX, Ban, FileText, Truck, CheckCircle, Sparkles } from 'lucide-react';
+     8→
+     9→interface Props {
+    10→  session: VTSession;
+    11→  onOpenFrequency: (estado: FrecuenciaEstado) => void;
+    12→  onGoToArqueo: (estado: FrecuenciaEstado, esUltima: boolean) => void;
+    13→  onGoToArqueoGeneral: () => void;
+    14→  onBack: () => void;
+    15→  onGoToSync: () => void;
+    16→}
+    17→
+    18→const today = () => new Date().toISOString().split('T')[0];
+    19→
+    20→// ─── Colores por ruta para botones de frecuencia ───
+    21→type RutaColorKey = 'el_tambo' | 'la_elvira' | 'yangana' | 'zahuayco' | 'vilcabamba';
+    22→
+    23→const RUTA_BUTTON_COLORS: Record<RutaColorKey, { bg: string; shadow: string; border: string; badge: string; text: string; light: string }> = {
+    24→  el_tambo: {
+    25→    bg: 'bg-blue-600',
+    26→    shadow: 'shadow-blue-200',
+    27→    border: 'border-l-blue-600',
+    28→    badge: 'bg-blue-100 text-blue-700',
+    29→    text: 'text-blue-600',
+    30→    light: 'bg-blue-50',
+    31→  },
+    32→  la_elvira: {
+    33→    bg: 'bg-purple-600',
+    34→    shadow: 'shadow-purple-200',
+    35→    border: 'border-l-purple-600',
+    36→    badge: 'bg-purple-100 text-purple-700',
+    37→    text: 'text-purple-600',
+    38→    light: 'bg-purple-50',
+    39→  },
+    40→  yangana: {
+    41→    bg: 'bg-emerald-600',
+    42→    shadow: 'shadow-emerald-200',
+    43→    border: 'border-l-emerald-600',
+    44→    badge: 'bg-emerald-100 text-emerald-700',
+    45→    text: 'text-emerald-600',
+    46→    light: 'bg-emerald-50',
+    47→  },
+    48→  zahuayco: {
+    49→    bg: 'bg-amber-600',
+    50→    shadow: 'shadow-amber-200',
+    51→    border: 'border-l-amber-600',
+    52→    badge: 'bg-amber-100 text-amber-700',
+    53→    text: 'text-amber-600',
+    54→    light: 'bg-amber-50',
+    55→  },
+    56→  vilcabamba: {
+    57→    bg: 'bg-[#912D26]',
+    58→    shadow: 'shadow-red-200',
+    59→    border: 'border-l-[#912D26]',
+    60→    badge: 'bg-red-100 text-[#912D26]',
+    61→    text: 'text-[#912D26]',
+    62→    light: 'bg-red-50',
+    63→  },
+    64→};
+    65→
+    66→function getRutaColorKey(rutaNombre: string): RutaColorKey {
+    67→  const ruta = matchRuta(rutaNombre).toLowerCase();
+    68→  if (ruta.includes('el tambo')) return 'el_tambo';
+    69→  if (ruta.includes('la elvira')) return 'la_elvira';
+    70→  if (ruta.includes('yangana')) return 'yangana';
+    71→  if (ruta.includes('zahuayco')) return 'zahuayco';
+    72→  return 'vilcabamba';
+    73→}
+    74→
+    75→// ─── LocalStorage helpers for estados (synchronous, reliable) ───
+    76→
+    77→function estadosKey(vtCode: string, fecha: string) {
+    78→  return `rg_estados_${vtCode}_${fecha}`;
+    79→}
+    80→
+    81→function saveEstadosToLS(vtCode: string, fecha: string, estados: FrecuenciaEstado[]) {
+    82→  try {
+    83→    localStorage.setItem(estadosKey(vtCode, fecha), JSON.stringify(estados));
+    84→  } catch (e) { console.error('Error saving estados to LS:', e); }
+    85→}
+    86→
+    87→function loadEstadosFromLS(vtCode: string, fecha: string): FrecuenciaEstado[] | null {
+    88→  try {
+    89→    const raw = localStorage.getItem(estadosKey(vtCode, fecha));
+    90→    return raw ? JSON.parse(raw) : null;
+    91→  } catch { return null; }
+    92→}
+    93→
+    94→function updateEstadoInLS(vtCode: string, fecha: string, estadoId: string, updates: Partial<FrecuenciaEstado>) {
+    95→  const all = loadEstadosFromLS(vtCode, fecha);
+    96→  if (!all) return;
+    97→  const idx = all.findIndex(e => e.estadoId === estadoId);
+    98→  if (idx >= 0) {
+    99→    all[idx] = { ...all[idx], ...updates };
+   100→    saveEstadosToLS(vtCode, fecha, all);
+   101→  }
+   102→}
+   103→
+   104→export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onGoToArqueoGeneral, onBack, onGoToSync }: Props) {
+   105→  const [estados, setEstados] = useState<FrecuenciaEstado[]>([]);
+   106→  const [frecuencias, setFrecuencias] = useState<FrecuenciaData[]>([]);
+   107→  const [loading, setLoading] = useState(true);
+   108→  const [reassigning, setReassigning] = useState<string | null>(null);
+   109→  const [pendingCount, setPendingCount] = useState(0);
+   110→  const [isOnline, setIsOnline] = useState(navigator.onLine);
+   111→  const [syncingForArqueo, setSyncingForArqueo] = useState(false);
+   112→  const [syncDone, setSyncDone] = useState(false);
+   113→  const [noRealizadaModal, setNoRealizadaModal] = useState<FrecuenciaEstado | null>(null);
+   114→  const [motivoSeleccionado, setMotivoSeleccionado] = useState('');
+   115→  const [motivoPersonalizado, setMotivoPersonalizado] = useState('');
+   116→  const [ingresoEspecialNota, setIngresoEspecialNota] = useState('');
+   117→  const [ingresoEspecialMonto, setIngresoEspecialMonto] = useState('');
+   118→  const [confirmNoRealizada, setConfirmNoRealizada] = useState(false);
+   119→  const [allFrecuencias, setAllFrecuencias] = useState<FrecuenciaData[]>([]);
+   120→  const [exitModal, setExitModal] = useState(false);
+   121→  const [cajaComunModal, setCajaComunModal] = useState<FrecuenciaEstado | null>(null);
+   122→  const [cajaComunCount, setCajaComunCount] = useState(0);
+   123→  const [cajaComunMonto, setCajaComunMonto] = useState('');
+   124→  const [cajaComunEsUltima, setCajaComunEsUltima] = useState(false);
+   125→  const fecha = session.fecha || today();
+   126→
+   127→  useEffect(() => {
+   128→    const handle = () => setIsOnline(navigator.onLine);
+   129→    window.addEventListener('online', handle);
+   130→    window.addEventListener('offline', handle);
+   131→    return () => { window.removeEventListener('online', handle); window.removeEventListener('offline', handle); };
+   132→  }, []);
+   133→
+   134→  const loadFrecuencias = useCallback(async () => {
+   135→    try {
+   136→      const res = await fetch(`/api/frecuencias?vtCode=${session.vtCode}`);
+   137→      if (res.ok) {
+   138→        const data = await res.json();
+   139→        setFrecuencias(data);
+   140→
+   141→        // Try loading saved estados from localStorage first
+   142→        const saved = loadEstadosFromLS(session.vtCode, fecha);
+   143→        if (saved && saved.length === data.length) {
+   144→          setEstados(saved);
+   145→        } else {
+   146→          // Create fresh pendiente estados
+   147→          const newEstados: FrecuenciaEstado[] = data.map((f: FrecuenciaData) => ({
+   148→            id: f.id,
+   149→            estadoId: `${fecha}_${f.id}`,
+   150→            frecuenciaId: f.id,
+   151→            nombre: f.nombre,
+   152→            ruta: f.ruta,
+   153→            hora: f.hora,
+   154→            direccion: f.direccion,
+   155→            estado: 'pendiente' as const,
+   156→            ventasCount: 0,
+   157→            totalRecaudado: 0,
+   158→          }));
+   159→          setEstados(newEstados);
+   160→          saveEstadosToLS(session.vtCode, fecha, newEstados);
+   161→        }
+   162→      }
+   163→    } catch (error) {
+   164→      console.error('Error cargando frecuencias:', error);
+   165→      // Fallback: try to restore from localStorage only
+   166→      const saved = loadEstadosFromLS(session.vtCode, fecha);
+   167→      if (saved) setEstados(saved);
+   168→    } finally {
+   169→      setLoading(false);
+   170→    }
+   171→  }, [session.vtCode, fecha]);
+   172→
+   173→  const loadPendingCount = useCallback(async () => {
+   174→    try {
+   175→      const count = await countVentasPendientes();
+   176→      setPendingCount(count);
+   177→    } catch { /* ignore */ }
+   178→  }, []);
+   179→
+   180→  // Reload ventas counts from IndexedDB periodically
+   181→  const refreshVentasCounts = useCallback(async () => {
+   182→    for (const estado of estados) {
+   183→      try {
+   184→        const ventas = await getVentasByFrecuencia(estado.estadoId);
+   185→        // Count ALL ventas (including synced) for display in arqueo
+   186→        const newCount = ventas.length;
+   187→        const newTotal = ventas.reduce((s, v) => s + v.cobrado, 0);
+   188→        if (newCount !== estado.ventasCount || Math.abs(newTotal - estado.totalRecaudado) > 0.01) {
+   189→          updateEstadoInLS(session.vtCode, fecha, estado.estadoId, { ventasCount: newCount, totalRecaudado: newTotal });
+   190→          setEstados(prev => prev.map(e =>
+   191→            e.estadoId === estado.estadoId ? { ...e, ventasCount: newCount, totalRecaudado: newTotal } : e
+   192→          ));
+   193→        }
+   194→      } catch { /* ignore */ }
+   195→    }
+   196→  }, [estados, session.vtCode, fecha]);
+   197→
+   198→  useEffect(() => {
+   199→    loadFrecuencias();
+   200→    loadPendingCount();
+   201→    const interval = setInterval(() => { loadPendingCount(); }, 5000);
+   202→    return () => clearInterval(interval);
+   203→  }, [loadFrecuencias, loadPendingCount]);
+   204→
+   205→  // Refresh counts after initial load and periodically
+   206→  useEffect(() => {
+   207→    if (!loading && estados.length > 0) {
+   208→      refreshVentasCounts();
+   209→      const interval = setInterval(refreshVentasCounts, 5000);
+   210→      return () => clearInterval(interval);
+   211→    }
+   212→  }, [loading, estados.length, refreshVentasCounts]);
+   213→
+   214→  const updateEstado = (estadoId: string, updates: Partial<FrecuenciaEstado>) => {
+   215→    // Update in-memory state
+   216→    setEstados(prev => prev.map(e => e.estadoId === estadoId ? { ...e, ...updates } : e));
+   217→    // Persist to localStorage (synchronous, always reliable)
+   218→    updateEstadoInLS(session.vtCode, fecha, estadoId, updates);
+   219→  };
+   220→
+   221→  // Sequential: frequency available if previous are all cerrada/no_realizada
+   222→  const isFrecuenciaDisponible = (index: number): boolean => {
+   223→    const estado = estados[index];
+   224→    if (!estado) return false;
+   225→    if (estado.estado === 'cerrada' || estado.estado === 'no_realizada') return false;
+   226→    for (let i = 0; i < index; i++) {
+   227→      const prev = estados[i];
+   228→      if (prev && prev.estado !== 'cerrada' && prev.estado !== 'no_realizada') {
+   229→        return false;
+   230→      }
+   231→    }
+   232→    return true;
+   233→  };
+   234→
+   235→  const handleOpen = async (estado: FrecuenciaEstado) => {
+   236→    // GPS invisible: capture coordinates when frequency opens
+   237→    const { getGPSPosition } = await import('@/lib/gps');
+   238→    const gps = await getGPSPosition();
+   239→
+   240→    // Generate random winner position for Viaje Gratis
+   241→    const promoConfig = loadPromoConfig();
+   242→    let ganadorPosicion: number | null = null;
+   243→    if (promoConfig.activa) {
+   244→      const min = promoConfig.rangoMin || 3;
+   245→      const max = promoConfig.rangoMax || 30;
+   246→      ganadorPosicion = Math.floor(Math.random() * (max - min + 1)) + min;
+   247→    }
+   248→
+   249→    const updatedEstado = { ...estado, estado: 'abierta' as const, ganadorPosicion };
+   250→    updateEstado(estado.estadoId, {
+   251→      estado: 'abierta',
+   252→      ganadorPosicion,
+   253→      ...(gps ? { gpsLatStart: gps.lat, gpsLngStart: gps.lng } : {}),
+   254→    });
+   255→    onOpenFrequency(updatedEstado);
+   256→  };
+   257→
+   258→  const handleNoRealizada = (estado: FrecuenciaEstado) => {
+   259→    setNoRealizadaModal(estado);
+   260→    setMotivoSeleccionado('');
+   261→    setMotivoPersonalizado('');
+   262→    setIngresoEspecialNota('');
+   263→    setIngresoEspecialMonto('');
+   264→    setConfirmNoRealizada(false);
+   265→  };
+   266→
+   267→  const confirmNoRealizadaAction = () => {
+   268→    if (!noRealizadaModal) return;
+   269→    const motivo = motivoSeleccionado === 'otro' ? motivoPersonalizado.trim() : motivoSeleccionado;
+   270→    const montoEspecial = parseFloat(ingresoEspecialMonto) || 0;
+   271→    const notaEspecial = ingresoEspecialNota.trim();
+   272→    // Eliminar ventas de esta frecuencia de IndexedDB (no se realizaron)
+   273→    deleteVentasByEstadoId(noRealizadaModal.estadoId).catch(() => {});
+   274→    updateEstado(noRealizadaModal.estadoId, {
+   275→      estado: 'no_realizada',
+   276→      ventasCount: 0,
+   277→      totalRecaudado: montoEspecial,  // si hay ingreso especial, suma al total
+   278→      motivoNoRealizada: motivo || 'Sin especificar',
+   279→      ingresoEspecialNota: notaEspecial || undefined,
+   280→      ingresoEspecialMonto: montoEspecial > 0 ? montoEspecial : undefined,
+   281→    });
+   282→    setNoRealizadaModal(null);
+   283→  };
+   284→
+   285→  // ─── Caja Común (Oficina Loja) ───
+   286→  const handleGoToArqueo = (estado: FrecuenciaEstado, esUltima: boolean) => {
+   287→    // Open caja común modal first, then proceed to arqueo
+   288→    setCajaComunModal(estado);
+   289→    setCajaComunEsUltima(esUltima);
+   290→    // Restore previous values if reopening
+   291→    setCajaComunCount(estado.cajaComunCount || 0);
+   292→    setCajaComunMonto(estado.cajaComunMonto ? estado.cajaComunMonto.toString() : '');
+   293→  };
+   294→
+   295→  const confirmCajaComun = () => {
+   296→    if (!cajaComunModal) return;
+   297→    const montoNum = parseFloat(cajaComunMonto) || 0;
+   298→    // Save caja común data to the estado
+   299→    updateEstado(cajaComunModal.estadoId, {
+   300→      cajaComunCount: cajaComunCount,
+   301→      cajaComunMonto: montoNum,
+   302→    });
+   303→    setCajaComunModal(null);
+   304→    // Proceed to arqueo with the updated estado
+   305→    const updatedEstado = { ...cajaComunModal, cajaComunCount: cajaComunCount, cajaComunMonto: montoNum };
+   306→    onGoToArqueo(updatedEstado, cajaComunEsUltima);
+   307→  };
+   308→
+   309→  // Filtrar frecuencias por origen para reasignación (usa TODAS las frecuencias del sistema)
+   310→  const getFrecuenciasParaReasignar = (estadoId: string): FrecuenciaData[] => {
+   311→    const estadoActual = estados.find(e => e.estadoId === estadoId);
+   312→    if (!estadoActual) return allFrecuencias;
+   313→    // Extraer origen de la ruta: "Vilcabamba - Loja" → "Vilcabamba"
+   314→    const partes = estadoActual.ruta.split(' - ');
+   315→    const origen = partes[0]?.trim().toLowerCase();
+   316→    if (!origen) return allFrecuencias;
+   317→    // Filtrar frecuencias que tengan el mismo origen y ordenar por hora
+   318→    return allFrecuencias
+   319→      .filter(f => {
+   320→        const fPartes = f.ruta.split(' - ');
+   321→        const fOrigen = fPartes[0]?.trim().toLowerCase();
+   322→        return fOrigen === origen;
+   323→      })
+   324→      .sort((a, b) => a.hora.localeCompare(b.hora));
+   325→  };
+   326→
+   327→  const handleReassign = async (estado: FrecuenciaEstado) => {
+   328→    // Cargar todas las frecuencias del sistema si no están cargadas
+   329→    if (allFrecuencias.length === 0) {
+   330→      try {
+   331→        const res = await fetch('/api/frecuencias?all=true');
+   332→        if (res.ok) {
+   333→          const data = await res.json();
+   334→          setAllFrecuencias(data);
+   335→        }
+   336→      } catch { /* usar las que tengamos */ }
+   337→    }
+   338→    setReassigning(estado.estadoId);
+   339→  };
+   340→
+   341→  const handleSelectReassignment = (targetFrec: FrecuenciaData) => {
+   342→    if (!reassigning) return;
+   343→    updateEstado(reassigning, {
+   344→      id: targetFrec.id, frecuenciaId: targetFrec.id,
+   345→      nombre: targetFrec.nombre, ruta: targetFrec.ruta,
+   346→      hora: targetFrec.hora, direccion: targetFrec.direccion,
+   347→      estado: 'pendiente', ventasCount: 0, totalRecaudado: 0,
+   348→    });
+   349→    setReassigning(null);
+   350→  };
+   351→
+   352→  const getStateIcon = (estado: string) => {
+   353→    switch (estado) {
+   354→      case 'pendiente': return <Clock className="w-4 h-4 text-gray-400" />;
+   355→      case 'abierta': return <Play className="w-4 h-4 text-green-500" />;
+   356→      case 'cerrada': return <CheckCircle2 className="w-4 h-4 text-blue-500" />;
+   357→      case 'no_realizada': return <XCircle className="w-4 h-4 text-orange-500" />;
+   358→      default: return null;
+   359→    }
+   360→  };
+   361→
+   362→  const getStateColor = (estado: string) => {
+   363→    switch (estado) {
+   364→      case 'pendiente': return 'bg-gray-100 border-gray-200';
+   365→      case 'abierta': return 'bg-green-50 border-green-200';
+   366→      case 'cerrada': return 'bg-blue-50 border-blue-200';
+   367→      case 'no_realizada': return 'bg-orange-50 border-orange-200';
+   368→      default: return 'bg-gray-100 border-gray-200';
+   369→    }
+   370→  };
+   371→
+   372→  const MOTIVOS_NO_REALIZADA = [
+   373→    { id: 'daño_unidad', label: 'Daño en la unidad', icon: <Truck className="w-4 h-4" />, color: 'text-red-500' },
+   374→    { id: 'mantenimiento', label: 'Mantenimiento', icon: <Wrench className="w-4 h-4" />, color: 'text-blue-500' },
+   375→    { id: 'clima', label: 'Clima / Lluvia', icon: <Droplets className="w-4 h-4" />, color: 'text-cyan-500' },
+   376→    { id: 'sin_pasajeros', label: 'Sin pasajeros', icon: <UserX className="w-4 h-4" />, color: 'text-purple-500' },
+   377→    { id: 'problema_ruta', label: 'Problema en la ruta', icon: <AlertTriangle className="w-4 h-4" />, color: 'text-yellow-500' },
+   378→    { id: 'orden_superior', label: 'Orden superior', icon: <Ban className="w-4 h-4" />, color: 'text-gray-600' },
+   379→    { id: 'ingreso_especial', label: 'Ingreso especial', icon: <Sparkles className="w-4 h-4" />, color: 'text-amber-500' },
+   380→    { id: 'otro', label: 'Otro motivo', icon: <FileText className="w-4 h-4" />, color: 'text-gray-500' },
+   381→  ];
+   382→
+   383→  const getEstadoBadge = (estado: string) => {
+   384→    switch (estado) {
+   385→      case 'pendiente': return <span className="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-600">Pendiente</span>;
+   386→      case 'abierta': return <span className="px-2 py-0.5 rounded-full text-xs bg-green-200 text-green-700">Abierta</span>;
+   387→      case 'cerrada': return <span className="px-2 py-0.5 rounded-full text-xs bg-blue-200 text-blue-700">Cerrada</span>;
+   388→      case 'no_realizada': return <span className="px-2 py-0.5 rounded-full text-xs bg-orange-200 text-orange-700">No Realizada</span>;
+   389→      default: return null;
+   390→    }
+   391→  };
+   392→
+   393→  if (loading) {
+   394→    return (
+   395→      <div className="flex flex-col min-h-[100dvh] bg-gray-50 items-center justify-center">
+   396→        <RefreshCw className="w-8 h-8 text-[#912D26] animate-spin mb-3" />
+   397→        <p className="text-[#3A3A3A]">Cargando frecuencias...</p>
+   398→      </div>
+   399→    );
+   400→  }
+   401→
+   402→  // Check if there are unfinished frequencies (for exit guard)
+   403→  const hasUnfinishedFrecuencias = estados.some(e => e.estado === 'pendiente' || e.estado === 'abierta');
+   404→
+   405→  const handleBack = () => {
+   406→    if (hasUnfinishedFrecuencias) {
+   407→      setExitModal(true);
+   408→    } else {
+   409→      onBack();
+   410→    }
+   411→  };
+   412→
+   413→  // Check if ALL frequencies are done (cerrada or no_realizada)
+   414→  const allFrecuenciasDone = estados.length > 0 && estados.every(e => e.estado === 'cerrada' || e.estado === 'no_realizada');
+   415→
+   416→  // Totals across all frequencies
+   417→  const totalVentasAll = estados.reduce((s, e) => s + e.ventasCount, 0);
+   418→  const totalRecaudadoAll = estados.reduce((s, e) => s + e.totalRecaudado, 0);
+   419→  const cerradasCount = estados.filter(e => e.estado === 'cerrada').length;
+   420→
+   421→  // SYNC control: ALWAYS block arqueo general if there are pending ventas
+   422→  const mustSyncBeforeArqueo = pendingCount > 0;
+   423→
+   424→  const handleSyncForArqueo = async () => {
+   425→    if (!isOnline || syncingForArqueo) return;
+   426→    setSyncingForArqueo(true);
+   427→    try {
+   428→      const result = await syncVentasSilencioso();
+   429→      const remaining = await countVentasPendientes();
+   430→      setPendingCount(remaining);
+   431→      if (remaining === 0) {
+   432→        setSyncDone(true);
+   433→        setTimeout(() => setSyncDone(false), 2000);
+   434→      }
+   435→    } catch { /* ignore */ }
+   436→    setSyncingForArqueo(false);
+   437→  };
+   438→
+   439→  return (
+   440→    <div className="flex flex-col min-h-[100dvh] bg-gray-50">
+   441→      {/* Header */}
+   442→      <div className="bg-[#912D26] text-white px-4 py-3">
+   443→        <div className="flex items-center justify-between mb-2">
+   444→          <div className="flex items-center gap-2">
+   445→            <button onClick={handleBack} className="text-red-100"><ArrowLeft className="w-5 h-5" /></button>
+   446→            <div>
+   447→              <h1 className="text-lg font-bold">Frecuencias</h1>
+   448→              <p className="text-red-100 text-xs">{session.nombre} - {session.ayudanteNombre}</p>
+   449→            </div>
+   450→          </div>
+   451→          <div className="flex items-center gap-2">
+   452→            {isOnline ? <Wifi className="w-4 h-4 text-green-300" /> : <WifiOff className="w-4 h-4 text-red-300" />}
+   453→          </div>
+   454→        </div>
+   455→        <div className="flex items-center gap-2">
+   456→          <div className="flex-1 bg-white/15 rounded-xl px-3 py-1.5 text-sm flex items-center gap-2">
+   457→            {pendingCount > 0 ? (
+   458→              <>
+   459→                <span className="bg-yellow-400 text-yellow-900 text-xs font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>
+   460→                <span className="text-red-100 text-xs">pendientes</span>
+   461→              </>
+   462→            ) : (
+   463→              <span className="text-green-200 text-xs">Sin pendientes</span>
+   464→            )}
+   465→          </div>
+   466→          {pendingCount > 0 && isOnline && (
+   467→            <button onClick={onGoToSync} className="bg-green-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 active:scale-95">
+   468→              <Send className="w-3 h-3" /> SYNC
+   469→            </button>
+   470→          )}
+   471→          {pendingCount > 0 && !isOnline && (
+   472→            <div className="bg-white/10 text-red-200 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1">
+   473→              <WifiOff className="w-3 h-3" /> Sin red
+   474→            </div>
+   475→          )}
+   476→        </div>
+   477→      </div>
+   478→
+   479→      <div className="flex-1 px-4 py-3 space-y-2 overflow-y-auto pb-6">
+   480→        <div className="text-center text-xs text-gray-500 mb-1">
+   481→          {new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+   482→        </div>
+   483→
+   484→        {/* Modal Exit Warning */}
+   485→        {exitModal && (
+   486→          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+   487→            <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
+   488→              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+   489→                <AlertTriangle className="w-8 h-8 text-[#912D26]" />
+   490→              </div>
+   491→              <h3 className="text-lg font-bold text-[#3A3A3A] mb-2">Salir del turno?</h3>
+   492→              <div className="bg-red-50 rounded-xl p-3 mb-4">
+   493→                <p className="text-sm text-[#912D26] font-semibold">
+   494→                  Tienes {estados.filter(e => e.estado === 'abierta').length} frecuencia{estados.filter(e => e.estado === 'abierta').length !== 1 ? 's' : ''} abierta{estados.filter(e => e.estado === 'abierta').length !== 1 ? 's' : ''} y {estados.filter(e => e.estado === 'pendiente').length} pendiente{estados.filter(e => e.estado === 'pendiente').length !== 1 ? 's' : ''}
+   495→                </p>
+   496→              </div>
+   497→              <p className="text-sm text-gray-500 mb-5">
+   498→                Si sales, el progreso se conservará y podrás continuar cuando vuelvas a ingresar.
+   499→              </p>
+   500→              <div className="flex gap-2">
+   501→                <button onClick={() => setExitModal(false)}
+   502→                  className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-bold text-sm active:scale-[0.98] shadow-lg shadow-red-200">
+   503→                  Cancelar
+   504→                </button>
+   505→                <button onClick={() => { setExitModal(false); onBack(); }}
+   506→                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold text-sm active:scale-[0.98]">
+   507→                  Salir
+   508→                </button>
+   509→              </div>
+   510→            </div>
+   511→          </div>
+   512→        )}
+   513→
+   514→        {/* Reassign modal */}
+   515→        {reassigning && (
+   516→          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+   517→            <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 max-h-[80vh] overflow-y-auto">
+   518→              <h3 className="text-lg font-bold text-[#3A3A3A] mb-1">Reasignar Horario</h3>
+   519→              <p className="text-sm text-gray-500 mb-4">
+   520→                Rutas desde <strong className="text-[#912D26]">{estados.find(e => e.estadoId === reassigning)?.ruta.split(' - ')[0]?.trim()}</strong>
+   521→              </p>
+   522→              <div className="space-y-2">
+   523→                {getFrecuenciasParaReasignar(reassigning).map(target => (
+   524→                  <button key={target.id} onClick={() => handleSelectReassignment(target)}
+   525→                    className="w-full p-4 rounded-xl border border-gray-200 hover:bg-[#912D26]/5 hover:border-[#912D26]/30 transition-all text-left">
+   526→                    <div className="flex items-center justify-between">
+   527→                      <div>
+   528→                        <div className="font-semibold text-[#3A3A3A]">{target.nombre}</div>
+   529→                        <div className="text-sm text-gray-500">{target.ruta}</div>
+   530→                      </div>
+   531→                      <div className="text-right">
+   532→                        <div className="text-lg font-bold text-[#912D26]">{target.hora}</div>
+   533→                        <div className="text-xs text-gray-400">{target.direccion}</div>
+   534→                      </div>
+   535→                    </div>
+   536→                  </button>
+   537→                ))}
+   538→              </div>
+   539→              <button onClick={() => setReassigning(null)}
+   540→                className="w-full mt-4 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold">Cancelar</button>
+   541→            </div>
+   542→          </div>
+   543→        )}
+   544→
+   545→        {/* Modal No Realizada - Selección de motivo */}
+   546→        {noRealizadaModal && !confirmNoRealizada && (
+   547→          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+   548→            <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+   549→              <div className="flex items-center gap-3 mb-4">
+   550→                <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+   551→                  <XCircle className="w-5 h-5 text-orange-500" />
+   552→                </div>
+   553→                <div>
+   554→                  <h3 className="text-lg font-bold text-[#3A3A3A]">No Realizada</h3>
+   555→                  <p className="text-xs text-gray-500">{noRealizadaModal.hora} — {noRealizadaModal.nombre}</p>
+   556→                </div>
+   557→              </div>
+   558→              <p className="text-sm text-gray-600 mb-4">Selecciona el motivo por el cual no se realizó esta frecuencia:</p>
+   559→              <div className="space-y-2">
+   560→                {MOTIVOS_NO_REALIZADA.map(m => (
+   561→                  <button key={m.id} onClick={() => { setMotivoSeleccionado(m.id); if (m.id !== 'otro') setMotivoPersonalizado(''); }}
+   562→                    className={`w-full p-3 rounded-xl border-2 text-left flex items-center gap-3 transition-all active:scale-[0.98] ${
+   563→                      motivoSeleccionado === m.id ? 'border-orange-400 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
+   564→                    }`}>
+   565→                    <span className={m.color}>{m.icon}</span>
+   566→                    <span className="text-sm font-semibold text-[#3A3A3A]">{m.label}</span>
+   567→                    {motivoSeleccionado === m.id && <span className="ml-auto text-orange-500 font-bold">✓</span>}
+   568→                  </button>
+   569→                ))}
+   570→              </div>
+   571→              {/* Campo personalizado (Otro) */}
+   572→              {motivoSeleccionado === 'otro' && (
+   573→                <div className="mt-3">
+   574→                  <input type="text" placeholder="Escribe el motivo..." value={motivoPersonalizado}
+   575→                    onChange={e => setMotivoPersonalizado(e.target.value)}
+   576→                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-sm text-[#3A3A3A] focus:outline-none focus:border-orange-400"
+   577→                    autoFocus />
+   578→                </div>
+   579→              )}
+   580→              {/* Campos Ingreso Especial */}
+   581→              {motivoSeleccionado === 'ingreso_especial' && (
+   582→                <div className="mt-3 space-y-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
+   583→                  <p className="text-xs text-amber-700 font-semibold">Registra el ingreso de este viaje especial</p>
+   584→                  <input type="text" placeholder="Nota (ej: Viaje al Cisne, Contratación...)" value={ingresoEspecialNota}
+   585→                    onChange={e => setIngresoEspecialNota(e.target.value)}
+   586→                    className="w-full px-4 py-3 rounded-xl border-2 border-amber-200 text-sm text-[#3A3A3A] focus:outline-none focus:border-amber-400 bg-white"
+   587→                    autoFocus />
+   588→                  <div className="relative">
+   589→                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-black text-lg">$</span>
+   590→                    <input
+   591→                      type="number"
+   592→                      inputMode="decimal"
+   593→                      step="0.05"
+   594→                      placeholder="0.00"
+   595→                      value={ingresoEspecialMonto}
+   596→                      onChange={e => setIngresoEspecialMonto(e.target.value)}
+   597→                      className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-amber-200 text-lg font-black text-[#3A3A3A] text-center focus:outline-none focus:border-amber-400 bg-white"
+   598→                    />
+   599→                  </div>
+   600→                </div>
+   601→              )}
+   602→              <div className="flex gap-2 mt-5">
+   603→                <button onClick={() => setNoRealizadaModal(null)}
+   604→                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Cancelar</button>
+   605→                <button
+   606→                  onClick={() => {
+   607→                    const isValid = motivoSeleccionado &&
+   608→                      (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim()) &&
+   609→                      (motivoSeleccionado !== 'ingreso_especial' || ingresoEspecialNota.trim());
+   610→                    if (isValid) {
+   611→                      confirmNoRealizadaAction();
+   612→                    }
+   613→                  }}
+   614→                  disabled={
+   615→                    !motivoSeleccionado ||
+   616→                    (motivoSeleccionado === 'otro' && !motivoPersonalizado.trim()) ||
+   617→                    (motivoSeleccionado === 'ingreso_especial' && !ingresoEspecialNota.trim())
+   618→                  }
+   619→                  className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
+   620→                    motivoSeleccionado &&
+   621→                    (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim()) &&
+   622→                    (motivoSeleccionado !== 'ingreso_especial' || ingresoEspecialNota.trim())
+   623→                      ? (motivoSeleccionado === 'ingreso_especial' ? 'bg-amber-500 text-white shadow-lg shadow-amber-200' : 'bg-orange-500 text-white shadow-lg shadow-orange-200')
+   624→                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+   625→                  }`}>
+   626→                  <XCircle className="w-4 h-4" /> Confirmar
+   627→                </button>
+   628→              </div>
+   629→            </div>
+   630→          </div>
+   631→        )}
+   632→
+   633→        {/* ─── Modal Caja Común (Oficina Loja) ─── */}
+   634→        {cajaComunModal && (
+   635→          <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+   636→            <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6">
+   637→              <div className="flex items-center gap-3 mb-4">
+   638→                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+   639→                  <DollarSign className="w-5 h-5 text-purple-600" />
+   640→                </div>
+   641→                <div>
+   642→                  <h3 className="text-lg font-bold text-[#3A3A3A]">Arqueo: {cajaComunModal.hora}</h3>
+   643→                  <p className="text-xs text-gray-500">{cajaComunModal.nombre}</p>
+   644→                </div>
+   645→              </div>
+   646→
+   647→              <p className="text-sm font-bold text-[#3A3A3A] mb-3">Caja Comun (Ofi. Loja)</p>
+   648→              <p className="text-xs text-gray-500 mb-3">Boletos fisicos recogidos de oficina Loja</p>
+   649→
+   650→              {/* Contador de pasajeros */}
+   651→              <div className="flex items-center gap-3 mb-4">
+   652→                <span className="text-sm text-gray-600 font-medium w-24">Pasajeros:</span>
+   653→                <div className="flex items-center gap-2">
+   654→                  <button onClick={() => setCajaComunCount(Math.max(0, cajaComunCount - 1))}
+   655→                    className="w-12 h-12 rounded-xl bg-gray-100 text-gray-600 font-black text-xl flex items-center justify-center active:scale-95 border-2 border-gray-200">-</button>
+   656→                  <span className="w-12 text-center font-black text-2xl text-[#3A3A3A]">{cajaComunCount}</span>
+   657→                  <button onClick={() => setCajaComunCount(cajaComunCount + 1)}
+   658→                    className="w-12 h-12 rounded-xl bg-purple-100 text-purple-700 font-black text-xl flex items-center justify-center active:scale-95 border-2 border-purple-200">+</button>
+   659→                </div>
+   660→              </div>
+   661→
+   662→              {/* Monto manual */}
+   663→              <div className="mb-5">
+   664→                <span className="text-sm text-gray-600 font-medium">Total (suma de boletos fisicos):</span>
+   665→                <div className="relative mt-1">
+   666→                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-black text-xl">$</span>
+   667→                  <input
+   668→                    type="number"
+   669→                    inputMode="decimal"
+   670→                    step="0.05"
+   671→                    placeholder="0.00"
+   672→                    value={cajaComunMonto}
+   673→                    onChange={e => setCajaComunMonto(e.target.value)}
+   674→                    className="w-full pl-10 pr-4 py-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-xl font-black text-[#3A3A3A] text-center focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400"
+   675→                  />
+   676→                </div>
+   677→              </div>
+   678→
+   679→              <div className="flex gap-2">
+   680→                <button onClick={() => { setCajaComunModal(null); /* Skip caja comun, go directly to arqueo */ onGoToArqueo(cajaComunModal, cajaComunEsUltima); }}
+   681→                  className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-semibold active:scale-[0.98]">Sin boletos</button>
+   682→                <button onClick={confirmCajaComun}
+   683→                  className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-black active:scale-[0.98] shadow-lg shadow-red-200">
+   684→                  Continuar
+   685→                </button>
+   686→              </div>
+   687→            </div>
+   688→          </div>
+   689→        )}
+   690→
+   691→        {estados.length === 0 ? (
+   692→          <div className="text-center py-12">
+   693→            <p className="text-gray-400">No hay frecuencias configuradas</p>
+   694→          </div>
+   695→        ) : (
+   696→          estados.map((estado, index) => {
+   697→            const disponible = isFrecuenciaDisponible(index);
+   698→            const esUltimaFrec = index === estados.length - 1;
+   699→            const bloqueada = !disponible && estado.estado === 'pendiente';
+   700→            const rutaColor = RUTA_BUTTON_COLORS[getRutaColorKey(estado.ruta)];
+   701→
+   702→            return (
+   703→              <div key={estado.estadoId} className={`rounded-2xl border border-l-4 p-3 transition-all ${
+   704→                bloqueada
+   705→                  ? 'bg-gray-50 border-gray-100 border-l-gray-300 opacity-50'
+   706→                  : estado.estado === 'abierta'
+   707→                    ? `${rutaColor.light} ${rutaColor.border}`
+   708→                    : `${getStateColor(estado.estado)} ${rutaColor.border}`
+   709→              }`}>
+   710→                <div className="flex items-center justify-between mb-2">
+   711→                  <div className="flex items-center gap-2">
+   712→                    {getStateIcon(estado.estado)}
+   713→                    <div>
+   714→                      <span className="font-bold text-[#3A3A3A]">{estado.hora}</span>
+   715→                      <span className="text-sm text-gray-500 ml-2">{estado.nombre}</span>
+   716→                    </div>
+   717→                  </div>
+   718→                  <div className="flex items-center gap-2">
+   719→                    {getEstadoBadge(estado.estado)}
+   720→                    {bloqueada && <span className="text-xs text-gray-400">🔒</span>}
+   721→                  </div>
+   722→                </div>
+   723→                <div className="text-xs text-gray-500 mb-1">{estado.ruta} · {estado.direccion}</div>
+   724→                {/* Stats bar: boletos + recaudado - visible when has sales or is cerrada */}
+   725→                {(estado.ventasCount > 0 || estado.estado === 'cerrada') && (
+   726→                  <div className="flex gap-3 mb-2">
+   727→                    <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded-lg text-xs font-bold">
+   728→                      <Ticket className="w-3 h-3" />
+   729→                      <span>{estado.ventasCount} boleto{estado.ventasCount !== 1 ? 's' : ''}</span>
+   730→                    </div>
+   731→                    <div className={`flex items-center gap-1 ${rutaColor.badge} px-2 py-1 rounded-lg text-xs font-bold`}>
+   732→                      <DollarSign className="w-3 h-3" />
+   733→                      <span>${estado.totalRecaudado.toFixed(2)}</span>
+   734→                    </div>
+   735→                  </div>
+   736→                )}
+   737→                <div className="flex gap-2">
+   738→                  {/* PENDIENTE + disponible */}
+   739→                  {estado.estado === 'pendiente' && disponible && (
+   740→                    <>
+   741→                      <button onClick={() => handleOpen(estado)} className={`flex-1 py-3.5 rounded-xl ${rutaColor.bg} text-white font-bold text-sm flex items-center justify-center gap-1.5 active:scale-[0.97] shadow-md ${rutaColor.shadow}`}>
+   742→                        <Play className="w-4 h-4" /> Vender
+   743→                      </button>
+   744→                      <button onClick={() => handleNoRealizada(estado)} className="py-3.5 px-4 rounded-xl bg-orange-100 text-orange-600 font-bold text-sm flex items-center gap-1.5 active:scale-[0.97]" title="No Realizada">
+   745→                        <XCircle className="w-4 h-4" />
+   746→                      </button>
+   747→                      <button onClick={() => handleReassign(estado)} className="py-3.5 px-4 rounded-xl bg-gray-200 text-gray-600 font-bold text-sm flex items-center gap-1.5 active:scale-[0.97]" title="Reasignar">
+   748→                        <RotateCcw className="w-4 h-4" />
+   749→                      </button>
+   750→                    </>
+   751→                  )}
+   752→                  {/* ABIERTA: Seguir Vendiendo + Arqueo directo */}
+   753→                  {estado.estado === 'abierta' && (
+   754→                    <>
+   755→                      <button onClick={() => onOpenFrequency(estado)} className={`flex-1 py-2 rounded-xl ${rutaColor.bg} text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]`}>
+   756→                        <ChevronRight className="w-4 h-4" /> Seguir Vendiendo
+   757→                      </button>
+   758→                      <button onClick={() => handleGoToArqueo(estado, esUltimaFrec)} className="flex-1 py-2 rounded-xl bg-blue-600 text-white font-semibold text-sm flex items-center justify-center gap-1 active:scale-[0.98]">
+   759→                        <CheckCircle2 className="w-4 h-4" /> Arqueo
+   760→                      </button>
+   761→                    </>
+   762→                  )}
+   763→                  {/* CERRADA */}
+   764→                  {estado.estado === 'cerrada' && (
+   765→                    <div className="flex-1 flex items-center justify-center">
+   766→                      <span className="text-xs text-green-600 font-bold flex items-center gap-1">
+   767→                        <CheckCircle2 className="w-4 h-4" /> Cerrada
+   768→                      </span>
+   769→                    </div>
+   770→                  )}
+   771→                  {/* NO REALIZADA */}
+   772→                  {estado.estado === 'no_realizada' && (
+   773→                    <div className="flex-1 flex items-center gap-1.5">
+   774→                      {estado.ingresoEspecialMonto && estado.ingresoEspecialMonto > 0 ? (
+   775→                        <>
+   776→                          <Sparkles className="w-4 h-4 text-amber-500" />
+   777→                          <span className="text-xs font-bold text-amber-700 truncate">{estado.ingresoEspecialNota || 'Ingreso especial'}</span>
+   778→                          <span className="text-xs font-black text-amber-600 ml-auto">${estado.ingresoEspecialMonto.toFixed(2)}</span>
+   779→                        </>
+   780→                      ) : (
+   781→                        <>
+   782→                          <XCircle className="w-4 h-4" />
+   783→                          <span className="text-sm text-orange-600 font-semibold">{estado.motivoNoRealizada || 'No realizada'}</span>
+   784→                        </>
+   785→                      )}
+   786→                    </div>
+   787→                  )}
+   788→                  {/* BLOQUEADA */}
+   789→                  {bloqueada && (
+   790→                    <div className="text-sm text-gray-400">Espera arqueo anterior</div>
+   791→                  )}
+   792→                </div>
+   793→              </div>
+   794→            );
+   795→          })
+   796→        )}
+   797→      </div>
+   798→
+   799→      {/* ─── Arqueo General del VT ─── */}
+   800→      {allFrecuenciasDone && cerradasCount > 0 && (
+   801→        <div className="px-4 pb-3">
+   802→          <div className="bg-gradient-to-r from-[#912D26] to-[#b33d34] rounded-2xl p-4 shadow-lg shadow-red-200/50">
+   803→            <div className="flex items-center gap-2 mb-3">
+   804→              <ClipboardCheck className="w-5 h-5 text-white" />
+   805→              <h3 className="text-white font-bold text-sm">Todas las frecuencias completadas</h3>
+   806→            </div>
+   807→            <div className="flex gap-4 mb-3 text-white">
+   808→              <div>
+   809→                <p className="text-white/60 text-[10px]">Total Boletos</p>
+   810→                <p className="font-black text-lg leading-tight">{totalVentasAll}</p>
+   811→              </div>
+   812→              <div>
+   813→                <p className="text-white/60 text-[10px]">Total Recaudado</p>
+   814→                <p className="font-black text-lg leading-tight">${totalRecaudadoAll.toFixed(2)}</p>
+   815→              </div>
+   816→              <div>
+   817→                <p className="text-white/60 text-[10px]">Cerradas</p>
+   818→                <p className="font-black text-lg leading-tight">{cerradasCount}/{estados.length}</p>
+   819→              </div>
+   820→            </div>
+   821→            {mustSyncBeforeArqueo ? (
+   822→              isOnline ? (
+   823→                <>
+   824→                  <div className="flex items-center gap-2 mb-2">
+   825→                    <AlertTriangle className="w-4 h-4 text-yellow-200" />
+   826→                    <p className="text-white/90 text-xs font-semibold">Tienes {pendingCount} venta{pendingCount !== 1 ? 's' : ''} sin sincronizar. Debes sincronizar antes del arqueo.</p>
+   827→                  </div>
+   828→                  {syncDone ? (
+   829→                    <div className="w-full py-4 rounded-xl bg-green-500 text-white font-black text-base flex items-center justify-center gap-2 shadow-md">
+   830→                      <CheckCircle className="w-5 h-5" />
+   831→                      ¡TODO SINCRONIZADO!
+   832→                    </div>
+   833→                  ) : (
+   834→                    <button
+   835→                      onClick={handleSyncForArqueo}
+   836→                      disabled={syncingForArqueo}
+   837→                      className="w-full py-4 rounded-xl bg-white text-[#912D26] font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] shadow-md disabled:opacity-70">
+   838→                      {syncingForArqueo ? (
+   839→                        <><RefreshCw className="w-5 h-5 animate-spin" /> SINCRONIZANDO {pendingCount} VENTAS...</>
+   840→                      ) : (
+   841→                        <><Send className="w-5 h-5" /> SINCRONIZAR {pendingCount} VENTAS</>
+   842→                      )}
+   843→                    </button>
+   844→                  )}
+   845→                </>
+   846→              ) : (
+   847→                <>
+   848→                  <div className="flex items-center gap-2 mb-2">
+   849→                    <WifiOff className="w-4 h-4 text-red-200" />
+   850→                    <p className="text-white/90 text-xs font-semibold">Tienes {pendingCount} venta{pendingCount !== 1 ? 's' : ''} sin sincronizar.</p>
+   851→                  </div>
+   852→                  <div className="w-full py-4 rounded-xl bg-white/20 text-white font-black text-base flex items-center justify-center gap-2">
+   853→                    <WifiOff className="w-5 h-5" />
+   854→                    SIN INTERNET — CONECTA PARA SINCRONIZAR
+   855→                  </div>
+   856→                </>
+   857→              )
+   858→            ) : (
+   859→              <button
+   860→                onClick={onGoToArqueoGeneral}
+   861→                className="w-full py-4 rounded-xl bg-white text-[#912D26] font-black text-base flex items-center justify-center gap-2 active:scale-[0.98] shadow-md">
+   862→                <ClipboardCheck className="w-5 h-5" />
+   863→                ARQUEO GENERAL DEL {session.nombre}
+   864→              </button>
+   865→            )}
+   866→            {mustSyncBeforeArqueo && !isOnline && (
+   867→              <p className="text-white/60 text-[10px] text-center mt-2">Conecta a internet y sincroniza todas las ventas antes del arqueo general</p>
+   868→            )}
+   869→          </div>
+   870→        </div>
+   871→      )}
+   872→
+   873→      {/* Sync button */}
+   874→      {pendingCount > 0 && (
+   875→        <div className="p-3 border-t border-gray-200 bg-white">
+   876→          <button onClick={onGoToSync}
+   877→            className={`w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] ${
+   878→              isOnline ? 'bg-green-600 text-white shadow-lg shadow-green-200' : 'bg-gray-200 text-gray-400'
+   879→            }`}
+   880→            disabled={!isOnline}>
+   881→            <Send className="w-5 h-5" />
+   882→            {isOnline ? `SINCRONIZAR ${pendingCount} VENTAS` : `SIN INTERNET — ${pendingCount} VENTAS PENDIENTES`}
+   883→          </button>
+   884→        </div>
+   885→      )}
+   886→    </div>
+   887→  );
+   888→}
+   889→
