@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
     const uniqueVtCodes = [...new Set(records.map(r => r.vtCode).filter((v): v is string => !!v))];
     const vtFrecCounts: Record<string, number> = {};
     if (uniqueVtCodes.length > 0) {
+      // 1. Intentar desde tabla Frecuencia
       const frecCounts = await Promise.all(
         uniqueVtCodes.map(vt =>
           db.frecuencia.count({ where: { vtCode: vt, activo: true } })
@@ -87,6 +88,20 @@ export async function GET(req: NextRequest) {
         )
       );
       frecCounts.forEach(f => { vtFrecCounts[f.vt] = f.count; });
+
+      // 2. Fallback: para VTs con count=0, leer del JSON de BusVT.frecuencias
+      const vtsWithoutFrec = uniqueVtCodes.filter(vt => (vtFrecCounts[vt] || 0) === 0);
+      if (vtsWithoutFrec.length > 0) {
+        const busesVT = await db.busVT.findMany({
+          where: { codigo: { in: vtsWithoutFrec } },
+        });
+        busesVT.forEach(bus => {
+          const arr = Array.isArray(bus.frecuencias) ? bus.frecuencias : [];
+          if (arr.length > 0) {
+            vtFrecCounts[bus.codigo] = arr.length;
+          }
+        });
+      }
     }
 
     // Calculate days in period
@@ -153,6 +168,14 @@ export async function GET(req: NextRequest) {
     const totalProduction = records.reduce((s, r) => s + r.production, 0);
     const totalGastos = records.reduce((s, r) => s + r.totalGastos, 0);
 
+    // Motivos de pérdida (no realizadas)
+    const allTrips = records.flatMap(r => r.trips);
+    const motivosMap: Record<string, number> = {};
+    allTrips.filter(t => t.tipo === 'no_realizada' && t.motivo).forEach(t => {
+      motivosMap[t.motivo] = (motivosMap[t.motivo] || 0) + 1;
+    });
+    const motivosPerdida = Object.entries(motivosMap).map(([motivo, count]) => ({ motivo, count })).sort((a, b) => b.count - a.count);
+
     return NextResponse.json({
       type,
       startDate,
@@ -174,6 +197,7 @@ export async function GET(req: NextRequest) {
         frecRealizadas: totalFrecRealizadas,
         frecNoRealizadas: dailySummaries.reduce((s, d) => s + d.frecNoRealizadas, 0),
         frecIngresoEspecial: dailySummaries.reduce((s, d) => s + d.frecIngresoEspecial, 0),
+        motivosPerdida,
         // Derived KPIs
         asistencia: daysInPeriod > 0 ? daysWorked / daysInPeriod : 0,
         cumplimiento: totalFrecProgramadas > 0 ? totalFrecRealizadas / totalFrecProgramadas : 0,

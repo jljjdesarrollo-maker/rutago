@@ -54,6 +54,11 @@ interface DailySummary {
   frecIngresoEspecial?: number;
 }
 
+interface MotivoPerdida {
+  motivo: string;
+  count: number;
+}
+
 interface ReportData {
   type: string;
   startDate: string;
@@ -75,6 +80,7 @@ interface ReportData {
     frecRealizadas?: number;
     frecNoRealizadas?: number;
     frecIngresoEspecial?: number;
+    motivosPerdida?: MotivoPerdida[];
     asistencia?: number;
     cumplimiento?: number;
     ingresoPorFrecuencia?: number;
@@ -208,26 +214,41 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   const cumplimiento = t.cumplimiento ?? (frecProg > 0 ? frecReal / frecProg : 0);
   const ingPorFrec = t.ingresoPorFrecuencia ?? (frecReal > 0 ? totalIngresos / frecReal : 0);
   const ingPorDia = t.ingresoPorDia ?? (daysWorked > 0 ? totalIngresos / daysWorked : 0);
+  const motivosPerdida = t.motivosPerdida || [];
 
   // ==================== 1. OPERATIVO ====================
-  drawBlockTitle('OPERATIVO');
+  drawBlockTitle('1. OPERATIVO - Se opero?');
   const opCards = [
     { label: 'Dias del Periodo', value: `${daysInPeriod}`, color: COLORS.dark },
     { label: 'Dias Laborados', value: `${daysWorked}`, color: COLORS.dark },
     { label: 'Asistencia', value: formatPct(asistencia), color: pctColor(asistencia) },
     { label: 'Frec. Programadas', value: `${frecProg}`, color: COLORS.dark },
+  ];
+  drawCardRow(opCards, 4);
+  const opCards2 = [
     { label: 'Frec. Realizadas', value: `${frecReal}`, color: COLORS.green },
     { label: 'No Realizadas', value: `${frecNoReal}`, color: frecNoReal > 0 ? [220, 50, 50] : COLORS.dark },
     { label: 'Ing. Especiales', value: `${frecEsp}`, color: COLORS.amber },
     { label: 'Cumplimiento', value: formatPct(cumplimiento), color: pctColor(cumplimiento) },
   ];
-  drawCardRow(opCards, 4);
-  if (frecEsp > 0 || frecNoReal > 0) {
-    drawCardRow(opCards.slice(4), opCards.length - 4);
+  drawCardRow(opCards2, 4);
+
+  // Motivos de perdida (solo si hay)
+  if (motivosPerdida.length > 0) {
+    y += 1;
+    const totalNoReal = motivosPerdida.reduce((s, m) => s + m.count, 0);
+    addText(`Motivos de perdida (${totalNoReal} freq.):`, ml, y, { size: 7, color: [220, 50, 50], bold: true });
+    y += 3.5;
+    motivosPerdida.forEach(m => {
+      const pctMotivo = totalNoReal > 0 ? (m.count / totalNoReal * 100).toFixed(0) : '0';
+      addText(`  - ${m.motivo}: ${m.count} (${pctMotivo}%)`, ml + 4, y, { size: 6.5, color: COLORS.dark });
+      y += 3;
+    });
+    y += 2;
   }
 
-  // ==================== 2. INGRESOS ====================
-  drawBlockTitle('INGRESOS');
+  // ==================== 2. RESULTADO FINANCIERO ====================
+  drawBlockTitle('2. RESULTADO FINANCIERO - Cuanto quedo?');
   const ingCards: { label: string; value: string; color: readonly number[] }[] = [
     { label: 'Total Ingresos', value: formatMoney(totalIngresos), color: COLORS.primary },
     { label: 'Efectivo Ruta', value: formatMoney(efectivoRuta), color: COLORS.dark },
@@ -239,7 +260,7 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   drawCardRow(ingCards, ingCards.length);
 
   // ==================== 3. EGRESOS ====================
-  drawBlockTitle('EGRESOS');
+  drawBlockTitle('3. EGRESOS - Cuanto salio?');
   drawCardRow([
     { label: 'Total Egresos', value: formatMoney(totalEgresos), color: COLORS.dark },
     { label: 'Total Gastos', value: formatMoney(t.gastos), color: COLORS.dark },
@@ -247,7 +268,7 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   ], 3);
 
   // ==================== 4. ENTREGAS ====================
-  drawBlockTitle('ENTREGAS');
+  drawBlockTitle('4. ENTREGAS - Donde quedo el dinero?');
   drawCardRow([
     { label: 'Ent. Compania', value: formatMoney(t.entregaCompania), color: COLORS.primary },
     { label: 'Ent. Ayudante', value: formatMoney(t.entregaAyudante), color: COLORS.primary },
@@ -255,7 +276,7 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   ], 3);
 
   // ==================== 5. INDICADORES ====================
-  drawBlockTitle('INDICADORES');
+  drawBlockTitle('5. INDICADORES - Eficiencia');
   const gastoPct = totalIngresos > 0 ? totalEgresos / totalIngresos : 0;
   drawCardRow([
     { label: 'Utilidad Neta', value: formatMoney(utilidadNeta), color: utilidadNeta >= 0 ? COLORS.green : [220, 50, 50] },
@@ -265,7 +286,7 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   ], 4);
 
   // ==================== 6. VALIDACION ====================
-  drawBlockTitle('VALIDACION');
+  drawBlockTitle('6. VALIDACION - Cuadre de caja');
   const saldoA = t.production - t.gastos - t.tickets;
   const saldoB = t.entregaAyudante + t.entregaCompania;
   const cuadra = Math.abs(saldoA - saldoB) < 0.01;
@@ -279,7 +300,8 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   y += 8;
 
   // ==================== 7. TABLA RESUMEN POR DIA ====================
-  addText('TABLA RESUMEN POR DIA', ml, y, { size: 10, color: COLORS.primary, bold: true });
+  if (y > pageH - footerY - 30) { doc.addPage(); y = minY; }
+  addText('7. TABLA RESUMEN POR DIA', ml, y, { size: 10, color: COLORS.primary, bold: true });
   y += 1.5;
   addLine(ml, w - mr, y);
   y += 3;
@@ -358,9 +380,9 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   // ==================== 8. DETALLE DE FRECUENCIAS (diario) ====================
   if (data.type === 'diario' && data.dailySummaries.length > 0) {
     const daySummary = data.dailySummaries[0];
-    if (y > 220) { doc.addPage(); y = minY; }
+    if (y > pageH - footerY - 20) { doc.addPage(); y = minY; }
 
-    addText('DETALLE DE FRECUENCIAS', ml, y, { size: 10, color: COLORS.primary, bold: true });
+    addText('8. DETALLE DE FRECUENCIAS', ml, y, { size: 10, color: COLORS.primary, bold: true });
     y += 1.5;
     addLine(ml, w - mr, y);
     y += 3;
