@@ -9,6 +9,7 @@ import { ComprobanteModal } from '@/components/transport/ComprobanteModal';
 import { LoginScreen } from '@/components/transport/LoginScreen';
 import { PersonalScreen } from '@/components/transport/PersonalScreen';
 import { ReportsScreen } from '@/components/transport/ReportsScreen';
+import { ReporteOperativoScreen } from '@/components/transport/ReporteOperativoScreen';
 import { VTConfigScreen } from '@/components/transport/VTConfigScreen';
 import { CompareFrequenciesScreen } from '@/components/transport/CompareFrequenciesScreen';
 import { VentasReviewScreen } from '@/components/transport/VentasReviewScreen';
@@ -228,6 +229,15 @@ export default function Home() {
     );
   }
 
+  // Reporte Operativo screen
+  if (view === 'operativo') {
+    return (
+      <ReporteOperativoScreen
+        onBack={() => setView('home')}
+      />
+    );
+  }
+
   // VT Config screen (admin only)
   if (view === 'vtconfig') {
     return (
@@ -340,6 +350,7 @@ export default function Home() {
           onGoToHistory={() => setView('history')}
           onGoToPersonal={() => setView('personal')}
           onGoToReports={() => setView('reports')}
+          onGoToOperativo={() => setView('operativo')}
           onGoToVtConfig={() => setView('vtconfig')}
           onGoToCompare={() => setView('compare')}
           onGoToBoletos={() => setView('boletos_home')}

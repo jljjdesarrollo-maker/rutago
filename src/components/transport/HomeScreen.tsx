@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { History, Pencil, Truck, Users, LogOut, User, FileText, Database, Loader2, Share2, Settings, ArrowLeftRight, Ticket, Eye } from 'lucide-react';
+import { History, Pencil, Truck, Users, LogOut, User, FileText, Database, Loader2, Share2, Settings, ArrowLeftRight, Ticket, Eye, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { UserSession } from './types';
@@ -13,6 +13,7 @@ interface HomeScreenProps {
   onGoToHistory: () => void;
   onGoToPersonal: () => void;
   onGoToReports: () => void;
+  onGoToOperativo: () => void;
   onGoToVtConfig: () => void;
   onGoToCompare: () => void;
   onGoToBoletos: () => void;
@@ -21,7 +22,7 @@ interface HomeScreenProps {
   recordCount: number;
 }
 
-export function HomeScreen({ user, isAdmin, onGoToForm, onGoToHistory, onGoToPersonal, onGoToReports, onGoToVtConfig, onGoToCompare, onGoToBoletos, onGoToVentasReview, onLogout, recordCount }: HomeScreenProps) {
+export function HomeScreen({ user, isAdmin, onGoToForm, onGoToHistory, onGoToPersonal, onGoToReports, onGoToOperativo, onGoToVtConfig, onGoToCompare, onGoToBoletos, onGoToVentasReview, onLogout, recordCount }: HomeScreenProps) {
   const [backupLoading, setBackupLoading] = useState(false);
 
   const handleBackup = async () => {
@@ -166,6 +167,22 @@ export function HomeScreen({ user, isAdmin, onGoToForm, onGoToHistory, onGoToPer
                 <div>
                   <p className="font-semibold text-[#3A3A3A]">Personal</p>
                   <p className="text-xs text-[#3A3A3A]/60">Gestionar conductores y ayudantes</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Reporte Operativo */}
+            <Card
+              onClick={onGoToOperativo}
+              className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-[#D6D6D6] bg-white"
+            >
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
+                  <Activity className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-[#3A3A3A]">Operativo</p>
+                  <p className="text-xs text-[#3A3A3A]/60">Frecuencias realizadas y perdidas</p>
                 </div>
               </CardContent>
             </Card>
