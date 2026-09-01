@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Calendar, Loader2, CheckCircle, XCircle, Sparkles, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Calendar, Loader2, CheckCircle, XCircle, Sparkles, AlertTriangle, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -16,6 +16,7 @@ interface OperativoTrip {
   motivo: string | null;
   notaEspecial: string | null;
   income: number;
+  efectivoReal: number;
 }
 
 interface OperativoDay {
@@ -37,6 +38,7 @@ interface OperativoData {
   noRealizadas: number;
   ingresosEspeciales: number;
   cumplimiento: number;
+  totalIngresos: number;
   motivos: OperativoMotivo[];
   days: OperativoDay[];
 }
@@ -77,6 +79,7 @@ export function ReporteOperativoScreen({ onBack }: Props) {
   const [to, setTo] = useState(`${y}-${m}-${String(new Date(y, parseInt(m), 0).getDate()).padStart(2, '0')}`);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<OperativoData | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
     if (!from || !to) return;
@@ -130,6 +133,24 @@ export function ReporteOperativoScreen({ onBack }: Props) {
 
   const pct = (n: number, total: number) => total > 0 ? `${(n / total * 100).toFixed(1)}%` : '0%';
 
+  const handleExportPDF = async () => {
+    if (!data) return;
+    setExporting(true);
+    try {
+      const { generateOperativoPDF } = await import('@/lib/generate-operativo-pdf');
+      const blob = await generateOperativoPDF(data);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `reporte-operativo-${from}-a-${to}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error exportando PDF:', err);
+    }
+    setExporting(false);
+  };
+
   const cumplimientoColor = (c: number) =>
     c >= 0.8 ? 'text-green-600' : c >= 0.6 ? 'text-amber-600' : 'text-red-600';
 
@@ -144,6 +165,17 @@ export function ReporteOperativoScreen({ onBack }: Props) {
           <h1 className="text-lg font-semibold text-[#3A3A3A]">Reporte Operativo</h1>
           <p className="text-xs text-[#3A3A3A]/50">Frecuencias: realizadas, perdidas y especiales</p>
         </div>
+        {data && !loading && (
+          <Button
+            onClick={handleExportPDF}
+            disabled={exporting}
+            size="sm"
+            className="rounded-xl bg-[#912D26] hover:bg-[#7A2520] text-white gap-1.5"
+          >
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            PDF
+          </Button>
+        )}
       </header>
 
       <main className="flex-1 overflow-y-auto pb-6 px-4 pt-4 space-y-4">
@@ -290,9 +322,14 @@ export function ReporteOperativoScreen({ onBack }: Props) {
                         )}
                       </div>
 
-                      {/* Income */}
-                      {(isRealizada || isEspecial) && trip.income > 0 && (
-                        <span className={`text-sm font-semibold shrink-0 ${isEspecial ? 'text-amber-700' : 'text-green-700'}`}>
+                      {/* Monto */}
+                      {isRealizada && trip.efectivoReal > 0 && (
+                        <span className="text-sm font-semibold shrink-0 text-green-700">
+                          {formatMoney(trip.efectivoReal)}
+                        </span>
+                      )}
+                      {isEspecial && trip.income > 0 && (
+                        <span className="text-sm font-semibold shrink-0 text-amber-700">
                           {formatMoney(trip.income)}
                         </span>
                       )}

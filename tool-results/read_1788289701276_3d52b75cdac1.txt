@@ -1,0 +1,836 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+     4→     4→import { type VTSession, type FrecuenciaEstado } from './types-boletos';
+     5→     5→import { getVentasByFrecuencia } from '@/lib/indexeddb';
+     6→     6→import { type ConnectionInfo } from '@/hooks/use-connection';
+     7→     7→import {
+     8→     8→  ChevronLeft, DollarSign, Camera, X, Save, Loader2,
+     9→     9→  CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles, Pencil, XCircle
+    10→    10→} from 'lucide-react';
+    11→    11→
+    12→    12→interface Props {
+    13→    13→  session: VTSession;
+    14→    14→  connection: ConnectionInfo;
+    15→    15→  onClose: () => void;
+    16→    16→  onGoToSync: () => void;
+    17→    17→  onSaved: () => void;
+    18→    18→}
+    19→    19→
+    20→    20→interface FrecuenciaResumen {
+    21→    21→  estadoId: string;
+    22→    22→  nombre: string;
+    23→    23→  ruta: string;
+    24→    24→  hora: string;
+    25→    25→  direccion: string;
+    26→    26→  ventasCount: number;
+    27→    27→  totalRecaudado: number;        // What the system says
+    28→    28→  efectivoContado: number;        // What the helper actually counted
+    29→    29→  diferencia: number;             // efectivoContado - totalRecaudado
+    30→    30→  boletosCaja: number;
+    31→    31→  cajaComunMonto?: number;
+    32→    32→  isIngresoEspecial?: boolean;
+    33→    33→  ingresoEspecialNota?: string;
+    34→    34→  isNoRealizada?: boolean;
+    35→    35→  motivoNoRealizada?: string;
+    36→    36→}
+    37→    37→
+    38→    38→interface GastoItem {
+    39→    39→  description: string;
+    40→    40→  amount: string;
+    41→    41→}
+    42→    42→
+    43→    43→const today = () => new Date().toISOString().split('T')[0];
+    44→    44→
+    45→    45→// Work date: use session.fecha (date when shift started, not necessarily today)
+    46→    46→function workDate(session: VTSession): string {
+    47→    47→  return session.fecha || today();
+    48→    48→}
+    49→    49→
+    50→    50→const GASTOS_DEFAULT: GastoItem[] = [
+    51→    51→  { description: 'Chofer', amount: '30' },
+    52→    52→  { description: 'Ayudante', amount: '20' },
+    53→    53→  { description: 'Diesel', amount: '0' },
+    54→    54→  { description: 'Plan Renova', amount: '68' },
+    55→    55→];
+    56→    56→
+    57→    57→export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, onSaved }: Props) {
+    58→    58→  const [frecuencias, setFrecuencias] = useState<FrecuenciaResumen[]>([]);
+    59→    59→  const [loading, setLoading] = useState(true);
+    60→    60→  const [km, setKm] = useState('');
+    61→    61→  const [gastos, setGastos] = useState<GastoItem[]>(GASTOS_DEFAULT);
+    62→    62→  const [tickets, setTickets] = useState('');
+    63→    63→  const [sobrante, setSobrante] = useState('');
+    64→    64→  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+    65→    65→  const [saving, setSaving] = useState(false);
+    66→    66→  const [confirmSave, setConfirmSave] = useState(false);
+    67→    67→  const [saved, setSaved] = useState(false);
+    68→    68→  const [errors, setErrors] = useState<string[]>([]);
+    69→    69→  const [guardadoOffline, setGuardadoOffline] = useState(false);
+    70→    70→
+    71→    71→  // Inline edit caja común
+    72→    72→  const [editingCajaComun, setEditingCajaComun] = useState<string | null>(null);
+    73→    73→  const [editCajaComunValue, setEditCajaComunValue] = useState('');
+    74→    74→
+    75→    75→  const fileInputRef = useRef<HTMLInputElement>(null);
+    76→    76→  const saveCajaComunToLS = useCallback((estadoId: string, newMonto: number) => {
+    77→    77→    const fecha = workDate(session);
+    78→    78→    const lsKey = `rg_estados_${session.vtCode}_${fecha}`;
+    79→    79→    try {
+    80→    80→      const raw = localStorage.getItem(lsKey);
+    81→    81→      if (raw) {
+    82→    82→        const all = JSON.parse(raw);
+    83→    83→        const idx = all.findIndex((e: any) => e.estadoId === estadoId);
+    84→    84→        if (idx >= 0) {
+    85→    85→          all[idx].cajaComunMonto = newMonto;
+    86→    86→          localStorage.setItem(lsKey, JSON.stringify(all));
+    87→    87→        }
+    88→    88→      }
+    89→    89→    } catch (e) { console.error('LS error:', e); }
+    90→    90→    setFrecuencias(prev => prev.map(f =>
+    91→    91→      f.estadoId === estadoId
+    92→    92→        ? { ...f, cajaComunMonto: newMonto }
+    93→    93→        : f
+    94→    94→    ));
+    95→    95→    setEditingCajaComun(null);
+    96→    96→  }, [session]);
+    97→    97→
+    98→    98→  const startEditCajaComun = (estadoId: string, currentMonto: number) => {
+    99→    99→    setEditingCajaComun(estadoId);
+   100→   100→    setEditCajaComunValue(currentMonto > 0 ? currentMonto.toFixed(2) : '');
+   101→   101→  };
+   102→   102→
+   103→   103→  const loadData = useCallback(async () => {
+   104→   104→    try {
+   105→   105→      const fecha = workDate(session);
+   106→   106→      // Load estados from localStorage (synchronous, reliable)
+   107→   107→      const lsKey = `rg_estados_${session.vtCode}_${fecha}`;
+   108→   108→      const raw = localStorage.getItem(lsKey);
+   109→   109→      if (!raw) { setLoading(false); return; }
+   110→   110→      const estadosLS = JSON.parse(raw) as FrecuenciaEstado[];
+   111→   111→      // Preservar el orden original de estadosLS (orden cronologico configurado para el VT,
+   112→   112→      // que incluye frecuencias que cruzan medianoche ej: 23:30 -> 05:10)
+   113→   113→      const resumenes: FrecuenciaResumen[] = [];
+   114→   114→      for (const e of estadosLS) {
+   115→   115→        if (e.estado === 'cerrada') {
+   116→   116→          const ventas = await getVentasByFrecuencia(e.estadoId);
+   117→   117→          const sistemaTotal = ventas.reduce((s, v) => s + v.cobrado, 0);
+   118→   118→          const efectivo = (e as any).arqueoEfectivo ?? sistemaTotal;
+   119→   119→          const diff = efectivo - sistemaTotal;
+   120→   120→          const ccCount = (e as any).cajaComunCount || 0;
+   121→   121→          const ccMonto = (e as any).cajaComunMonto || 0;
+   122→   122→          resumenes.push({
+   123→   123→            estadoId: e.estadoId,
+   124→   124→            nombre: e.nombre,
+   125→   125→            ruta: e.ruta,
+   126→   126→            hora: e.hora,
+   127→   127→            direccion: e.direccion,
+   128→   128→            ventasCount: ventas.length,
+   129→   129→            totalRecaudado: sistemaTotal,
+   130→   130→            efectivoContado: efectivo,
+   131→   131→            diferencia: diff,
+   132→   132→            boletosCaja: ccCount,
+   133→   133→            cajaComunMonto: ccMonto,
+   134→   134→          });
+   135→   135→        } else if (e.estado === 'no_realizada' && (e.ingresoEspecialMonto || 0) > 0) {
+   136→   136→          resumenes.push({
+   137→   137→            estadoId: e.estadoId,
+   138→   138→            nombre: e.nombre,
+   139→   139→            ruta: e.ruta,
+   140→   140→            hora: e.hora,
+   141→   141→            direccion: e.direccion,
+   142→   142→            ventasCount: 0,
+   143→   143→            totalRecaudado: e.ingresoEspecialMonto || 0,
+   144→   144→            efectivoContado: e.ingresoEspecialMonto || 0,
+   145→   145→            diferencia: 0,
+   146→   146→            boletosCaja: 0,
+   147→   147→            cajaComunMonto: 0,
+   148→   148→            isIngresoEspecial: true,
+   149→   149→            ingresoEspecialNota: e.ingresoEspecialNota,
+   150→   150→            isNoRealizada: true,
+   151→   151→            motivoNoRealizada: e.motivoNoRealizada,
+   152→   152→          });
+   153→   153→        } else if (e.estado === 'no_realizada') {
+   154→   154→          resumenes.push({
+   155→   155→            estadoId: e.estadoId,
+   156→   156→            nombre: e.nombre,
+   157→   157→            ruta: e.ruta,
+   158→   158→            hora: e.hora,
+   159→   159→            direccion: e.direccion,
+   160→   160→            ventasCount: 0,
+   161→   161→            totalRecaudado: 0,
+   162→   162→            efectivoContado: 0,
+   163→   163→            diferencia: 0,
+   164→   164→            boletosCaja: 0,
+   165→   165→            cajaComunMonto: 0,
+   166→   166→            isNoRealizada: true,
+   167→   167→            motivoNoRealizada: e.motivoNoRealizada,
+   168→   168→          });
+   169→   169→        }
+   170→   170→      }
+   171→   171→      setFrecuencias(resumenes);
+   172→   172→    } catch (err) {
+   173→   173→      console.error('Error cargando resumen:', err);
+   174→   174→    } finally {
+   175→   175→      setLoading(false);
+   176→   176→    }
+   177→   177→  }, [session.vtCode]);
+   178→   178→
+   179→   179→  useEffect(() => { loadData(); }, [loadData]);
+   180→   180→
+   181→   181→  const totalIngresosAuto = useMemo(() =>
+   182→   182→    frecuencias.reduce((s, f) => s + f.totalRecaudado, 0),
+   183→   183→    [frecuencias]
+   184→   184→  );
+   185→   185→  const totalEfectivoReal = useMemo(() =>
+   186→   186→    frecuencias.reduce((s, f) => s + f.efectivoContado, 0),
+   187→   187→    [frecuencias]
+   188→   188→  );
+   189→   189→  const totalDiferencia = useMemo(() =>
+   190→   190→    frecuencias.reduce((s, f) => s + f.diferencia, 0),
+   191→   191→    [frecuencias]
+   192→   192→  );
+   193→   193→  const totalVentas = useMemo(() =>
+   194→   194→    frecuencias.reduce((s, f) => s + f.ventasCount, 0),
+   195→   195→    [frecuencias]
+   196→   196→  );
+   197→   197→  const totalCajaComunPasajeros = useMemo(() =>
+   198→   198→    frecuencias.reduce((s, f) => s + f.boletosCaja, 0),
+   199→   199→    [frecuencias]
+   200→   200→  );
+   201→   201→  const totalCajaComunMonto = useMemo(() =>
+   202→   202→    frecuencias.reduce((s, f) => s + (f.cajaComunMonto || 0), 0),
+   203→   203→    [frecuencias]
+   204→   204→  );
+   205→   205→  const totalGastos = useMemo(() =>
+   206→   206→    gastos.reduce((s, g) => s + (parseFloat(g.amount) || 0), 0),
+   207→   207→    [gastos]
+   208→   208→  );
+   209→   209→  const ticketsNum = parseFloat(tickets) || 0;
+   210→   210→  const sobranteNum = parseFloat(sobrante) || 0;
+   211→   211→  // PRODUCCION = efectivo real contado por el ayudante + caja comun + sobrante ajuste manual
+   212→   212→  const production = totalEfectivoReal + totalCajaComunMonto + sobranteNum;
+   213→   213→  // ENTREGA AYUDANTE = efectivo real + sobrante - gastos (la caja común NO pasa por el ayudante)
+   214→   214→  const entregaAyudante = totalEfectivoReal + sobranteNum - totalGastos;
+   215→   215→  // Lógica dual: si hay caja común se descuentan tickets, si no (pre-Jun 2026) entrega compañía = 0
+   216→   216→  const entregaCompania = totalCajaComunMonto > 0 ? totalCajaComunMonto - ticketsNum : 0;
+   217→   217→
+   218→   218→  const addGasto = () => setGastos(prev => [...prev, { description: '', amount: '0' }]);
+   219→   219→  const removeGasto = (i: number) => setGastos(prev => prev.filter((_, idx) => idx !== i));
+   220→   220→  const updateGasto = (i: number, field: keyof GastoItem, value: string) => {
+   221→   221→    setGastos(prev => {
+   222→   222→      const next = [...prev];
+   223→   223→      next[i] = { ...next[i], [field]: value };
+   224→   224→      return next;
+   225→   225→    });
+   226→   226→  };
+   227→   227→
+   228→   228→  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+   229→   229→    const file = e.target.files?.[0];
+   230→   230→    if (!file || !file.type.startsWith('image/')) return;
+   231→   231→    e.target.value = '';
+   232→   232→    // Comprimir imagen antes de almacenar (max ~200KB base64)
+   233→   233→    const img = new Image();
+   234→   234→    const url = URL.createObjectURL(file);
+   235→   235→    img.onload = () => {
+   236→   236→      URL.revokeObjectURL(url);
+   237→   237→      const MAX_DIM = 1200;
+   238→   238→      const QUALITY = 0.6;
+   239→   239→      let w = img.width, h = img.height;
+   240→   240→      if (w > MAX_DIM || h > MAX_DIM) {
+   241→   241→        if (w > h) { h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
+   242→   242→        else { w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
+   243→   243→      }
+   244→   244→      const canvas = document.createElement('canvas');
+   245→   245→      canvas.width = w; canvas.height = h;
+   246→   246→      canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+   247→   247→      setFotoPreview(canvas.toDataURL('image/jpeg', QUALITY));
+   248→   248→    };
+   249→   249→    img.onerror = () => URL.revokeObjectURL(url);
+   250→   250→    img.src = url;
+   251→   251→  };
+   252→   252→
+   253→   253→  const handleSaveOffline = () => {
+   254→   254→    const errs: string[] = [];
+   255→   255→    if (!km.trim()) errs.push('Kilometraje es obligatorio');
+   256→   256→    if (!fotoPreview) errs.push('Foto del cuaderno es obligatoria');
+   257→   257→    if (frecuencias.length === 0) errs.push('No hay frecuencias cerradas');
+   258→   258→    // Gastos pueden ser $0 si no hubo (ej. unidad parada)
+   259→   259→    if (errs.length > 0) {
+   260→   260→      setErrors(errs);
+   261→   261→      return;
+   262→   262→    }
+   263→   263→    setErrors([]);
+   264→   264→    setConfirmSave(true);
+   265→   265→  };
+   266→   266→
+   267→   267→  const handleConfirmSave = async () => {
+   268→   268→    setConfirmSave(false);
+   269→   269→    setSaving(true);
+   270→   270→
+   271→   271→    const fechaTrabajo = workDate(session);
+   272→   272→    try {
+   273→   273→      // Build trips from frecuencias (all: cerradas, ingresos especiales, no realizadas)
+   274→   274→      const trips = frecuencias.map((f, idx) => ({
+   275→   275→        routeFrom: f.isNoRealizada && !f.isIngresoEspecial
+   276→   276→          ? '-'
+   277→   277→          : (f.direccion === 'ida' ? 'Loja' : f.ruta.split(' - ')[1]?.trim() || 'Loja'),
+   278→   278→        routeTo: f.isNoRealizada && !f.isIngresoEspecial
+   279→   279→          ? '-'
+   280→   280→          : (f.direccion === 'ida' ? f.ruta.split(' - ')[1]?.trim() || 'Vilcabamba' : 'Loja'),
+   281→   281→        time: f.hora,
+   282→   282→        income: f.totalRecaudado.toString(),
+   283→   283→        efectivoReal: f.efectivoContado.toString(),
+   284→   284→        boletos: '0',
+   285→   285→        cajaComunPasajeros: f.boletosCaja.toString(),
+   286→   286→        cajaComunMonto: (f.cajaComunMonto || 0).toString(),
+   287→   287→        tipo: f.isIngresoEspecial ? 'ingreso_especial' : f.isNoRealizada ? 'no_realizada' : 'frecuencia',
+   288→   288→        motivo: f.motivoNoRealizada || undefined,
+   289→   289→        notaEspecial: f.ingresoEspecialNota || undefined,
+   290→   290→      }));
+   291→   291→
+   292→   292→      const body = {
+   293→   293→        date: workDate(session),
+   294→   294→        km: km,
+   295→   295→        conductor: '',
+   296→   296→        ayudanteNombre: session.ayudanteNombre,
+   297→   297→        vtCode: session.vtCode,
+   298→   298→        trips,
+   299→   299→        expenses: gastos,
+   300→   300→        tickets: tickets || '0',
+   301→   301→        cajaComun: totalCajaComunMonto,
+   302→   302→        sobrante: sobrante || '0',
+   303→   303→        photoUrl: fotoPreview,
+   304→   304→      };
+   305→   305→
+   306→   306→      const isOnline = navigator.onLine;
+   307→   307→
+   308→   308→      if (isOnline) {
+   309→   309→        const res = await fetch('/api/records', {
+   310→   310→          method: 'POST',
+   311→   311→          headers: { 'Content-Type': 'application/json' },
+   312→   312→          body: JSON.stringify(body),
+   313→   313→        });
+   314→   314→        if (res.ok) {
+   315→   315→          setSaved(true);
+   316→   316→        } else {
+   317→   317→          const result = await res.json().catch(() => ({ error: 'Error desconocido' }));
+   318→   318→          console.error('Error guardando arqueo en servidor:', result.error);
+   319→   319→          // Save offline if server fails
+   320→   320→          localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify(body));
+   321→   321→          setGuardadoOffline(true);
+   322→   322→          setSaved(true);
+   323→   323→        }
+   324→   324→      } else {
+   325→   325→        // Save to localStorage for later sync
+   326→   326→        localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify(body));
+   327→   327→        setGuardadoOffline(true);
+   328→   328→        setSaved(true);
+   329→   329→      }
+   330→   330→    } catch (err) {
+   331→   331→      console.error('Error guardando arqueo:', err);
+   332→   332→      localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify({
+   333→   333→        date: fechaTrabajo, km, vtCode: session.vtCode, ayudanteNombre: session.ayudanteNombre,
+   334→   334→        trips: frecuencias.map(f => ({
+   335→   335→          routeFrom: f.isNoRealizada ? '-' : 'Loja',
+   336→   336→          routeTo: f.isNoRealizada ? '-' : 'Vilcabamba',
+   337→   337→          time: f.hora, income: f.totalRecaudado.toString(), boletos: '0',
+   338→   338→          tipo: f.isIngresoEspecial ? 'ingreso_especial' : f.isNoRealizada ? 'no_realizada' : 'frecuencia',
+   339→   339→          motivo: f.motivoNoRealizada || undefined,
+   340→   340→          notaEspecial: f.ingresoEspecialNota || undefined,
+   341→   341→        })),
+   342→   342→        expenses: gastos, tickets: tickets || '0', sobrante: sobrante || '0', photoUrl: fotoPreview,
+   343→   343→      }));
+   344→   344→      setGuardadoOffline(true);
+   345→   345→      setSaved(true);
+   346→   346→    } finally {
+   347→   347→      setSaving(false);
+   348→   348→    }
+   349→   349→  };
+   350→   350→
+   351→   351→  if (loading) {
+   352→   352→    return (
+   353→   353→      <div className="flex flex-col min-h-[100dvh] bg-gray-50 items-center justify-center">
+   354→   354→        <Loader2 className="w-8 h-8 text-[#912D26] animate-spin mb-3" />
+   355→   355→        <p className="text-[#3A3A3A]">Cargando arqueo general...</p>
+   356→   356→      </div>
+   357→   357→    );
+   358→   358→  }
+   359→   359→
+   360→   360→  // Saved confirmation screen
+   361→   361→  if (saved) {
+   362→   362→    return (
+   363→   363→      <div className="flex flex-col min-h-[100dvh] bg-[#912D26] text-white">
+   364→   364→        <div className="flex-1 flex flex-col items-center justify-center px-6">
+   365→   365→          <CheckCircle2 className="w-20 h-20 mb-4" />
+   366→   366→          <h1 className="text-2xl font-black mb-2">ARQUEO GENERAL GUARDADO</h1>
+   367→   367→          <p className="text-white/80 text-sm mb-1">{session.nombre} — {workDate(session)}</p>
+   368→   368→          <p className="text-white/80 text-sm mb-6">{totalVentas} ventas · ${totalIngresosAuto.toFixed(2)} ingresos</p>
+   369→   369→
+   370→   370→          {guardadoOffline && (
+   371→   371→            <div className="bg-yellow-500/20 border border-yellow-400/30 rounded-2xl px-5 py-3 mb-6 text-center">
+   372→   372→              <p className="text-yellow-200 text-sm font-bold">Guardado local (sin internet)</p>
+   373→   373→              <p className="text-yellow-200/70 text-xs mt-1">Se sincronizará cuando haya conexión</p>
+   374→   374→            </div>
+   375→   375→          )}
+   376→   376→
+   377→   377→          <div className="w-full max-w-xs space-y-3">
+   378→   378→            {connection.pendingCount > 0 && connection.status !== 'offline' && (
+   379→   379→              <button onClick={onGoToSync}
+   380→   380→                className="w-full py-4 rounded-2xl bg-white text-[#912D26] font-black text-lg flex items-center justify-center gap-2 active:scale-95">
+   381→   381→                <Send className="w-5 h-5" /> SINCRONIZAR {connection.pendingCount} VENTAS
+   382→   382→              </button>
+   383→   383→            )}
+   384→   384→            <button onClick={onSaved}
+   385→   385→              className="w-full py-4 rounded-2xl bg-white/20 text-white font-bold text-lg flex items-center justify-center gap-2 active:scale-95">
+   386→   386→              FINALIZAR
+   387→   387→            </button>
+   388→   388→          </div>
+   389→   389→        </div>
+   390→   390→      </div>
+   391→   391→    );
+   392→   392→  }
+   393→   393→
+   394→   394→  // Confirm save dialog
+   395→   395→  if (confirmSave) {
+   396→   396→    return (
+   397→   397→      <div className="flex flex-col min-h-[100dvh] bg-gray-50">
+   398→   398→        <div className="flex-1 flex items-center justify-center px-4">
+   399→   399→          <div className="bg-white rounded-2xl border border-gray-200 p-6 max-w-md w-full shadow-lg">
+   400→   400→            <h2 className="text-lg font-bold text-[#3A3A3A] mb-4">Confirmar Arqueo General</h2>
+   401→   401→            <div className="bg-gray-50 rounded-xl p-4 space-y-2 mb-4">
+   402→   402→              <div className="flex justify-between text-sm">
+   403→   403→                <span className="text-gray-500">Producción</span>
+   404→   404→                <span className="font-bold text-[#3A3A3A]">${production.toFixed(2)}</span>
+   405→   405→              </div>
+   406→   406→              {totalCajaComunPasajeros > 0 && (
+   407→   407→                <div className="flex justify-between text-sm">
+   408→   408→                  <span className="text-purple-700">Caja Comun (Ofi.Loja): {totalCajaComunPasajeros} boletos</span>
+   409→   409→                  <span className="font-bold text-purple-700">${totalCajaComunMonto.toFixed(2)}</span>
+   410→   410→                </div>
+   411→   411→              )}
+   412→   412→              <div className="flex justify-between text-sm">
+   413→   413→                <span className="text-gray-500">Total Gastos</span>
+   414→   414→                <span className="font-bold text-red-600">${totalGastos.toFixed(2)}</span>
+   415→   415→              </div>
+   416→   416→              <hr className="border-gray-200" />
+   417→   417→              <div className="flex justify-between text-sm">
+   418→   418→                <span className="text-gray-600">Entrega Ayudante</span>
+   419→   419→                <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+   420→   420→                  ${entregaAyudante.toFixed(2)}
+   421→   421→                </span>
+   422→   422→              </div>
+   423→   423→              <div className="flex justify-between text-sm">
+   424→   424→                <span className="text-gray-600">Entrega Compañía</span>
+   425→   425→                <span className={`font-bold ${entregaCompania >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+   426→   426→                  ${entregaCompania.toFixed(2)}
+   427→   427→                </span>
+   428→   428→              </div>
+   429→   429→            </div>
+   430→   430→            <p className="text-sm text-[#912D26] mb-4">
+   431→   431→              Entrega Ayudante: <strong>${entregaAyudante.toFixed(2)}</strong> —
+   432→   432→              Entrega Compañía: <strong>${entregaCompania.toFixed(2)}</strong>
+   433→   433→            </p>
+   434→   434→            <div className="flex gap-3">
+   435→   435→              <button onClick={() => setConfirmSave(false)}
+   436→   436→                className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-bold active:scale-95">
+   437→   437→                Cancelar
+   438→   438→              </button>
+   439→   439→              <button onClick={handleConfirmSave} disabled={saving}
+   440→   440→                className={`flex-1 py-3 rounded-xl font-black active:scale-95 ${saving ? 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed' : 'bg-[#912D26] text-white'}`}>
+   441→   441→                {saving ? 'Guardando...' : 'CONFIRMAR'}
+   442→   442→              </button>
+   443→   443→            </div>
+   444→   444→          </div>
+   445→   445→        </div>
+   446→   446→      </div>
+   447→   447→    );
+   448→   448→  }
+   449→   449→
+   450→   450→  return (
+   451→   451→    <div className="flex flex-col min-h-[100dvh] bg-gray-50">
+   452→   452→      {/* Barra conexion */}
+   453→   453→      <div className={`${connection.bgColor} px-4 py-1.5 flex items-center justify-center gap-2 text-xs font-medium ${connection.color}`}>
+   454→   454→        <span>{connection.icon}</span>
+   455→   455→        <span>{connection.label}</span>
+   456→   456→      </div>
+   457→   457→
+   458→   458→      {/* Header */}
+   459→   459→      <div className="bg-[#912D26] text-white px-4 py-3">
+   460→   460→        <div className="flex items-center justify-between">
+   461→   461→          <button onClick={onClose} className="text-red-100"><ChevronLeft className="w-6 h-6" /></button>
+   462→   462→          <div className="text-center">
+   463→   463→            <h2 className="text-lg font-bold">Arqueo General</h2>
+   464→   464→            <p className="text-red-100 text-xs">{session.nombre} — Turno completo</p>
+   465→   465→          </div>
+   466→   466→          <div className="w-6" />
+   467→   467→        </div>
+   468→   468→      </div>
+   469→   469→
+   470→   470→      <div className="flex-1 px-4 py-4 space-y-4 overflow-y-auto pb-8">
+   471→   471→        {/* Errores */}
+   472→   472→        {errors.length > 0 && (
+   473→   473→          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm space-y-1">
+   474→   474→            <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Campos obligatorios:</p>
+   475→   475→            {errors.map((e, i) => <p key={i}>- {e}</p>)}
+   476→   476→          </div>
+   477→   477→        )}
+   478→   478→
+   479→   479→        {/* 1. INGRESOS POR FRECUENCIA — Sistema vs Efectivo Real */}
+   480→   480→        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+   481→   481→          <h3 className="font-bold text-[#3A3A3A] mb-3 text-sm uppercase flex items-center gap-2">
+   482→   482→            <DollarSign className="w-4 h-4 text-green-600" /> Ingresos por Frecuencia
+   483→   483→          </h3>
+   484→   484→          {frecuencias.length === 0 ? (
+   485→   485→            <p className="text-gray-400 text-xs text-center py-4">No hay frecuencias cerradas</p>
+   486→   486→          ) : (
+   487→   487→            <div className="space-y-2">
+   488→   488→              {/* Header row */}
+   489→   489→              <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold text-gray-400 uppercase">
+   490→   490→                <div className="flex-1">Frecuencia</div>
+   491→   491→                <div className="w-20 text-right">Sistema</div>
+   492→   492→                <div className="w-20 text-right">Real</div>
+   493→   493→                <div className="w-16 text-right">Dif.</div>
+   494→   494→              </div>
+   495→   495→              {frecuencias.map((f, i) => {
+   496→   496→                const hasDiff = Math.abs(f.diferencia) >= 0.01;
+   497→   497→                if (f.isNoRealizada && !f.isIngresoEspecial) {
+   498→   498→                  return (
+   499→   499→                    <div key={f.estadoId} className="flex items-center justify-between py-2 px-3 rounded-xl bg-orange-50 border border-orange-200">
+   500→   500→                      <div className="flex items-center gap-2 flex-1 min-w-0">
+   501→   501→                        <XCircle className="w-4 h-4 text-orange-500 flex-shrink-0" />
+   502→   502→                        <div className="min-w-0">
+   503→   503→                          <div className="text-sm font-semibold text-orange-800 truncate">{f.hora} — {f.nombre}</div>
+   504→   504→                          <div className="text-[10px] text-orange-500">No realizada: {f.motivoNoRealizada || 'Sin motivo'}</div>
+   505→   505→                        </div>
+   506→   506→                      </div>
+   507→   507→                      <div className="w-20 text-right">
+   508→   508→                        <span className="text-xs text-gray-400">—</span>
+   509→   509→                      </div>
+   510→   510→                      <div className="w-20 text-right">
+   511→   511→                        <span className="text-xs text-gray-400">—</span>
+   512→   512→                      </div>
+   513→   513→                      <div className="w-16 text-right">
+   514→   514→                        <span className="text-xs text-gray-400">—</span>
+   515→   515→                      </div>
+   516→   516→                    </div>
+   517→   517→                  );
+   518→   518→                }
+   519→   519→                if (f.isIngresoEspecial) {
+   520→   520→                  return (
+   521→   521→                    <div key={f.estadoId} className="flex items-center justify-between py-2 px-3 rounded-xl bg-amber-50 border border-amber-200">
+   522→   522→                      <div className="flex items-center gap-2 flex-1 min-w-0">
+   523→   523→                        <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
+   524→   524→                        <div className="min-w-0">
+   525→   525→                          <div className="text-sm font-semibold text-amber-800 truncate">{f.hora} — {f.ingresoEspecialNota || 'Ingreso especial'}</div>
+   526→   526→                          <div className="text-[10px] text-amber-500">Viaje especial</div>
+   527→   527→                        </div>
+   528→   528→                      </div>
+   529→   529→                      <div className="w-20 text-right">
+   530→   530→                        <div className="font-black text-amber-700">${f.totalRecaudado.toFixed(2)}</div>
+   531→   531→                      </div>
+   532→   532→                      <div className="w-20 text-right">
+   533→   533→                        <div className="font-black text-amber-700">${f.efectivoContado.toFixed(2)}</div>
+   534→   534→                      </div>
+   535→   535→                      <div className="w-16 text-right">
+   536→   536→                        <span className="text-xs text-gray-400">—</span>
+   537→   537→                      </div>
+   538→   538→                    </div>
+   539→   539→                  );
+   540→   540→                }
+   541→   541→                return (
+   542→   542→                  <div key={f.estadoId}>
+   543→   543→                  <div className={`flex items-center justify-between py-2 px-3 rounded-xl ${i % 2 === 0 ? 'bg-[#912D26]/5' : 'bg-gray-50'}`}>
+   544→   544→                    <div className="flex items-center gap-2 flex-1 min-w-0">
+   545→   545→                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${i % 2 === 0 ? 'bg-[#912D26] text-white' : 'bg-[#3A3A3A] text-white'}`}>
+   546→   546→                        {i + 1}
+   547→   547→                      </span>
+   548→   548→                      <div className="min-w-0">
+   549→   549→                        <div className="text-sm font-semibold text-[#3A3A3A] truncate">{f.hora} — {f.nombre}</div>
+   550→   550→                        <div className="text-[10px] text-gray-400">{f.ventasCount} ventas{f.boletosCaja > 0 ? ` + ${f.boletosCaja} c.comun` : ''}</div>
+   551→   551→                      </div>
+   552→   552→                    </div>
+   553→   553→                    <div className="w-20 text-right">
+   554→   554→                      <div className="font-bold text-[#3A3A3A]">${f.totalRecaudado.toFixed(2)}</div>
+   555→   555→                    </div>
+   556→   556→                    <div className="w-20 text-right">
+   557→   557→                      <div className="font-black text-green-700">${f.efectivoContado.toFixed(2)}</div>
+   558→   558→                    </div>
+   559→   559→                    <div className="w-16 text-right">
+   560→   560→                      {hasDiff ? (
+   561→   561→                        <span className={`text-xs font-bold ${f.diferencia > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+   562→   562→                          {f.diferencia > 0 ? '+' : ''}{f.diferencia.toFixed(2)}
+   563→   563→                        </span>
+   564→   564→                      ) : (
+   565→   565→                        <span className="text-xs text-gray-400">—</span>
+   566→   566→                      )}
+   567→   567→                    </div>
+   568→   568→                  </div>
+   569→   569→                  {/* Caja Común editable sub-row */}
+   570→   570→                  {f.boletosCaja > 0 && (
+   571→   571→                    <div className="ml-7 mr-3 mb-1 flex items-center gap-2">
+   572→   572→                      <span className="text-[10px] text-purple-600 font-medium">C.Común: {f.boletosCaja} boletos</span>
+   573→   573→                      <span className="text-[10px] text-purple-400">·</span>
+   574→   574→                      {editingCajaComun === f.estadoId ? (
+   575→   575→                        <div className="flex items-center gap-1">
+   576→   576→                          <span className="text-[10px] text-purple-600">$</span>
+   577→   577→                          <input
+   578→   578→                            type="number"
+   579→   579→                            inputMode="decimal"
+   580→   580→                            step="0.05"
+   581→   581→                            value={editCajaComunValue}
+   582→   582→                            onChange={e => setEditCajaComunValue(e.target.value)}
+   583→   583→                            onBlur={() => saveCajaComunToLS(f.estadoId, parseFloat(editCajaComunValue) || 0)}
+   584→   584→                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveCajaComunToLS(f.estadoId, parseFloat(editCajaComunValue) || 0); } }}
+   585→   585→                            className="w-16 h-6 text-xs font-bold text-purple-800 bg-purple-100 border border-purple-300 rounded px-1 text-center focus:outline-none focus:ring-1 focus:ring-purple-400"
+   586→   586→                            autoFocus
+   587→   587→                          />
+   588→   588→                        </div>
+   589→   589→                      ) : (
+   590→   590→                        <button
+   591→   591→                          onClick={() => startEditCajaComun(f.estadoId, f.cajaComunMonto || 0)}
+   592→   592→                          className="text-[11px] font-bold text-purple-800 flex items-center gap-0.5 active:opacity-70"
+   593→   593→                        >
+   594→   594→                          ${(f.cajaComunMonto || 0).toFixed(2)}
+   595→   595→                          <Pencil className="w-2.5 h-2.5" />
+   596→   596→                        </button>
+   597→   597→                      )}
+   598→   598→                    </div>
+   599→   599→                  )}
+   600→   600→                  </div>
+   601→   601→                );
+   602→   602→              })}
+   603→   603→              {/* Totals row */}
+   604→   604→              <div className="border-t-2 border-green-200 pt-2 mt-2 space-y-1">
+   605→   605→                <div className="flex justify-between items-center">
+   606→   606→                  <span className="font-bold text-[#3A3A3A] text-xs">Total Sistema</span>
+   607→   607→                  <span className="font-bold text-sm text-[#3A3A3A]">${totalIngresosAuto.toFixed(2)}</span>
+   608→   608→                </div>
+   609→   609→                <div className="flex justify-between items-center">
+   610→   610→                  <span className="font-bold text-green-700 text-xs">Total Efectivo Real</span>
+   611→   611→                  <span className="font-black text-lg text-green-700">${totalEfectivoReal.toFixed(2)}</span>
+   612→   612→                </div>
+   613→   613→                {Math.abs(totalDiferencia) >= 0.01 && (
+   614→   614→                  <div className="flex justify-between items-center">
+   615→   615→                    <span className="text-xs text-gray-500">Diferencia global</span>
+   616→   616→                    <span className={`text-xs font-bold ${totalDiferencia > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+   617→   617→                      {totalDiferencia > 0 ? '+' : ''}{totalDiferencia.toFixed(2)}
+   618→   618→                    </span>
+   619→   619→                  </div>
+   620→   620→                )}
+   621→   621→                {totalCajaComunPasajeros > 0 && (
+   622→   622→                  <div className="flex justify-between items-center">
+   623→   623→                    <span className="text-xs font-bold text-purple-700">Caja Comun (Ofi.Loja): {totalCajaComunPasajeros} boletos</span>
+   624→   624→                    <span className="font-bold text-sm text-purple-700">${totalCajaComunMonto.toFixed(2)}</span>
+   625→   625→                  </div>
+   626→   626→                )}
+   627→   627→                <div className="text-right text-[10px] text-gray-400">{totalVentas} boletos vendidos</div>
+   628→   628→              </div>
+   629→   629→            </div>
+   630→   630→          )}
+   631→   631→        </div>
+   632→   632→
+   633→   633→        {/* 2. KILOMETRAJE + FOTO */}
+   634→   634→        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
+   635→   635→          <h3 className="font-bold text-[#3A3A3A] mb-1 text-sm uppercase">Datos del Turno</h3>
+   636→   636→          <div>
+   637→   637→            <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+   638→   638→              Kilometraje <span className="text-[#912D26]">*</span>
+   639→   639→            </label>
+   640→   640→            <input
+   641→   641→              type="text"
+   642→   642→              inputMode="numeric"
+   643→   643→              placeholder="877604"
+   644→   644→              value={km}
+   645→   645→              onChange={e => setKm(e.target.value)}
+   646→   646→              className="w-full mt-1 h-11 rounded-xl border border-[#D6D6D6] px-3 text-sm font-semibold text-[#3A3A3A]"
+   647→   647→            />
+   648→   648→          </div>
+   649→   649→          <div>
+   650→   650→            <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+   651→   651→              Foto del Cuaderno <span className="text-[#912D26]">*</span>
+   652→   652→            </label>
+   653→   653→            <div className="mt-1">
+   654→   654→              {fotoPreview ? (
+   655→   655→                <div className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-[#912D26]">
+   656→   656→                  <img src={fotoPreview} alt="Foto" className="w-full h-full object-cover" />
+   657→   657→                  <button
+   658→   658→                    onClick={() => setFotoPreview(null)}
+   659→   659→                    className="absolute top-0 right-0 w-5 h-5 bg-[#912D26] text-white rounded-bl-lg flex items-center justify-center"
+   660→   660→                  >
+   661→   661→                    <X className="w-3 h-3" />
+   662→   662→                  </button>
+   663→   663→                </div>
+   664→   664→              ) : (
+   665→   665→                <button
+   666→   666→                  onClick={() => fileInputRef.current?.click()}
+   667→   667→                  className="h-10 px-4 rounded-xl text-xs border border-[#D6D6D6] text-[#3A3A3A] flex items-center gap-1 active:scale-95"
+   668→   668→                >
+   669→   669→                  <Camera className="w-4 h-4" /> Tomar/Adjuntar Foto
+   670→   670→                </button>
+   671→   671→              )}
+   672→   672→            </div>
+   673→   673→          </div>
+   674→   674→        </div>
+   675→   675→
+   676→   676→        {/* 3. GASTOS */}
+   677→   677→        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+   678→   678→          <div className="flex items-center justify-between mb-3">
+   679→   679→            <h3 className="font-bold text-red-600 text-sm uppercase">Gastos</h3>
+   680→   680→            <button onClick={addGasto} className="text-xs text-[#912D26] font-bold flex items-center gap-1">
+   681→   681→              <Plus className="w-3 h-3" /> Agregar
+   682→   682→            </button>
+   683→   683→          </div>
+   684→   684→          <div className="space-y-2">
+   685→   685→            {gastos.map((g, i) => (
+   686→   686→              <div key={i} className="flex items-center gap-2">
+   687→   687→                <input
+   688→   688→                  placeholder="Descripcion"
+   689→   689→                  value={g.description}
+   690→   690→                  onChange={e => updateGasto(i, 'description', e.target.value)}
+   691→   691→                  className="h-10 text-sm rounded-xl flex-1 border border-[#D6D6D6] px-3 text-[#3A3A3A]"
+   692→   692→                />
+   693→   693→                <div className="relative w-24">
+   694→   694→                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+   695→   695→                  <input
+   696→   696→                    type="number"
+   697→   697→                    inputMode="decimal"
+   698→   698→                    value={g.amount}
+   699→   699→                    onChange={e => updateGasto(i, 'amount', e.target.value)}
+   700→   700→                    className="h-10 text-sm rounded-xl w-full border border-[#D6D6D6] pl-6 pr-2 text-[#3A3A3A] font-semibold"
+   701→   701→                  />
+   702→   702→                </div>
+   703→   703→                {i >= 4 && (
+   704→   704→                  <button onClick={() => removeGasto(i)} className="text-gray-400 hover:text-red-500">
+   705→   705→                    <Trash2 className="w-4 h-4" />
+   706→   706→                  </button>
+   707→   707→                )}
+   708→   708→              </div>
+   709→   709→            ))}
+   710→   710→          </div>
+   711→   711→          <div className="border-t border-gray-100 pt-2 mt-3 flex justify-between text-sm font-bold text-red-600">
+   712→   712→            <span>Total Gastos</span>
+   713→   713→            <span>${totalGastos.toFixed(2)}</span>
+   714→   714→          </div>
+   715→   715→        </div>
+   716→   716→
+   717→   717→        {/* 4. TICKETS + SOBRANTE */}
+   718→   718→        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
+   719→   719→          <h3 className="font-bold text-[#3A3A3A] text-sm uppercase">Ajustes</h3>
+   720→   720→          <div>
+   721→   721→            <label className="text-xs font-medium text-gray-500">Tickets</label>
+   722→   722→            <div className="grid grid-cols-3 gap-2 mt-1">
+   723→   723→              <button onClick={() => setTickets('4.50')}
+   724→   724→                className={`h-11 rounded-xl text-sm font-bold border-2 transition-all active:scale-95 ${tickets === '4.50' ? 'bg-[#912D26] border-[#912D26] text-white' : 'bg-white border-[#D6D6D6] text-[#3A3A3A]'}`}>
+   725→   725→                $4.50
+   726→   726→              </button>
+   727→   727→              <button onClick={() => setTickets('6.00')}
+   728→   728→                className={`h-11 rounded-xl text-sm font-bold border-2 transition-all active:scale-95 ${tickets === '6.00' ? 'bg-[#912D26] border-[#912D26] text-white' : 'bg-white border-[#D6D6D6] text-[#3A3A3A]'}`}>
+   729→   729→                $6.00
+   730→   730→              </button>
+   731→   731→              <button onClick={() => setTickets('')}
+   732→   732→                className={`h-11 rounded-xl text-sm font-bold border-2 transition-all active:scale-95 ${tickets === '' ? 'bg-[#3A3A3A] border-[#3A3A3A] text-white' : 'bg-white border-[#D6D6D6] text-gray-400'}`}>
+   733→   733→                Ninguno
+   734→   734→              </button>
+   735→   735→            </div>
+   736→   736→          </div>
+   737→   737→          <div>
+   738→   738→            <label className="text-xs font-medium text-gray-500">Sobrante / Ajuste</label>
+   739→   739→            <div className="relative mt-1">
+   740→   740→              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+   741→   741→              <input
+   742→   742→                type="number"
+   743→   743→                inputMode="decimal"
+   744→   744→                placeholder="0.00"
+   745→   745→                value={sobrante}
+   746→   746→                onChange={e => setSobrante(e.target.value)}
+   747→   747→                className="w-full h-11 rounded-xl border border-[#D6D6D6] pl-7 pr-3 text-sm font-semibold text-[#3A3A3A]"
+   748→   748→              />
+   749→   749→            </div>
+   750→   750→            <p className="text-[10px] text-gray-400 mt-0.5">Dinero sobrante al contar (positivo o negativo)</p>
+   751→   751→          </div>
+   752→   752→        </div>
+   753→   753→
+   754→   754→        {/* 5. RESUMEN */}
+   755→   755→        <div className="bg-[#3A3A3A] text-white rounded-2xl p-4 space-y-2">
+   756→   756→          <p className="text-xs font-bold uppercase tracking-wider text-white/50">Liquidación del Día</p>
+   757→   757→          <div className="flex justify-between text-sm">
+   758→   758→            <span className="text-white/60">Efectivo Real (Contado)</span>
+   759→   759→            <span className="font-semibold text-green-400">${totalEfectivoReal.toFixed(2)}</span>
+   760→   760→          </div>
+   761→   761→          {Math.abs(totalDiferencia) >= 0.01 && (
+   762→   762→            <div className="flex justify-between text-sm">
+   763→   763→              <span className="text-white/60">Diferencia vs Sistema</span>
+   764→   764→              <span className={`font-semibold ${totalDiferencia > 0 ? 'text-blue-400' : 'text-red-400'}`}>
+   765→   765→                {totalDiferencia > 0 ? '+' : ''}{totalDiferencia.toFixed(2)}
+   766→   766→              </span>
+   767→   767→            </div>
+   768→   768→          )}
+   769→   769→          {sobranteNum !== 0 && (
+   770→   770→            <div className="flex justify-between text-sm">
+   771→   771→              <span className="text-white/60">Ajuste Manual</span>
+   772→   772→              <span className={`font-semibold ${sobranteNum >= 0 ? 'text-green-400' : 'text-red-400'}`}>${sobranteNum.toFixed(2)}</span>
+   773→   773→            </div>
+   774→   774→          )}
+   775→   775→          <hr className="border-white/10" />
+   776→   776→          <div className="flex justify-between text-sm">
+   777→   777→            <span className="text-white/80">Producción</span>
+   778→   778→            <span className="font-black text-lg">${production.toFixed(2)}</span>
+   779→   779→          </div>
+   780→   780→          <p className="text-[10px] text-white/30">Efectivo Real + Caja Común + Ajuste Manual</p>
+   781→   781→          {totalCajaComunPasajeros > 0 && (
+   782→   782→            <div className="flex justify-between text-sm">
+   783→   783→              <span className="text-purple-300">Caja Comun (Ofi.Loja): {totalCajaComunPasajeros} boletos</span>
+   784→   784→              <span className="font-semibold text-purple-300">${totalCajaComunMonto.toFixed(2)}</span>
+   785→   785→            </div>
+   786→   786→          )}
+   787→   787→          <hr className="border-white/10" />
+   788→   788→          <div className="flex justify-between text-sm">
+   789→   789→            <span className="text-white/60">Total Gastos</span>
+   790→   790→            <span className="font-semibold text-red-400">-${totalGastos.toFixed(2)}</span>
+   791→   791→          </div>
+   792→   792→          <div className="flex justify-between text-sm">
+   793→   793→            <span className="text-white/60">Tickets</span>
+   794→   794→            <span className="font-semibold">-${ticketsNum.toFixed(2)}</span>
+   795→   795→          </div>
+   796→   796→          <hr className="border-white/10" />
+   797→   797→          <div className="flex justify-between">
+   798→   798→            <span className="text-sm text-white/80">Entrega Ayudante</span>
+   799→   799→            <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+   800→   800→              ${entregaAyudante.toFixed(2)}
+   801→   801→            </span>
+   802→   802→          </div>
+   803→   803→          <p className="text-[10px] text-white/30">Efectivo Real - Total Gastos</p>
+   804→   804→          <div className="flex justify-between">
+   805→   805→            <span className="text-sm text-white/80">Entrega Compañía</span>
+   806→   806→            <span className={`font-bold ${entregaCompania >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+   807→   807→              ${entregaCompania.toFixed(2)}
+   808→   808→            </span>
+   809→   809→          </div>
+   810→   810→          <p className="text-[10px] text-white/30">{totalCajaComunMonto > 0 ? 'Caja Común - Tickets' : 'Sin Caja Común (antes de Jun 2026)'}</p>
+   811→   811→        </div>
+   812→   812→
+   813→   813→        {/* BOTON GUARDAR */}
+   814→   814→        <button
+   815→   815→          onClick={handleSaveOffline}
+   816→   816→          disabled={saving}
+   817→   817→          className={`w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-2 shadow-lg ${
+   818→   818→            saving ? 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed' : 'bg-[#912D26] text-white shadow-red-200 active:scale-95 transition-all'
+   819→   819→          }`}>
+   820→   820→          {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
+   821→   821→          {saving ? 'Guardando...' : 'GUARDAR ARQUEO GENERAL'}
+   822→   822→        </button>
+   823→   823→      </div>
+   824→   824→
+   825→   825→      {/* Hidden file input */}
+   826→   826→      <input
+   827→   827→        ref={fileInputRef}
+   828→   828→        type="file"
+   829→   829→        accept="image/*"
+   830→   830→        className="hidden"
+   831→   831→        onChange={handlePhotoChange}
+   832→   832→      />
+   833→   833→    </div>
+   834→   834→  );
+   835→   835→}
+   836→   836→

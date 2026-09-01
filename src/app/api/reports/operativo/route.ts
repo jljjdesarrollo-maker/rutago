@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
       motivo: string | null;
       notaEspecial: string | null;
       income: number;
+      efectivoReal: number;
     }[] = [];
 
     records.forEach(r => {
@@ -53,6 +54,7 @@ export async function GET(req: NextRequest) {
           motivo: t.motivo || null,
           notaEspecial: t.notaEspecial || null,
           income: t.income || 0,
+          efectivoReal: t.efectivoReal || 0,
         });
       });
     });
@@ -60,6 +62,11 @@ export async function GET(req: NextRequest) {
     // KPIs
     const totalProgramadas = trips.length;
     const realizadas = trips.filter(t => t.tipo === 'frecuencia').length;
+    const totalIngresos = trips.reduce((s, t) => {
+      if (t.tipo === 'frecuencia') return s + (t.efectivoReal || 0);
+      if (t.tipo === 'ingreso_especial') return s + (t.income || 0);
+      return s;
+    }, 0);
     const noRealizadas = trips.filter(t => t.tipo === 'no_realizada').length;
     const ingresosEspeciales = trips.filter(t => t.tipo === 'ingreso_especial').length;
     const cumplimiento = totalProgramadas > 0 ? realizadas / totalProgramadas : 0;
@@ -91,6 +98,7 @@ export async function GET(req: NextRequest) {
       noRealizadas,
       ingresosEspeciales,
       cumplimiento,
+      totalIngresos,
       motivos,
       days,
     });
