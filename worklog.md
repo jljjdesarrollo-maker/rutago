@@ -237,3 +237,38 @@ Stage Summary:
 - Bug: saldoA sumaba cajaComun dos veces (production ya lo contiene)
 - Fix: 4 ediciones (líneas 167, 174-177, 225, 233)
 - Validación ahora cuadra correctamente: (Producción) - (Gastos + Tickets) = Ent. Ayudante + Ent. Compañía
+
+---
+Task ID: 7
+Agent: Main
+Task: v3.45.0 - Campos operativos en Trip (tipo, motivo, notaEspecial)
+
+Work Log:
+- Schema: Agregados 3 campos al modelo Trip: tipo (default 'frecuencia'), motivo (nullable), notaEspecial (nullable)
+- Migration: Creada migration SQL manual para ALTER TABLE Trip ( PostgreSQL en produccion)
+- Prisma generate exitoso
+- ArqueoGeneralScreen.tsx:
+  - Interfaz FrecuenciaResumen: agregados isNoRealizada, motivoNoRealizada
+  - Carga de datos: ahora incluye no_realizadas SIN ingreso especial (antes se descartaban)
+  - handleConfirmSave: envia tipo/motivo/notaEspecial en cada trip
+  - Renderizado: filas naranjas para no realizadas con motivo
+  - Fallback offline: incluye campos nuevos
+- API /api/records POST: recibe y guarda tipo, motivo, notaEspecial en Trip create
+- API /api/reports GET:
+  - frecRealizadas: cuenta trips donde tipo='frecuencia' (o sin tipo con income>0 para datos historicos)
+  - frecNoRealizadas: cuenta trips donde tipo='no_realizada'
+  - frecIngresoEspecial: cuenta trips donde tipo='ingreso_especial'
+  - frecProgramadas: si hay datos con tipo, usa realizadas+noRealizadas+especiales; si no, fallback a tabla Frecuencia
+  - Totales agregados: frecNoRealizadas, frecIngresoEspecial
+- generate-report-pdf.ts:
+  - Seccion OPERATIVO: 8 tarjetas (agregadas No Realizadas e Ing. Especiales)
+  - Layout inteligente: 4+4 si hay datos, solo 4 si no hay
+  - Detalle de frecuencias: muestra (NR: motivo) y (IE: nota) en color naranja/amber
+- Build exitoso, commit pushed
+
+Stage Summary:
+- Version: v3.45.0
+- Commit: caf95a6
+- Archivos modificados: schema.prisma, ArqueoGeneralScreen.tsx, records/route.ts, reports/route.ts, generate-report-pdf.ts
+- Migration: prisma/migrations/20240901000000_add_trip_tipo_motivo_nota/migration.sql
+- Deploy: push a GitHub listo, Vercel deploy pendiente desde tu lado
