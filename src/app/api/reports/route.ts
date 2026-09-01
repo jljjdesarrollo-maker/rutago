@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
     });
 
     // ─── OPERATIONAL DATA: frecuencias programadas por VT ───
-    const uniqueVtCodes = [...new Set(records.map(r => r.vtCode).filter(Boolean))];
+    const uniqueVtCodes = [...new Set(records.map(r => r.vtCode).filter((v): v is string => !!v))];
     const vtFrecCounts: Record<string, number> = {};
     if (uniqueVtCodes.length > 0) {
       const frecCounts = await Promise.all(
@@ -107,9 +107,17 @@ export async function GET(req: NextRequest) {
       const totalTickets = recs.reduce((s, r) => s + r.tickets, 0);
       const totalCajaComun = recs.reduce((s, r) => s + r.cajaComun, 0);
       const totalSobrante = recs.reduce((s, r) => s + (r.sobrante || 0), 0);
-      // Operational: frecuencias programadas (sum of VT freq count per record)
-      const frecProgramadas = recs.reduce((s, r) => s + (vtFrecCounts[r.vtCode || ''] || 0), 0);
-      const frecRealizadas = recs.reduce((s, r) => s + r.trips.length, 0);
+      // Operational: frecuencias por tipo (usando campo tipo de Trip)
+      const tripsAll = recs.flatMap(r => r.trips);
+      const frecRealizadas = tripsAll.filter(t => t.tipo === 'frecuencia' || (!t.tipo && t.income > 0)).length;
+      const frecNoRealizadas = tripsAll.filter(t => t.tipo === 'no_realizada').length;
+      const frecIngresoEspecial = tripsAll.filter(t => t.tipo === 'ingreso_especial').length;
+      // Frecuencias programadas = realizadas + no realizadas + ingresos especiales (lo que realmente se registró ese día)
+      // Fallback: si no hay datos con tipo, usar conteo de tabla Frecuencia por VT
+      const frecConTipo = tripsAll.filter(t => t.tipo && t.tipo !== 'frecuencia').length;
+      const frecProgramadas = frecConTipo > 0
+        ? frecRealizadas + frecNoRealizadas + frecIngresoEspecial
+        : recs.reduce((s, r) => s + (vtFrecCounts[r.vtCode || ''] || 0), 0);
       return {
         date,
         records: recs,
@@ -124,6 +132,8 @@ export async function GET(req: NextRequest) {
         totalSobrante,
         frecProgramadas,
         frecRealizadas,
+        frecNoRealizadas,
+        frecIngresoEspecial,
       };
     });
 
@@ -162,6 +172,8 @@ export async function GET(req: NextRequest) {
         daysInPeriod,
         frecProgramadas: totalFrecProgramadas,
         frecRealizadas: totalFrecRealizadas,
+        frecNoRealizadas: dailySummaries.reduce((s, d) => s + d.frecNoRealizadas, 0),
+        frecIngresoEspecial: dailySummaries.reduce((s, d) => s + d.frecIngresoEspecial, 0),
         // Derived KPIs
         asistencia: daysInPeriod > 0 ? daysWorked / daysInPeriod : 0,
         cumplimiento: totalFrecProgramadas > 0 ? totalFrecRealizadas / totalFrecProgramadas : 0,

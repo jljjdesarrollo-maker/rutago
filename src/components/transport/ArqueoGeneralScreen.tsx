@@ -6,7 +6,7 @@ import { getVentasByFrecuencia } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
 import {
   ChevronLeft, DollarSign, Camera, X, Save, Loader2,
-  CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles, Pencil
+  CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles, Pencil, XCircle
 } from 'lucide-react';
 
 interface Props {
@@ -31,6 +31,8 @@ interface FrecuenciaResumen {
   cajaComunMonto?: number;
   isIngresoEspecial?: boolean;
   ingresoEspecialNota?: string;
+  isNoRealizada?: boolean;
+  motivoNoRealizada?: string;
 }
 
 interface GastoItem {
@@ -109,6 +111,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       const cerradas = estadosLS.filter(e => e.estado === 'cerrada');
       // Ingresos especiales (no_realizada con monto > 0)
       const especiales = estadosLS.filter(e => e.estado === 'no_realizada' && (e.ingresoEspecialMonto || 0) > 0);
+      // No realizadas sin ingreso especial
+      const noRealizadas = estadosLS.filter(e => e.estado === 'no_realizada' && (e.ingresoEspecialMonto || 0) <= 0);
 
       const resumenes: FrecuenciaResumen[] = await Promise.all(
         cerradas.map(async (e) => {
@@ -151,6 +155,26 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           cajaComunMonto: 0,
           isIngresoEspecial: true,
           ingresoEspecialNota: e.ingresoEspecialNota,
+          isNoRealizada: true,
+          motivoNoRealizada: e.motivoNoRealizada,
+        });
+      });
+      // Add no realizadas (sin ingreso) as virtual rows
+      noRealizadas.forEach(e => {
+        resumenes.push({
+          estadoId: e.estadoId,
+          nombre: e.nombre,
+          ruta: e.ruta,
+          hora: e.hora,
+          direccion: e.direccion,
+          ventasCount: 0,
+          totalRecaudado: 0,
+          efectivoContado: 0,
+          diferencia: 0,
+          boletosCaja: 0,
+          cajaComunMonto: 0,
+          isNoRealizada: true,
+          motivoNoRealizada: e.motivoNoRealizada,
         });
       });
       setFrecuencias(resumenes);
@@ -253,17 +277,25 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     setConfirmSave(false);
     setSaving(true);
 
+    const fechaTrabajo = workDate(session);
     try {
-      // Build trips from frecuencias
-      const trips = frecuencias.map(f => ({
-        routeFrom: f.direccion === 'ida' ? 'Loja' : f.ruta.split(' - ')[1]?.trim() || 'Loja',
-        routeTo: f.direccion === 'ida' ? f.ruta.split(' - ')[1]?.trim() || 'Vilcabamba' : 'Loja',
+      // Build trips from frecuencias (all: cerradas, ingresos especiales, no realizadas)
+      const trips = frecuencias.map((f, idx) => ({
+        routeFrom: f.isNoRealizada && !f.isIngresoEspecial
+          ? '-'
+          : (f.direccion === 'ida' ? 'Loja' : f.ruta.split(' - ')[1]?.trim() || 'Loja'),
+        routeTo: f.isNoRealizada && !f.isIngresoEspecial
+          ? '-'
+          : (f.direccion === 'ida' ? f.ruta.split(' - ')[1]?.trim() || 'Vilcabamba' : 'Loja'),
         time: f.hora,
         income: f.totalRecaudado.toString(),
         efectivoReal: f.efectivoContado.toString(),
         boletos: '0',
         cajaComunPasajeros: f.boletosCaja.toString(),
         cajaComunMonto: (f.cajaComunMonto || 0).toString(),
+        tipo: f.isIngresoEspecial ? 'ingreso_especial' : f.isNoRealizada ? 'no_realizada' : 'frecuencia',
+        motivo: f.motivoNoRealizada || undefined,
+        notaEspecial: f.ingresoEspecialNota || undefined,
       }));
 
       const body = {
@@ -280,7 +312,6 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         photoUrl: fotoPreview,
       };
 
-      const fechaTrabajo = workDate(session);
       const isOnline = navigator.onLine;
 
       if (isOnline) {
@@ -309,7 +340,14 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       console.error('Error guardando arqueo:', err);
       localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify({
         date: fechaTrabajo, km, vtCode: session.vtCode, ayudanteNombre: session.ayudanteNombre,
-        trips: frecuencias.map(f => ({ routeFrom: 'Loja', routeTo: 'Vilcabamba', time: f.hora, income: f.totalRecaudado.toString(), boletos: '0' })),
+        trips: frecuencias.map(f => ({
+          routeFrom: f.isNoRealizada ? '-' : 'Loja',
+          routeTo: f.isNoRealizada ? '-' : 'Vilcabamba',
+          time: f.hora, income: f.totalRecaudado.toString(), boletos: '0',
+          tipo: f.isIngresoEspecial ? 'ingreso_especial' : f.isNoRealizada ? 'no_realizada' : 'frecuencia',
+          motivo: f.motivoNoRealizada || undefined,
+          notaEspecial: f.ingresoEspecialNota || undefined,
+        })),
         expenses: gastos, tickets: tickets || '0', sobrante: sobrante || '0', photoUrl: fotoPreview,
       }));
       setGuardadoOffline(true);
@@ -465,6 +503,28 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
               </div>
               {frecuencias.map((f, i) => {
                 const hasDiff = Math.abs(f.diferencia) >= 0.01;
+                if (f.isNoRealizada && !f.isIngresoEspecial) {
+                  return (
+                    <div key={f.estadoId} className="flex items-center justify-between py-2 px-3 rounded-xl bg-orange-50 border border-orange-200">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <XCircle className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-orange-800 truncate">{f.hora} — {f.nombre}</div>
+                          <div className="text-[10px] text-orange-500">No realizada: {f.motivoNoRealizada || 'Sin motivo'}</div>
+                        </div>
+                      </div>
+                      <div className="w-20 text-right">
+                        <span className="text-xs text-gray-400">—</span>
+                      </div>
+                      <div className="w-20 text-right">
+                        <span className="text-xs text-gray-400">—</span>
+                      </div>
+                      <div className="w-16 text-right">
+                        <span className="text-xs text-gray-400">—</span>
+                      </div>
+                    </div>
+                  );
+                }
                 if (f.isIngresoEspecial) {
                   return (
                     <div key={f.estadoId} className="flex items-center justify-between py-2 px-3 rounded-xl bg-amber-50 border border-amber-200">

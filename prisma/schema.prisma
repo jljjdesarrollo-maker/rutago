@@ -54,6 +54,9 @@ model Trip {
   boletos            Float   @default(0)
   cajaComunPasajeros Int    @default(0)
   cajaComunMonto     Float   @default(0)
+  tipo               String  @default("frecuencia") // "frecuencia" | "ingreso_especial" | "no_realizada"
+  motivo             String? // "mantenimiento" | "daño_unidad" | "clima" | "sin_pasajeros" | "problema_ruta" | "orden_superior" | "otro"
+  notaEspecial       String? // nota del ingreso especial
 
   record DailyRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
 }

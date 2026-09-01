@@ -50,6 +50,8 @@ interface DailySummary {
   totalSobrante: number;
   frecProgramadas?: number;
   frecRealizadas?: number;
+  frecNoRealizadas?: number;
+  frecIngresoEspecial?: number;
 }
 
 interface ReportData {
@@ -71,6 +73,8 @@ interface ReportData {
     daysInPeriod?: number;
     frecProgramadas?: number;
     frecRealizadas?: number;
+    frecNoRealizadas?: number;
+    frecIngresoEspecial?: number;
     asistencia?: number;
     cumplimiento?: number;
     ingresoPorFrecuencia?: number;
@@ -199,6 +203,8 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   const asistencia = t.asistencia ?? (daysInPeriod > 0 ? daysWorked / daysInPeriod : 0);
   const frecProg = t.frecProgramadas ?? 0;
   const frecReal = t.frecRealizadas ?? 0;
+  const frecNoReal = t.frecNoRealizadas ?? 0;
+  const frecEsp = t.frecIngresoEspecial ?? 0;
   const cumplimiento = t.cumplimiento ?? (frecProg > 0 ? frecReal / frecProg : 0);
   const ingPorFrec = t.ingresoPorFrecuencia ?? (frecReal > 0 ? totalIngresos / frecReal : 0);
   const ingPorDia = t.ingresoPorDia ?? (daysWorked > 0 ? totalIngresos / daysWorked : 0);
@@ -210,10 +216,15 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
     { label: 'Dias Laborados', value: `${daysWorked}`, color: COLORS.dark },
     { label: 'Asistencia', value: formatPct(asistencia), color: pctColor(asistencia) },
     { label: 'Frec. Programadas', value: `${frecProg}`, color: COLORS.dark },
-    { label: 'Frec. Realizadas', value: `${frecReal}`, color: COLORS.dark },
+    { label: 'Frec. Realizadas', value: `${frecReal}`, color: COLORS.green },
+    { label: 'No Realizadas', value: `${frecNoReal}`, color: frecNoReal > 0 ? [220, 50, 50] : COLORS.dark },
+    { label: 'Ing. Especiales', value: `${frecEsp}`, color: COLORS.amber },
     { label: 'Cumplimiento', value: formatPct(cumplimiento), color: pctColor(cumplimiento) },
   ];
-  drawCardRow(opCards, 6);
+  drawCardRow(opCards, 4);
+  if (frecEsp > 0 || frecNoReal > 0) {
+    drawCardRow(opCards.slice(4), opCards.length - 4);
+  }
 
   // ==================== 2. INGRESOS ====================
   drawBlockTitle('INGRESOS');
@@ -361,6 +372,7 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
 
         const tripCols = [10, 50, 50, 35, 35];
         const tripHeaders = ['#', 'Ruta', 'Retorno', 'Produccion', 'Caja Com.'];
+        const tripAligns: ('left' | 'right')[] = ['left', 'left', 'left', 'right', 'right'];
         doc.setFillColor(...COLORS.dark);
         let ttx = ml;
         tripCols.forEach((cwi, i) => {
@@ -372,15 +384,22 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
 
         record.trips.forEach((trip: any, ti: number) => {
           if (y + 7 > pageH - footerY) { doc.addPage(); y = minY; }
+          const isNoReal = trip.tipo === 'no_realizada';
+          const isEspecial = trip.tipo === 'ingreso_especial';
           ttx = ml;
+          const tripLabel = isNoReal
+            ? `${ti + 1} (NR: ${trip.motivo || '-'})`
+            : isEspecial
+            ? `${ti + 1} (IE: ${trip.notaEspecial || '-'})`
+            : `${ti + 1}`;
           [
-            `${ti + 1}`,
-            `${trip.routeFrom} - ${trip.routeTo}`,
+            tripLabel,
+            (isNoReal && !isEspecial) ? '-' : `${trip.routeFrom} - ${trip.routeTo}`,
             trip.time || '-',
             formatMoney(trip.income),
-            formatMoney(trip.boletos),
+            formatMoney(trip.cajaComunMonto || 0),
           ].forEach((val, i) => {
-            addText(val, ttx + 2, y + 0.5, { size: 7, color: COLORS.dark, align: i >= 3 ? 'right' : 'left' });
+            addText(val, ttx + 2, y + 0.5, { size: 7, color: isNoReal ? [180, 80, 50] : isEspecial ? COLORS.amber : COLORS.dark, align: tripAligns[i] });
             ttx += tripCols[i];
           });
           y += 5;

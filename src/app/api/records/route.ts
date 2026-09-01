@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
         totalGastos,
         photoUrl: photoUrl || null,
         trips: {
-          create: (trips || []).map((t: { routeFrom: string; routeTo: string; time?: string; income?: number | string; efectivoReal?: number | string; boletos?: number | string; cajaComunPasajeros?: number | string; cajaComunMonto?: number | string }, i: number) => ({
+          create: (trips || []).map((t: { routeFrom: string; routeTo: string; time?: string; income?: number | string; efectivoReal?: number | string; boletos?: number | string; cajaComunPasajeros?: number | string; cajaComunMonto?: number | string; tipo?: string; motivo?: string; notaEspecial?: string }, i: number) => ({
             order: i + 1,
             routeFrom: t.routeFrom || '',
             routeTo: t.routeTo || '',
@@ -111,6 +111,9 @@ export async function POST(req: NextRequest) {
             boletos: Number(t.boletos) || 0,
             cajaComunPasajeros: Number(t.cajaComunPasajeros) || 0,
             cajaComunMonto: Number(t.cajaComunMonto) || 0,
+            tipo: t.tipo || 'frecuencia',
+            motivo: t.motivo || null,
+            notaEspecial: t.notaEspecial || null,
           })),
         },
         expenses: {

@@ -1,0 +1,846 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+     4→import { type VTSession, type FrecuenciaEstado } from './types-boletos';
+     5→import { getVentasByFrecuencia } from '@/lib/indexeddb';
+     6→import { type ConnectionInfo } from '@/hooks/use-connection';
+     7→import {
+     8→  ChevronLeft, DollarSign, Camera, X, Save, Loader2,
+     9→  CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles, Pencil, XCircle
+    10→} from 'lucide-react';
+    11→
+    12→interface Props {
+    13→  session: VTSession;
+    14→  connection: ConnectionInfo;
+    15→  onClose: () => void;
+    16→  onGoToSync: () => void;
+    17→  onSaved: () => void;
+    18→}
+    19→
+    20→interface FrecuenciaResumen {
+    21→  estadoId: string;
+    22→  nombre: string;
+    23→  ruta: string;
+    24→  hora: string;
+    25→  direccion: string;
+    26→  ventasCount: number;
+    27→  totalRecaudado: number;        // What the system says
+    28→  efectivoContado: number;        // What the helper actually counted
+    29→  diferencia: number;             // efectivoContado - totalRecaudado
+    30→  boletosCaja: number;
+    31→  cajaComunMonto?: number;
+    32→  isIngresoEspecial?: boolean;
+    33→  ingresoEspecialNota?: string;
+    34→  isNoRealizada?: boolean;
+    35→  motivoNoRealizada?: string;
+    36→}
+    37→
+    38→interface GastoItem {
+    39→  description: string;
+    40→  amount: string;
+    41→}
+    42→
+    43→const today = () => new Date().toISOString().split('T')[0];
+    44→
+    45→// Work date: use session.fecha (date when shift started, not necessarily today)
+    46→function workDate(session: VTSession): string {
+    47→  return session.fecha || today();
+    48→}
+    49→
+    50→const GASTOS_DEFAULT: GastoItem[] = [
+    51→  { description: 'Chofer', amount: '30' },
+    52→  { description: 'Ayudante', amount: '20' },
+    53→  { description: 'Diesel', amount: '0' },
+    54→  { description: 'Plan Renova', amount: '68' },
+    55→];
+    56→
+    57→export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, onSaved }: Props) {
+    58→  const [frecuencias, setFrecuencias] = useState<FrecuenciaResumen[]>([]);
+    59→  const [loading, setLoading] = useState(true);
+    60→  const [km, setKm] = useState('');
+    61→  const [gastos, setGastos] = useState<GastoItem[]>(GASTOS_DEFAULT);
+    62→  const [tickets, setTickets] = useState('');
+    63→  const [sobrante, setSobrante] = useState('');
+    64→  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+    65→  const [saving, setSaving] = useState(false);
+    66→  const [confirmSave, setConfirmSave] = useState(false);
+    67→  const [saved, setSaved] = useState(false);
+    68→  const [errors, setErrors] = useState<string[]>([]);
+    69→  const [guardadoOffline, setGuardadoOffline] = useState(false);
+    70→
+    71→  // Inline edit caja común
+    72→  const [editingCajaComun, setEditingCajaComun] = useState<string | null>(null);
+    73→  const [editCajaComunValue, setEditCajaComunValue] = useState('');
+    74→
+    75→  const fileInputRef = useRef<HTMLInputElement>(null);
+    76→  const saveCajaComunToLS = useCallback((estadoId: string, newMonto: number) => {
+    77→    const fecha = workDate(session);
+    78→    const lsKey = `rg_estados_${session.vtCode}_${fecha}`;
+    79→    try {
+    80→      const raw = localStorage.getItem(lsKey);
+    81→      if (raw) {
+    82→        const all = JSON.parse(raw);
+    83→        const idx = all.findIndex((e: any) => e.estadoId === estadoId);
+    84→        if (idx >= 0) {
+    85→          all[idx].cajaComunMonto = newMonto;
+    86→          localStorage.setItem(lsKey, JSON.stringify(all));
+    87→        }
+    88→      }
+    89→    } catch (e) { console.error('LS error:', e); }
+    90→    setFrecuencias(prev => prev.map(f =>
+    91→      f.estadoId === estadoId
+    92→        ? { ...f, cajaComunMonto: newMonto }
+    93→        : f
+    94→    ));
+    95→    setEditingCajaComun(null);
+    96→  }, [session]);
+    97→
+    98→  const startEditCajaComun = (estadoId: string, currentMonto: number) => {
+    99→    setEditingCajaComun(estadoId);
+   100→    setEditCajaComunValue(currentMonto > 0 ? currentMonto.toFixed(2) : '');
+   101→  };
+   102→
+   103→  const loadData = useCallback(async () => {
+   104→    try {
+   105→      const fecha = workDate(session);
+   106→      // Load estados from localStorage (synchronous, reliable)
+   107→      const lsKey = `rg_estados_${session.vtCode}_${fecha}`;
+   108→      const raw = localStorage.getItem(lsKey);
+   109→      if (!raw) { setLoading(false); return; }
+   110→      const estadosLS = JSON.parse(raw) as FrecuenciaEstado[];
+   111→      const cerradas = estadosLS.filter(e => e.estado === 'cerrada');
+   112→      // Ingresos especiales (no_realizada con monto > 0)
+   113→      const especiales = estadosLS.filter(e => e.estado === 'no_realizada' && (e.ingresoEspecialMonto || 0) > 0);
+   114→      // No realizadas sin ingreso especial
+   115→      const noRealizadas = estadosLS.filter(e => e.estado === 'no_realizada' && (e.ingresoEspecialMonto || 0) <= 0);
+   116→
+   117→      const resumenes: FrecuenciaResumen[] = await Promise.all(
+   118→        cerradas.map(async (e) => {
+   119→          const ventas = await getVentasByFrecuencia(e.estadoId);
+   120→          const sistemaTotal = ventas.reduce((s, v) => s + v.cobrado, 0);
+   121→          // Use arqueo data if available (what helper actually counted), else system total
+   122→          const efectivo = (e as any).arqueoEfectivo ?? sistemaTotal;
+   123→          const diff = efectivo - sistemaTotal;
+   124→          const ccCount = (e as any).cajaComunCount || 0;
+   125→          const ccMonto = (e as any).cajaComunMonto || 0;
+   126→          return {
+   127→            estadoId: e.estadoId,
+   128→            nombre: e.nombre,
+   129→            ruta: e.ruta,
+   130→            hora: e.hora,
+   131→            direccion: e.direccion,
+   132→            ventasCount: ventas.length,
+   133→            totalRecaudado: sistemaTotal,
+   134→            efectivoContado: efectivo,
+   135→            diferencia: diff,
+   136→            boletosCaja: ccCount,
+   137→            cajaComunMonto: ccMonto,
+   138→          };
+   139→        })
+   140→      );
+   141→
+   142→      // Add ingresos especiales as virtual rows
+   143→      especiales.forEach(e => {
+   144→        resumenes.push({
+   145→          estadoId: e.estadoId,
+   146→          nombre: e.nombre,
+   147→          ruta: e.ruta,
+   148→          hora: e.hora,
+   149→          direccion: e.direccion,
+   150→          ventasCount: 0,
+   151→          totalRecaudado: e.ingresoEspecialMonto || 0,
+   152→          efectivoContado: e.ingresoEspecialMonto || 0,
+   153→          diferencia: 0,
+   154→          boletosCaja: 0,
+   155→          cajaComunMonto: 0,
+   156→          isIngresoEspecial: true,
+   157→          ingresoEspecialNota: e.ingresoEspecialNota,
+   158→          isNoRealizada: true,
+   159→          motivoNoRealizada: e.motivoNoRealizada,
+   160→        });
+   161→      });
+   162→      // Add no realizadas (sin ingreso) as virtual rows
+   163→      noRealizadas.forEach(e => {
+   164→        resumenes.push({
+   165→          estadoId: e.estadoId,
+   166→          nombre: e.nombre,
+   167→          ruta: e.ruta,
+   168→          hora: e.hora,
+   169→          direccion: e.direccion,
+   170→          ventasCount: 0,
+   171→          totalRecaudado: 0,
+   172→          efectivoContado: 0,
+   173→          diferencia: 0,
+   174→          boletosCaja: 0,
+   175→          cajaComunMonto: 0,
+   176→          isNoRealizada: true,
+   177→          motivoNoRealizada: e.motivoNoRealizada,
+   178→        });
+   179→      });
+   180→      setFrecuencias(resumenes);
+   181→    } catch (err) {
+   182→      console.error('Error cargando resumen:', err);
+   183→    } finally {
+   184→      setLoading(false);
+   185→    }
+   186→  }, [session.vtCode]);
+   187→
+   188→  useEffect(() => { loadData(); }, [loadData]);
+   189→
+   190→  const totalIngresosAuto = useMemo(() =>
+   191→    frecuencias.reduce((s, f) => s + f.totalRecaudado, 0),
+   192→    [frecuencias]
+   193→  );
+   194→  const totalEfectivoReal = useMemo(() =>
+   195→    frecuencias.reduce((s, f) => s + f.efectivoContado, 0),
+   196→    [frecuencias]
+   197→  );
+   198→  const totalDiferencia = useMemo(() =>
+   199→    frecuencias.reduce((s, f) => s + f.diferencia, 0),
+   200→    [frecuencias]
+   201→  );
+   202→  const totalVentas = useMemo(() =>
+   203→    frecuencias.reduce((s, f) => s + f.ventasCount, 0),
+   204→    [frecuencias]
+   205→  );
+   206→  const totalCajaComunPasajeros = useMemo(() =>
+   207→    frecuencias.reduce((s, f) => s + f.boletosCaja, 0),
+   208→    [frecuencias]
+   209→  );
+   210→  const totalCajaComunMonto = useMemo(() =>
+   211→    frecuencias.reduce((s, f) => s + (f.cajaComunMonto || 0), 0),
+   212→    [frecuencias]
+   213→  );
+   214→  const totalGastos = useMemo(() =>
+   215→    gastos.reduce((s, g) => s + (parseFloat(g.amount) || 0), 0),
+   216→    [gastos]
+   217→  );
+   218→  const ticketsNum = parseFloat(tickets) || 0;
+   219→  const sobranteNum = parseFloat(sobrante) || 0;
+   220→  // PRODUCCION = efectivo real contado por el ayudante + caja comun + sobrante ajuste manual
+   221→  const production = totalEfectivoReal + totalCajaComunMonto + sobranteNum;
+   222→  // ENTREGA AYUDANTE = efectivo real + sobrante - gastos (la caja común NO pasa por el ayudante)
+   223→  const entregaAyudante = totalEfectivoReal + sobranteNum - totalGastos;
+   224→  // Lógica dual: si hay caja común se descuentan tickets, si no (pre-Jun 2026) entrega compañía = 0
+   225→  const entregaCompania = totalCajaComunMonto > 0 ? totalCajaComunMonto - ticketsNum : 0;
+   226→
+   227→  const addGasto = () => setGastos(prev => [...prev, { description: '', amount: '0' }]);
+   228→  const removeGasto = (i: number) => setGastos(prev => prev.filter((_, idx) => idx !== i));
+   229→  const updateGasto = (i: number, field: keyof GastoItem, value: string) => {
+   230→    setGastos(prev => {
+   231→      const next = [...prev];
+   232→      next[i] = { ...next[i], [field]: value };
+   233→      return next;
+   234→    });
+   235→  };
+   236→
+   237→  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+   238→    const file = e.target.files?.[0];
+   239→    if (!file || !file.type.startsWith('image/')) return;
+   240→    e.target.value = '';
+   241→    // Comprimir imagen antes de almacenar (max ~200KB base64)
+   242→    const img = new Image();
+   243→    const url = URL.createObjectURL(file);
+   244→    img.onload = () => {
+   245→      URL.revokeObjectURL(url);
+   246→      const MAX_DIM = 1200;
+   247→      const QUALITY = 0.6;
+   248→      let w = img.width, h = img.height;
+   249→      if (w > MAX_DIM || h > MAX_DIM) {
+   250→        if (w > h) { h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
+   251→        else { w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
+   252→      }
+   253→      const canvas = document.createElement('canvas');
+   254→      canvas.width = w; canvas.height = h;
+   255→      canvas.getContext('2d')?.drawImage(img, 0, 0, w, h);
+   256→      setFotoPreview(canvas.toDataURL('image/jpeg', QUALITY));
+   257→    };
+   258→    img.onerror = () => URL.revokeObjectURL(url);
+   259→    img.src = url;
+   260→  };
+   261→
+   262→  const handleSaveOffline = () => {
+   263→    const errs: string[] = [];
+   264→    if (!km.trim()) errs.push('Kilometraje es obligatorio');
+   265→    if (!fotoPreview) errs.push('Foto del cuaderno es obligatoria');
+   266→    if (frecuencias.length === 0) errs.push('No hay frecuencias cerradas');
+   267→    // Gastos pueden ser $0 si no hubo (ej. unidad parada)
+   268→    if (errs.length > 0) {
+   269→      setErrors(errs);
+   270→      return;
+   271→    }
+   272→    setErrors([]);
+   273→    setConfirmSave(true);
+   274→  };
+   275→
+   276→  const handleConfirmSave = async () => {
+   277→    setConfirmSave(false);
+   278→    setSaving(true);
+   279→
+   280→    try {
+   281→      const fechaTrabajo = workDate(session);
+   282→
+   283→      // Build trips from frecuencias (all: cerradas, ingresos especiales, no realizadas)
+   284→      const trips = frecuencias.map((f, idx) => ({
+   285→        routeFrom: f.isNoRealizada && !f.isIngresoEspecial
+   286→          ? '-'
+   287→          : (f.direccion === 'ida' ? 'Loja' : f.ruta.split(' - ')[1]?.trim() || 'Loja'),
+   288→        routeTo: f.isNoRealizada && !f.isIngresoEspecial
+   289→          ? '-'
+   290→          : (f.direccion === 'ida' ? f.ruta.split(' - ')[1]?.trim() || 'Vilcabamba' : 'Loja'),
+   291→        time: f.hora,
+   292→        income: f.totalRecaudado.toString(),
+   293→        efectivoReal: f.efectivoContado.toString(),
+   294→        boletos: '0',
+   295→        cajaComunPasajeros: f.boletosCaja.toString(),
+   296→        cajaComunMonto: (f.cajaComunMonto || 0).toString(),
+   297→        tipo: f.isIngresoEspecial ? 'ingreso_especial' : f.isNoRealizada ? 'no_realizada' : 'frecuencia',
+   298→        motivo: f.motivoNoRealizada || undefined,
+   299→        notaEspecial: f.ingresoEspecialNota || undefined,
+   300→      }));
+   301→
+   302→      const body = {
+   303→        date: workDate(session),
+   304→        km: km,
+   305→        conductor: '',
+   306→        ayudanteNombre: session.ayudanteNombre,
+   307→        vtCode: session.vtCode,
+   308→        trips,
+   309→        expenses: gastos,
+   310→        tickets: tickets || '0',
+   311→        cajaComun: totalCajaComunMonto,
+   312→        sobrante: sobrante || '0',
+   313→        photoUrl: fotoPreview,
+   314→      };
+   315→
+   316→      const isOnline = navigator.onLine;
+   317→
+   318→      if (isOnline) {
+   319→        const res = await fetch('/api/records', {
+   320→          method: 'POST',
+   321→          headers: { 'Content-Type': 'application/json' },
+   322→          body: JSON.stringify(body),
+   323→        });
+   324→        if (res.ok) {
+   325→          setSaved(true);
+   326→        } else {
+   327→          const result = await res.json().catch(() => ({ error: 'Error desconocido' }));
+   328→          console.error('Error guardando arqueo en servidor:', result.error);
+   329→          // Save offline if server fails
+   330→          localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify(body));
+   331→          setGuardadoOffline(true);
+   332→          setSaved(true);
+   333→        }
+   334→      } else {
+   335→        // Save to localStorage for later sync
+   336→        localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify(body));
+   337→        setGuardadoOffline(true);
+   338→        setSaved(true);
+   339→      }
+   340→    } catch (err) {
+   341→      console.error('Error guardando arqueo:', err);
+   342→      localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify({
+   343→        date: fechaTrabajo, km, vtCode: session.vtCode, ayudanteNombre: session.ayudanteNombre,
+   344→        trips: frecuencias.map(f => ({
+   345→          routeFrom: f.isNoRealizada ? '-' : 'Loja',
+   346→          routeTo: f.isNoRealizada ? '-' : 'Vilcabamba',
+   347→          time: f.hora, income: f.totalRecaudado.toString(), boletos: '0',
+   348→          tipo: f.isIngresoEspecial ? 'ingreso_especial' : f.isNoRealizada ? 'no_realizada' : 'frecuencia',
+   349→          motivo: f.motivoNoRealizada || undefined,
+   350→          notaEspecial: f.ingresoEspecialNota || undefined,
+   351→        })),
+   352→        expenses: gastos, tickets: tickets || '0', sobrante: sobrante || '0', photoUrl: fotoPreview,
+   353→      }));
+   354→      setGuardadoOffline(true);
+   355→      setSaved(true);
+   356→    } finally {
+   357→      setSaving(false);
+   358→    }
+   359→  };
+   360→
+   361→  if (loading) {
+   362→    return (
+   363→      <div className="flex flex-col min-h-[100dvh] bg-gray-50 items-center justify-center">
+   364→        <Loader2 className="w-8 h-8 text-[#912D26] animate-spin mb-3" />
+   365→        <p className="text-[#3A3A3A]">Cargando arqueo general...</p>
+   366→      </div>
+   367→    );
+   368→  }
+   369→
+   370→  // Saved confirmation screen
+   371→  if (saved) {
+   372→    return (
+   373→      <div className="flex flex-col min-h-[100dvh] bg-[#912D26] text-white">
+   374→        <div className="flex-1 flex flex-col items-center justify-center px-6">
+   375→          <CheckCircle2 className="w-20 h-20 mb-4" />
+   376→          <h1 className="text-2xl font-black mb-2">ARQUEO GENERAL GUARDADO</h1>
+   377→          <p className="text-white/80 text-sm mb-1">{session.nombre} — {workDate(session)}</p>
+   378→          <p className="text-white/80 text-sm mb-6">{totalVentas} ventas · ${totalIngresosAuto.toFixed(2)} ingresos</p>
+   379→
+   380→          {guardadoOffline && (
+   381→            <div className="bg-yellow-500/20 border border-yellow-400/30 rounded-2xl px-5 py-3 mb-6 text-center">
+   382→              <p className="text-yellow-200 text-sm font-bold">Guardado local (sin internet)</p>
+   383→              <p className="text-yellow-200/70 text-xs mt-1">Se sincronizará cuando haya conexión</p>
+   384→            </div>
+   385→          )}
+   386→
+   387→          <div className="w-full max-w-xs space-y-3">
+   388→            {connection.pendingCount > 0 && connection.status !== 'offline' && (
+   389→              <button onClick={onGoToSync}
+   390→                className="w-full py-4 rounded-2xl bg-white text-[#912D26] font-black text-lg flex items-center justify-center gap-2 active:scale-95">
+   391→                <Send className="w-5 h-5" /> SINCRONIZAR {connection.pendingCount} VENTAS
+   392→              </button>
+   393→            )}
+   394→            <button onClick={onSaved}
+   395→              className="w-full py-4 rounded-2xl bg-white/20 text-white font-bold text-lg flex items-center justify-center gap-2 active:scale-95">
+   396→              FINALIZAR
+   397→            </button>
+   398→          </div>
+   399→        </div>
+   400→      </div>
+   401→    );
+   402→  }
+   403→
+   404→  // Confirm save dialog
+   405→  if (confirmSave) {
+   406→    return (
+   407→      <div className="flex flex-col min-h-[100dvh] bg-gray-50">
+   408→        <div className="flex-1 flex items-center justify-center px-4">
+   409→          <div className="bg-white rounded-2xl border border-gray-200 p-6 max-w-md w-full shadow-lg">
+   410→            <h2 className="text-lg font-bold text-[#3A3A3A] mb-4">Confirmar Arqueo General</h2>
+   411→            <div className="bg-gray-50 rounded-xl p-4 space-y-2 mb-4">
+   412→              <div className="flex justify-between text-sm">
+   413→                <span className="text-gray-500">Producción</span>
+   414→                <span className="font-bold text-[#3A3A3A]">${production.toFixed(2)}</span>
+   415→              </div>
+   416→              {totalCajaComunPasajeros > 0 && (
+   417→                <div className="flex justify-between text-sm">
+   418→                  <span className="text-purple-700">Caja Comun (Ofi.Loja): {totalCajaComunPasajeros} boletos</span>
+   419→                  <span className="font-bold text-purple-700">${totalCajaComunMonto.toFixed(2)}</span>
+   420→                </div>
+   421→              )}
+   422→              <div className="flex justify-between text-sm">
+   423→                <span className="text-gray-500">Total Gastos</span>
+   424→                <span className="font-bold text-red-600">${totalGastos.toFixed(2)}</span>
+   425→              </div>
+   426→              <hr className="border-gray-200" />
+   427→              <div className="flex justify-between text-sm">
+   428→                <span className="text-gray-600">Entrega Ayudante</span>
+   429→                <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+   430→                  ${entregaAyudante.toFixed(2)}
+   431→                </span>
+   432→              </div>
+   433→              <div className="flex justify-between text-sm">
+   434→                <span className="text-gray-600">Entrega Compañía</span>
+   435→                <span className={`font-bold ${entregaCompania >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+   436→                  ${entregaCompania.toFixed(2)}
+   437→                </span>
+   438→              </div>
+   439→            </div>
+   440→            <p className="text-sm text-[#912D26] mb-4">
+   441→              Entrega Ayudante: <strong>${entregaAyudante.toFixed(2)}</strong> —
+   442→              Entrega Compañía: <strong>${entregaCompania.toFixed(2)}</strong>
+   443→            </p>
+   444→            <div className="flex gap-3">
+   445→              <button onClick={() => setConfirmSave(false)}
+   446→                className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-500 font-bold active:scale-95">
+   447→                Cancelar
+   448→              </button>
+   449→              <button onClick={handleConfirmSave} disabled={saving}
+   450→                className={`flex-1 py-3 rounded-xl font-black active:scale-95 ${saving ? 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed' : 'bg-[#912D26] text-white'}`}>
+   451→                {saving ? 'Guardando...' : 'CONFIRMAR'}
+   452→              </button>
+   453→            </div>
+   454→          </div>
+   455→        </div>
+   456→      </div>
+   457→    );
+   458→  }
+   459→
+   460→  return (
+   461→    <div className="flex flex-col min-h-[100dvh] bg-gray-50">
+   462→      {/* Barra conexion */}
+   463→      <div className={`${connection.bgColor} px-4 py-1.5 flex items-center justify-center gap-2 text-xs font-medium ${connection.color}`}>
+   464→        <span>{connection.icon}</span>
+   465→        <span>{connection.label}</span>
+   466→      </div>
+   467→
+   468→      {/* Header */}
+   469→      <div className="bg-[#912D26] text-white px-4 py-3">
+   470→        <div className="flex items-center justify-between">
+   471→          <button onClick={onClose} className="text-red-100"><ChevronLeft className="w-6 h-6" /></button>
+   472→          <div className="text-center">
+   473→            <h2 className="text-lg font-bold">Arqueo General</h2>
+   474→            <p className="text-red-100 text-xs">{session.nombre} — Turno completo</p>
+   475→          </div>
+   476→          <div className="w-6" />
+   477→        </div>
+   478→      </div>
+   479→
+   480→      <div className="flex-1 px-4 py-4 space-y-4 overflow-y-auto pb-8">
+   481→        {/* Errores */}
+   482→        {errors.length > 0 && (
+   483→          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm space-y-1">
+   484→            <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" /> Campos obligatorios:</p>
+   485→            {errors.map((e, i) => <p key={i}>- {e}</p>)}
+   486→          </div>
+   487→        )}
+   488→
+   489→        {/* 1. INGRESOS POR FRECUENCIA — Sistema vs Efectivo Real */}
+   490→        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+   491→          <h3 className="font-bold text-[#3A3A3A] mb-3 text-sm uppercase flex items-center gap-2">
+   492→            <DollarSign className="w-4 h-4 text-green-600" /> Ingresos por Frecuencia
+   493→          </h3>
+   494→          {frecuencias.length === 0 ? (
+   495→            <p className="text-gray-400 text-xs text-center py-4">No hay frecuencias cerradas</p>
+   496→          ) : (
+   497→            <div className="space-y-2">
+   498→              {/* Header row */}
+   499→              <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold text-gray-400 uppercase">
+   500→                <div className="flex-1">Frecuencia</div>
+   501→                <div className="w-20 text-right">Sistema</div>
+   502→                <div className="w-20 text-right">Real</div>
+   503→                <div className="w-16 text-right">Dif.</div>
+   504→              </div>
+   505→              {frecuencias.map((f, i) => {
+   506→                const hasDiff = Math.abs(f.diferencia) >= 0.01;
+   507→                if (f.isNoRealizada && !f.isIngresoEspecial) {
+   508→                  return (
+   509→                    <div key={f.estadoId} className="flex items-center justify-between py-2 px-3 rounded-xl bg-orange-50 border border-orange-200">
+   510→                      <div className="flex items-center gap-2 flex-1 min-w-0">
+   511→                        <XCircle className="w-4 h-4 text-orange-500 flex-shrink-0" />
+   512→                        <div className="min-w-0">
+   513→                          <div className="text-sm font-semibold text-orange-800 truncate">{f.hora} — {f.nombre}</div>
+   514→                          <div className="text-[10px] text-orange-500">No realizada: {f.motivoNoRealizada || 'Sin motivo'}</div>
+   515→                        </div>
+   516→                      </div>
+   517→                      <div className="w-20 text-right">
+   518→                        <span className="text-xs text-gray-400">—</span>
+   519→                      </div>
+   520→                      <div className="w-20 text-right">
+   521→                        <span className="text-xs text-gray-400">—</span>
+   522→                      </div>
+   523→                      <div className="w-16 text-right">
+   524→                        <span className="text-xs text-gray-400">—</span>
+   525→                      </div>
+   526→                    </div>
+   527→                  );
+   528→                }
+   529→                if (f.isIngresoEspecial) {
+   530→                  return (
+   531→                    <div key={f.estadoId} className="flex items-center justify-between py-2 px-3 rounded-xl bg-amber-50 border border-amber-200">
+   532→                      <div className="flex items-center gap-2 flex-1 min-w-0">
+   533→                        <Sparkles className="w-4 h-4 text-amber-500 flex-shrink-0" />
+   534→                        <div className="min-w-0">
+   535→                          <div className="text-sm font-semibold text-amber-800 truncate">{f.hora} — {f.ingresoEspecialNota || 'Ingreso especial'}</div>
+   536→                          <div className="text-[10px] text-amber-500">Viaje especial</div>
+   537→                        </div>
+   538→                      </div>
+   539→                      <div className="w-20 text-right">
+   540→                        <div className="font-black text-amber-700">${f.totalRecaudado.toFixed(2)}</div>
+   541→                      </div>
+   542→                      <div className="w-20 text-right">
+   543→                        <div className="font-black text-amber-700">${f.efectivoContado.toFixed(2)}</div>
+   544→                      </div>
+   545→                      <div className="w-16 text-right">
+   546→                        <span className="text-xs text-gray-400">—</span>
+   547→                      </div>
+   548→                    </div>
+   549→                  );
+   550→                }
+   551→                return (
+   552→                  <div key={f.estadoId}>
+   553→                  <div className={`flex items-center justify-between py-2 px-3 rounded-xl ${i % 2 === 0 ? 'bg-[#912D26]/5' : 'bg-gray-50'}`}>
+   554→                    <div className="flex items-center gap-2 flex-1 min-w-0">
+   555→                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${i % 2 === 0 ? 'bg-[#912D26] text-white' : 'bg-[#3A3A3A] text-white'}`}>
+   556→                        {i + 1}
+   557→                      </span>
+   558→                      <div className="min-w-0">
+   559→                        <div className="text-sm font-semibold text-[#3A3A3A] truncate">{f.hora} — {f.nombre}</div>
+   560→                        <div className="text-[10px] text-gray-400">{f.ventasCount} ventas{f.boletosCaja > 0 ? ` + ${f.boletosCaja} c.comun` : ''}</div>
+   561→                      </div>
+   562→                    </div>
+   563→                    <div className="w-20 text-right">
+   564→                      <div className="font-bold text-[#3A3A3A]">${f.totalRecaudado.toFixed(2)}</div>
+   565→                    </div>
+   566→                    <div className="w-20 text-right">
+   567→                      <div className="font-black text-green-700">${f.efectivoContado.toFixed(2)}</div>
+   568→                    </div>
+   569→                    <div className="w-16 text-right">
+   570→                      {hasDiff ? (
+   571→                        <span className={`text-xs font-bold ${f.diferencia > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+   572→                          {f.diferencia > 0 ? '+' : ''}{f.diferencia.toFixed(2)}
+   573→                        </span>
+   574→                      ) : (
+   575→                        <span className="text-xs text-gray-400">—</span>
+   576→                      )}
+   577→                    </div>
+   578→                  </div>
+   579→                  {/* Caja Común editable sub-row */}
+   580→                  {f.boletosCaja > 0 && (
+   581→                    <div className="ml-7 mr-3 mb-1 flex items-center gap-2">
+   582→                      <span className="text-[10px] text-purple-600 font-medium">C.Común: {f.boletosCaja} boletos</span>
+   583→                      <span className="text-[10px] text-purple-400">·</span>
+   584→                      {editingCajaComun === f.estadoId ? (
+   585→                        <div className="flex items-center gap-1">
+   586→                          <span className="text-[10px] text-purple-600">$</span>
+   587→                          <input
+   588→                            type="number"
+   589→                            inputMode="decimal"
+   590→                            step="0.05"
+   591→                            value={editCajaComunValue}
+   592→                            onChange={e => setEditCajaComunValue(e.target.value)}
+   593→                            onBlur={() => saveCajaComunToLS(f.estadoId, parseFloat(editCajaComunValue) || 0)}
+   594→                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveCajaComunToLS(f.estadoId, parseFloat(editCajaComunValue) || 0); } }}
+   595→                            className="w-16 h-6 text-xs font-bold text-purple-800 bg-purple-100 border border-purple-300 rounded px-1 text-center focus:outline-none focus:ring-1 focus:ring-purple-400"
+   596→                            autoFocus
+   597→                          />
+   598→                        </div>
+   599→                      ) : (
+   600→                        <button
+   601→                          onClick={() => startEditCajaComun(f.estadoId, f.cajaComunMonto || 0)}
+   602→                          className="text-[11px] font-bold text-purple-800 flex items-center gap-0.5 active:opacity-70"
+   603→                        >
+   604→                          ${(f.cajaComunMonto || 0).toFixed(2)}
+   605→                          <Pencil className="w-2.5 h-2.5" />
+   606→                        </button>
+   607→                      )}
+   608→                    </div>
+   609→                  )}
+   610→                  </div>
+   611→                );
+   612→              })}
+   613→              {/* Totals row */}
+   614→              <div className="border-t-2 border-green-200 pt-2 mt-2 space-y-1">
+   615→                <div className="flex justify-between items-center">
+   616→                  <span className="font-bold text-[#3A3A3A] text-xs">Total Sistema</span>
+   617→                  <span className="font-bold text-sm text-[#3A3A3A]">${totalIngresosAuto.toFixed(2)}</span>
+   618→                </div>
+   619→                <div className="flex justify-between items-center">
+   620→                  <span className="font-bold text-green-700 text-xs">Total Efectivo Real</span>
+   621→                  <span className="font-black text-lg text-green-700">${totalEfectivoReal.toFixed(2)}</span>
+   622→                </div>
+   623→                {Math.abs(totalDiferencia) >= 0.01 && (
+   624→                  <div className="flex justify-between items-center">
+   625→                    <span className="text-xs text-gray-500">Diferencia global</span>
+   626→                    <span className={`text-xs font-bold ${totalDiferencia > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+   627→                      {totalDiferencia > 0 ? '+' : ''}{totalDiferencia.toFixed(2)}
+   628→                    </span>
+   629→                  </div>
+   630→                )}
+   631→                {totalCajaComunPasajeros > 0 && (
+   632→                  <div className="flex justify-between items-center">
+   633→                    <span className="text-xs font-bold text-purple-700">Caja Comun (Ofi.Loja): {totalCajaComunPasajeros} boletos</span>
+   634→                    <span className="font-bold text-sm text-purple-700">${totalCajaComunMonto.toFixed(2)}</span>
+   635→                  </div>
+   636→                )}
+   637→                <div className="text-right text-[10px] text-gray-400">{totalVentas} boletos vendidos</div>
+   638→              </div>
+   639→            </div>
+   640→          )}
+   641→        </div>
+   642→
+   643→        {/* 2. KILOMETRAJE + FOTO */}
+   644→        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
+   645→          <h3 className="font-bold text-[#3A3A3A] mb-1 text-sm uppercase">Datos del Turno</h3>
+   646→          <div>
+   647→            <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+   648→              Kilometraje <span className="text-[#912D26]">*</span>
+   649→            </label>
+   650→            <input
+   651→              type="text"
+   652→              inputMode="numeric"
+   653→              placeholder="877604"
+   654→              value={km}
+   655→              onChange={e => setKm(e.target.value)}
+   656→              className="w-full mt-1 h-11 rounded-xl border border-[#D6D6D6] px-3 text-sm font-semibold text-[#3A3A3A]"
+   657→            />
+   658→          </div>
+   659→          <div>
+   660→            <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+   661→              Foto del Cuaderno <span className="text-[#912D26]">*</span>
+   662→            </label>
+   663→            <div className="mt-1">
+   664→              {fotoPreview ? (
+   665→                <div className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-[#912D26]">
+   666→                  <img src={fotoPreview} alt="Foto" className="w-full h-full object-cover" />
+   667→                  <button
+   668→                    onClick={() => setFotoPreview(null)}
+   669→                    className="absolute top-0 right-0 w-5 h-5 bg-[#912D26] text-white rounded-bl-lg flex items-center justify-center"
+   670→                  >
+   671→                    <X className="w-3 h-3" />
+   672→                  </button>
+   673→                </div>
+   674→              ) : (
+   675→                <button
+   676→                  onClick={() => fileInputRef.current?.click()}
+   677→                  className="h-10 px-4 rounded-xl text-xs border border-[#D6D6D6] text-[#3A3A3A] flex items-center gap-1 active:scale-95"
+   678→                >
+   679→                  <Camera className="w-4 h-4" /> Tomar/Adjuntar Foto
+   680→                </button>
+   681→              )}
+   682→            </div>
+   683→          </div>
+   684→        </div>
+   685→
+   686→        {/* 3. GASTOS */}
+   687→        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+   688→          <div className="flex items-center justify-between mb-3">
+   689→            <h3 className="font-bold text-red-600 text-sm uppercase">Gastos</h3>
+   690→            <button onClick={addGasto} className="text-xs text-[#912D26] font-bold flex items-center gap-1">
+   691→              <Plus className="w-3 h-3" /> Agregar
+   692→            </button>
+   693→          </div>
+   694→          <div className="space-y-2">
+   695→            {gastos.map((g, i) => (
+   696→              <div key={i} className="flex items-center gap-2">
+   697→                <input
+   698→                  placeholder="Descripcion"
+   699→                  value={g.description}
+   700→                  onChange={e => updateGasto(i, 'description', e.target.value)}
+   701→                  className="h-10 text-sm rounded-xl flex-1 border border-[#D6D6D6] px-3 text-[#3A3A3A]"
+   702→                />
+   703→                <div className="relative w-24">
+   704→                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">$</span>
+   705→                  <input
+   706→                    type="number"
+   707→                    inputMode="decimal"
+   708→                    value={g.amount}
+   709→                    onChange={e => updateGasto(i, 'amount', e.target.value)}
+   710→                    className="h-10 text-sm rounded-xl w-full border border-[#D6D6D6] pl-6 pr-2 text-[#3A3A3A] font-semibold"
+   711→                  />
+   712→                </div>
+   713→                {i >= 4 && (
+   714→                  <button onClick={() => removeGasto(i)} className="text-gray-400 hover:text-red-500">
+   715→                    <Trash2 className="w-4 h-4" />
+   716→                  </button>
+   717→                )}
+   718→              </div>
+   719→            ))}
+   720→          </div>
+   721→          <div className="border-t border-gray-100 pt-2 mt-3 flex justify-between text-sm font-bold text-red-600">
+   722→            <span>Total Gastos</span>
+   723→            <span>${totalGastos.toFixed(2)}</span>
+   724→          </div>
+   725→        </div>
+   726→
+   727→        {/* 4. TICKETS + SOBRANTE */}
+   728→        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
+   729→          <h3 className="font-bold text-[#3A3A3A] text-sm uppercase">Ajustes</h3>
+   730→          <div>
+   731→            <label className="text-xs font-medium text-gray-500">Tickets</label>
+   732→            <div className="grid grid-cols-3 gap-2 mt-1">
+   733→              <button onClick={() => setTickets('4.50')}
+   734→                className={`h-11 rounded-xl text-sm font-bold border-2 transition-all active:scale-95 ${tickets === '4.50' ? 'bg-[#912D26] border-[#912D26] text-white' : 'bg-white border-[#D6D6D6] text-[#3A3A3A]'}`}>
+   735→                $4.50
+   736→              </button>
+   737→              <button onClick={() => setTickets('6.00')}
+   738→                className={`h-11 rounded-xl text-sm font-bold border-2 transition-all active:scale-95 ${tickets === '6.00' ? 'bg-[#912D26] border-[#912D26] text-white' : 'bg-white border-[#D6D6D6] text-[#3A3A3A]'}`}>
+   739→                $6.00
+   740→              </button>
+   741→              <button onClick={() => setTickets('')}
+   742→                className={`h-11 rounded-xl text-sm font-bold border-2 transition-all active:scale-95 ${tickets === '' ? 'bg-[#3A3A3A] border-[#3A3A3A] text-white' : 'bg-white border-[#D6D6D6] text-gray-400'}`}>
+   743→                Ninguno
+   744→              </button>
+   745→            </div>
+   746→          </div>
+   747→          <div>
+   748→            <label className="text-xs font-medium text-gray-500">Sobrante / Ajuste</label>
+   749→            <div className="relative mt-1">
+   750→              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+   751→              <input
+   752→                type="number"
+   753→                inputMode="decimal"
+   754→                placeholder="0.00"
+   755→                value={sobrante}
+   756→                onChange={e => setSobrante(e.target.value)}
+   757→                className="w-full h-11 rounded-xl border border-[#D6D6D6] pl-7 pr-3 text-sm font-semibold text-[#3A3A3A]"
+   758→              />
+   759→            </div>
+   760→            <p className="text-[10px] text-gray-400 mt-0.5">Dinero sobrante al contar (positivo o negativo)</p>
+   761→          </div>
+   762→        </div>
+   763→
+   764→        {/* 5. RESUMEN */}
+   765→        <div className="bg-[#3A3A3A] text-white rounded-2xl p-4 space-y-2">
+   766→          <p className="text-xs font-bold uppercase tracking-wider text-white/50">Liquidación del Día</p>
+   767→          <div className="flex justify-between text-sm">
+   768→            <span className="text-white/60">Efectivo Real (Contado)</span>
+   769→            <span className="font-semibold text-green-400">${totalEfectivoReal.toFixed(2)}</span>
+   770→          </div>
+   771→          {Math.abs(totalDiferencia) >= 0.01 && (
+   772→            <div className="flex justify-between text-sm">
+   773→              <span className="text-white/60">Diferencia vs Sistema</span>
+   774→              <span className={`font-semibold ${totalDiferencia > 0 ? 'text-blue-400' : 'text-red-400'}`}>
+   775→                {totalDiferencia > 0 ? '+' : ''}{totalDiferencia.toFixed(2)}
+   776→              </span>
+   777→            </div>
+   778→          )}
+   779→          {sobranteNum !== 0 && (
+   780→            <div className="flex justify-between text-sm">
+   781→              <span className="text-white/60">Ajuste Manual</span>
+   782→              <span className={`font-semibold ${sobranteNum >= 0 ? 'text-green-400' : 'text-red-400'}`}>${sobranteNum.toFixed(2)}</span>
+   783→            </div>
+   784→          )}
+   785→          <hr className="border-white/10" />
+   786→          <div className="flex justify-between text-sm">
+   787→            <span className="text-white/80">Producción</span>
+   788→            <span className="font-black text-lg">${production.toFixed(2)}</span>
+   789→          </div>
+   790→          <p className="text-[10px] text-white/30">Efectivo Real + Caja Común + Ajuste Manual</p>
+   791→          {totalCajaComunPasajeros > 0 && (
+   792→            <div className="flex justify-between text-sm">
+   793→              <span className="text-purple-300">Caja Comun (Ofi.Loja): {totalCajaComunPasajeros} boletos</span>
+   794→              <span className="font-semibold text-purple-300">${totalCajaComunMonto.toFixed(2)}</span>
+   795→            </div>
+   796→          )}
+   797→          <hr className="border-white/10" />
+   798→          <div className="flex justify-between text-sm">
+   799→            <span className="text-white/60">Total Gastos</span>
+   800→            <span className="font-semibold text-red-400">-${totalGastos.toFixed(2)}</span>
+   801→          </div>
+   802→          <div className="flex justify-between text-sm">
+   803→            <span className="text-white/60">Tickets</span>
+   804→            <span className="font-semibold">-${ticketsNum.toFixed(2)}</span>
+   805→          </div>
+   806→          <hr className="border-white/10" />
+   807→          <div className="flex justify-between">
+   808→            <span className="text-sm text-white/80">Entrega Ayudante</span>
+   809→            <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+   810→              ${entregaAyudante.toFixed(2)}
+   811→            </span>
+   812→          </div>
+   813→          <p className="text-[10px] text-white/30">Efectivo Real - Total Gastos</p>
+   814→          <div className="flex justify-between">
+   815→            <span className="text-sm text-white/80">Entrega Compañía</span>
+   816→            <span className={`font-bold ${entregaCompania >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+   817→              ${entregaCompania.toFixed(2)}
+   818→            </span>
+   819→          </div>
+   820→          <p className="text-[10px] text-white/30">{totalCajaComunMonto > 0 ? 'Caja Común - Tickets' : 'Sin Caja Común (antes de Jun 2026)'}</p>
+   821→        </div>
+   822→
+   823→        {/* BOTON GUARDAR */}
+   824→        <button
+   825→          onClick={handleSaveOffline}
+   826→          disabled={saving}
+   827→          className={`w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-2 shadow-lg ${
+   828→            saving ? 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed' : 'bg-[#912D26] text-white shadow-red-200 active:scale-95 transition-all'
+   829→          }`}>
+   830→          {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : <Save className="w-6 h-6" />}
+   831→          {saving ? 'Guardando...' : 'GUARDAR ARQUEO GENERAL'}
+   832→        </button>
+   833→      </div>
+   834→
+   835→      {/* Hidden file input */}
+   836→      <input
+   837→        ref={fileInputRef}
+   838→        type="file"
+   839→        accept="image/*"
+   840→        className="hidden"
+   841→        onChange={handlePhotoChange}
+   842→      />
+   843→    </div>
+   844→  );
+   845→}
+   846→
