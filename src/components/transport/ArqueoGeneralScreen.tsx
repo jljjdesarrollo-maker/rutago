@@ -177,6 +177,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           motivoNoRealizada: e.motivoNoRealizada,
         });
       });
+      // Ordenar cronologicamente por hora
+      resumenes.sort((a, b) => a.hora.localeCompare(b.hora));
       setFrecuencias(resumenes);
     } catch (err) {
       console.error('Error cargando resumen:', err);
