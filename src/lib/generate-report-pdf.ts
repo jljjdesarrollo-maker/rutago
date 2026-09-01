@@ -299,6 +299,11 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   });
   y += 8;
 
+  // ==================== PAGE LAYOUT CONSTANTS ====================
+  const pageH = doc.internal.pageSize.getHeight();
+  const footerY = 14;
+  const minY = 15;
+
   // ==================== 7. TABLA RESUMEN POR DIA ====================
   if (y > pageH - footerY - 30) { doc.addPage(); y = minY; }
   addText('7. TABLA RESUMEN POR DIA', ml, y, { size: 10, color: COLORS.primary, bold: true });
@@ -332,10 +337,6 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
 
   drawTableRow(colLabels, true, false);
   y += 2;
-
-  const pageH = doc.internal.pageSize.getHeight();
-  const footerY = 14;
-  const minY = 15;
 
   data.dailySummaries.forEach((day, idx) => {
     if (y + 20 > pageH - footerY) {
