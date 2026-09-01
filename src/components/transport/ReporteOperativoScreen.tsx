@@ -57,7 +57,6 @@ function formatMoney(v: number): string {
 const MOTIVO_LABELS: Record<string, string> = {
   mantenimiento: 'Mantenimiento',
   daño_unidad: 'Daño en la unidad',
-  daño_unidad: 'Daño en la unidad',
   sin_pasajeros: 'Sin pasajeros',
   clima: 'Clima / Lluvia',
   problema_ruta: 'Problema en la ruta',
@@ -94,6 +93,41 @@ export function ReporteOperativoScreen({ onBack }: Props) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Quick range presets
+  const setRange = (months: number) => {
+    const end = new Date();
+    const start = new Date();
+    start.setMonth(start.getMonth() - months + 1);
+    start.setDate(1);
+    end.setDate(0); // last day of previous month
+    const fmt = (d: Date) => d.toISOString().split('T')[0];
+    setFrom(fmt(start));
+    setTo(fmt(end));
+  };
+
+  const [activeRange, setActiveRange] = useState(0); // 0 = current month (default)
+
+  const handleRangeClick = (months: number) => {
+    setActiveRange(months);
+    if (months === 0) {
+      // Current month
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      setFrom(`${y}-${m}-01`);
+      setTo(`${y}-${m}-${String(new Date(y, parseInt(m), 0).getDate()).padStart(2, '0')}`);
+    } else {
+      setRange(months);
+    }
+  };
+
+  const RANGE_OPTIONS = [
+    { label: '1 mes', months: 1 },
+    { label: '3 meses', months: 3 },
+    { label: '6 meses', months: 6 },
+    { label: '12 meses', months: 12 },
+  ];
+
   const pct = (n: number, total: number) => total > 0 ? `${(n / total * 100).toFixed(1)}%` : '0%';
 
   const cumplimientoColor = (c: number) =>
@@ -113,15 +147,38 @@ export function ReporteOperativoScreen({ onBack }: Props) {
       </header>
 
       <main className="flex-1 overflow-y-auto pb-6 px-4 pt-4 space-y-4">
+        {/* Rango rapido */}
+        <div className="flex gap-1.5 flex-wrap">
+          <button
+            onClick={() => handleRangeClick(0)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              activeRange === 0 ? 'bg-[#912D26] text-white' : 'bg-[#F5F5F5] text-[#3A3A3A]/60'
+            }`}
+          >
+            Este mes
+          </button>
+          {RANGE_OPTIONS.map(r => (
+            <button
+              key={r.months}
+              onClick={() => handleRangeClick(r.months)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                activeRange === r.months ? 'bg-[#912D26] text-white' : 'bg-[#F5F5F5] text-[#3A3A3A]/60'
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+
         {/* Filtros */}
         <div className="flex gap-2">
           <div className="flex-1">
             <label className="text-[10px] font-medium text-[#3A3A3A]/50 uppercase">Desde</label>
-            <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-10 rounded-xl border-[#D6D6D6] text-sm" />
+            <Input type="date" value={from} onChange={e => { setActiveRange(-1); setFrom(e.target.value); }} className="h-10 rounded-xl border-[#D6D6D6] text-sm" />
           </div>
           <div className="flex-1">
             <label className="text-[10px] font-medium text-[#3A3A3A]/50 uppercase">Hasta</label>
-            <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-10 rounded-xl border-[#D6D6D6] text-sm" />
+            <Input type="date" value={to} onChange={e => { setActiveRange(-1); setTo(e.target.value); }} className="h-10 rounded-xl border-[#D6D6D6] text-sm" />
           </div>
         </div>
 
