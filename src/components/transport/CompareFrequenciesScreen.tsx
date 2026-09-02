@@ -24,15 +24,13 @@ interface CompareResult {
   freq2: { from: string; to: string; time: string; label: string };
   stats1: {
     count: number; countByDay: number;
-    avgIncome: number; avgIncomeByDay: number;
-    avgBoletos: number; avgBoletosByDay: number;
-    avgTotal: number; avgTotalByDay: number;
+    totalEfectivo: number; totalEfectivoByDay: number;
+    avgEfectivo: number; avgEfectivoByDay: number;
   };
   stats2: {
     count: number; countByDay: number;
-    avgIncome: number; avgIncomeByDay: number;
-    avgBoletos: number; avgBoletosByDay: number;
-    avgTotal: number; avgTotalByDay: number;
+    totalEfectivo: number; totalEfectivoByDay: number;
+    avgEfectivo: number; avgEfectivoByDay: number;
   };
   enoughDayData: boolean;
   recommendation: string;
@@ -228,23 +226,15 @@ export function CompareFrequenciesScreen({ onBack }: CompareFrequenciesScreenPro
                     </div>
                     <hr className="border-[#D6D6D6]" />
                     <p className="text-[10px] font-bold text-[#3A3A3A]/40 uppercase">{result.dayName}</p>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-[#3A3A3A]/60">Prod. prom.</span>
-                      <span className="font-semibold">${result.stats1.avgIncomeByDay}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-[#3A3A3A]/60">Caja prom.</span>
-                      <span className="font-semibold">${result.stats1.avgBoletosByDay}</span>
-                    </div>
                     <div className="flex justify-between text-xs font-bold">
-                      <span className="text-[#3A3A3A]">Ingreso total</span>
-                      <span className="text-[#912D26]">${result.stats1.avgTotalByDay}</span>
+                      <span className="text-[#3A3A3A]">Efectivo prom.</span>
+                      <span className="text-[#912D26]">S/ {result.stats1.avgEfectivoByDay.toFixed(2)}</span>
                     </div>
                     <hr className="border-[#D6D6D6]" />
                     <p className="text-[10px] font-bold text-[#3A3A3A]/40 uppercase">General</p>
                     <div className="flex justify-between text-xs">
-                      <span className="text-[#3A3A3A]/60">Ingreso prom.</span>
-                      <span className="font-semibold">${result.stats1.avgTotal}</span>
+                      <span className="text-[#3A3A3A]/60">Efectivo prom.</span>
+                      <span className="font-semibold">S/ {result.stats1.avgEfectivo.toFixed(2)}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -265,23 +255,15 @@ export function CompareFrequenciesScreen({ onBack }: CompareFrequenciesScreenPro
                     </div>
                     <hr className="border-[#D6D6D6]" />
                     <p className="text-[10px] font-bold text-[#3A3A3A]/40 uppercase">{result.dayName}</p>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-[#3A3A3A]/60">Prod. prom.</span>
-                      <span className="font-semibold">${result.stats2.avgIncomeByDay}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-[#3A3A3A]/60">Caja prom.</span>
-                      <span className="font-semibold">${result.stats2.avgBoletosByDay}</span>
-                    </div>
                     <div className="flex justify-between text-xs font-bold">
-                      <span className="text-[#3A3A3A]">Ingreso total</span>
-                      <span className="text-[#912D26]">${result.stats2.avgTotalByDay}</span>
+                      <span className="text-[#3A3A3A]">Efectivo prom.</span>
+                      <span className="text-[#912D26]">S/ {result.stats2.avgEfectivoByDay.toFixed(2)}</span>
                     </div>
                     <hr className="border-[#D6D6D6]" />
                     <p className="text-[10px] font-bold text-[#3A3A3A]/40 uppercase">General</p>
                     <div className="flex justify-between text-xs">
-                      <span className="text-[#3A3A3A]/60">Ingreso prom.</span>
-                      <span className="font-semibold">${result.stats2.avgTotal}</span>
+                      <span className="text-[#3A3A3A]/60">Efectivo prom.</span>
+                      <span className="font-semibold">S/ {result.stats2.avgEfectivo.toFixed(2)}</span>
                     </div>
                   </div>
                 </CardContent>

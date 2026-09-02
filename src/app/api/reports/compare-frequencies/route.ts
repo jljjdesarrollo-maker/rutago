@@ -44,25 +44,17 @@ export async function GET(req: NextRequest) {
     interface FrecStats {
       count: number;
       countByDay: number;
-      totalIncome: number;
-      totalIncomeByDay: number;
-      totalBoletos: number;
-      totalBoletosByDay: number;
-      avgIncome: number;
-      avgIncomeByDay: number;
-      avgBoletos: number;
-      avgBoletosByDay: number;
-      avgTotal: number;
-      avgTotalByDay: number;
+      totalEfectivo: number;
+      totalEfectivoByDay: number;
+      avgEfectivo: number;
+      avgEfectivoByDay: number;
     }
 
     function calcStats(from: string, to: string, time: string): FrecStats {
       let count = 0;
       let countByDay = 0;
-      let totalIncome = 0;
-      let totalIncomeByDay = 0;
-      let totalBoletos = 0;
-      let totalBoletosByDay = 0;
+      let totalEfectivo = 0;
+      let totalEfectivoByDay = 0;
 
       for (const record of records) {
         const recDay = getDayOfWeek(record.date);
@@ -71,16 +63,14 @@ export async function GET(req: NextRequest) {
         );
 
         if (matchingTrips.length > 0) {
-          const tripIncome = matchingTrips.reduce((s, t) => s + t.income, 0);
-          const tripBoletos = matchingTrips.reduce((s, t) => s + t.boletos, 0);
+          // Usar efectivoReal: lo que realmente conto el ayudante en el arqueo
+          const tripEfectivo = matchingTrips.reduce((s, t) => s + (t.efectivoReal || 0), 0);
           count++;
-          totalIncome += tripIncome;
-          totalBoletos += tripBoletos;
+          totalEfectivo += tripEfectivo;
 
           if (recDay === dayOfWeek) {
             countByDay++;
-            totalIncomeByDay += tripIncome;
-            totalBoletosByDay += tripBoletos;
+            totalEfectivoByDay += tripEfectivo;
           }
         }
       }
@@ -88,16 +78,10 @@ export async function GET(req: NextRequest) {
       return {
         count,
         countByDay,
-        totalIncome,
-        totalIncomeByDay,
-        totalBoletos,
-        totalBoletosByDay,
-        avgIncome: count > 0 ? Math.round((totalIncome / count) * 100) / 100 : 0,
-        avgIncomeByDay: countByDay > 0 ? Math.round((totalIncomeByDay / countByDay) * 100) / 100 : 0,
-        avgBoletos: count > 0 ? Math.round((totalBoletos / count) * 100) / 100 : 0,
-        avgBoletosByDay: countByDay > 0 ? Math.round((totalBoletosByDay / countByDay) * 100) / 100 : 0,
-        avgTotal: count > 0 ? Math.round(((totalIncome + totalBoletos) / count) * 100) / 100 : 0,
-        avgTotalByDay: countByDay > 0 ? Math.round(((totalIncomeByDay + totalBoletosByDay) / countByDay) * 100) / 100 : 0,
+        totalEfectivo,
+        totalEfectivoByDay,
+        avgEfectivo: count > 0 ? Math.round((totalEfectivo / count) * 100) / 100 : 0,
+        avgEfectivoByDay: countByDay > 0 ? Math.round((totalEfectivoByDay / countByDay) * 100) / 100 : 0,
       };
     }
 
@@ -105,8 +89,8 @@ export async function GET(req: NextRequest) {
     const stats2 = calcStats(freq2From, freq2To, freq2Time);
 
     // Determine recommendation
-    const dayDiff = stats1.avgTotalByDay - stats2.avgTotalByDay;
-    const generalDiff = stats1.avgTotal - stats2.avgTotal;
+    const dayDiff = stats1.avgEfectivoByDay - stats2.avgEfectivoByDay;
+    const generalDiff = stats1.avgEfectivo - stats2.avgEfectivo;
     const enoughDayData = stats1.countByDay >= 5 && stats2.countByDay >= 5;
 
     let recommendation = '';
@@ -114,10 +98,10 @@ export async function GET(req: NextRequest) {
 
     if (enoughDayData) {
       if (dayDiff > 0) {
-        recommendation = `Basado en ${stats1.countByDay} registros del ${dayName}, tu frecuencia rinde $${Math.abs(Math.round(dayDiff))} mas en promedio.`;
+        recommendation = `Basado en ${stats1.countByDay} registros del ${dayName}, tu frecuencia rinde S/ ${Math.abs(Math.round(dayDiff))} mas en promedio.`;
         winner = 'freq1';
       } else if (dayDiff < 0) {
-        recommendation = `Basado en ${stats2.countByDay} registros del ${dayName}, la frecuencia ofrecida rinde $${Math.abs(Math.round(dayDiff))} mas en promedio. CONVIENE cambiar.`;
+        recommendation = `Basado en ${stats2.countByDay} registros del ${dayName}, la frecuencia ofrecida rinde S/ ${Math.abs(Math.round(dayDiff))} mas en promedio. CONVIENE cambiar.`;
         winner = 'freq2';
       } else {
         recommendation = `Ambas frecuencias producen igual en promedio los ${dayName}s.`;
@@ -125,10 +109,10 @@ export async function GET(req: NextRequest) {
       }
     } else {
       if (generalDiff > 0) {
-        recommendation = `Pocos registros el ${dayName} (< 5). Usando general: tu frecuencia rinde $${Math.abs(Math.round(generalDiff))} mas.`;
+        recommendation = `Pocos registros el ${dayName} (< 5). Usando general: tu frecuencia rinde S/ ${Math.abs(Math.round(generalDiff))} mas.`;
         winner = 'freq1';
       } else if (generalDiff < 0) {
-        recommendation = `Pocos registros el ${dayName} (< 5). Usando general: la frecuencia ofrecida rinde $${Math.abs(Math.round(generalDiff))} mas. CONVIENE cambiar.`;
+        recommendation = `Pocos registros el ${dayName} (< 5). Usando general: la frecuencia ofrecida rinde S/ ${Math.abs(Math.round(generalDiff))} mas. CONVIENE cambiar.`;
         winner = 'freq2';
       } else {
         recommendation = 'Ambas frecuencias producen igual en promedio.';
