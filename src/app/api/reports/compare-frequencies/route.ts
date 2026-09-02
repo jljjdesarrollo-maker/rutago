@@ -63,14 +63,16 @@ export async function GET(req: NextRequest) {
         );
 
         if (matchingTrips.length > 0) {
-          // Usar efectivoReal: lo que realmente conto el ayudante en el arqueo
-          const tripEfectivo = matchingTrips.reduce((s, t) => s + (t.efectivoReal || 0), 0);
+          // Produccion total = efectivoReal (lo que conto el ayudante) + cajaComunMonto (vendido en oficina)
+          const tripProduccion = matchingTrips.reduce(
+            (s, t) => s + (t.efectivoReal || 0) + (t.cajaComunMonto || 0), 0
+          );
           count++;
-          totalEfectivo += tripEfectivo;
+          totalEfectivo += tripProduccion;
 
           if (recDay === dayOfWeek) {
             countByDay++;
-            totalEfectivoByDay += tripEfectivo;
+            totalEfectivoByDay += tripProduccion;
           }
         }
       }

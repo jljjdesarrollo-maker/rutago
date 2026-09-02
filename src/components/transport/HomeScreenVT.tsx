@@ -6,7 +6,7 @@ import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVen
 import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.47.0-sep02-operativo-pdf-monto';
+const APP_VERSION = 'v3.47.2-sep02-produccion-total';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;

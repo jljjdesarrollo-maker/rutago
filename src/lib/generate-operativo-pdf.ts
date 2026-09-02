@@ -53,6 +53,7 @@ interface OperativoTrip {
   notaEspecial: string | null;
   income: number;
   efectivoReal: number;
+  cajaComunMonto: number;
 }
 
 interface OperativoMotivo {
@@ -266,9 +267,10 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
       const estado = isRealizada ? 'OK' : isEspecial ? 'ESP' : 'NR';
       const estadoColor = isRealizada ? COLORS.green : isEspecial ? COLORS.amber : [220, 50, 50];
 
-      // Monto
+      // Monto: produccion total = efectivoReal + cajaComunMonto
+      const produccion = (trip.efectivoReal || 0) + (trip.cajaComunMonto || 0);
       const monto = isRealizada
-        ? (trip.efectivoReal > 0 ? formatMoney(trip.efectivoReal) : '')
+        ? (produccion > 0 ? formatMoney(produccion) : '')
         : isEspecial
           ? (trip.income > 0 ? formatMoney(trip.income) : '')
           : '';
@@ -300,7 +302,7 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
 
     // Day subtotal
     const dayRealizadas = day.trips.filter(t => t.tipo === 'frecuencia');
-    const dayIngresoReal = dayRealizadas.reduce((s, t) => s + (t.efectivoReal || 0), 0);
+    const dayIngresoReal = dayRealizadas.reduce((s, t) => s + (t.efectivoReal || 0) + (t.cajaComunMonto || 0), 0);
     const dayIngresoEsp = day.trips.filter(t => t.tipo === 'ingreso_especial').reduce((s, t) => s + (t.income || 0), 0);
     const dayTotal = dayIngresoReal + dayIngresoEsp;
 

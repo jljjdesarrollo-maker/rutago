@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
       notaEspecial: string | null;
       income: number;
       efectivoReal: number;
+      cajaComunMonto: number;
     }[] = [];
 
     records.forEach(r => {
@@ -55,6 +56,7 @@ export async function GET(req: NextRequest) {
           notaEspecial: t.notaEspecial || null,
           income: t.income || 0,
           efectivoReal: t.efectivoReal || 0,
+          cajaComunMonto: t.cajaComunMonto || 0,
         });
       });
     });
@@ -63,7 +65,8 @@ export async function GET(req: NextRequest) {
     const totalProgramadas = trips.length;
     const realizadas = trips.filter(t => t.tipo === 'frecuencia').length;
     const totalIngresos = trips.reduce((s, t) => {
-      if (t.tipo === 'frecuencia') return s + (t.efectivoReal || 0);
+      // Produccion total de frecuencia = efectivoReal + cajaComunMonto
+      if (t.tipo === 'frecuencia') return s + (t.efectivoReal || 0) + (t.cajaComunMonto || 0);
       if (t.tipo === 'ingreso_especial') return s + (t.income || 0);
       return s;
     }, 0);

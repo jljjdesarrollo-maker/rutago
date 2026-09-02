@@ -17,6 +17,7 @@ interface OperativoTrip {
   notaEspecial: string | null;
   income: number;
   efectivoReal: number;
+  cajaComunMonto: number;
 }
 
 interface OperativoDay {
@@ -322,10 +323,10 @@ export function ReporteOperativoScreen({ onBack }: Props) {
                         )}
                       </div>
 
-                      {/* Monto */}
-                      {isRealizada && trip.efectivoReal > 0 && (
+                      {/* Monto: produccion total = efectivoReal + cajaComunMonto */}
+                      {isRealizada && (trip.efectivoReal + trip.cajaComunMonto) > 0 && (
                         <span className="text-sm font-semibold shrink-0 text-green-700">
-                          {formatMoney(trip.efectivoReal)}
+                          {formatMoney((trip.efectivoReal || 0) + (trip.cajaComunMonto || 0))}
                         </span>
                       )}
                       {isEspecial && trip.income > 0 && (

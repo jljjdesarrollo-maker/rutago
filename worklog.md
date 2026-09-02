@@ -272,3 +272,24 @@ Stage Summary:
 - Archivos modificados: schema.prisma, ArqueoGeneralScreen.tsx, records/route.ts, reports/route.ts, generate-report-pdf.ts
 - Migration: prisma/migrations/20240901000000_add_trip_tipo_motivo_nota/migration.sql
 - Deploy: push a GitHub listo, Vercel deploy pendiente desde tu lado
+
+---
+Task ID: 8
+Agent: Main
+Task: v3.47.2 - Produccion total = efectivoReal + cajaComunMonto en reportes
+
+Work Log:
+- Usuario identifico que compare-frequencies usaba solo efectivoReal, faltaba cajaComunMonto
+- Concepto clarificado por usuario: produccion total = caja comun (vendido en oficina) + efectivo real (contado por ayudante en bus)
+- compare-frequencies/route.ts: cambiado de efectivoReal a (efectivoReal + cajaComunMonto)
+- operativo/route.ts: totalIngresos KPI ahora suma (efectivoReal + cajaComunMonto) para frecuencias, income para especiales
+- operativo/route.ts: agregado cajaComunMonto al tipo de trip enviado al frontend
+- ReporteOperativoScreen.tsx: interface actualizada con cajaComunMonto, monto muestra (efectivoReal + cajaComunMonto)
+- generate-operativo-pdf.ts: interface actualizada, monto por fila usa produccion total, subtotal por dia usa produccion total
+- Version bump: v3.47.0 → v3.47.2-sep02-produccion-total
+
+Stage Summary:
+- Archivos modificados: compare-frequencies/route.ts, operativo/route.ts, ReporteOperativoScreen.tsx, generate-operativo-pdf.ts, HomeScreenVT.tsx
+- Formula unificada: Produccion = efectivoReal + cajaComunMonto (para frecuencias realizadas)
+- Ingresos especiales siguen usando income (monto ingresado manualmente)
+- Build OK (errores solo en archivos backup de download/)
