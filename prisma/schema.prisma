@@ -40,6 +40,8 @@ model DailyRecord {
 
   trips   Trip[]
   expenses Expense[]
+
+  @@index([date, vtCode])
 }
 
 model Trip {

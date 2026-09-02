@@ -27,8 +27,15 @@ export async function GET(req: NextRequest) {
     const dayOfWeek = getDayOfWeek(dateStr);
     const dayName = DAY_NAMES[dayOfWeek];
 
-    // Fetch ALL records with trips
+    // Limitar busqueda a los ultimos N meses (default 6) para evitar cargar toda la BD
+    const monthsBack = parseInt(url.searchParams.get('months') || '6', 10);
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - monthsBack);
+    startDate.setDate(1);
+    const startDateStr = startDate.toISOString().split('T')[0];
+
     const records = await db.dailyRecord.findMany({
+      where: { date: { gte: startDateStr } },
       include: {
         trips: { orderBy: { order: 'asc' } },
       },
@@ -131,6 +138,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       date: dateStr,
+      analyzedPeriod: { from: startDateStr, to: dateStr, months: monthsBack },
       dayOfWeek,
       dayName,
       freq1: { from: freq1From, to: freq1To, time: freq1Time, label: `${freq1Time} ${freq1From} → ${freq1To}` },
