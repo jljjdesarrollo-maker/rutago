@@ -1,5 +1,5 @@
 # RutaGo — Documento Maestro de Contexto Técnico
-> Versión: **v3.47.2-sep02-produccion-total** | Fecha: 2026-09-02 | Autor: Arquitecto de Software
+> Versión: **v3.47.3-sep02-zero-prod-ticket-deduction** | Fecha: 2026-09-02 | Autor: Arquitecto de Software
 
 ---
 
@@ -352,11 +352,27 @@ producción = efectivoReal  (cajaComunMonto = 0, boletos ya incluidos en efectiv
 **Cálculos del DailyRecord (server-side en POST /api/records):**
 ```
 production = efectivoReal + cajaComun + sobrante
-entregaAyudante = efectivoReal + sobrante - totalGastos
+
+// Deducción por producción cero: si un trip tiene efectivoReal + cajaComunMonto = 0,
+// su income (boleto) se descuenta de lo que el ayudante debe entregar
+ticketsFromZeroProdTrips = sum(trip.income) donde trip.efectivoReal + trip.cajaComunMonto = 0
+
+entregaAyudante = efectivoReal + sobrante - totalGastos - ticketsFromZeroProdTrips
 entregaCompania = cajaComun - tickets    (0 si no hay caja común)
 ```
 
 ### Sistema de Producción Total (decisión arquitectónica v3.47.2)
+
+### Deducción por Producción Cero (regla v3.47.3)
+
+Cuando un trip tiene `efectivoReal + cajaComunMonto = 0` (producción cero), el valor de sus boletos (`income`) se descuenta de `entregaAyudante`. Razón: si la frecuencia operó pero no generó producción contable, el ayudante debe el valor de los boletos que se vendieron para esa frecuencia.
+
+```typescript
+const ticketsFromZeroProdTrips = trips
+  .filter(t => (t.efectivoReal || 0) + (t.cajaComunMonto || 0) === 0)
+  .reduce((s, t) => s + (t.income || 0), 0);
+const entregaAyudante = tripEfectivoReal + sobranteNum - totalGastos - ticketsFromZeroProdTrips;
+```
 
 | Origen | Valor | Incluye en |
 |---|---|---|
@@ -518,7 +534,13 @@ const tripProduccion = matchingTrips.reduce(
 ```typescript
 const production = efectivoReal + cajaComun + sobrante;
 const totalGastos = expenses.reduce((s, e) => s + e.amount, 0);
-const entregaAyudante = efectivoReal + sobrante - totalGastos;
+
+// Deducción por producción cero
+const ticketsFromZeroProdTrips = trips
+  .filter(t => (Number(t.efectivoReal) || 0) + (Number(t.cajaComunMonto) || 0) === 0)
+  .reduce((s, t) => s + (Number(t.income) || 0), 0);
+
+const entregaAyudante = efectivoReal + sobrante - totalGastos - ticketsFromZeroProdTrips;
 const entregaCompania = cajaComun > 0 ? cajaComun - tickets : 0;
 ```
 
@@ -657,6 +679,7 @@ export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
 | v3.47.0 | 2026-09-02 | Reporte operativo: efectivoReal + PDF export |
 | v3.47.1 | 2026-09-02 | Fix compare-frequencies date filter + índice compuesto |
 | v3.47.2 | 2026-09-02 | Producción total = efectivoReal + cajaComunMonto en todos los reportes |
+| v3.47.3 | 2026-09-02 | Deducción de boletos en entregaAyudante cuando producción = 0 |
 
 ---
 
@@ -665,5 +688,6 @@ export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
 1. **Primera verificación**: Ejecutar `SELECT COUNT(*) FROM "Trip" t JOIN "DailyRecord" d ON t."recordId"=d.id WHERE d.date < '2026-06-01' AND t."cajaComunMonto" > 0;` — si >0, hay doble conteo en datos históricos.
 2. **Test data**: Los registros del 31/08 y 01/09 pueden tener `routeFrom`/`routeTo` vacíos en trips no_realizados, causando display de "- 'f' -" en reportes.
 3. **Fleet migration**: Secuencia correcta es finalizar reportes primero, luego agregar per-bus config a BusVT (gastoChofer, gastoAyudante, planRenova, tarifas).
-4. **El campo `income` (boletos) ya NO se usa para producción** en compare-frequencies ni operativo. Solo se mantiene para compatibilidad y para ingresos especiales.
+4. **El campo `income` (boletos) ya NO se usa para producción** en compare-frequencies ni operativo. Solo se mantiene para compatibilidad, para ingresos especiales, y ahora para deducción cuando producción = 0.
 5. **PrismaClient singleton** en `src/lib/db.ts` — si se agrega otro archivo que importa PrismaClient directamente (ej: ventas/batch/route.ts lo hace), puede crear múltiples conexiones. Unificar es pendiente #2.
+6. **Regla de deducción por producción cero (v3.47.3)**: cuando `efectivoReal + cajaComunMonto = 0` en un trip, el `income` (boleto) se descuenta de `entregaAyudante`. Esto aplica porque el ayudante debe el valor de boletos vendidos si la frecuencia no generó producción contable.

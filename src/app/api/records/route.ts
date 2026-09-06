@@ -80,7 +80,16 @@ export async function POST(req: NextRequest) {
     const production = tripEfectivoReal + cajaComun + sobranteNum;
     const totalGastos = (expenses || []).reduce((s: number, e: { amount: number | string }) => s + (Number(e.amount) || 0), 0);
     // ENTREGA AYUDANTE = efectivo real + sobrante - gastos (la caja común NO pasa por el ayudante)
-    const entregaAyudante = tripEfectivoReal + sobranteNum - totalGastos;
+    // REGLA: si un trip tiene producción 0 (efectivoReal + cajaComunMonto = 0), 
+    // el valor de sus boletos (income) se descuenta de lo que el ayudante debe entregar
+    const ticketsFromZeroProdTrips = (trips || [])
+      .filter((t: { efectivoReal?: number | string; cajaComunMonto?: number | string }) => {
+        const ef = Number(t.efectivoReal) || 0;
+        const cc = Number(t.cajaComunMonto) || 0;
+        return ef + cc === 0;
+      })
+      .reduce((s: number, t: { income?: number | string }) => s + (Number(t.income) || 0), 0);
+    const entregaAyudante = tripEfectivoReal + sobranteNum - totalGastos - ticketsFromZeroProdTrips;
     const ticketsNum = Number(tickets) || 0;
     // Lógica dual: si hay caja común se descuentan tickets, si no (pre-Jun 2026) entrega compañía = 0
     const entregaCompania = cajaComun > 0 ? cajaComun - ticketsNum : 0;
