@@ -1,5 +1,5 @@
 # RutaGo — Documento Maestro de Contexto Técnico
-> Versión: **v3.47.3-sep02-zero-prod-ticket-deduction** | Fecha: 2026-09-02 | Autor: Arquitecto de Software
+> Versión: **v3.47.4-sep02-entrega-zero-prod-fixed** | Fecha: 2026-09-02 | Autor: Arquitecto de Software
 
 ---
 
@@ -353,25 +353,40 @@ producción = efectivoReal  (cajaComunMonto = 0, boletos ya incluidos en efectiv
 ```
 production = efectivoReal + cajaComun + sobrante
 
-// Deducción por producción cero: si un trip tiene efectivoReal + cajaComunMonto = 0,
-// su income (boleto) se descuenta de lo que el ayudante debe entregar
-ticketsFromZeroProdTrips = sum(trip.income) donde trip.efectivoReal + trip.cajaComunMonto = 0
+if (production === 0):
+  // Producción cero: los tickets reducen los gastos (ya contabilizados en caja común)
+  entregaAyudante = (efectivoReal + sobrante) - (totalGastos - tickets)
+  // Expandido: = efectivoReal + sobrante - totalGastos + tickets
+else:
+  // Producción > 0 (post-Junio 2026): fórmula normal
+  entregaAyudante = efectivoReal + sobrante - totalGastos
 
-entregaAyudante = efectivoReal + sobrante - totalGastos - ticketsFromZeroProdTrips
 entregaCompania = cajaComun - tickets    (0 si no hay caja común)
 ```
 
 ### Sistema de Producción Total (decisión arquitectónica v3.47.2)
 
-### Deducción por Producción Cero (regla v3.47.3)
+### Deducción por Producción Cero (regla v3.47.4 — corregida)
 
-Cuando un trip tiene `efectivoReal + cajaComunMonto = 0` (producción cero), el valor de sus boletos (`income`) se descuenta de `entregaAyudante`. Razón: si la frecuencia operó pero no generó producción contable, el ayudante debe el valor de los boletos que se vendieron para esa frecuencia.
+Cuando `production = 0` (efectivoReal + cajaComun + sobrante = 0), la fórmula de entrega ayudante cambia:
+
+```
+Entrega Ayudante = (Efectivo Real + Ajuste Manual) - (Total Gastos - Tickets)
+                  = efectivoReal + sobrante - totalGastos + tickets
+```
+
+Los tickets **reducen los gastos** porque ya están contabilizados en caja común. Si se restaran directamente (como en v3.47.3), habría doble conteo.
+
+Ejemplo: efectivoReal=0, sobrante=0, totalGastos=118, tickets=15:
+- ✅ Correcto: (0+0) - (118-15) = **-103**
+- ❌ v3.47.3: 0+0-118-15 = **-133** (doble conteo de tickets)
 
 ```typescript
-const ticketsFromZeroProdTrips = trips
-  .filter(t => (t.efectivoReal || 0) + (t.cajaComunMonto || 0) === 0)
-  .reduce((s, t) => s + (t.income || 0), 0);
-const entregaAyudante = tripEfectivoReal + sobranteNum - totalGastos - ticketsFromZeroProdTrips;
+if (production === 0) {
+  entregaAyudante = (tripEfectivoReal + sobranteNum) - (totalGastos - ticketsNum);
+} else {
+  entregaAyudante = tripEfectivoReal + sobranteNum - totalGastos;
+}
 ```
 
 | Origen | Valor | Incluye en |
@@ -534,14 +549,20 @@ const tripProduccion = matchingTrips.reduce(
 ```typescript
 const production = efectivoReal + cajaComun + sobrante;
 const totalGastos = expenses.reduce((s, e) => s + e.amount, 0);
+const ticketsNum = Number(tickets) || 0;
 
-// Deducción por producción cero
-const ticketsFromZeroProdTrips = trips
-  .filter(t => (Number(t.efectivoReal) || 0) + (Number(t.cajaComunMonto) || 0) === 0)
-  .reduce((s, t) => s + (Number(t.income) || 0), 0);
+// Entrega Ayudante — lógica dual según producción
+let entregaAyudante: number;
+if (production === 0) {
+  // Producción cero: los tickets reducen los gastos
+  // Entrega Ayudante = (Efectivo Real + Ajuste) - (Total Gastos - Tickets)
+  entregaAyudante = (tripEfectivoReal + sobranteNum) - (totalGastos - ticketsNum);
+} else {
+  // Producción > 0 (post-Junio 2026): fórmula normal
+  entregaAyudante = tripEfectivoReal + sobranteNum - totalGastos;
+}
 
-const entregaAyudante = efectivoReal + sobrante - totalGastos - ticketsFromZeroProdTrips;
-const entregaCompania = cajaComun > 0 ? cajaComun - tickets : 0;
+const entregaCompania = cajaComun > 0 ? cajaComun - ticketsNum : 0;
 ```
 
 ### 7.3 PIN Hashing + Auto-Migration
@@ -679,7 +700,8 @@ export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
 | v3.47.0 | 2026-09-02 | Reporte operativo: efectivoReal + PDF export |
 | v3.47.1 | 2026-09-02 | Fix compare-frequencies date filter + índice compuesto |
 | v3.47.2 | 2026-09-02 | Producción total = efectivoReal + cajaComunMonto en todos los reportes |
-| v3.47.3 | 2026-09-02 | Deducción de boletos en entregaAyudante cuando producción = 0 |
+| v3.47.3 | 2026-09-02 | Deducción de boletos en entregaAyudante cuando producción = 0 (signo incorrecto) |
+| v3.47.4 | 2026-09-02 | Corregida fórmula: (EfectivoReal+Sobrante) - (Gastos-Tickets) cuando producción=0 |
 
 ---
 
@@ -690,4 +712,4 @@ export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
 3. **Fleet migration**: Secuencia correcta es finalizar reportes primero, luego agregar per-bus config a BusVT (gastoChofer, gastoAyudante, planRenova, tarifas).
 4. **El campo `income` (boletos) ya NO se usa para producción** en compare-frequencies ni operativo. Solo se mantiene para compatibilidad, para ingresos especiales, y ahora para deducción cuando producción = 0.
 5. **PrismaClient singleton** en `src/lib/db.ts` — si se agrega otro archivo que importa PrismaClient directamente (ej: ventas/batch/route.ts lo hace), puede crear múltiples conexiones. Unificar es pendiente #2.
-6. **Regla de deducción por producción cero (v3.47.3)**: cuando `efectivoReal + cajaComunMonto = 0` en un trip, el `income` (boleto) se descuenta de `entregaAyudante`. Esto aplica porque el ayudante debe el valor de boletos vendidos si la frecuencia no generó producción contable.
+6. **Regla de producción cero (v3.47.4)**: cuando `production = 0`, `entregaAyudante = (efectivoReal + sobrante) - (totalGastos - tickets)`. Los tickets REDUCEN los gastos (no se restan directamente — eso causaba doble conteo en v3.47.3). La fórmula normal (production > 0) NO se toca.
