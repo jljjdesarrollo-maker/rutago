@@ -59,10 +59,10 @@ export async function GET() {
       implication: assumptionValid
         ? 'No double-counting risk. Production formula (efectivoReal + cajaComunMonto) is safe for all records.'
         : `Found ${preJuneCajaComunCount} pre-June trips with cajaComunMonto > 0. Review these records for potential double-counting.`,
-      formulaZeroProduction: {
-        description: 'When production = 0 (efectivoReal + cajaComunMonto = 0 for all trips)',
-        formula: 'Entrega Ayudante = (Efectivo Real + Ajuste Manual) - (Total Gastos - Tickets)',
-        expanded: 'entregaAyudante = tripEfectivoReal + sobrante - totalGastos + ticketsNum',
+      formulaReglaDualCajaComun: {
+        description: 'Regla dual por Caja Común: Si cajaComun > 0 la compañía asume tickets. Si cajaComun = 0 el ayudante asume tickets.',
+        formulaSinCajaComun: 'Entrega Ayudante = (Efectivo Real + Ajuste Manual) - (Total Gastos + Tickets)',
+        formulaConCajaComun: 'Entrega Ayudante = Efectivo Real + Ajuste Manual - Total Gastos',
       },
     });
   } catch (error) {

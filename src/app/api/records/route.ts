@@ -82,18 +82,15 @@ export async function POST(req: NextRequest) {
     const ticketsNum = Number(tickets) || 0;
 
     // ENTREGA AYUDANTE
-    // Cuando producción = 0: Entrega Ayudante = (Efectivo Real + Ajuste Manual) - (Total Gastos - Tickets)
-    // Cuando producción > 0 (post-Junio 2026): Entrega Ayudante = Efectivo Real + Ajuste Manual - Total Gastos
+    // ENTREGA AYUDANTE Y COMPAÑÍA (Regla Dual por Caja Común):
+    // Si hay Caja Común (cajaComun > 0): La compañía descuenta los tickets de su caja. El ayudante no paga tickets.
+    // Si no hay Caja Común (cajaComun === 0): La entrega de la compañía es 0, y el ayudante paga los tickets.
     let entregaAyudante: number;
-    if (production === 0) {
-      // Producción cero: los tickets reducen los gastos (ya están contabilizados en caja común)
-      entregaAyudante = (tripEfectivoReal + sobranteNum) - (totalGastos - ticketsNum);
-    } else {
-      // Producción > 0: fórmula normal (la caja común NO pasa por el ayudante)
+    if (cajaComun > 0) {
       entregaAyudante = tripEfectivoReal + sobranteNum - totalGastos;
+    } else {
+      entregaAyudante = (tripEfectivoReal + sobranteNum) - (totalGastos + ticketsNum);
     }
-
-    // Lógica dual: si hay caja común se descuentan tickets, si no (pre-Jun 2026) entrega compañía = 0
     const entregaCompania = cajaComun > 0 ? cajaComun - ticketsNum : 0;
 
     const record = await db.dailyRecord.create({

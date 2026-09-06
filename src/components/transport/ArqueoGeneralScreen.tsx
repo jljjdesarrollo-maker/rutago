@@ -210,18 +210,15 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const sobranteNum = parseFloat(sobrante) || 0;
   // PRODUCCION = efectivo real contado por el ayudante + caja comun + sobrante ajuste manual
   const production = totalEfectivoReal + totalCajaComunMonto + sobranteNum;
-  // ENTREGA AYUDANTE
-  // Cuando producción = 0: Entrega Ayudante = (Efectivo Real + Ajuste Manual) - (Total Gastos - Tickets)
-  // Cuando producción > 0 (post-Junio 2026): Entrega Ayudante = Efectivo Real + Ajuste Manual - Total Gastos
+  // ENTREGA AYUDANTE Y COMPAÑÍA (Regla Dual por Caja Común):
+  // Si hay Caja Común (totalCajaComunMonto > 0): La compañía descuenta los tickets de su caja. El ayudante no paga tickets.
+  // Si no hay Caja Común (totalCajaComunMonto === 0): La entrega de la compañía es 0, y el ayudante paga los tickets.
   let entregaAyudante: number;
-  if (production === 0) {
-    // Producción cero: los tickets reducen los gastos (ya están contabilizados en caja común)
-    entregaAyudante = (totalEfectivoReal + sobranteNum) - (totalGastos - ticketsNum);
-  } else {
-    // Producción > 0: fórmula normal (la caja común NO pasa por el ayudante)
+  if (totalCajaComunMonto > 0) {
     entregaAyudante = totalEfectivoReal + sobranteNum - totalGastos;
+  } else {
+    entregaAyudante = (totalEfectivoReal + sobranteNum) - (totalGastos + ticketsNum);
   }
-  // Lógica dual: si hay caja común se descuentan tickets, si no (pre-Jun 2026) entrega compañía = 0
   const entregaCompania = totalCajaComunMonto > 0 ? totalCajaComunMonto - ticketsNum : 0;
 
   const addGasto = () => setGastos(prev => [...prev, { description: '', amount: '0' }]);
@@ -426,7 +423,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">
                   Entrega Ayudante
-                  {production === 0 && <span className="text-xs text-amber-600 ml-1">(prod=0)</span>}
+                  {totalCajaComunMonto === 0 && ticketsNum > 0 && <span className="text-xs text-amber-600 ml-1">(sin caja común)</span>}
                 </span>
                 <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   ${entregaAyudante.toFixed(2)}
@@ -441,7 +438,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
             </div>
             <p className="text-sm text-[#912D26] mb-4">
               Entrega Ayudante: <strong>${entregaAyudante.toFixed(2)}</strong>
-              {production === 0 && <span className="text-xs text-amber-600"> (fórmula: (EfectivoReal+Ajuste) - (Gastos-Tickets))</span>}
+              {totalCajaComunMonto === 0 && ticketsNum > 0 && <span className="text-xs text-amber-600"> (fórmula: (EfectivoReal+Ajuste) - (Gastos+Tickets))</span>}
               {' — '}
               Entrega Compañía: <strong>${entregaCompania.toFixed(2)}</strong>
             </p>
@@ -811,14 +808,14 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           <div className="flex justify-between">
             <span className="text-sm text-white/80">
               Entrega Ayudante
-              {production === 0 && <span className="text-[10px] text-amber-400 ml-1">(prod=0)</span>}
+              {totalCajaComunMonto === 0 && ticketsNum > 0 && <span className="text-[10px] text-amber-400 ml-1">(sin caja común)</span>}
             </span>
             <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               ${entregaAyudante.toFixed(2)}
             </span>
           </div>
           <p className="text-[10px] text-white/30">
-            {production === 0 ? '(EfectivoReal+Ajuste) - (Gastos-Tickets)' : 'Efectivo Real - Total Gastos'}
+            {totalCajaComunMonto === 0 ? '(EfectivoReal+Ajuste) - (Gastos+Tickets)' : 'Efectivo Real - Total Gastos'}
           </p>
           <div className="flex justify-between">
             <span className="text-sm text-white/80">Entrega Compañía</span>
