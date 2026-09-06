@@ -1,5 +1,5 @@
 # RutaGo — Documento Maestro de Contexto Técnico
-> Versión: **v3.47.4-sep02-entrega-zero-prod-fixed** | Fecha: 2026-09-02 | Autor: Arquitecto de Software
+> Versión: **v3.47.5-sep06-zero-prod-formula-sync** | Fecha: 2026-09-06 | Autor: Arquitecto de Software
 
 ---
 
@@ -702,14 +702,15 @@ export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
 | v3.47.2 | 2026-09-02 | Producción total = efectivoReal + cajaComunMonto en todos los reportes |
 | v3.47.3 | 2026-09-02 | Deducción de boletos en entregaAyudante cuando producción = 0 (signo incorrecto) |
 | v3.47.4 | 2026-09-02 | Corregida fórmula: (EfectivoReal+Sobrante) - (Gastos-Tickets) cuando producción=0 |
+| v3.47.5 | 2026-09-06 | Sync fórmula zero-production al frontend (ArqueoGeneralScreen) + endpoint verificación SQL + indicador visual (prod=0) |
 
 ---
 
 ## Notas para Continuar
 
-1. **Primera verificación**: Ejecutar `SELECT COUNT(*) FROM "Trip" t JOIN "DailyRecord" d ON t."recordId"=d.id WHERE d.date < '2026-06-01' AND t."cajaComunMonto" > 0;` — si >0, hay doble conteo en datos históricos.
+1. **Verificación SQL disponible**: Endpoint `GET /api/verify/caja-comun-pre-june` retorna conteo de trips pre-June con cajaComunMonto > 0. Si = 0, no hay doble conteo. También ejecutable directo: `SELECT COUNT(*) FROM "Trip" t JOIN "DailyRecord" d ON t."recordId"=d.id WHERE d.date < '2026-06-01' AND t."cajaComunMonto" > 0;`
 2. **Test data**: Los registros del 31/08 y 01/09 pueden tener `routeFrom`/`routeTo` vacíos en trips no_realizados, causando display de "- 'f' -" en reportes.
 3. **Fleet migration**: Secuencia correcta es finalizar reportes primero, luego agregar per-bus config a BusVT (gastoChofer, gastoAyudante, planRenova, tarifas).
 4. **El campo `income` (boletos) ya NO se usa para producción** en compare-frequencies ni operativo. Solo se mantiene para compatibilidad, para ingresos especiales, y ahora para deducción cuando producción = 0.
 5. **PrismaClient singleton** en `src/lib/db.ts` — si se agrega otro archivo que importa PrismaClient directamente (ej: ventas/batch/route.ts lo hace), puede crear múltiples conexiones. Unificar es pendiente #2.
-6. **Regla de producción cero (v3.47.4)**: cuando `production = 0`, `entregaAyudante = (efectivoReal + sobrante) - (totalGastos - tickets)`. Los tickets REDUCEN los gastos (no se restan directamente — eso causaba doble conteo en v3.47.3). La fórmula normal (production > 0) NO se toca.
+6. **Regla de producción cero (v3.47.4→v3.47.5)**: cuando `production = 0`, `entregaAyudante = (efectivoReal + sobrante) - (totalGastos - tickets)`. Los tickets REDUCEN los gastos (no se restan directamente — eso causaba doble conteo en v3.47.3). La fórmula normal (production > 0) NO se toca. Desde v3.47.5, el frontend (ArqueoGeneralScreen) usa la misma lógica que el API, con indicador visual `(prod=0)` cuando aplica.

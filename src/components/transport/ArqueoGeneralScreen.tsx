@@ -210,8 +210,17 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const sobranteNum = parseFloat(sobrante) || 0;
   // PRODUCCION = efectivo real contado por el ayudante + caja comun + sobrante ajuste manual
   const production = totalEfectivoReal + totalCajaComunMonto + sobranteNum;
-  // ENTREGA AYUDANTE = efectivo real + sobrante - gastos (la caja común NO pasa por el ayudante)
-  const entregaAyudante = totalEfectivoReal + sobranteNum - totalGastos;
+  // ENTREGA AYUDANTE
+  // Cuando producción = 0: Entrega Ayudante = (Efectivo Real + Ajuste Manual) - (Total Gastos - Tickets)
+  // Cuando producción > 0 (post-Junio 2026): Entrega Ayudante = Efectivo Real + Ajuste Manual - Total Gastos
+  let entregaAyudante: number;
+  if (production === 0) {
+    // Producción cero: los tickets reducen los gastos (ya están contabilizados en caja común)
+    entregaAyudante = (totalEfectivoReal + sobranteNum) - (totalGastos - ticketsNum);
+  } else {
+    // Producción > 0: fórmula normal (la caja común NO pasa por el ayudante)
+    entregaAyudante = totalEfectivoReal + sobranteNum - totalGastos;
+  }
   // Lógica dual: si hay caja común se descuentan tickets, si no (pre-Jun 2026) entrega compañía = 0
   const entregaCompania = totalCajaComunMonto > 0 ? totalCajaComunMonto - ticketsNum : 0;
 
@@ -415,7 +424,10 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
               </div>
               <hr className="border-gray-200" />
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Entrega Ayudante</span>
+                <span className="text-gray-600">
+                  Entrega Ayudante
+                  {production === 0 && <span className="text-xs text-amber-600 ml-1">(prod=0)</span>}
+                </span>
                 <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   ${entregaAyudante.toFixed(2)}
                 </span>
@@ -428,7 +440,9 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
               </div>
             </div>
             <p className="text-sm text-[#912D26] mb-4">
-              Entrega Ayudante: <strong>${entregaAyudante.toFixed(2)}</strong> —
+              Entrega Ayudante: <strong>${entregaAyudante.toFixed(2)}</strong>
+              {production === 0 && <span className="text-xs text-amber-600"> (fórmula: (EfectivoReal+Ajuste) - (Gastos-Tickets))</span>}
+              {' — '}
               Entrega Compañía: <strong>${entregaCompania.toFixed(2)}</strong>
             </p>
             <div className="flex gap-3">
@@ -795,12 +809,17 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           </div>
           <hr className="border-white/10" />
           <div className="flex justify-between">
-            <span className="text-sm text-white/80">Entrega Ayudante</span>
+            <span className="text-sm text-white/80">
+              Entrega Ayudante
+              {production === 0 && <span className="text-[10px] text-amber-400 ml-1">(prod=0)</span>}
+            </span>
             <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               ${entregaAyudante.toFixed(2)}
             </span>
           </div>
-          <p className="text-[10px] text-white/30">Efectivo Real - Total Gastos</p>
+          <p className="text-[10px] text-white/30">
+            {production === 0 ? '(EfectivoReal+Ajuste) - (Gastos-Tickets)' : 'Efectivo Real - Total Gastos'}
+          </p>
           <div className="flex justify-between">
             <span className="text-sm text-white/80">Entrega Compañía</span>
             <span className={`font-bold ${entregaCompania >= 0 ? 'text-green-400' : 'text-red-400'}`}>

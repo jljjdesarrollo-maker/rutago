@@ -1,0 +1,716 @@
+     1→# RutaGo — Documento Maestro de Contexto Técnico
+     2→> Versión: **v3.47.4-sep02-entrega-zero-prod-fixed** | Fecha: 2026-09-02 | Autor: Arquitecto de Software
+     3→
+     4→---
+     5→
+     6→## 1. Visión General, Stack Tecnológico y Herramientas
+     7→
+     8→### Propósito Principal
+     9→RutaGo es una aplicación de **control operativo y financiero para buses de transporte interparroquial** (VilcabambaTuris Cía. Ltdda., Loja, Ecuador). Permite:
+    10→- Registro de frecuencias (viajes) realizadas, no realizadas e ingresos especiales
+    11→- Venta de boletos offline con sincronización posterior
+    12→- Arqueo de caja por frecuencia y arqueo general (liquidación del día)
+    13→- Generación de reportes operativos y financieros con exportación PDF/Excel
+    14→- Comparación histórica de rendimiento entre frecuencias
+    15→- Impresión de comprobantes vía Bluetooth (impresoras térmicas 58mm)
+    16→
+    17→### Stack Tecnológico
+    18→
+    19→| Capa | Tecnología | Versión |
+    20→|---|---|---|
+    21→| **Framework** | Next.js (App Router) | 16.1.x |
+    22→| **Lenguaje** | TypeScript | 5.x |
+    23→| **Runtime** | Node.js / Bun | — |
+    24→| **BD Relacional** | PostgreSQL (Supabase) | — |
+    25→| **ORM** | Prisma | 6.11.x |
+    26→| **Estilos** | Tailwind CSS 4 + shadcn/ui | 4.x |
+    27→| **UI Primitivos** | Radix UI | múltiples |
+    28→| **PDF** | jsPDF | 4.2.x |
+    29→| **Excel** | xlsx (SheetJS) | 0.18.x |
+    30→| **Iconos** | Lucide React | 0.525.x |
+    31→| **Notificaciones** | Sonner | 2.x |
+    32→| **Offline DB** | IndexedDB (custom wrapper) | — |
+    33→| **Bluetooth** | Web Bluetooth API (ESC/POS) | nativo |
+    34→
+    35→### Herramientas de Desarrollo y DevOps
+    36→
+    37→| Herramienta | Uso |
+    38→|---|---|
+    39→| **GitHub** | Repositorio principal (jljjdesarrollo-maker/rutago) |
+    40→| **Vercel** | Hosting y deploy automático desde main |
+    41→| **Supabase** | PostgreSQL hosting (free tier: 500MB DB, 1GB Storage) |
+    42→| **Prisma Studio** | Inspección visual de BD |
+    43→| **ESLint** | Linting (eslint-config-next) |
+    44→| **Bun** | Runtime alternativo para producción (standalone) |
+    45→
+    46→### Identidad Visual (Paleta Corporativa)
+    47→
+    48→| Nombre | Hex | Uso |
+    49→|---|---|---|
+    50→| Rojo Vinotinto | `#912D26` | Primary, headers, CTAs |
+    51→| Gris Antracita | `#3A3A3A` | Texto principal |
+    52→| Plata | `#D6D6D6` | Bordes, separadores |
+    53→| Blanco | `#FFFFFF` | Fondos |
+    54→
+    55→---
+    56→
+    57→## 2. Repositorio y Despliegue
+    58→
+    59→### GitHub
+    60→- **Repo**: `https://github.com/jljjdesarrollo-maker/rutago.git`
+    61→- **Rama principal**: `main` (deploy directo)
+    62→- **Flujo**: Push a `main` → Vercel auto-deploy
+    63→- **Commits**: Mensajes con prefijo de versión (ej: `v3.47.2 - Produccion total`)
+    64→
+    65→### Vercel
+    66→- **Framework preset**: Next.js
+    67→- **Build command**: `prisma generate && npx prisma db push --accept-data-loss --skip-generate && next build`
+    68→- **Output**: `standalone` (configurado en next.config.ts)
+    69→- **Región**: — (auto)
+    70→- **Free tier limits**: 10s timeout funciones, 100GB bandwidth/mes
+    71→
+    72→### Variables de Entorno (requeridas)
+    73→
+    74→| Variable | Descripción | Donde |
+    75→|---|---|---|
+    76→| `DATABASE_URL` | Connection string PostgreSQL (Supabase pooler recomendado) | Vercel + local |
+    77→| `NEXT_PUBLIC_APP_URL` | URL base de la app (opcional) | Vercel |
+    78→
+    79→### Supabase
+    80→- **Free tier**: 500MB DB, 1GB Storage, 20 conexiones directas, 60 pooler
+    81→- **Uso actual**: ~5-10MB (datos de agosto-septiembre 2026)
+    82→- **Proyección**: A 19 buses × 30 días × ~15 trips/día → ~8,550 registros/mes → ~15MB/mes → free tier dura ~33 meses por bus, ~1.7 meses para 19 buses
+    83→
+    84→### Configuración Next.js (`next.config.ts`)
+    85→```typescript
+    86→const nextConfig = {
+    87→  output: 'standalone',
+    88→  typescript: { ignoreBuildErrors: true },
+    89→  reactStrictMode: false,
+    90→};
+    91→```
+    92→
+    93→---
+    94→
+    95→## 3. Arquitectura y Estructura de Componentes
+    96→
+    97→### Arquitectura General
+    98→```
+    99→Monorepo Next.js (App Router)
+   100→├── src/app/              # Rutas y API endpoints
+   101→│   ├── page.tsx          # Root: view state machine
+   102→│   ├── api/              # Backend API routes
+   103→│   │   ├── auth/         # Autenticación PIN
+   104→│   │   ├── records/      # CRUD liquidaciones
+   105→│   │   ├── reports/      # Reportes (general, operativo, compare-freq)
+   106→│   │   ├── ventas/       # Ventas de boletos (single + batch)
+   107→│   │   ├── backup/       # Export full DB
+   108→│   │   ├── personas/     # CRUD personas
+   109→│   │   ├── bus-vts/      # CRUD unidades (buses)
+   110→│   │   └── frecuencias/  # CRUD frecuencias
+   111→│   └── print-test/       # Pruebas de impresión Bluetooth
+   112→├── src/components/
+   113→│   ├── transport/        # Todos los componentes de negocio
+   114→│   └── ui/               # shadcn/ui primitivos
+   115→├── src/lib/              # Utilidades y generadores
+   116→│   ├── db.ts             # PrismaClient singleton
+   117→│   ├── indexeddb.ts      # Offline storage layer
+   118→│   ├── pin-hash.ts       # SHA-256 hashing
+   119→│   ├── printer.ts        # ESC/POS Bluetooth
+   120→│   ├── generate-report-pdf.ts
+   121→│   ├── generate-operativo-pdf.ts
+   122→│   ├── generate-comprobante-pdf.ts
+   123→│   └── generate-xls.ts
+   124→├── prisma/
+   125→│   └── schema.prisma     # Modelo de datos
+   126→└── public/               # Assets estáticos
+   127→```
+   128→
+   129→### Máquina de Estados (AppView)
+   130→La navegación se controla con un `useState<AppView>` en `page.tsx`:
+   131→
+   132→```typescript
+   133→type AppView = 'home' | 'form' | 'history' | 'reports' | 'operativo' 
+   134→  | 'personal' | 'vtconfig' | 'compare' | 'ventas_review' 
+   135→  | 'boletos_home' | 'boletos_frecuencias' | 'boletos_tickets' 
+   136→  | 'boletos_cierre' | 'boletos_arqueo' | 'boletos_arqueo_general' 
+   137→  | 'boletos_sync';
+   138→```
+   139→
+   140→### Componentes Principales
+   141→
+   142→| Componente | Responsabilidad | Líneas aprox. |
+   143→|---|---|---|
+   144→| `HomeScreenVT` | Selección de VT (bus), sesión, sync status | ~350 |
+   145→| `FrecuenciaSelector` | Hub de frecuencias: estados, caja común, no realizadas, ingresos especiales | ~700 |
+   146→| `ArqueoScreen` | Arqueo por frecuencia: sistema vs. real, diferencia | ~400 |
+   147→| `ArqueoGeneralScreen` | Arqueo general: guarda liquidación completa del día | ~800 |
+   148→| `CloseFrequencyScreen` | Cierre/liquidación de frecuencia individual | ~200 |
+   149→| `ReporteOperativoScreen` | Reporte operativo: KPIs + detalle por día + PDF export | ~350 |
+   150→| `ReportsScreen` | Reportes financieros: PDF + Excel + WhatsApp | ~500 |
+   151→| `RecordDetail` | Vista detalle de liquidación guardada | ~300 |
+   152→| `RecordForm` | Formulario legacy de carga manual | ~400 |
+   153→| `LoginScreen` | Login PIN 4 dígitos (online/offline) | ~150 |
+   154→
+   155→### Flujos de Usuario Principales
+   156→
+   157→**Flujo 1: Operación diaria completa**
+   158→```
+   159→Login → Seleccionar VT → FrecuenciaSelector
+   160→  → Abrir frecuencia → Vender boletos (TicketScreen)
+   161→  → Cerrar frecuencia → ArqueoScreen (contar efectivo)
+   162→  → [Repetir por cada frecuencia]
+   163→  → ArqueoGeneralScreen → Guardar liquidación → Comprobante PDF
+   164→```
+   165→
+   166→**Flujo 2: Reportes**
+   167→```
+   168→Home → Reportes → Seleccionar tipo (diario/semanal/mensual/conductor/rango/caja-común)
+   169→  → Filtrar fechas → Generar PDF/Excel → Compartir WhatsApp
+   170→```
+   171→
+   172→**Flujo 3: Reporte Operativo**
+   173→```
+   174→Home → Reporte Operativo → Seleccionar rango (1/3/6/12 meses o custom)
+   175→  → Ver KPIs + detalle por día → Exportar PDF
+   176→```
+   177→
+   178→**Flujo 4: Comparar Frecuencias**
+   179→```
+   180→Home → Comparar Frecuencias → Seleccionar 2 frecuencias + fecha
+   181→  → Ver stats comparativas + recomendación
+   182→```
+   183→
+   184→---
+   185→
+   186→## 4. Conexiones, APIs y Base de Datos
+   187→
+   188→### Esquema de Base de Datos (Prisma)
+   189→
+   190→```prisma
+   191→model BusVT {
+   192→  id          String  @id @default(cuid())
+   193→  codigo      String  @unique          // Ej: "VT-01"
+   194→  nombre      String                  // Ej: "Vilcabamba 01"
+   195→  frecuencias Json    @default("[]")  // Schedule JSON (legacy)
+   196→  activo      Boolean @default(true)
+   197→  createdAt   DateTime @default(now())
+   198→  updatedAt   DateTime @updatedAt
+   199→  // Relaciones
+   200→  frecBoletos   Frecuencia[]
+   201→  ventasBoleto  VentaBoleto[]
+   202→}
+   203→
+   204→model DailyRecord {
+   205→  id               String   @id @default(cuid())
+   206→  date             String                   // "2026-09-01"
+   207→  km               String?
+   208→  conductor        String?
+   209→  ayudanteNombre   String?
+   210→  vtCode           String?                  // "VT-01"
+   211→  production       Float    @default(0)     // efectivoReal + cajaComun + sobrante
+   212→  cajaComun        Float    @default(0)     // Total caja común del día
+   213→  sobrante         Float    @default(0)     // Sobrante de caja
+   214→  tickets          Float    @default(0)     // Valor tickets/boletos descontados
+   215→  entregaAyudante  Float    @default(0)     // Lo que entrega el ayudante
+   216→  entregaCompania  Float    @default(0)     // Lo que entrega a la compañía
+   217→  totalGastos      Float    @default(0)     // Suma de gastos
+   218→  photoUrl         String?                  // Base64 foto del cuaderno
+   219→  createdAt        DateTime @default(now())
+   220→  updatedAt        DateTime @updatedAt
+   221→  // Relaciones
+   222→  trips     Trip[]
+   223→  expenses  Expense[]
+   224→  // Índices
+   225→  @@index([date, vtCode])   // Compuesto para queries por fecha+bus
+   226→}
+   227→
+   228→model Trip {
+   229→  id                 String  @id @default(cuid())
+   230→  recordId           String
+   231→  order              Int                     // Orden secuencial
+   232→  routeFrom          String                  // "Loja"
+   233→  routeTo            String                  // "Vilcabamba"
+   234→  time               String?                 // "06:30"
+   235→  income             Float   @default(0)     // Calculado de boletos (puede ser 0)
+   236→  efectivoReal       Float   @default(0)     // Lo que contó el ayudante
+   237→  boletos            Float   @default(0)     // Cantidad de boletos
+   238→  cajaComunPasajeros Int    @default(0)     // Pasajeros pagados desde oficina
+   239→  cajaComunMonto     Float   @default(0)     // Monto caja común de esta frecuencia
+   240→  tipo               String  @default("frecuencia")  // "frecuencia" | "ingreso_especial" | "no_realizada"
+   241→  motivo             String?                 // "mantenimiento" | "daño_unidad" | "clima" | "sin_pasajeros" | "problema_ruta" | "orden_superior" | "otro"
+   242→  notaEspecial       String?                 // Nota del ingreso especial
+   243→  // Relación
+   244→  record DailyRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+   245→}
+   246→
+   247→model Expense {
+   248→  id          String  @id @default(cuid())
+   249→  recordId    String
+   250→  order       Int
+   251→  description String                  // "Chofer", "Ayudante", "Diesel", "Plan Renova"
+   252→  amount      Float   @default(0)
+   253→  record DailyRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+   254→}
+   255→
+   256→model Persona {
+   257→  id        String   @id @default(cuid())
+   258→  nombre    String
+   259→  cedula    String?
+   260→  telefono  String?
+   261→  rol       String   @default("CONDUCTOR")  // CONDUCTOR | AYUDANTE | ADMIN
+   262→  pin       String   @unique                 // SHA-256 hash (migrado de plaintext)
+   263→  esActual  Boolean  @default(false)         // Conductor/ayudante actual del bus
+   264→  createdAt DateTime @default(now())
+   265→  updatedAt DateTime @updatedAt
+   266→}
+   267→
+   268→model Frecuencia {
+   269→  id        String   @id @default(cuid())
+   270→  vtCode    String                   // "VT-01"
+   271→  nombre    String                   // "Loja-Vilcabamba 06:30"
+   272→  ruta      String                   // "Loja-Vilcabamba"
+   273→  hora      String                   // "06:30"
+   274→  direccion String                   // "ida" | "vuelta"
+   275→  activo    Boolean  @default(true)
+   276→  createdAt DateTime @default(now())
+   277→  updatedAt DateTime @updatedAt
+   278→  vt     BusVT       @relation(fields: [vtCode], references: [codigo])
+   279→  ventas VentaBoleto[]
+   280→}
+   281→
+   282→model VentaBoleto {
+   283→  id              String   @id @default(cuid())
+   284→  fecha           String                   // "2026-09-01"
+   285→  vtCode          String                   // "VT-01"
+   286→  frecuenciaId    String?                  // Relación a Frecuencia
+   287→  ruta            String                   // "Loja-Vilcabamba"
+   288→  parada          String                   // "Malacatos"
+   289→  tipo            String                   // "ida" | "vuelta"
+   290→  pasajeroTipo    String   @default("normal")  // "normal" | "media"
+   291→  tarifaOficial   Float                    // Tarifa del tarifario
+   292→  cobrado         Float                    // Lo que se cobró
+   293→  hora            String                   // Hora de la venta
+   294→  ayudanteId      String
+   295→  ayudanteNombre  String
+   296→  lat             Float?
+   297→  lng             Float?
+   298→  syncStatus      String   @default("pending")  // "pending" | "synced" | "error"
+   299→  serverId        String?                  // ID en servidor después de sync
+   300→  syncError       String?
+   301→  createdAt       DateTime @default(now())
+   302→  updatedAt       DateTime @updatedAt
+   303→  frecuencia Frecuencia? @relation(fields: [frecuenciaId], references: [id])
+   304→  vt         BusVT       @relation(fields: [vtCode], references: [codigo])
+   305→}
+   306→```
+   307→
+   308→### Endpoints API
+   309→
+   310→| Método | Ruta | Propósito | Auth |
+   311→|---|---|---|---|
+   312→| POST | `/api/auth` | Login PIN (rate limited, auto-migration hash) | No |
+   313→| GET/POST | `/api/records` | Listar / Crear liquidaciones | No |
+   314→| GET/PATCH | `/api/records/[id]` | Detalle / Editar fecha | No |
+   315→| GET | `/api/records/count` | Conteo rápido de registros | No |
+   316→| GET | `/api/reports` | Reporte consolidado (6 tipos) | No |
+   317→| GET | `/api/reports/operativo` | Reporte operativo | No |
+   318→| GET | `/api/reports/compare-frequencies` | Comparar 2 frecuencias | No |
+   319→| POST | `/api/ventas` | Crear venta de boleto | No |
+   320→| POST | `/api/ventas/batch` | Batch sync ventas offline | No |
+   321→| GET | `/api/backup` | Export full DB JSON | No |
+   322→| CRUD | `/api/personas` | Gestión de personas | No |
+   323→| CRUD | `/api/personas/[id]` | Editar persona | No |
+   324→| CRUD | `/api/bus-vts` | Gestión de unidades | No |
+   325→| CRUD | `/api/frecuencias` | Gestión de frecuencias | No |
+   326→
+   327→### Conexión a Base de Datos
+   328→- **Singleton PrismaClient** en `src/lib/db.ts` (previene múltiples instancias en dev)
+   329→- **Pooler URL recomendado** para Supabase (60 conexiones pooler vs 20 directas)
+   330→- **Offline**: IndexedDB (`RutaGoOffline`, versión 4) con 4 stores: `ventas_pendientes`, `tarifas_cache`, `frecuencias_cache`, `estados_frecuencias`
+   331→
+   332→---
+   333→
+   334→## 5. Lógica de Negocio y Decisiones Clave
+   335→
+   336→### Fórmulas Financieras
+   337→
+   338→**Producción total de una frecuencia (desde junio 2026):**
+   339→```
+   340→producción = efectivoReal + cajaComunMonto
+   341→```
+   342→- `efectivoReal`: lo que el ayudante contó físicamente en el arqueo de esa frecuencia
+   343→- `cajaComunMonto`: lo vendido en la oficina (caja común) para esa frecuencia
+   344→
+   345→**Producción total de una frecuencia (antes de junio 2026):**
+   346→```
+   347→producción = efectivoReal  (cajaComunMonto = 0, boletos ya incluidos en efectivoReal)
+   348→```
+   349→
+   350→**Razón**: Antes de junio, los boletos vendidos en oficina se pagaban de la cuenta del ayudante (el ayudante descontaba de su efectivo). Desde junio, los boletos de oficina se pagan desde una caja común separada. La fórmula actual (`efectivoReal + cajaComunMonto`) funciona para AMBOS períodos porque pre-junio `cajaComunMonto = 0`.
+   351→
+   352→**Cálculos del DailyRecord (server-side en POST /api/records):**
+   353→```
+   354→production = efectivoReal + cajaComun + sobrante
+   355→
+   356→if (production === 0):
+   357→  // Producción cero: los tickets reducen los gastos (ya contabilizados en caja común)
+   358→  entregaAyudante = (efectivoReal + sobrante) - (totalGastos - tickets)
+   359→  // Expandido: = efectivoReal + sobrante - totalGastos + tickets
+   360→else:
+   361→  // Producción > 0 (post-Junio 2026): fórmula normal
+   362→  entregaAyudante = efectivoReal + sobrante - totalGastos
+   363→
+   364→entregaCompania = cajaComun - tickets    (0 si no hay caja común)
+   365→```
+   366→
+   367→### Sistema de Producción Total (decisión arquitectónica v3.47.2)
+   368→
+   369→### Deducción por Producción Cero (regla v3.47.4 — corregida)
+   370→
+   371→Cuando `production = 0` (efectivoReal + cajaComun + sobrante = 0), la fórmula de entrega ayudante cambia:
+   372→
+   373→```
+   374→Entrega Ayudante = (Efectivo Real + Ajuste Manual) - (Total Gastos - Tickets)
+   375→                  = efectivoReal + sobrante - totalGastos + tickets
+   376→```
+   377→
+   378→Los tickets **reducen los gastos** porque ya están contabilizados en caja común. Si se restaran directamente (como en v3.47.3), habría doble conteo.
+   379→
+   380→Ejemplo: efectivoReal=0, sobrante=0, totalGastos=118, tickets=15:
+   381→- ✅ Correcto: (0+0) - (118-15) = **-103**
+   382→- ❌ v3.47.3: 0+0-118-15 = **-133** (doble conteo de tickets)
+   383→
+   384→```typescript
+   385→if (production === 0) {
+   386→  entregaAyudante = (tripEfectivoReal + sobranteNum) - (totalGastos - ticketsNum);
+   387→} else {
+   388→  entregaAyudante = tripEfectivoReal + sobranteNum - totalGastos;
+   389→}
+   390→```
+   391→
+   392→| Origen | Valor | Incluye en |
+   393→|---|---|---|
+   394→| Efectivo contado por ayudante | `efectivoReal` | Reporte Operativo, Compare-Frequencies |
+   395→| Vendido en oficina (caja común) | `cajaComunMonto` | Reporte Operativo, Compare-Frequencies |
+   396→| Ingreso especial (manual) | `income` | Solo Reporte Operativo (tipo=ingreso_especial) |
+   397→| Boletos del sistema | `income` (deprecated para comparaciones) | No se usa más para reportes de producción |
+   398→
+   399→### Tipos de Frecuencia (Trip.tipo)
+   400→
+   401→| Tipo | Significado | Monto a mostrar |
+   402→|---|---|---|
+   403→| `frecuencia` | Viaje realizado normalmente | `efectivoReal + cajaComunMonto` |
+   404→| `ingreso_especial` | Ingreso atípico (alquiler, etc.) | `income` (monto manual) |
+   405→| `no_realizada` | Frecuencia perdida | — (muestra motivo) |
+   406→
+   407→### Motivos de No Realizada
+   408→
+   409→| Clave | Etiqueta |
+   410→|---|---|
+   411→| `mantenimiento` | Mantenimiento |
+   412→| `daño_unidad` | Daño en la unidad |
+   413→| `clima` | Clima / Lluvia |
+   414→| `sin_pasajeros` | Sin pasajeros |
+   415→| `problema_ruta` | Problema en la ruta |
+   416→| `orden_superior` | Orden superior |
+   417→| `otro` | Otro motivo |
+   418→
+   419→### Seguridad
+   420→
+   421→- **PIN hashing**: SHA-256 con migración automática de plaintext → hash al primer login
+   422→- **Rate limiting**: 5 intentos fallidos por IP en ventana de 5 minutos (in-memory, HTTP 429)
+   423→- **PIN primer admin**: `2107` (hardcoded, solo se usa si no hay usuarios en BD)
+   424→- **PIN nunca expuesto**: GET personas excluye campo `pin`
+   425→
+   426→### Offline-First
+   427→
+   428→- **IndexedDB**: Ventas pendientes se guardan localmente, se sincronizan al cerrar frecuencia o al reconectar
+   429→- **Batch sync**: Lotes de 20 ventas → `/api/ventas/batch`, fallback a individual si falla
+   430→- **Retry**: MAX_RETRIES = 3 para ventas con error
+   431→- **Cleanup**: Ventas synced >1h se eliminan automáticamente
+   432→- **Cache**: Tarifas y frecuencias se cachean en IndexedDB para uso offline
+   433→- **Estados de frecuencia**: Se persisten en localStorage (`rg_estados_{date}_{vtCode}`)
+   434→
+   435→### Comparación de Frecuencias (Recommendation Engine)
+   436→
+   437→- Busca registros de los últimos N meses (default 6, configurable)
+   438→- Compara producción promedio de 2 frecuencias (misma ruta+hora)
+   439→- Si hay ≥5 datos en el mismo día de la semana → usa promedio por día
+   440→- Si hay <5 → usa promedio general
+   441→- Genera recomendación en español con indicación de conviene cambiar
+   442→
+   443→### Impresión Bluetooth (ESC/POS)
+   444→
+   445→- Dispositivos soportados: 3nStar PPT205BT, Rongta RPP02N (y compatibles)
+   446→- Conexión: Web Bluetooth API → GATT → writable characteristic
+   447→- Envío: chunks de 512 bytes con delay de 50ms
+   448→- Caching del dispositivo en localStorage para reconexión automática
+   449→
+   450→### Decisiones Arquitectónicas (conclusiones de análisis)
+   451→
+   452→| Decisión | Resultado | Razón |
+   453→|---|---|---|
+   454→| Single fleet app vs multi-tenant | **Single fleet con per-bus config** | 93% ventaja: 19×$25/mes Supabase Pro si separate DBs |
+   455→| Per-bus app replication vs fleet | **Fleet (1 app, N buses)** | Un solo deploy, config por BusVT |
+   456→| Cuándo migrar a fleet | **Después de finalizar reportes** | 85% prioridad reports, 15% fleet |
+   457→| Fotos base64 vs Supabase Storage | **Storage (pendiente)** | Free tier 1GB, pero low urgency |
+   458→| Connection pooling | **Unificar PrismaClient + pooler URL (pendiente)** | 60 pooler vs 20 direct conns |
+   459→| Backup pagination | **Paginar backup route (pendiente)** | Carga completa sin paginación |
+   460→
+   461→---
+   462→
+   463→## 6. Estado Actual y Pendientes
+   464→
+   465→### Estado en Producción (Vercel)
+   466→
+   467→| Aspecto | Estado |
+   468→|---|---|
+   469→| **Versión** | v3.47.2-sep02-produccion-total |
+   470→| **URL** | Deploy en Vercel (auto desde GitHub main) |
+   471→| **BD** | Supabase PostgreSQL (~5-10MB usados de 500MB) |
+   472→| **Build** | Next.js 16.x standalone, Turbopack |
+   473→| **PWA** | No configurado (futuro) |
+   474→
+   475→### Módulos Listos ✅
+   476→
+   477→| Módulo | Estado | Notas |
+   478→|---|---|---|
+   479→| Login (PIN + offline) | ✅ Completo | Hash SHA-256, rate limit, offline fallback |
+   480→| Selección VT | ✅ Completo | Colores por ruta, sync status |
+   481→| Gestión de frecuencias | ✅ Completo | Tipos, motivos, caja común, ingresos especiales |
+   482→| Venta de boletos | ✅ Completo | Offline, sync, tarifas por parada |
+   483→| Arqueo por frecuencia | ✅ Completo | Sistema vs real, GPS, diferencia |
+   484→| Arqueo general | ✅ Completo | Guarda liquidación, foto, comprobante |
+   485→| Reporte consolidado | ✅ Completo | 6 tipos, PDF, Excel, WhatsApp |
+   486→| Reporte operativo | ✅ Completo | KPIs, detalle, PDF export, producción total |
+   487→| Comparar frecuencias | ✅ Completo | Producción total, date filter, recomendación |
+   488→| Backup BD | ✅ Completo | JSON export |
+   489→| Gestión personas | ✅ Completo | CRUD, PIN hash |
+   490→| Impresión Bluetooth | ✅ Completo | ESC/POS, 58mm |
+   491→
+   492→### Pendientes 🔶
+   493→
+   494→| # | Tarea | Prioridad | Detalle |
+   495→|---|---|---|---|
+   496→| 1 | **Mover fotos a Supabase Storage** | Baja | Actualmente base64 en photoUrl (~200KB c/foto) |
+   497→| 2 | **Connection pooling unificado** | Media | Usar Supabase pooler URL, unificar PrismaClient |
+   498→| 3 | **Paginar backup route** | Media | Sin paginación, carga toda la BD |
+   499→| 4 | **Migración a flota (per-bus config)** | Alta (post-reportes) | Agregar gastos, planRenova, tarifas a BusVT |
+   500→| 5 | **Combobox paradas intermedias** | Media | Reemplazar input manual por dropdown de tarifas |
+   501→| 6 | **Formulario carga histórica** | Media | Importar datos de meses anteriores (Excel o manual) |
+   502→| 7 | **Reporte Gerencial Comparativo** | Baja (requiere flota) | Cross-bus production comparison |
+   503→| 8 | **PWA / Service Worker** | Baja | Para mejor soporte offline |
+   504→| 9 | **Test data cleanup** | Inmediata | Datos de prueba 31/08-01/09 pueden tener rutas vacías |
+   505→| 10 | **Verificar cajaComunMonto pre-junio** | Inmediata | SQL: `SELECT COUNT(*) FROM Trip t JOIN DailyRecord d ON t.recordId=d.id WHERE d.date < '2026-06-01' AND t.cajaComunMonto > 0` → si >0 hay doble conteo |
+   506→
+   507→### Recomendaciones Arquitectónicas (5 originales, #3 y #5 aplicadas)
+   508→
+   509→| # | Recomendación | Estado |
+   510→|---|---|---|
+   511→| 1 | Mover fotos de base64 a Supabase Storage | 🔶 Pendiente |
+   512→| 2 | Unificar PrismaClient + usar Supabase pooler URL | 🔶 Pendiente |
+   513→| 3 | Filtro de fecha en compare-frequencies | ✅ Aplicado (v3.47.1) |
+   514→| 4 | Paginar backup route | 🔶 Pendiente |
+   515→| 5 | Índice compuesto [date, vtCode] en DailyRecord | ✅ Aplicado (v3.47.1) |
+   516→
+   517→---
+   518→
+   519→## 7. Código Base y Estructuras Clave
+   520→
+   521→### 7.1 Cálculo de Producción Total (patrón unificado)
+   522→
+   523→**En API `/api/reports/operativo/route.ts`:**
+   524→```typescript
+   525→const totalIngresos = trips.reduce((s, t) => {
+   526→  // Producción total de frecuencia = efectivoReal + cajaComunMonto
+   527→  if (t.tipo === 'frecuencia') return s + (t.efectivoReal || 0) + (t.cajaComunMonto || 0);
+   528→  if (t.tipo === 'ingreso_especial') return s + (t.income || 0);
+   529→  return s;
+   530→}, 0);
+   531→```
+   532→
+   533→**En API `/api/reports/compare-frequencies/route.ts`:**
+   534→```typescript
+   535→const tripProduccion = matchingTrips.reduce(
+   536→  (s, t) => s + (t.efectivoReal || 0) + (t.cajaComunMonto || 0), 0
+   537→);
+   538→```
+   539→
+   540→**En componente `ReporteOperativoScreen.tsx` (display):**
+   541→```tsx
+   542→{isRealizada && (trip.efectivoReal + trip.cajaComunMonto) > 0 && (
+   543→  <span>{formatMoney((trip.efectivoReal || 0) + (trip.cajaComunMonto || 0))}</span>
+   544→)}
+   545→```
+   546→
+   547→### 7.2 Cálculos Server-Side (POST /api/records)
+   548→
+   549→```typescript
+   550→const production = efectivoReal + cajaComun + sobrante;
+   551→const totalGastos = expenses.reduce((s, e) => s + e.amount, 0);
+   552→const ticketsNum = Number(tickets) || 0;
+   553→
+   554→// Entrega Ayudante — lógica dual según producción
+   555→let entregaAyudante: number;
+   556→if (production === 0) {
+   557→  // Producción cero: los tickets reducen los gastos
+   558→  // Entrega Ayudante = (Efectivo Real + Ajuste) - (Total Gastos - Tickets)
+   559→  entregaAyudante = (tripEfectivoReal + sobranteNum) - (totalGastos - ticketsNum);
+   560→} else {
+   561→  // Producción > 0 (post-Junio 2026): fórmula normal
+   562→  entregaAyudante = tripEfectivoReal + sobranteNum - totalGastos;
+   563→}
+   564→
+   565→const entregaCompania = cajaComun > 0 ? cajaComun - ticketsNum : 0;
+   566→```
+   567→
+   568→### 7.3 PIN Hashing + Auto-Migration
+   569→
+   570→```typescript
+   571→// src/lib/pin-hash.ts
+   572→import { createHash } from 'crypto';
+   573→export function hashPin(pin: string): string {
+   574→  return createHash('sha256').update(pin).digest('hex');
+   575→}
+   576→export function isPlaintextPin(stored: string): boolean {
+   577→  return stored.length <= 6; // PINs son 4 dígitos, hashes son 64 chars
+   578→}
+   579→```
+   580→
+   581→### 7.4 Offline Sync Pattern (indexeddb.ts)
+   582→
+   583→```typescript
+   584→export async function syncVentasSilencioso(vtCode: string): Promise<SyncResult> {
+   585→  const pendientes = await getVentasPendientes(vtCode);
+   586→  if (pendientes.length === 0) return { synced: 0, errors: 0 };
+   587→  
+   588→  // Batch de 20
+   589→  const batch = pendientes.slice(0, BATCH_SIZE);
+   590→  const res = await fetch('/api/ventas/batch', {
+   591→    method: 'POST',
+   592→    body: JSON.stringify({ ventas: batch }),
+   593→  });
+   594→  
+   595→  if (!res.ok) {
+   596→    // Fallback: sincronizar uno por uno
+   597→    for (const v of batch) {
+   598→      await fetch('/api/ventas', { method: 'POST', body: JSON.stringify(v) });
+   599→    }
+   600→  }
+   601→  // ... marcar synced, limpiar >1h
+   602→}
+   603→```
+   604→
+   605→### 7.5 Rate Limiting (auth/route.ts)
+   606→
+   607→```typescript
+   608→const attempts = new Map<string, { count: number; windowStart: number }>();
+   609→const MAX_ATTEMPTS = 5;
+   610→const WINDOW_MS = 5 * 60 * 1000; // 5 minutos
+   611→
+   612→// En POST handler:
+   613→const ip = req.headers.get('x-forwarded-for') || 'unknown';
+   614→const entry = attempts.get(ip);
+   615→if (entry && entry.count >= MAX_ATTEMPTS && Date.now() - entry.windowStart < WINDOW_MS) {
+   616→  return NextResponse.json({ error: 'Demasiados intentos. Espere 5 minutos.' }, { status: 429 });
+   617→}
+   618→```
+   619→
+   620→### 7.6 Paleta Corporativa en PDF Generators
+   621→
+   622→```typescript
+   623→const COLORS = {
+   624→  primary: [145, 45, 38] as const,    // #912D26
+   625→  dark: [58, 58, 58] as const,        // #3A3A3A
+   626→  plata: [214, 214, 214] as const,    // #D6D6D6
+   627→  white: [255, 255, 255] as const,
+   628→  lightRed: [245, 235, 234] as const,
+   629→  green: [34, 139, 34] as const,      // ≥80% cumplimiento
+   630→  amber: [180, 120, 20] as const,     // ≥60% cumplimiento
+   631→  lightGreen: [240, 253, 244] as const,
+   632→  lightAmber: [255, 251, 235] as const,
+   633→  lightRedBg: [254, 242, 242] as const,
+   634→};
+   635→```
+   636→
+   637→### 7.7 Tarifas (Estructura)
+   638→
+   639→```typescript
+   640→// src/components/transport/tarifas-data.ts
+   641→export interface TarifaItem {
+   642→  parada: string;       // "Malacatos"
+   643→  normal: number;       // 1.50
+   644→  media: number;        // 0.75
+   645→  zona?: string;        // "troncal" | "ramal" | "intermedio"
+   646→}
+   647→
+   648→export const TARIFA_MINIMA = 0.40; // Capulí/Dos Puentes media
+   649→
+   650→// Rutas con color:
+   651→// Vilcabamba → #912D26 (default)
+   652→// El Tambo → blue-600
+   653→// La Elvira → purple-600
+   654→// Yangana → emerald-600
+   655→// Zahuayco → amber-600
+   656→```
+   657→
+   658→### 7.8 Rutas del Transporte (VilcabambaTuris)
+   659→
+   660→| Ruta | Dirección | Paradas principales | Troncales |
+   661→|---|---|---|---|
+   662→| Loja ↔ Vilcabamba | Ida/Vuelta | Malacatos, Quinara, ... | ~13 |
+   663→| Loja ↔ El Tambo | Ida/Vuelta | Malacatos, ... | ~8 |
+   664→| Loja ↔ La Elvira | Ida/Vuelta | ... | ~6 |
+   665→| Loja ↔ Yangana | Ida/Vuelta | Malacatos, Vilcabamba, ... | ~31 |
+   666→| Loja ↔ Zahuayco | Ida/Vuelta | ... | ~5 |
+   667→
+   668→### 7.9 Gastos por Defecto (Arqueo General)
+   669→
+   670→```typescript
+   671→expenses: [
+   672→  { description: 'Chofer', amount: '30' },
+   673→  { description: 'Ayudante', amount: '20' },
+   674→  { description: 'Diesel', amount: '0' },
+   675→  { description: 'Plan Renova', amount: '68' },
+   676→]
+   677→```
+   678→> **Nota**: Estos valores son por bus y deberían migrarse a per-bus config en BusVT cuando se haga la migración a flota.
+   679→
+   680→### 7.10 Promo Viaje Gratis
+   681→
+   682→```typescript
+   683→// src/components/transport/types-boletos.ts
+   684→export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
+   685→  activado: true,
+   686→  rangoMin: 3,        // Cada 3 boletos
+   687→  rangoMax: 30,       // Hasta cada 30
+   688→  textoPublicidad: 'Quieres RutaGo? 0997149000',
+   689→};
+   690→// Almacenable en localStorage bajo key 'rg_promo_config'
+   691→```
+   692→
+   693→---
+   694→
+   695→## Historial de Versiones (recientes)
+   696→
+   697→| Versión | Fecha | Cambio principal |
+   698→|---|---|---|
+   699→| v3.45.0 | 2026-09-01 | Campos tipo/motivo/notaEspecial en Trip, operativo en reporte PDF |
+   700→| v3.47.0 | 2026-09-02 | Reporte operativo: efectivoReal + PDF export |
+   701→| v3.47.1 | 2026-09-02 | Fix compare-frequencies date filter + índice compuesto |
+   702→| v3.47.2 | 2026-09-02 | Producción total = efectivoReal + cajaComunMonto en todos los reportes |
+   703→| v3.47.3 | 2026-09-02 | Deducción de boletos en entregaAyudante cuando producción = 0 (signo incorrecto) |
+   704→| v3.47.4 | 2026-09-02 | Corregida fórmula: (EfectivoReal+Sobrante) - (Gastos-Tickets) cuando producción=0 |
+   705→
+   706→---
+   707→
+   708→## Notas para Continuar
+   709→
+   710→1. **Primera verificación**: Ejecutar `SELECT COUNT(*) FROM "Trip" t JOIN "DailyRecord" d ON t."recordId"=d.id WHERE d.date < '2026-06-01' AND t."cajaComunMonto" > 0;` — si >0, hay doble conteo en datos históricos.
+   711→2. **Test data**: Los registros del 31/08 y 01/09 pueden tener `routeFrom`/`routeTo` vacíos en trips no_realizados, causando display de "- 'f' -" en reportes.
+   712→3. **Fleet migration**: Secuencia correcta es finalizar reportes primero, luego agregar per-bus config a BusVT (gastoChofer, gastoAyudante, planRenova, tarifas).
+   713→4. **El campo `income` (boletos) ya NO se usa para producción** en compare-frequencies ni operativo. Solo se mantiene para compatibilidad, para ingresos especiales, y ahora para deducción cuando producción = 0.
+   714→5. **PrismaClient singleton** en `src/lib/db.ts` — si se agrega otro archivo que importa PrismaClient directamente (ej: ventas/batch/route.ts lo hace), puede crear múltiples conexiones. Unificar es pendiente #2.
+   715→6. **Regla de producción cero (v3.47.4)**: cuando `production = 0`, `entregaAyudante = (efectivoReal + sobrante) - (totalGastos - tickets)`. Los tickets REDUCEN los gastos (no se restan directamente — eso causaba doble conteo en v3.47.3). La fórmula normal (production > 0) NO se toca.
+   716→
