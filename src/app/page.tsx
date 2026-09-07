@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { HomeScreen } from '@/components/transport/HomeScreen';
 import { RecordForm } from '@/components/transport/RecordForm';
+import { CargaHistoricaScreen } from '@/components/transport/CargaHistoricaScreen';
 import { HistoryScreen } from '@/components/transport/HistoryScreen';
 import { RecordDetail } from '@/components/transport/RecordDetail';
 import { ComprobanteModal } from '@/components/transport/ComprobanteModal';
@@ -324,6 +325,16 @@ export default function Home() {
   }
 
   switch (view) {
+    case 'carga_historica':
+      return (
+        <CargaHistoricaScreen
+          onBack={() => setView('home')}
+          onSuccess={() => {
+            fetchCount();
+            setView('home');
+          }}
+        />
+      );
     case 'form':
       return (
         <RecordForm
@@ -347,6 +358,7 @@ export default function Home() {
           user={user}
           isAdmin={isAdmin}
           onGoToForm={() => setView('form')}
+          onGoToCargaHistorica={() => setView('carga_historica')}
           onGoToHistory={() => setView('history')}
           onGoToPersonal={() => setView('personal')}
           onGoToReports={() => setView('reports')}

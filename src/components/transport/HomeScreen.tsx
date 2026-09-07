@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { History, Pencil, Truck, Users, LogOut, User, FileText, Database, Loader2, Share2, Settings, ArrowLeftRight, Ticket, Eye, Activity } from 'lucide-react';
+import { History, Pencil, BookOpen, Truck, Users, LogOut, User, FileText, Database, Loader2, Share2, Settings, ArrowLeftRight, Ticket, Eye, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { UserSession } from './types';
@@ -10,6 +10,7 @@ interface HomeScreenProps {
   user: UserSession;
   isAdmin: boolean;
   onGoToForm: () => void;
+  onGoToCargaHistorica?: () => void;
   onGoToHistory: () => void;
   onGoToPersonal: () => void;
   onGoToReports: () => void;
@@ -22,7 +23,7 @@ interface HomeScreenProps {
   recordCount: number;
 }
 
-export function HomeScreen({ user, isAdmin, onGoToForm, onGoToHistory, onGoToPersonal, onGoToReports, onGoToOperativo, onGoToVtConfig, onGoToCompare, onGoToBoletos, onGoToVentasReview, onLogout, recordCount }: HomeScreenProps) {
+export function HomeScreen({ user, isAdmin, onGoToForm, onGoToCargaHistorica, onGoToHistory, onGoToPersonal, onGoToReports, onGoToOperativo, onGoToVtConfig, onGoToCompare, onGoToBoletos, onGoToVentasReview, onLogout, recordCount }: HomeScreenProps) {
   const [backupLoading, setBackupLoading] = useState(false);
 
   const handleBackup = async () => {
@@ -96,6 +97,18 @@ export function HomeScreen({ user, isAdmin, onGoToForm, onGoToHistory, onGoToPer
           <Pencil className="w-6 h-6 mr-3" />
           Nuevo Registro
         </Button>
+
+        {/* Carga Histórica de Cuadernos (Fase 1) */}
+        {onGoToCargaHistorica && (
+          <Button
+            onClick={onGoToCargaHistorica}
+            variant="outline"
+            className="w-full h-14 text-base font-bold rounded-2xl border-2 border-[#912D26] text-[#912D26] hover:bg-[#912D26]/10 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+          >
+            <BookOpen className="w-5 h-5 text-[#912D26]" />
+            Carga Histórica de Cuadernos
+          </Button>
+        )}
 
         {/* History Card */}
         <Card
@@ -280,7 +293,7 @@ export function HomeScreen({ user, isAdmin, onGoToForm, onGoToHistory, onGoToPer
 
       {/* Footer */}
       <footer className="py-4 text-center text-xs text-[#3A3A3A]/40">
-        Transporte Control v2.7
+        RutaGo v3.49.0 - Carga Histórica
       </footer>
     </div>
   );
