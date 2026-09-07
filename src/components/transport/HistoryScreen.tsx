@@ -64,6 +64,15 @@ function getDateRange(filter: FilterType, monthValue?: string): { from: string; 
         to: `${yyyy}-${mm}-${String(daysInCurrentMonth).padStart(2, '0')}`,
       };
     }
+    case 'todos': {
+      // Máximo 90 días (3 meses) para garantizar ultra rapidez en smartphones
+      const ninetyDaysAgo = new Date(today);
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 89);
+      const ny = ninetyDaysAgo.getFullYear();
+      const nm = String(ninetyDaysAgo.getMonth() + 1).padStart(2, '0');
+      const nd = String(ninetyDaysAgo.getDate()).padStart(2, '0');
+      return { from: `${ny}-${nm}-${nd}`, to: todayStr };
+    }
     default:
       return { from: '', to: '' };
   }
@@ -86,7 +95,7 @@ export function HistoryScreen({ isAdmin, onBack, onViewRecord }: HistoryScreenPr
       const params = new URLSearchParams();
       if (dateRange.from) params.set('from', dateRange.from);
       if (dateRange.to) params.set('to', dateRange.to);
-      params.set('limit', '500');
+      params.set('limit', '90');
       params.set('include', 'trips');
       const query = params.toString() ? `?${params.toString()}` : '';
       const res = await fetch(`/api/records${query}`);
@@ -149,7 +158,7 @@ export function HistoryScreen({ isAdmin, onBack, onViewRecord }: HistoryScreenPr
   };
 
   const filterButtons: { key: FilterType; label: string }[] = [
-    { key: 'todos', label: 'Todos' },
+    { key: 'todos', label: '3 Meses' },
     { key: 'hoy', label: 'Hoy' },
     { key: 'semana', label: 'Semana' },
     { key: 'mes', label: 'Mes' },
@@ -215,7 +224,7 @@ export function HistoryScreen({ isAdmin, onBack, onViewRecord }: HistoryScreenPr
           <div className="flex items-center justify-between">
             <p className="text-xs text-[#3A3A3A]/50">
               {filteredRecords.length} registro{filteredRecords.length !== 1 ? 's' : ''}
-              {filter !== 'todos' && dateRange.from ? ` (${formatDate(dateRange.from)} al ${formatDate(dateRange.to)})` : ''}
+              {filter === 'todos' && dateRange.from ? ` (${formatDate(dateRange.from)} al ${formatDate(dateRange.to)} - máx 90 días)` : filter !== 'todos' && dateRange.from ? ` (${formatDate(dateRange.from)} al ${formatDate(dateRange.to)})` : ''}
             </p>
             {isAdmin && filteredRecords.length > 0 && (
               <Button

@@ -7,9 +7,9 @@ export async function GET(req: NextRequest) {
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
     const limitParam = url.searchParams.get('limit');
-    // Si se especifica un rango de fechas (from/to) o limit explícito mayor, permitir hasta 500 para informes mensuales y completos
-    const defaultLimit = (from || to) ? 500 : 10;
-    const limit = limitParam ? Math.min(Number(limitParam) || defaultLimit, 500) : defaultLimit;
+    // Límite estricto de rendimiento móvil: máximo 90 registros diarios (3 meses de operación)
+    const defaultLimit = (from || to) ? 90 : 10;
+    const limit = limitParam ? Math.min(Number(limitParam) || defaultLimit, 90) : defaultLimit;
     const includeRelations = url.searchParams.get('include') === 'trips';
 
     const where: Record<string, unknown> = {};
