@@ -6,7 +6,7 @@ import { getVentasByFrecuencia } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
 import {
   ChevronLeft, DollarSign, Camera, X, Save, Loader2,
-  CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles, Pencil, XCircle
+  CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles, Pencil, XCircle, Gauge
 } from 'lucide-react';
 
 interface Props {
@@ -57,7 +57,10 @@ const GASTOS_DEFAULT: GastoItem[] = [
 export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, onSaved }: Props) {
   const [frecuencias, setFrecuencias] = useState<FrecuenciaResumen[]>([]);
   const [loading, setLoading] = useState(true);
-  const [km, setKm] = useState('');
+  const [kmInicial, setKmInicial] = useState('');
+  const [kmFinal, setKmFinal] = useState('');
+  const [kmInicialOrigen, setKmInicialOrigen] = useState<string | null>(null);
+  const [buscandoKmPrevio, setBuscandoKmPrevio] = useState(false);
   const [gastos, setGastos] = useState<GastoItem[]>(GASTOS_DEFAULT);
   const [tickets, setTickets] = useState('');
   const [sobrante, setSobrante] = useState('');
@@ -178,6 +181,49 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Cálculo automático del recorrido del día
+  const kmRecorridos = useMemo(() => {
+    if (!kmFinal.trim()) return null;
+    const fin = parseFloat(kmFinal.replace(/,/g, ''));
+    if (isNaN(fin)) return null;
+    if (!kmInicial.trim()) return null;
+    const ini = parseFloat(kmInicial.replace(/,/g, ''));
+    if (isNaN(ini)) return null;
+    return Math.round((fin - ini) * 10) / 10;
+  }, [kmInicial, kmFinal]);
+
+  // Precarga inteligente del último tacómetro registrado
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchPrevOdometro() {
+      try {
+        setBuscandoKmPrevio(true);
+        const res = await fetch('/api/records?limit=15');
+        if (res.ok) {
+          const records: any[] = await res.json();
+          const fechaActual = workDate(session);
+          // 1. Buscar preferentemente el último del mismo VT antes o igual a la fecha
+          const prevSameVt = records.find(r => r.vtCode === session.vtCode && (r.kmFinal || r.km) && r.date <= fechaActual);
+          // 2. O el último registro disponible en general
+          const prevGeneral = records.find(r => (r.kmFinal || r.km) && r.date <= fechaActual);
+          const prev = prevSameVt || prevGeneral;
+          if (prev && !cancelled) {
+            const valor = prev.kmFinal || prev.km;
+            setKmInicial(valor.toString());
+            setKmInicialOrigen(`Sugerido del ${prev.date}${prev.vtCode ? ` (${prev.vtCode})` : ''}`);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('No se pudo precargar odómetro previo:', err);
+      } finally {
+        if (!cancelled) setBuscandoKmPrevio(false);
+      }
+    }
+    fetchPrevOdometro();
+    return () => { cancelled = true; };
+  }, [session.vtCode]);
+
   const totalIngresosAuto = useMemo(() =>
     frecuencias.reduce((s, f) => s + f.totalRecaudado, 0),
     [frecuencias]
@@ -258,7 +304,10 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
 
   const handleSaveOffline = () => {
     const errs: string[] = [];
-    if (!km.trim()) errs.push('Kilometraje es obligatorio');
+    if (!kmFinal.trim()) errs.push('Tacómetro final (llegada) es obligatorio');
+    if (kmRecorridos !== null && kmRecorridos < 0) {
+      errs.push(`El tacómetro final (${kmFinal}) no puede ser menor al tacómetro inicial (${kmInicial})`);
+    }
     if (!fotoPreview) errs.push('Foto del cuaderno es obligatoria');
     if (frecuencias.length === 0) errs.push('No hay frecuencias cerradas');
     // Gastos pueden ser $0 si no hubo (ej. unidad parada)
@@ -295,9 +344,12 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         notaEspecial: f.ingresoEspecialNota || undefined,
       }));
 
+      const recorridoCalculado = kmRecorridos !== null && kmRecorridos >= 0 ? kmRecorridos.toString() : kmFinal.trim();
       const body = {
         date: workDate(session),
-        km: km,
+        km: recorridoCalculado,
+        kmInicial: kmInicial.trim() || undefined,
+        kmFinal: kmFinal.trim(),
         conductor: '',
         ayudanteNombre: session.ayudanteNombre,
         vtCode: session.vtCode,
@@ -336,7 +388,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     } catch (err) {
       console.error('Error guardando arqueo:', err);
       localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify({
-        date: fechaTrabajo, km, vtCode: session.vtCode, ayudanteNombre: session.ayudanteNombre,
+        date: fechaTrabajo, km: recorridoCalculado, kmInicial: kmInicial.trim() || undefined, kmFinal: kmFinal.trim(), vtCode: session.vtCode, ayudanteNombre: session.ayudanteNombre,
         trips: frecuencias.map(f => ({
           routeFrom: f.isNoRealizada ? '-' : 'Loja',
           routeTo: f.isNoRealizada ? '-' : 'Vilcabamba',
@@ -641,22 +693,104 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           )}
         </div>
 
-        {/* 2. KILOMETRAJE + FOTO */}
+        {/* 2. ODÓMETRO / TACÓMETRO + FOTO */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm space-y-3">
-          <h3 className="font-bold text-[#3A3A3A] mb-1 text-sm uppercase">Datos del Turno</h3>
-          <div>
-            <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
-              Kilometraje <span className="text-[#912D26]">*</span>
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder="877604"
-              value={km}
-              onChange={e => setKm(e.target.value)}
-              className="w-full mt-1 h-11 rounded-xl border border-[#D6D6D6] px-3 text-sm font-semibold text-[#3A3A3A]"
-            />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Gauge className="w-4 h-4 text-[#912D26]" />
+              <h3 className="font-bold text-[#3A3A3A] text-sm uppercase">Odómetro del Vehículo</h3>
+            </div>
+            {buscandoKmPrevio && (
+              <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" /> Buscando anterior...
+              </span>
+            )}
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Tacómetro Inicial */}
+            <div>
+              <label className="text-xs font-medium text-gray-500 flex items-center justify-between">
+                <span>Tacómetro Inicial (Salida)</span>
+                {kmInicialOrigen && (
+                  <span className="text-[10px] text-emerald-700 font-semibold truncate max-w-[170px]">
+                    {kmInicialOrigen}
+                  </span>
+                )}
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Ej: 877344"
+                value={kmInicial}
+                onChange={e => {
+                  setKmInicial(e.target.value);
+                  setKmInicialOrigen('Ingreso manual');
+                }}
+                className="w-full mt-1 h-11 rounded-xl border border-[#D6D6D6] px-3 text-sm font-semibold text-[#3A3A3A] bg-gray-50/60"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                Lectura al salir (editable o vacía si se desconoce)
+              </p>
+            </div>
+
+            {/* Tacómetro Final */}
+            <div>
+              <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
+                Tacómetro Final (Llegada) <span className="text-[#912D26]">*</span>
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Ej: 877604"
+                value={kmFinal}
+                onChange={e => setKmFinal(e.target.value)}
+                className="w-full mt-1 h-11 rounded-xl border border-[#D6D6D6] px-3 text-sm font-semibold text-[#3A3A3A]"
+              />
+              <p className="text-[10px] text-gray-400 mt-1">
+                Lectura actual del tablero al cerrar la jornada
+              </p>
+            </div>
+          </div>
+
+          {/* Recorrido Calculado de la Jornada */}
+          {kmRecorridos !== null ? (
+            kmRecorridos >= 0 ? (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-emerald-900">
+                    Recorrido de la Jornada: {kmRecorridos.toLocaleString()} km
+                  </p>
+                  <p className="text-[10px] text-emerald-700">
+                    Cálculo automático: ({kmFinal} - {kmInicial}) para costo de diésel y S/ por km
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg shrink-0">
+                  {kmRecorridos} km
+                </span>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-red-900">
+                    Tacómetro final menor al inicial
+                  </p>
+                  <p className="text-[10px] text-red-700">
+                    La llegada ({kmFinal}) no puede ser menor a la salida ({kmInicial}).
+                  </p>
+                </div>
+              </div>
+            )
+          ) : kmFinal.trim() ? (
+            <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-600">
+              <span className="font-semibold text-[#3A3A3A]">Odómetro registrado: {kmFinal} km</span>
+              <p className="text-[10px] text-gray-400 mt-0.5">
+                Utilizado para el control de mantenimientos preventivos del vehículo.
+              </p>
+            </div>
+          ) : null}
+
           <div>
             <label className="text-xs font-medium text-gray-500 flex items-center gap-1">
               Foto del Cuaderno <span className="text-[#912D26]">*</span>

@@ -24,6 +24,8 @@ model DailyRecord {
   id             String   @id @default(cuid())
   date           String
   km             String?
+  kmInicial      String?
+  kmFinal        String?
   conductor      String?
   ayudanteNombre String?
   vtCode         String?

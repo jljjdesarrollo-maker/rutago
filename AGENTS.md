@@ -1,7 +1,7 @@
 # Reglas y Directivas de Proyecto: RutaGo
 
 ## 1. Identidad y Propósito del Proyecto
-- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.49.1-fase1-reporte-diario` (base GitHub: `v3.48.0`)
+- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.49.2-fase1-tacometro` (base GitHub: `v3.48.0`)
 - **Repositorio Oficial:** `https://github.com/jljjdesarrollo-maker/rutago`
 - **Stack Técnico:** Next.js (App Router), React 19, TypeScript, Tailwind CSS, Prisma ORM, IndexedDB (Offline-First), Radix UI, ESC/POS & JSPDF.
 - **Entorno de Despliegue:** Vercel (CI/CD conectado a GitHub) y uso directo en smartphones.
@@ -44,3 +44,14 @@
 - **Compatibilidad con Comparador:** Toda carga o registro de viajes (`CargaHistoricaScreen`, `RecordForm`, `ArqueoGeneralScreen`) debe almacenar `routeFrom`, `routeTo`, `time`, `efectivoReal` y `cajaComunMonto` con precisión. Esto alimenta de forma idéntica la pantalla `CompareFrequenciesScreen` y los reportes operativos de la empresa.
 - **Reasignación de Frecuencias:** La reasignación de vueltas debe respetar el filtro estricto por terminal de origen (`routeFrom`), ordenado cronológicamente por hora, permitiendo sustituir una frecuencia programada por la realmente ejecutada en carretera sin romper la estructura contable.
 - **Reporte Diario y Cierre Táctico (FASE 1):** Valida la ecuación contable inmutable Producción = Efectivo Ruta + Caja Común. Dispone de semáforo de cuadre (Δ = Entregas - Saldo Neto), indicadores operativos (S/ por Km, % Diésel sobre Producción), listado táctico de vueltas y bloque de firmas de responsabilidad legal en PDF (Conductor, Ayudante, Recaudador/Auditor).
+
+- **Tacómetro Odómetro vs. Kilómetros Recorridos (Doble Propósito):**
+  - El campo odómetro del tablero del autobús cumple un doble propósito: control de mantenimientos preventivos y cálculo de rendimiento operativo.
+  - En el Arqueo General (`ArqueoGeneralScreen`), el sistema precarga de forma inteligente el **Tacómetro Inicial (Salida)** a partir del último registro disponible en el historial del vehículo (editable libremente como fallback ante días sin actividad o desfases).
+  - El ayudante digita el **Tacómetro Final (Llegada)** que observa en el tablero.
+  - El sistema calcula en tiempo real: `Km Recorridos = Tacómetro Final - Tacómetro Inicial`.
+  - **Estructura en Base de Datos (`DailyRecord`):**
+    - `km`: Almacena la distancia recorrida real de la jornada para reportes de costo de diésel y $S/ por Km$.
+    - `kmFinal`: Almacena el valor acumulado del tablero para control de mantenimientos preventivos (cambios de aceite, neumáticos, filtros).
+    - `kmInicial`: Almacena la lectura de salida.
+  - **Principio de No Bloqueo:** Si el ayudante desconoce el odómetro inicial, puede dejarlo vacío; el sistema almacena el tacómetro final para mantenimiento y no bloquea el cuadre de caja.

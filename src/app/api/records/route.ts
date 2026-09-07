@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { date, km, conductor, ayudanteNombre, vtCode, trips, expenses, tickets, cajaComun: cajaComunBody, sobrante, photoUrl } = body;
+    const { date, km, kmInicial, kmFinal, conductor, ayudanteNombre, vtCode, trips, expenses, tickets, cajaComun: cajaComunBody, sobrante, photoUrl } = body;
 
     // Validación server-side: valores financieros no negativos
     if (Array.isArray(trips)) {
@@ -100,6 +100,8 @@ export async function POST(req: NextRequest) {
       data: {
         date: date || new Date().toISOString().split('T')[0],
         km: km || null,
+        kmInicial: kmInicial || null,
+        kmFinal: kmFinal || null,
         conductor: conductor || null,
         ayudanteNombre: ayudanteNombre || null,
         vtCode: vtCode || null,
