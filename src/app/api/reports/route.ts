@@ -24,12 +24,12 @@ export async function GET(req: NextRequest) {
       startDate = date;
       endDate = date;
     } else if (type === 'semanal' && !from) {
-      // Default: current week (Mon-Sun)
-      const today = new Date();
-      const dayOfWeek = today.getDay();
+      // Default: week of reference date or today (Mon-Sun)
+      const baseDate = date ? new Date(date + 'T12:00:00') : new Date();
+      const dayOfWeek = baseDate.getDay();
       const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      const monday = new Date(today);
-      monday.setDate(today.getDate() - diffToMonday);
+      const monday = new Date(baseDate);
+      monday.setDate(baseDate.getDate() - diffToMonday);
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
       startDate = monday.toISOString().split('T')[0];

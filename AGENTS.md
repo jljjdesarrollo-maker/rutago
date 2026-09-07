@@ -1,7 +1,7 @@
 # Reglas y Directivas de Proyecto: RutaGo
 
 ## 1. Identidad y Propósito del Proyecto
-- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.49.2-fase1-tacometro` (base GitHub: `v3.48.0`)
+- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.49.3-fase2-reportes` (base GitHub: `v3.48.0`)
 - **Repositorio Oficial:** `https://github.com/jljjdesarrollo-maker/rutago`
 - **Stack Técnico:** Next.js (App Router), React 19, TypeScript, Tailwind CSS, Prisma ORM, IndexedDB (Offline-First), Radix UI, ESC/POS & JSPDF.
 - **Entorno de Despliegue:** Vercel (CI/CD conectado a GitHub) y uso directo en smartphones.
@@ -55,3 +55,19 @@
     - `kmFinal`: Almacena el valor acumulado del tablero para control de mantenimientos preventivos (cambios de aceite, neumáticos, filtros).
     - `kmInicial`: Almacena la lectura de salida.
   - **Principio de No Bloqueo:** Si el ayudante desconoce el odómetro inicial, puede dejarlo vacío; el sistema almacena el tacómetro final para mantenimiento y no bloquea el cuadre de caja.
+- **Reportes Periódicos Ejecutivos (FASE 2):**
+  - **Alcance Operativo:** Consolida y audita la producción en períodos agrupados: `Semanal` (Lunes a Domingo), `Mensual`, `Rango Libre` y `Por Ayudante`.
+  - **Navegación Móvil a Una Sola Mano:**
+    - Semanal: Control ergonómico con botones `Ant.`, `Actual` y `Sig.` que calculan dinámicamente el ciclo de lunes a domingo.
+    - Mensual: Acceso rápido con chips de `Mes Actual` y `Mes Anterior` sin necesidad de teclear fechas.
+    - Rango: Chips táctiles en la zona del pulgar: `Últimos 7 días`, `Últimos 15 días`, `Este Mes` y `Mes Anterior`.
+  - **Vista Previa Ejecutiva en Pantalla (`ReportsScreen`):**
+    - Semáforo de Cuadre Consolidado del Período ($\Delta = \text{Total Entregado} - \text{Saldo a Liquidar Acumulado}$).
+    - Auditoría de Regularidad Operativa: Días con registro vs. Días esperados en el período.
+    - Grid 2x2 Ejecutivo: Producción Total (Efectivo vs. Caja Común), Utilidad Neta Líquida, Rendimiento Promedio ($S/\text{ por km}$), y $\%$ de Combustible sobre Producción.
+    - Desglose de Entregas Consolidadas: Total Compañía vs. Total Ayudante.
+    - Acordeón Desplegable "Desglose Día por Día": Lista día a día con estado de cuadre individual de cada jornada.
+    - Auditoría de Pérdidas Operativas: Conteo y motivos de frecuencias no realizadas en el período.
+  - **Exportación e Integración:**
+    - Generación de PDF ejecutivo A4 con tabla consolidada día a día, indicadores clave y bloque de 3 firmas de responsabilidad legal.
+    - Compartición de resumen ejecutivo optimizado para WhatsApp con balance contable.
