@@ -8,6 +8,7 @@ import {
   Save,
   RotateCcw,
   Camera,
+  Upload,
   X,
   Loader2,
   CheckCircle2,
@@ -17,6 +18,8 @@ import {
   DollarSign,
   Ticket,
   ChevronDown,
+  User,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +66,13 @@ interface SystemFrecuencia {
   direccion: string;
 }
 
+interface PersonaItem {
+  id: string;
+  nombre: string;
+  rol: 'CONDUCTOR' | 'AYUDANTE' | string;
+  esActual: boolean;
+}
+
 interface CargaHistoricaScreenProps {
   onBack: () => void;
   onSuccess: () => void;
@@ -72,8 +82,14 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
   const today = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState(today);
   const [km, setKm] = useState('');
-  const [conductor, setConductor] = useState('');
-  const [ayudanteNombre, setAyudanteNombre] = useState('');
+  
+  // Personas (Choferes y Ayudantes)
+  const [conductoresList, setConductoresList] = useState<PersonaItem[]>([]);
+  const [ayudantesList, setAyudantesList] = useState<PersonaItem[]>([]);
+  const [selectedConductor, setSelectedConductor] = useState('');
+  const [selectedAyudante, setSelectedAyudante] = useState('');
+
+  // VTs
   const [selectedVtCode, setSelectedVtCode] = useState('');
   const [vts, setVts] = useState<BusVTItem[]>([]);
   const [vtsLoading, setVtsLoading] = useState(true);
@@ -97,26 +113,50 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
   const [tickets, setTickets] = useState('');
   const [sobrante, setSobrante] = useState('');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoSizeKB, setPhotoSizeKB] = useState<number>(0);
 
   // Estado de envío
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Cargar VTs al montar
+  // Cargar VTs y Personal al montar
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/bus-vts');
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setVts(data);
+        const [resVts, resPersonas] = await Promise.all([
+          fetch('/api/bus-vts'),
+          fetch('/api/personas'),
+        ]);
+
+        if (resVts.ok) {
+          const dataVts = await resVts.json();
+          if (Array.isArray(dataVts)) {
+            setVts(dataVts);
+          }
+        }
+
+        if (resPersonas.ok) {
+          const dataPersonas: PersonaItem[] = await resPersonas.json();
+          if (Array.isArray(dataPersonas)) {
+            const conds = dataPersonas.filter(p => p.rol === 'CONDUCTOR');
+            const ayuds = dataPersonas.filter(p => p.rol === 'AYUDANTE');
+            setConductoresList(conds);
+            setAyudantesList(ayuds);
+
+            // Preseleccionar el conductor activo por defecto si existe
+            const activeCond = conds.find(p => p.esActual);
+            if (activeCond) setSelectedConductor(activeCond.nombre);
+
+            // Preseleccionar el ayudante activo por defecto si existe
+            const activeAyud = ayuds.find(p => p.esActual);
+            if (activeAyud) setSelectedAyudante(activeAyud.nombre);
           }
         }
       } catch (err) {
-        console.error('Error cargando VTs:', err);
+        console.error('Error cargando datos iniciales:', err);
       } finally {
         setVtsLoading(false);
       }
@@ -214,16 +254,48 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
     setExpenses(prev => prev.filter((_, i) => i !== idx));
   };
 
-  // Manejo de foto del cuaderno
-  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Compresión y carga inteligente de foto para asegurar que no exceda límites
+  const processImageFile = (file: File) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      setPhotoPreview(result);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        // Redimensionar si es muy grande (max 1600px)
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDimension = 1600;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
+          setPhotoPreview(compressedBase64);
+          setPhotoSizeKB(Math.round(compressedBase64.length / 1024));
+        }
+      };
+      img.src = e.target?.result as string;
     };
     reader.readAsDataURL(file);
+  };
+
+  // Manejo de selección de archivo o toma de cámara
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    processImageFile(file);
     e.target.value = '';
   };
 
@@ -262,7 +334,7 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
     };
   }, [frecuencias, expenses, sobrante, tickets]);
 
-  // Guardar en la Base de Datos Central
+  // Guardar en la Base de Datos Central (Tabla DailyRecord y Trip, flujo estándar)
   const handleSave = async () => {
     setError(null);
     if (!date) {
@@ -296,8 +368,8 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
       const body = {
         date,
         km: km || null,
-        conductor: conductor.trim() || null,
-        ayudanteNombre: ayudanteNombre.trim() || null,
+        conductor: selectedConductor.trim() || null,
+        ayudanteNombre: selectedAyudante.trim() || null,
         vtCode: selectedVtCode,
         trips,
         expenses: expenses.filter(e => e.description.trim() !== '').map(e => ({
@@ -417,24 +489,59 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-medium text-gray-600">Chofer (Opcional)</Label>
-                <Input
-                  placeholder="Ej: Wilson"
-                  value={conductor}
-                  onChange={e => setConductor(e.target.value)}
-                  className="mt-1 h-10 rounded-xl text-xs"
-                />
+            {/* Selector de Chofer (Conductor) con preselección del activo */}
+            <div>
+              <Label className="text-xs font-semibold text-gray-700 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <User className="w-3.5 h-3.5 text-[#912D26]" />
+                  Chofer / Conductor
+                </span>
+                <span className="text-[10px] text-gray-400 font-normal">
+                  {conductoresList.length} disponibles
+                </span>
+              </Label>
+              <div className="relative mt-1">
+                <select
+                  value={selectedConductor}
+                  onChange={e => setSelectedConductor(e.target.value)}
+                  className="w-full h-11 px-3 pr-8 rounded-xl border border-gray-300 bg-white text-sm font-semibold text-[#3A3A3A] focus:ring-2 focus:ring-[#912D26] outline-none appearance-none"
+                >
+                  <option value="">-- Seleccionar Chofer --</option>
+                  {conductoresList.map(c => (
+                    <option key={c.id} value={c.nombre}>
+                      {c.nombre} {c.esActual ? "(Activo Oficial)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-3.5 pointer-events-none" />
               </div>
-              <div>
-                <Label className="text-xs font-medium text-gray-600">Ayudante (Opcional)</Label>
-                <Input
-                  placeholder="Ej: Carlos"
-                  value={ayudanteNombre}
-                  onChange={e => setAyudanteNombre(e.target.value)}
-                  className="mt-1 h-10 rounded-xl text-xs"
-                />
+            </div>
+
+            {/* Selector de Ayudante con preselección del activo */}
+            <div>
+              <Label className="text-xs font-semibold text-gray-700 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5 text-[#912D26]" />
+                  Ayudante
+                </span>
+                <span className="text-[10px] text-gray-400 font-normal">
+                  {ayudantesList.length} disponibles
+                </span>
+              </Label>
+              <div className="relative mt-1">
+                <select
+                  value={selectedAyudante}
+                  onChange={e => setSelectedAyudante(e.target.value)}
+                  className="w-full h-11 px-3 pr-8 rounded-xl border border-gray-300 bg-white text-sm font-semibold text-[#3A3A3A] focus:ring-2 focus:ring-[#912D26] outline-none appearance-none"
+                >
+                  <option value="">-- Seleccionar Ayudante --</option>
+                  {ayudantesList.map(a => (
+                    <option key={a.id} value={a.nombre}>
+                      {a.nombre} {a.esActual ? "(Activo Oficial)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-3.5 pointer-events-none" />
               </div>
             </div>
 
@@ -479,8 +586,8 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
               key={f.order}
               className={`rounded-2xl border transition-all ${
                 f.noRealizada
-                  ? 'bg-gray-100 border-gray-300 opacity-60'
-                  : 'bg-white border-gray-200 shadow-sm'
+                  ? "bg-gray-100 border-gray-300 opacity-60"
+                  : "bg-white border-gray-200 shadow-sm"
               }`}
             >
               <CardContent className="p-3.5 space-y-2.5">
@@ -493,7 +600,7 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-[#3A3A3A] font-mono">
-                          {f.time || '--:--'}
+                          {f.time || "--:--"}
                         </span>
                         <span className="text-xs font-semibold text-gray-600">
                           {f.routeFrom} → {f.routeTo}
@@ -518,12 +625,12 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
                       onClick={() => updateFrecuencia(f.order, { noRealizada: !f.noRealizada })}
                       className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                         f.noRealizada
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-gray-100 hover:bg-red-50 text-gray-400 hover:text-red-600'
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-gray-100 hover:bg-red-50 text-gray-400 hover:text-red-600"
                       }`}
-                      title={f.noRealizada ? 'Marcar como realizada' : 'Marcar no realizada'}
+                      title={f.noRealizada ? "Marcar como realizada" : "Marcar no realizada"}
                     >
-                      {f.noRealizada ? 'No se dio' : 'Anular'}
+                      {f.noRealizada ? "No se dio" : "Anular"}
                     </button>
                   </div>
                 </div>
@@ -619,7 +726,7 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
           </CardContent>
         </Card>
 
-        {/* 4. Tickets, Sobrante y Foto del Cuaderno */}
+        {/* 4. Tickets, Sobrante y Foto del Cuaderno (Cámara o Archivo) */}
         <Card className="rounded-2xl border border-gray-200 shadow-sm bg-white">
           <CardHeader className="py-3 px-4 bg-gray-50 border-b border-gray-100">
             <CardTitle className="text-xs font-bold text-gray-700 uppercase tracking-wide">
@@ -652,40 +759,86 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
               </div>
             </div>
 
-            {/* Foto del cuaderno */}
+            {/* Foto del cuaderno: Tomar con Cámara O Subir desde Galería/Archivo */}
             <div>
-              <Label className="text-xs font-semibold text-gray-700 mb-1.5 block">
-                Foto de la Hoja de Cuaderno
-              </Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label className="text-xs font-semibold text-gray-700">
+                  Foto de la Hoja de Cuaderno
+                </Label>
+                {photoPreview && (
+                  <span className="text-[10px] text-gray-500 font-mono">
+                    {photoSizeKB} KB (optimizado)
+                  </span>
+                )}
+              </div>
+
+              {/* Input oculto para cámara directa */}
               <input
                 type="file"
                 accept="image/*"
                 capture="environment"
-                ref={fileInputRef}
-                onChange={handlePhotoCapture}
+                ref={cameraInputRef}
+                onChange={handlePhotoUpload}
                 className="hidden"
               />
+
+              {/* Input oculto para subir archivo/galería */}
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
+
               {photoPreview ? (
-                <div className="relative rounded-xl overflow-hidden border border-gray-200">
-                  <img src={photoPreview} alt="Cuaderno" className="w-full h-48 object-cover" />
+                <div className="relative rounded-2xl overflow-hidden border-2 border-[#912D26] shadow-sm">
+                  <img src={photoPreview} alt="Cuaderno" className="w-full h-52 object-contain bg-black/5" />
+                  <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-xl flex items-center justify-between text-xs">
+                    <span className="truncate">Foto lista para respaldo</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPhotoPreview(null);
+                        setPhotoSizeKB(0);
+                      }}
+                      className="text-red-300 hover:text-white font-bold text-xs underline ml-2"
+                    >
+                      Eliminar / Tomar otra
+                    </button>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setPhotoPreview(null)}
-                    className="absolute top-2 right-2 bg-black/70 text-white p-1.5 rounded-full hover:bg-black"
+                    onClick={() => {
+                      setPhotoPreview(null);
+                      setPhotoSizeKB(0);
+                    }}
+                    className="absolute top-2 right-2 bg-black/70 text-white p-2 rounded-full hover:bg-black transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-12 rounded-xl border-dashed border-2 border-gray-300 text-gray-600 hover:border-[#912D26] hover:text-[#912D26]"
-                >
-                  <Camera className="w-5 h-5 mr-2" />
-                  Subir o Tomar Foto del Cuaderno
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => cameraInputRef.current?.click()}
+                    className="h-14 rounded-xl border-2 border-dashed border-gray-300 hover:border-[#912D26] hover:bg-[#912D26]/5 text-[#3A3A3A] font-semibold text-xs flex flex-col items-center justify-center gap-1"
+                  >
+                    <Camera className="w-5 h-5 text-[#912D26]" />
+                    <span>Tomar Foto</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="h-14 rounded-xl border-2 border-dashed border-gray-300 hover:border-[#912D26] hover:bg-[#912D26]/5 text-[#3A3A3A] font-semibold text-xs flex flex-col items-center justify-center gap-1"
+                  >
+                    <Upload className="w-5 h-5 text-gray-600" />
+                    <span>Subir de Galería</span>
+                  </Button>
+                </div>
               )}
             </div>
           </CardContent>
@@ -762,7 +915,7 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
               </button>
             </div>
             <p className="text-xs text-gray-500 mb-3">
-              Selecciona la frecuencia real anotada en el cuaderno con salida desde{' '}
+              Selecciona la frecuencia real anotada en el cuaderno con salida desde{" "}
               <strong className="text-[#912D26]">
                 {frecuencias.find(f => f.order === reassigningOrder)?.routeFrom}
               </strong>
