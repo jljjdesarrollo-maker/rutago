@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       sunday.setDate(monday.getDate() + 6);
       startDate = monday.toISOString().split('T')[0];
       endDate = sunday.toISOString().split('T')[0];
-    } else if (type === 'mensual') {
+    } else if (type === 'mensual' || type === 'conductor') {
       if (month) {
         const [y, m] = month.split('-');
         const daysInMonth = new Date(parseInt(y), parseInt(m), 0).getDate();

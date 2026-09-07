@@ -45,14 +45,24 @@ function getDateRange(filter: FilterType, monthValue?: string): { from: string; 
     }
     case 'mes': {
       if (monthValue) {
-        const [m, y] = monthValue.split('-');
-        const daysInMonth = new Date(parseInt(y), parseInt(m), 0).getDate();
+        // monthValue viene en formato HTML standard "YYYY-MM"
+        const [yearStr, monthStr] = monthValue.split('-');
+        const y = parseInt(yearStr, 10);
+        const m = parseInt(monthStr, 10);
+        // new Date(y, m, 0).getDate() da el ultimo dia del mes m en anio y
+        const daysInMonth = new Date(y, m, 0).getDate();
+        const mmFormatted = String(m).padStart(2, '0');
         return {
-          from: `${y}-${m}-01`,
-          to: `${y}-${m}-${String(daysInMonth).padStart(2, '0')}`,
+          from: `${y}-${mmFormatted}-01`,
+          to: `${y}-${mmFormatted}-${String(daysInMonth).padStart(2, '0')}`,
         };
       }
-      return { from: `${yyyy}-${mm}-01`, to: todayStr };
+      // Si no hay mes seleccionado, usar el mes actual completo hasta el fin de mes
+      const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+      return {
+        from: `${yyyy}-${mm}-01`,
+        to: `${yyyy}-${mm}-${String(daysInCurrentMonth).padStart(2, '0')}`,
+      };
     }
     default:
       return { from: '', to: '' };
@@ -64,7 +74,8 @@ export function HistoryScreen({ isAdmin, onBack, onViewRecord }: HistoryScreenPr
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('semana');
-  const [monthValue, setMonthValue] = useState<string>('');
+  const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  const [monthValue, setMonthValue] = useState<string>(currentMonthStr);
   const [exporting, setExporting] = useState(false);
 
   const dateRange = useMemo(() => getDateRange(filter, monthValue), [filter, monthValue]);
@@ -75,6 +86,7 @@ export function HistoryScreen({ isAdmin, onBack, onViewRecord }: HistoryScreenPr
       const params = new URLSearchParams();
       if (dateRange.from) params.set('from', dateRange.from);
       if (dateRange.to) params.set('to', dateRange.to);
+      params.set('limit', '500');
       params.set('include', 'trips');
       const query = params.toString() ? `?${params.toString()}` : '';
       const res = await fetch(`/api/records${query}`);
@@ -114,8 +126,8 @@ export function HistoryScreen({ isAdmin, onBack, onViewRecord }: HistoryScreenPr
       else if (filter === 'mes') {
         const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
         if (monthValue) {
-          const [m, y] = monthValue.split('-');
-          filename += `_${monthNames[parseInt(m) - 1]}_${y}`;
+          const [y, m] = monthValue.split('-');
+          filename += `_${monthNames[parseInt(m, 10) - 1]}_${y}`;
         } else {
           const today = new Date();
           filename += `_${monthNames[today.getMonth()]}_${today.getFullYear()}`;
@@ -175,7 +187,7 @@ export function HistoryScreen({ isAdmin, onBack, onViewRecord }: HistoryScreenPr
             {filterButtons.map(fb => (
               <button
                 key={fb.key}
-                onClick={() => { setFilter(fb.key); if (fb.key !== 'mes') setMonthValue(''); }}
+                onClick={() => { setFilter(fb.key); if (fb.key === 'mes' && !monthValue) setMonthValue(currentMonthStr); }}
                 className={`flex-1 h-9 rounded-xl text-xs font-semibold transition-all active:scale-95 ${
                   filter === fb.key
                     ? 'bg-[#912D26] text-white shadow-sm'
