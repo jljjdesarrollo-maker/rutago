@@ -6,7 +6,7 @@ import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVen
 import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.49.3-fase2-reportes';
+const APP_VERSION = 'v3.49.4-fix-tacometro';
 
 interface Props {
   onSessionStart: (session: VTSession) => void;

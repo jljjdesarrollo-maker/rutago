@@ -193,26 +193,64 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   }, [kmInicial, kmFinal]);
 
   // Precarga inteligente del último tacómetro registrado
+  // NOTA CRÍTICA: El odómetro está instalado en el autobús físico, NO en el cuaderno (VT).
+  // La búsqueda es cronológica estricta: el día inmediatamente anterior (< fechaActual),
+  // sin filtrar por vtCode porque los cuadernos rotan día a día.
   useEffect(() => {
     let cancelled = false;
     async function fetchPrevOdometro() {
       try {
         setBuscandoKmPrevio(true);
-        const res = await fetch('/api/records?limit=15');
-        if (res.ok) {
-          const records: any[] = await res.json();
-          const fechaActual = workDate(session);
-          // 1. Buscar preferentemente el último del mismo VT antes o igual a la fecha
-          const prevSameVt = records.find(r => r.vtCode === session.vtCode && (r.kmFinal || r.km) && r.date <= fechaActual);
-          // 2. O el último registro disponible en general
-          const prevGeneral = records.find(r => (r.kmFinal || r.km) && r.date <= fechaActual);
-          const prev = prevSameVt || prevGeneral;
-          if (prev && !cancelled) {
-            const valor = prev.kmFinal || prev.km;
-            setKmInicial(valor.toString());
-            setKmInicialOrigen(`Sugerido del ${prev.date}${prev.vtCode ? ` (${prev.vtCode})` : ''}`);
-            return;
+        const fechaActual = workDate(session);
+
+        // 1. Consultar registros del servidor (hasta 60 para tener cobertura histórica)
+        let serverRecords: any[] = [];
+        try {
+          const res = await fetch('/api/records?limit=60');
+          if (res.ok) {
+            serverRecords = await res.json();
           }
+        } catch (e) {
+          console.warn('Error consultando /api/records para odómetro:', e);
+        }
+
+        // 2. Consultar registros guardados localmente (offline o pendientes de sync)
+        const localRecords: any[] = [];
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('arqueo_general_')) {
+              const item = localStorage.getItem(key);
+              if (item) {
+                try {
+                  const parsed = JSON.parse(item);
+                  if (parsed && parsed.date && (parsed.kmFinal || parsed.km)) {
+                    localRecords.push(parsed);
+                  }
+                } catch { /* ignorar */ }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Error leyendo registros locales:', e);
+        }
+
+        // 3. Unificar todos los registros
+        const allCandidates = [...serverRecords, ...localRecords];
+
+        // 4. Filtrar días estrictamente anteriores a la fecha actual (< fechaActual)
+        // y ordenar cronológicamente de forma descendente (el más reciente primero)
+        const prevCandidates = allCandidates
+          .filter(r => r.date && r.date < fechaActual && (r.kmFinal || r.km))
+          .sort((a, b) => b.date.localeCompare(a.date));
+
+        const prev = prevCandidates[0];
+        if (prev && !cancelled) {
+          // Priorizar siempre kmFinal (tacómetro acumulado del odómetro de llegada)
+          const valor = prev.kmFinal ? prev.kmFinal : prev.km;
+          setKmInicial(valor.toString());
+          setKmInicialOrigen(`Sugerido del ${prev.date}`);
+          return;
         }
       } catch (err) {
         console.warn('No se pudo precargar odómetro previo:', err);
@@ -222,7 +260,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     }
     fetchPrevOdometro();
     return () => { cancelled = true; };
-  }, [session.vtCode]);
+  }, [session.fecha, session.vtCode]);
 
   const totalIngresosAuto = useMemo(() =>
     frecuencias.reduce((s, f) => s + f.totalRecaudado, 0),

@@ -368,6 +368,7 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
       const body = {
         date,
         km: km || null,
+        kmFinal: km || null,
         conductor: selectedConductor.trim() || null,
         ayudanteNombre: selectedAyudante.trim() || null,
         vtCode: selectedVtCode,
