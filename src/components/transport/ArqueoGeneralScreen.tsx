@@ -74,6 +74,7 @@ const GASTOS_DEFAULT: GastoItem[] = [
 ];
 
 export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, onSaved }: Props) {
+  const fechaTrabajo = workDate(session);
   const [frecuencias, setFrecuencias] = useState<FrecuenciaResumen[]>([]);
   const [loading, setLoading] = useState(true);
   const [kmInicial, setKmInicial] = useState('');
@@ -236,7 +237,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         // 2. Consultar registros guardados localmente (offline o pendientes de sync)
         const localRecords: any[] = [];
         try {
-          for (let i = 0; i < localStorage.length; i++) {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             if (key && key.startsWith('arqueo_general_')) {
               const item = localStorage.getItem(key);
@@ -248,6 +250,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                   }
                 } catch { /* ignorar */ }
               }
+            }
             }
           }
         } catch (e) {
