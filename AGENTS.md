@@ -71,6 +71,18 @@
   - **Exportación e Integración:**
     - Generación de PDF ejecutivo A4 con tabla consolidada día a día, indicadores clave y bloque de 3 firmas de responsabilidad legal.
     - Compartición de resumen ejecutivo optimizado para WhatsApp con balance contable.
+- **Exportación Contable Multiformato en Excel .XLSX (FASE 3):**
+  - Generación de libro `.xlsx` estructurado en 5 pestañas contables profesionales:
+    1. `Resumen_Ejecutivo`: Balance contable general, cuadro de liquidación, delta de cuadre e indicadores operativos clave.
+    2. `Detalle_Diario`: Tabla completa día a día con lecturas de odómetro (salida, llegada y km), producción dividida (efectivo y caja común), gastos, combustible, entregas y semáforo individual.
+    3. `Vueltas_Frecuencias`: Detalle línea a línea de cada frecuencia operada (hora, ruta, tipo, boletos de oficina, efectivo y caja común).
+    4. `Gastos_Detalle`: Registro analítico de cada egreso operativo con fecha, cuaderno y descripción.
+    5. `Auditoria_Novedades`: Detección automática de fechas faltantes sin liquidar y consolidado de frecuencias no realizadas con su causa.
+
+- **Tablero Gráfico y Comparativo de Eficiencia (FASE 4):**
+  - Barra apilada interactiva de distribución de la producción en la vista previa del reporte: % Combustible (Diésel), % Costos de Operación y Personal, y % Margen Líquido.
+  - Botonera ergonómica en la zona del pulgar (Thumb Zone) con acceso triple: `Generar Reporte PDF`, `Exportar a Excel (.xlsx)` y `Compartir Resumen por WhatsApp`.
+
 ### Regla 7: Visión de Escalabilidad a Flota de 19 Autobuses
 - **Horizonte de Flota:** Aunque actualmente la aplicación se encuentra en operación para una sola unidad física en campo, toda decisión técnica, modelo de datos y diseño funcional debe estar preparado para escalar a una **flota de 19 autobuses**, donde cada unidad contará con todas las funciones de venta, arqueo, mantenimientos y reportes.
 - **Diferenciación Conceptual de Entidades:**

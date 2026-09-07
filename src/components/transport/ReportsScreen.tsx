@@ -5,7 +5,7 @@ import {
   ArrowLeft, FileText, Calendar, Loader2, Share2,
   CheckCircle2, AlertTriangle, AlertCircle, ChevronDown,
   ChevronUp, ArrowRightLeft, CalendarDays, ChevronLeft,
-  ChevronRight, Sparkles, Building2, UserCheck
+  ChevronRight, Sparkles, Building2, UserCheck, FileSpreadsheet
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
   const [rangeFrom, setRangeFrom] = useState<string>('');
   const [rangeTo, setRangeTo] = useState<string>('');
   const [generating, setGenerating] = useState(false);
+  const [exportingXLS, setExportingXLS] = useState(false);
   const [noData, setNoData] = useState(false);
   const [previewData, setPreviewData] = useState<any | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -216,6 +217,41 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
       toast({ title: 'Error', description: 'No se pudo generar el reporte.', variant: 'destructive' });
     } finally {
       setGenerating(false);
+    }
+  };
+
+  // Exportar a Excel .xlsx (Fase 3)
+  const handleExportXLS = async () => {
+    setExportingXLS(true);
+    try {
+      let dataToUse = previewData;
+      if (!dataToUse || !dataToUse.records) {
+        const params = new URLSearchParams();
+        params.set('type', reportType);
+        if (reportType === 'diario') params.set('date', date);
+        else if (reportType === 'semanal') params.set('date', weekRefDate);
+        else if (reportType === 'mensual') { if (month) params.set('month', month); }
+        else if (reportType === 'conductor') { params.set('conductorId', conductorName); if (month) params.set('month', month); }
+        else if (reportType === 'rango' || reportType === 'caja-comun') { params.set('from', rangeFrom); params.set('to', rangeTo); }
+        const res = await fetch(`/api/reports?${params.toString()}`);
+        if (!res.ok) throw new Error('Error al consultar datos');
+        dataToUse = await res.json();
+      }
+
+      if (!dataToUse || !dataToUse.records || dataToUse.records.length === 0) {
+        toast({ title: 'Sin datos', description: 'No hay registros para exportar en este período.', variant: 'destructive' });
+        setExportingXLS(false);
+        return;
+      }
+
+      const { generateExecutiveReportXLS } = await import('@/lib/generate-report-xls');
+      generateExecutiveReportXLS(dataToUse);
+      toast({ title: 'Excel generado', description: 'Archivo .xlsx descargado exitosamente.' });
+    } catch (err) {
+      console.error('Error exporting XLS:', err);
+      toast({ title: 'Error', description: 'No se pudo generar el archivo Excel.', variant: 'destructive' });
+    } finally {
+      setExportingXLS(false);
     }
   };
 
@@ -859,6 +895,44 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                   </div>
                 </div>
 
+                {/* Distribución de Producción (Fase 4: Insights) */}
+                {t.production > 0 && (
+                  <div className="p-3 rounded-xl bg-[#F8F9FA] border border-gray-100 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-gray-700">
+                      <span>Distribución de Producción</span>
+                      <span className="text-[#912D26]">100% (S/ {t.production.toFixed(0)})</span>
+                    </div>
+                    <div className="w-full h-3 rounded-full bg-gray-200 overflow-hidden flex shadow-inner">
+                      <div
+                        style={{ width: `${Math.min(100, pctDiesel)}%` }}
+                        className="bg-amber-500 h-full transition-all"
+                        title={`Diésel: ${pctDiesel.toFixed(1)}%`}
+                      />
+                      <div
+                        style={{ width: `${Math.min(100, Math.max(0, ((t.gastos - (t.dieselGasto || 0)) / t.production) * 100))}%` }}
+                        className="bg-blue-500 h-full transition-all"
+                        title={`Otros Gastos: ${(((t.gastos - (t.dieselGasto || 0)) / t.production) * 100).toFixed(1)}%`}
+                      />
+                      <div
+                        style={{ width: `${Math.min(100, Math.max(0, (utilidadLiquida / t.production) * 100))}%` }}
+                        className="bg-emerald-500 h-full transition-all"
+                        title={`Utilidad Neta: ${((utilidadLiquida / t.production) * 100).toFixed(1)}%`}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-gray-500 flex-wrap gap-1 pt-0.5">
+                      <span className="flex items-center gap-1 font-medium">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> Diésel ({pctDiesel.toFixed(0)}%)
+                      </span>
+                      <span className="flex items-center gap-1 font-medium">
+                        <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Operación ({(((t.gastos - (t.dieselGasto || 0)) / t.production) * 100).toFixed(0)}%)
+                      </span>
+                      <span className="flex items-center gap-1 font-bold text-emerald-700">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Utilidad ({((utilidadLiquida / t.production) * 100).toFixed(0)}%)
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Entregas consolidadas */}
                 <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 text-xs flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-gray-600">
@@ -980,6 +1054,27 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
               </>
             )}
           </Button>
+
+          {reportType !== 'caja-comun' && (
+            <Button
+              onClick={handleExportXLS}
+              disabled={exportingXLS || !canGenerate}
+              variant="outline"
+              className="w-full h-12 rounded-2xl text-sm font-semibold border-emerald-300 text-emerald-800 bg-emerald-50/50 hover:bg-emerald-100/60 active:scale-[0.98] transition-transform"
+            >
+              {exportingXLS ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin text-emerald-700" />
+                  Generando Excel...
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-700" />
+                  Exportar a Excel (.xlsx)
+                </>
+              )}
+            </Button>
+          )}
 
           {reportType !== 'caja-comun' && (
             <Button
