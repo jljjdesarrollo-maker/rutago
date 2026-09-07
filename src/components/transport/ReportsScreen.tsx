@@ -141,8 +141,13 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
       const data = await res.json();
       const t = data.totals;
 
+      const expected = t.expectedRecords ?? t.daysInPeriod ?? 1;
+      const found = t.foundRecords ?? t.recordCount ?? t.daysWorked;
+      const auditText = found >= expected ? `Auditoria: Completo (${found}/${expected} registros)` : `Auditoria: Incompleto (${found}/${expected} registros)`;
+
       const text = `*REPORTE DE TRANSPORTE*\n` +
-        `${reportType === 'diario' ? 'Fecha: ' + date : reportType === 'mensual' ? 'Mes: ' + (month || 'actual') : reportType === 'rango' ? `Del ${rangeFrom} al ${rangeTo}` : 'Periodo completo'}\n\n` +
+        `${reportType === 'diario' ? 'Fecha: ' + date : reportType === 'mensual' ? 'Mes: ' + (month || 'actual') : reportType === 'rango' ? `Del ${rangeFrom} al ${rangeTo}` : 'Periodo completo'}\n` +
+        `${auditText}\n\n` +
         `Produccion Total: S/ ${t.production.toFixed(2)}\n` +
         `Total Gastos: S/ ${t.gastos.toFixed(2)}\n` +
         `Km Recorridos: ${t.km.toFixed(0)} km\n\n` +

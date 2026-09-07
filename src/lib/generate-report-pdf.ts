@@ -76,6 +76,9 @@ interface ReportData {
     recordCount: number;
     daysWorked: number;
     daysInPeriod?: number;
+    expectedRecords?: number;
+    foundRecords?: number;
+    missingDates?: string[];
     frecProgramadas?: number;
     frecRealizadas?: number;
     frecNoRealizadas?: number;
@@ -206,6 +209,9 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   const utilidadNeta = t.utilidadNeta ?? (totalIngresos - totalEgresos);
   const daysInPeriod = t.daysInPeriod ?? t.daysWorked;
   const daysWorked = t.daysWorked;
+  const expectedRecords = t.expectedRecords ?? daysInPeriod;
+  const foundRecords = t.foundRecords ?? (t.recordCount || daysWorked);
+  const missingDates = t.missingDates || [];
   const asistencia = t.asistencia ?? (daysInPeriod > 0 ? daysWorked / daysInPeriod : 0);
   const frecProg = t.frecProgramadas ?? 0;
   const frecReal = t.frecRealizadas ?? 0;
@@ -217,11 +223,17 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   const motivosPerdida = t.motivosPerdida || [];
 
   // ==================== 1. OPERATIVO ====================
-  drawBlockTitle('1. OPERATIVO - Se opero?');
+  drawBlockTitle('1. OPERATIVO - Auditoria y Cumplimiento');
+  // Auditoría: Registros esperados vs encontrados
+  const auditStatusLabel = foundRecords >= expectedRecords
+    ? `Completo (${foundRecords}/${expectedRecords})`
+    : `Faltan ${expectedRecords - foundRecords} (${foundRecords}/${expectedRecords})`;
+  const auditColor = foundRecords >= expectedRecords ? COLORS.green : (foundRecords > 0 ? COLORS.amber : [220, 50, 50] as const);
+
   const opCards = [
-    { label: 'Dias del Periodo', value: `${daysInPeriod}`, color: COLORS.dark },
-    { label: 'Dias Laborados', value: `${daysWorked}`, color: COLORS.dark },
-    { label: 'Asistencia', value: formatPct(asistencia), color: pctColor(asistencia) },
+    { label: 'Reg. Esperados', value: `${expectedRecords}`, color: COLORS.dark },
+    { label: 'Reg. Encontrados', value: `${foundRecords}`, color: auditColor },
+    { label: 'Auditoria', value: auditStatusLabel, color: auditColor },
     { label: 'Frec. Programadas', value: `${frecProg}`, color: COLORS.dark },
   ];
   drawCardRow(opCards, 4);
@@ -232,6 +244,14 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
     { label: 'Cumplimiento', value: formatPct(cumplimiento), color: pctColor(cumplimiento) },
   ];
   drawCardRow(opCards2, 4);
+
+  // Fechas faltantes de registro (auditoría operativa)
+  if (missingDates.length > 0) {
+    y += 1;
+    const missingFmt = missingDates.map(d => formatDate(d)).join(', ');
+    addText(`* Atencion: ${missingDates.length} fecha(s) sin registro de caja: ${missingFmt}`, ml, y, { size: 7, color: [220, 50, 50], bold: true });
+    y += 4;
+  }
 
   // Motivos de perdida (solo si hay)
   if (motivosPerdida.length > 0) {

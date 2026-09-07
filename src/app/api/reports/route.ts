@@ -176,6 +176,27 @@ export async function GET(req: NextRequest) {
     });
     const motivosPerdida = Object.entries(motivosMap).map(([motivo, count]) => ({ motivo, count })).sort((a, b) => b.count - a.count);
 
+    // Auditoría de registros esperados vs encontrados
+    const expectedRecords = daysInPeriod;
+    const foundRecords = records.length;
+    // Identificar fechas faltantes dentro del periodo seleccionado
+    const missingDates: string[] = [];
+    if (startDate && endDate && expectedRecords <= 62) {
+      const recordedDateSet = new Set(records.map(r => r.date));
+      const curr = new Date(startDate + "T12:00:00");
+      const last = new Date(endDate + "T12:00:00");
+      while (curr <= last) {
+        const y = curr.getFullYear();
+        const m = String(curr.getMonth() + 1).padStart(2, "0");
+        const d = String(curr.getDate()).padStart(2, "0");
+        const dateKey = `${y}-${m}-${d}`;
+        if (!recordedDateSet.has(dateKey)) {
+          missingDates.push(dateKey);
+        }
+        curr.setDate(curr.getDate() + 1);
+      }
+    }
+
     return NextResponse.json({
       type,
       startDate,
@@ -193,6 +214,9 @@ export async function GET(req: NextRequest) {
         recordCount: records.length,
         daysWorked,
         daysInPeriod,
+        expectedRecords,
+        foundRecords,
+        missingDates,
         frecProgramadas: totalFrecProgramadas,
         frecRealizadas: totalFrecRealizadas,
         frecNoRealizadas: dailySummaries.reduce((s, d) => s + d.frecNoRealizadas, 0),
