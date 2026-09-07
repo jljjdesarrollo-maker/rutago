@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type ChangeEvent } from 'react';
 import { type VTSession, type FrecuenciaEstado } from './types-boletos';
 import { getVentasByFrecuencia } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
@@ -337,7 +337,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     });
   };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith('image/')) return;
     e.target.value = '';
@@ -384,6 +384,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     setSaving(true);
 
     const fechaTrabajo = workDate(session);
+    const recorridoCalculado = kmRecorridos !== null && kmRecorridos >= 0 ? kmRecorridos.toString() : kmFinal.trim();
     try {
       // Build trips from frecuencias (all: cerradas, ingresos especiales, no realizadas)
       const trips = frecuencias.map((f, idx) => ({
@@ -403,8 +404,6 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         motivo: f.motivoNoRealizada || undefined,
         notaEspecial: f.ingresoEspecialNota || undefined,
       }));
-
-      const recorridoCalculado = kmRecorridos !== null && kmRecorridos >= 0 ? kmRecorridos.toString() : kmFinal.trim();
       const body = {
         date: workDate(session),
         km: recorridoCalculado,

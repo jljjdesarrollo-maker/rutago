@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx";
 import { type SavedRecord } from "@/components/transport/types";
 
 function formatDate(dateStr: string): string {
@@ -11,7 +10,8 @@ function formatDate(dateStr: string): string {
 }
 
 // ─── Exportador Ejecutivo Multiformato (Fase 3) ───
-export function generateExecutiveReportXLS(data: any) {
+export async function generateExecutiveReportXLS(data: any): Promise<void> {
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
 
   // 1. HOJA: RESUMEN EJECUTIVO

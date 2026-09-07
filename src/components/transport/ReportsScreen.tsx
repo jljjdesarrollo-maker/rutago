@@ -245,7 +245,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
       }
 
       const { generateExecutiveReportXLS } = await import('@/lib/generate-report-xls');
-      generateExecutiveReportXLS(dataToUse);
+      await generateExecutiveReportXLS(dataToUse);
       toast({ title: 'Excel generado', description: 'Archivo .xlsx descargado exitosamente.' });
     } catch (err) {
       console.error('Error exporting XLS:', err);
@@ -797,6 +797,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
           const t = previewData.totals;
           const days = previewData.dailySummaries;
           const saldoA = t.saldoALiquidar ?? (t.production - t.gastos - t.tickets);
+          const utilidadLiquida = t.utilidadNeta ?? saldoA;
           const totalEntregado = t.totalEntregado ?? (t.entregaCompania + t.entregaAyudante);
           const delta = t.cuadreDelta ?? (totalEntregado - saldoA);
           const cuadra = Math.abs(delta) < 0.01;
