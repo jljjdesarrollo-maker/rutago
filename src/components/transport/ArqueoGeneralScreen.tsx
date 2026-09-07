@@ -6,7 +6,8 @@ import { getVentasByFrecuencia } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
 import {
   ChevronLeft, DollarSign, Camera, X, Save, Loader2,
-  CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles, Pencil, XCircle, Gauge
+  CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles, Pencil, XCircle, Gauge,
+  CalendarDays
 } from 'lucide-react';
 
 interface Props {
@@ -45,6 +46,24 @@ const today = () => new Date().toISOString().split('T')[0];
 // Work date: use session.fecha (date when shift started, not necessarily today)
 function workDate(session: VTSession): string {
   return session.fecha || today();
+}
+
+function formatFechaOperacion(isoDate: string): string {
+  if (!isoDate) return '';
+  const parts = isoDate.split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const dateObj = new Date(y, m, d);
+    return dateObj.toLocaleDateString('es-EC', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+  return isoDate;
 }
 
 const GASTOS_DEFAULT: GastoItem[] = [
@@ -495,6 +514,14 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           <div className="bg-white rounded-2xl border border-gray-200 p-6 max-w-md w-full shadow-lg">
             <h2 className="text-lg font-bold text-[#3A3A3A] mb-4">Confirmar Arqueo General</h2>
             <div className="bg-gray-50 rounded-xl p-4 space-y-2 mb-4">
+              <div className="flex justify-between text-sm pb-1 border-b border-gray-200">
+                <span className="text-gray-500 flex items-center gap-1.5 font-medium">
+                  <CalendarDays className="w-3.5 h-3.5 text-[#912D26]" /> Fecha de Operación
+                </span>
+                <span className="font-bold text-[#3A3A3A] capitalize">
+                  {formatFechaOperacion(fechaTrabajo)} ({fechaTrabajo})
+                </span>
+              </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Producción</span>
                 <span className="font-bold text-[#3A3A3A]">${production.toFixed(2)}</span>
@@ -557,18 +584,50 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       </div>
 
       {/* Header */}
-      <div className="bg-[#912D26] text-white px-4 py-3">
+      <div className="bg-[#912D26] text-white px-4 py-3 shadow-md">
         <div className="flex items-center justify-between">
-          <button onClick={onClose} className="text-red-100"><ChevronLeft className="w-6 h-6" /></button>
+          <button onClick={onClose} className="text-red-100 p-1 -ml-1 rounded-lg active:bg-white/10" aria-label="Volver">
+            <ChevronLeft className="w-6 h-6" />
+          </button>
           <div className="text-center">
-            <h2 className="text-lg font-bold">Arqueo General</h2>
-            <p className="text-red-100 text-xs">{session.nombre} — Turno completo</p>
+            <h2 className="text-lg font-bold leading-tight">Arqueo General</h2>
+            <div className="flex items-center justify-center gap-1.5 text-xs text-red-100 mt-0.5">
+              <span>{session.nombre}</span>
+              <span>•</span>
+              <span className="font-bold bg-white/20 px-2 py-0.5 rounded flex items-center gap-1">
+                <CalendarDays className="w-3 h-3 text-white" />
+                {fechaTrabajo}
+              </span>
+            </div>
           </div>
           <div className="w-6" />
         </div>
       </div>
 
       <div className="flex-1 px-4 py-4 space-y-4 overflow-y-auto pb-8">
+        {/* Banner Operativo Destacado: Fecha de Operación y Cuaderno VT */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-3.5 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#912D26]/10 text-[#912D26] flex items-center justify-center flex-shrink-0">
+              <CalendarDays className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Fecha de Operación</div>
+              <div className="text-sm font-black text-[#3A3A3A] flex items-center gap-1.5 flex-wrap">
+                <span className="capitalize">{formatFechaOperacion(fechaTrabajo)}</span>
+                <span className="text-[11px] font-bold px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md">
+                  {fechaTrabajo}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <div className="text-[10px] font-bold text-gray-400 uppercase">Cuaderno</div>
+            <div className="text-xs font-black text-[#912D26] bg-[#912D26]/10 px-2.5 py-1 rounded-lg inline-block">
+              {session.vtCode}
+            </div>
+          </div>
+        </div>
         {/* Errores */}
         {errors.length > 0 && (
           <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm space-y-1">

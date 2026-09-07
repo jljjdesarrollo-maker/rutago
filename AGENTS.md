@@ -71,3 +71,9 @@
   - **Exportación e Integración:**
     - Generación de PDF ejecutivo A4 con tabla consolidada día a día, indicadores clave y bloque de 3 firmas de responsabilidad legal.
     - Compartición de resumen ejecutivo optimizado para WhatsApp con balance contable.
+### Regla 7: Visión de Escalabilidad a Flota de 19 Autobuses
+- **Horizonte de Flota:** Aunque actualmente la aplicación se encuentra en operación para una sola unidad física en campo, toda decisión técnica, modelo de datos y diseño funcional debe estar preparado para escalar a una **flota de 19 autobuses**, donde cada unidad contará con todas las funciones de venta, arqueo, mantenimientos y reportes.
+- **Diferenciación Conceptual de Entidades:**
+  - **Autobús / Unidad Física:** Es la máquina (`busId`, `numeroUnidad`, `placa`). El odómetro/tacómetro, los mantenimientos mecánicos preventivos (aceite, neumáticos) y el consumo de diésel pertenecen a la **unidad física**.
+  - **VT (Vuelta Turno / Cuaderno de Servicios):** Es la hoja de programación de frecuencias que asigna la cooperativa. Los autobuses rotan entre los distintos VTs según el rol de la empresa.
+  - Al expandirse a los 19 buses, el selector de unidad o sesión vinculará cada operación al `busId` correspondiente, asegurando que el tacómetro anterior se consulte estrictamente para ese mismo autobús.
