@@ -133,6 +133,20 @@ export async function GET(req: NextRequest) {
       const frecProgramadas = frecConTipo > 0
         ? frecRealizadas + frecNoRealizadas + frecIngresoEspecial
         : recs.reduce((s, r) => s + (vtFrecCounts[r.vtCode || ''] || 0), 0);
+      const dayExpenses = recs.flatMap(r => r.expenses || []);
+      const dayDieselGasto = dayExpenses
+        .filter(e => {
+          const desc = (e.description || "").toLowerCase();
+          return desc.includes("diesel") || desc.includes("diésel") || desc.includes("combustible");
+        })
+        .reduce((s, e) => s + (e.amount || 0), 0);
+      const dayPctDiesel = totalProduction > 0 ? (dayDieselGasto / totalProduction) * 100 : 0;
+      const dayIngresoPorKm = totalKm > 0 ? totalProduction / totalKm : 0;
+      const dayTotalEntregado = totalEntregaCompania + totalEntregaAyudante;
+      const daySaldoALiquidar = totalProduction - totalGastos - totalTickets;
+      const dayCuadreDelta = dayTotalEntregado - daySaldoALiquidar;
+      const dayCuadra = Math.abs(dayCuadreDelta) < 0.01;
+
       return {
         date,
         records: recs,
@@ -145,6 +159,13 @@ export async function GET(req: NextRequest) {
         totalTickets,
         totalCajaComun,
         totalSobrante,
+        dieselGasto: dayDieselGasto,
+        pctDiesel: dayPctDiesel,
+        ingresoPorKm: dayIngresoPorKm,
+        totalEntregado: dayTotalEntregado,
+        saldoALiquidar: daySaldoALiquidar,
+        cuadreDelta: dayCuadreDelta,
+        cuadra: dayCuadra,
         frecProgramadas,
         frecRealizadas,
         frecNoRealizadas,
@@ -167,6 +188,25 @@ export async function GET(req: NextRequest) {
     const daysWorked = dailySummaries.length;
     const totalProduction = records.reduce((s, r) => s + r.production, 0);
     const totalGastos = records.reduce((s, r) => s + r.totalGastos, 0);
+    const totalKm = records.reduce((s, r) => s + (parseFloat(r.km || "0") || 0), 0);
+    const totalEntregaCompania = records.reduce((s, r) => s + r.entregaCompania, 0);
+    const totalEntregaAyudante = records.reduce((s, r) => s + r.entregaAyudante, 0);
+    const totalTickets = records.reduce((s, r) => s + r.tickets, 0);
+    const totalEntregado = totalEntregaCompania + totalEntregaAyudante;
+    const saldoALiquidar = totalProduction - totalGastos - totalTickets;
+    const cuadreDelta = totalEntregado - saldoALiquidar;
+    const cuadra = Math.abs(cuadreDelta) < 0.01;
+
+    // Gasto de Diésel / Combustible
+    const allExpenses = records.flatMap(r => r.expenses || []);
+    const dieselGasto = allExpenses
+      .filter(e => {
+        const desc = (e.description || "").toLowerCase();
+        return desc.includes("diesel") || desc.includes("diésel") || desc.includes("combustible");
+      })
+      .reduce((s, e) => s + (e.amount || 0), 0);
+    const pctDiesel = totalProduction > 0 ? (dieselGasto / totalProduction) * 100 : 0;
+    const ingresoPorKm = totalKm > 0 ? totalProduction / totalKm : 0;
 
     // Motivos de pérdida (no realizadas)
     const allTrips = records.flatMap(r => r.trips);
@@ -205,12 +245,19 @@ export async function GET(req: NextRequest) {
       totals: {
         production: totalProduction,
         gastos: totalGastos,
-        km: records.reduce((s, r) => s + (parseFloat(r.km || '0') || 0), 0),
-        entregaCompania: records.reduce((s, r) => s + r.entregaCompania, 0),
-        entregaAyudante: records.reduce((s, r) => s + r.entregaAyudante, 0),
-        tickets: records.reduce((s, r) => s + r.tickets, 0),
+        km: totalKm,
+        entregaCompania: totalEntregaCompania,
+        entregaAyudante: totalEntregaAyudante,
+        tickets: totalTickets,
         cajaComun: records.reduce((s, r) => s + r.cajaComun, 0),
         sobrante: records.reduce((s, r) => s + (r.sobrante || 0), 0),
+        dieselGasto,
+        pctDiesel,
+        ingresoPorKm,
+        totalEntregado,
+        saldoALiquidar,
+        cuadreDelta,
+        cuadra,
         recordCount: records.length,
         daysWorked,
         daysInPeriod,

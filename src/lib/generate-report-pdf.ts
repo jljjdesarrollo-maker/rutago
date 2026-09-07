@@ -79,6 +79,13 @@ interface ReportData {
     expectedRecords?: number;
     foundRecords?: number;
     missingDates?: string[];
+    dieselGasto?: number;
+    pctDiesel?: number;
+    ingresoPorKm?: number;
+    totalEntregado?: number;
+    saldoALiquidar?: number;
+    cuadreDelta?: number;
+    cuadra?: boolean;
     frecProgramadas?: number;
     frecRealizadas?: number;
     frecNoRealizadas?: number;
@@ -220,6 +227,8 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   const cumplimiento = t.cumplimiento ?? (frecProg > 0 ? frecReal / frecProg : 0);
   const ingPorFrec = t.ingresoPorFrecuencia ?? (frecReal > 0 ? totalIngresos / frecReal : 0);
   const ingPorDia = t.ingresoPorDia ?? (daysWorked > 0 ? totalIngresos / daysWorked : 0);
+  const ingPorKm = t.ingresoPorKm ?? (t.km > 0 ? totalIngresos / t.km : 0);
+  const pctDiesel = t.pctDiesel ?? (totalIngresos > 0 && t.dieselGasto ? (t.dieselGasto / totalIngresos) * 100 : 0);
   const motivosPerdida = t.motivosPerdida || [];
 
   // ==================== 1. OPERATIVO ====================
@@ -296,7 +305,7 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
   ], 3);
 
   // ==================== 5. INDICADORES ====================
-  drawBlockTitle('5. INDICADORES - Eficiencia');
+  drawBlockTitle('5. INDICADORES - Eficiencia & Rendimiento');
   const gastoPct = totalIngresos > 0 ? totalEgresos / totalIngresos : 0;
   drawCardRow([
     { label: 'Utilidad Neta', value: formatMoney(utilidadNeta), color: utilidadNeta >= 0 ? COLORS.green : [220, 50, 50] },
@@ -305,18 +314,39 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
     { label: 'Gasto / Ingreso', value: formatPct(gastoPct), color: gastoPct <= 0.5 ? COLORS.green : gastoPct <= 0.7 ? COLORS.amber : [220, 50, 50] },
   ], 4);
 
+  const dieselCardColor = pctDiesel <= 35 ? COLORS.green : pctDiesel <= 42 ? COLORS.amber : ([220, 50, 50] as const);
+  drawCardRow([
+    { label: 'Ingreso / Km', value: `${formatMoney(ingPorKm)}/km`, color: ingPorKm >= 3.5 ? COLORS.green : COLORS.dark },
+    { label: '% Diesel s/ Prod.', value: `${pctDiesel.toFixed(1)}%`, color: dieselCardColor },
+    { label: 'Gasto Diesel', value: formatMoney(t.dieselGasto || 0), color: COLORS.dark },
+    { label: 'Km Recorridos', value: `${t.km.toFixed(0)} km`, color: COLORS.dark },
+  ], 4);
+
   // ==================== 6. VALIDACION ====================
-  drawBlockTitle('6. VALIDACION - Cuadre de caja');
-  const saldoA = t.production - t.gastos - t.tickets;
-  const saldoB = t.entregaAyudante + t.entregaCompania;
-  const cuadra = Math.abs(saldoA - saldoB) < 0.01;
-  addText(`(Produccion ${formatMoney(t.production)}) - (Gastos ${formatMoney(t.gastos)} + Tickets ${formatMoney(t.tickets)}) = ${formatMoney(saldoA)}`, ml, y, { size: 6.5, color: COLORS.dark });
+  drawBlockTitle('6. VALIDACION - Cuadre de caja & Conciliacion');
+  const saldoA = t.saldoALiquidar ?? (t.production - t.gastos - t.tickets);
+  const saldoB = t.totalEntregado ?? (t.entregaAyudante + t.entregaCompania);
+  const delta = t.cuadreDelta ?? (saldoB - saldoA);
+  const cuadra = Math.abs(delta) < 0.01;
+
+  addText(`(Produccion ${formatMoney(t.production)}) - (Gastos ${formatMoney(t.gastos)} + Tickets ${formatMoney(t.tickets)}) = Saldo a Liquidar: ${formatMoney(saldoA)}`, ml, y, { size: 6.5, color: COLORS.dark });
   y += 3.5;
-  addText(`Ent. Ayudante (${formatMoney(t.entregaAyudante)}) + Ent. Compania (${formatMoney(t.entregaCompania)}) = ${formatMoney(saldoB)}`, ml, y, { size: 6.5, color: COLORS.dark });
+  addText(`Ent. Ayudante (${formatMoney(t.entregaAyudante)}) + Ent. Compania (${formatMoney(t.entregaCompania)}) = Total Entregado: ${formatMoney(saldoB)}`, ml, y, { size: 6.5, color: COLORS.dark });
   y += 4;
-  addText(cuadra ? 'Cuadra correctamente' : 'DESCUADRE - verificar registros', ml, y, {
-    size: 7.5, color: cuadra ? COLORS.green : [248, 113, 113], bold: true,
-  });
+
+  if (cuadra) {
+    addText('[✓] CUADRE EXACTO (Delta: S/ 0.00) - Total entregado coincide con saldo a liquidar', ml, y, {
+      size: 7.5, color: COLORS.green, bold: true,
+    });
+  } else if (delta > 0) {
+    addText(`[▲] SOBRANTE DE CAJA: +S/ ${delta.toFixed(2)} - Se entrego mas dinero del calculado`, ml, y, {
+      size: 7.5, color: COLORS.green, bold: true,
+    });
+  } else {
+    addText(`[⚠] FALTANTE / DESCUADRE: -S/ ${Math.abs(delta).toFixed(2)} - Falta dinero por entregar`, ml, y, {
+      size: 7.5, color: [220, 50, 50], bold: true,
+    });
+  }
   y += 8;
 
   // ==================== PAGE LAYOUT CONSTANTS ====================
@@ -413,9 +443,9 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
         addText(`Registro - ${formatDate(record.date)}${record.conductor ? ` | Cond: ${record.conductor}` : ''}`, ml, y, { size: 8, color: COLORS.dark, bold: true });
         y += 5;
 
-        const tripCols = [10, 50, 50, 35, 35];
-        const tripHeaders = ['#', 'Ruta', 'Retorno', 'Produccion', 'Caja Com.'];
-        const tripAligns: ('left' | 'right')[] = ['left', 'left', 'left', 'right', 'right'];
+        const tripCols = [10, 56, 18, 32, 32, 32];
+        const tripHeaders = ['#', 'Ruta (Origen -> Dest)', 'Hora', 'Efectivo', 'Caja Com.', 'Total Vuelta'];
+        const tripAligns: ('left' | 'left' | 'center' | 'right' | 'right' | 'right')[] = ['left', 'left', 'center', 'right', 'right', 'right'];
         doc.setFillColor(...COLORS.dark);
         let ttx = ml;
         tripCols.forEach((cwi, i) => {
@@ -435,28 +465,46 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
             : isEspecial
             ? `${ti + 1} (IE: ${trip.notaEspecial || '-'})`
             : `${ti + 1}`;
+          const efVal = trip.efectivoReal ?? (trip.income - (trip.cajaComunMonto || 0));
+          const ccVal = trip.cajaComunMonto || 0;
+          const totVal = isNoReal ? 0 : (trip.income || (efVal + ccVal));
+
           [
             tripLabel,
-            (isNoReal && !isEspecial) ? '-' : `${trip.routeFrom} - ${trip.routeTo}`,
+            (isNoReal && !isEspecial) ? `NR: ${trip.motivo || "No operada"}` : `${trip.routeFrom || "-"} -> ${trip.routeTo || "-"}`,
             trip.time || '-',
-            formatMoney(trip.income),
-            formatMoney(trip.cajaComunMonto || 0),
+            formatMoney(efVal),
+            formatMoney(ccVal),
+            formatMoney(totVal),
           ].forEach((val, i) => {
-            addText(val, ttx + 2, y + 0.5, { size: 7, color: isNoReal ? [180, 80, 50] : isEspecial ? COLORS.amber : COLORS.dark, align: tripAligns[i] });
+            const xPos = tripAligns[i] === 'right' ? ttx + tripCols[i] - 2 : tripAligns[i] === 'center' ? ttx + tripCols[i] / 2 : ttx + 2;
+            addText(val, xPos, y + 0.5, {
+              size: 6.5,
+              color: isNoReal ? [180, 80, 50] : isEspecial ? COLORS.amber : COLORS.dark,
+              align: tripAligns[i]
+            });
             ttx += tripCols[i];
           });
           y += 5;
         });
 
-        const tripTotalProd = record.trips.reduce((s: number, t: any) => s + t.income, 0);
-        const tripTotalCaja = record.trips.reduce((s: number, t: any) => s + t.boletos, 0);
+        const tripTotalEf = record.trips.reduce((s: number, t: any) => s + (t.efectivoReal ?? (t.income - (t.cajaComunMonto || 0))), 0);
+        const tripTotalCc = record.trips.reduce((s: number, t: any) => s + (t.cajaComunMonto || 0), 0);
+        const tripTotalProd = record.trips.reduce((s: number, t: any) => s + (t.income || 0), 0);
+
+        addLine(ml, w - mr, y);
+        y += 2;
         ttx = ml;
-        addText('', ttx, y + 0.5, { size: 7 });
-        ttx += 110;
-        addText(formatMoney(tripTotalProd), ttx + 2, y + 0.5, { size: 7, color: COLORS.dark, bold: true });
-        ttx += 35;
-        addText(formatMoney(tripTotalCaja), ttx + 2, y + 0.5, { size: 7, color: COLORS.dark, bold: true });
-        y += 7;
+        addText('TOTAL VUELTAS', ttx + 2, y + 0.5, { size: 7, color: COLORS.primary, bold: true });
+        ttx += 10 + 56 + 18;
+        addText(formatMoney(tripTotalEf), ttx + 32 - 2, y + 0.5, { size: 7, color: COLORS.dark, bold: true, align: 'right' });
+        ttx += 32;
+        addText(formatMoney(tripTotalCc), ttx + 32 - 2, y + 0.5, { size: 7, color: COLORS.dark, bold: true, align: 'right' });
+        ttx += 32;
+        addText(formatMoney(tripTotalProd), ttx + 32 - 2, y + 0.5, { size: 7, color: COLORS.primary, bold: true, align: 'right' });
+        y += 6;
+        addText('* Regla contable inmutable: Produccion de Vuelta = Efectivo Ruta + Caja Comun', ml, y, { size: 6, color: COLORS.plata });
+        y += 5;
 
         if (record.sobrante && record.sobrante !== 0) {
           addText(`Sobrante: ${formatMoney(record.sobrante)}`, ml, y + 0.5, { size: 7, color: COLORS.green, bold: true });
@@ -479,6 +527,29 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
       }
     });
   }
+
+  // ==================== BLOQUE DE FIRMAS DE RESPONSABILIDAD ====================
+  if (y + 26 > pageH - footerY) {
+    doc.addPage();
+    y = minY + 10;
+  } else {
+    y += 8;
+  }
+
+  const sigW = (w - ml - mr - 16) / 3;
+  const sigLineY = y + 14;
+
+  addLine(ml, ml + sigW, sigLineY);
+  addText('Firma Conductor', ml + sigW / 2, sigLineY + 3.5, { size: 6.5, color: COLORS.dark, align: 'center', bold: true });
+
+  const sigAyudX = ml + sigW + 8;
+  addLine(sigAyudX, sigAyudX + sigW, sigLineY);
+  addText('Firma Ayudante', sigAyudX + sigW / 2, sigLineY + 3.5, { size: 6.5, color: COLORS.dark, align: 'center', bold: true });
+
+  const sigRecX = sigAyudX + sigW + 8;
+  addLine(sigRecX, sigRecX + sigW, sigLineY);
+  addText('Firma Recaudador / Auditor', sigRecX + sigW / 2, sigLineY + 3.5, { size: 6.5, color: COLORS.dark, align: 'center', bold: true });
+  y = sigLineY + 8;
 
   // ==================== FOOTER ====================
   const totalPages = doc.getNumberOfPages();

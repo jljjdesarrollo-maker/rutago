@@ -1,7 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowLeft, FileText, Calendar, Loader2, Share2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  ArrowLeft, FileText, Calendar, Loader2, Share2,
+  CheckCircle2, AlertTriangle, AlertCircle, ChevronDown,
+  ChevronUp, ArrowRightLeft
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,10 +27,13 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
   const [rangeTo, setRangeTo] = useState<string>('');
   const [generating, setGenerating] = useState(false);
   const [noData, setNoData] = useState(false);
+  const [dailyPreview, setDailyPreview] = useState<any | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [showTripsDetail, setShowTripsDetail] = useState(false);
   const { toast } = useToast();
 
   // Fetch ayudante names on mount
-  useState(() => {
+  useEffect(() => {
     fetch('/api/records')
       .then(r => r.json())
       .then((records: any[]) => {
@@ -34,7 +41,34 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
         setConductorNames(names);
       })
       .catch(() => {});
-  });
+  }, []);
+
+  // Fetch daily preview when reportType is 'diario' and date changes
+  useEffect(() => {
+    if (reportType !== 'diario' || !date) {
+      setDailyPreview(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingPreview(true);
+    fetch(`/api/reports?type=diario&date=${date}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (!cancelled) {
+          setDailyPreview(d);
+          setLoadingPreview(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDailyPreview(null);
+          setLoadingPreview(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reportType, date]);
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -141,21 +175,49 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
       const data = await res.json();
       const t = data.totals;
 
-      const expected = t.expectedRecords ?? t.daysInPeriod ?? 1;
-      const found = t.foundRecords ?? t.recordCount ?? t.daysWorked;
-      const auditText = found >= expected ? `Auditoria: Completo (${found}/${expected} registros)` : `Auditoria: Incompleto (${found}/${expected} registros)`;
+      let text = '';
+      if (reportType === 'diario') {
+        const saldoA = t.saldoALiquidar ?? (t.production - t.gastos - t.tickets);
+        const delta = t.cuadreDelta ?? ((t.entregaCompania + t.entregaAyudante) - saldoA);
+        const estadoCuadre = Math.abs(delta) < 0.01
+          ? 'CUADRE EXACTO (Δ: S/ 0.00)'
+          : delta > 0
+          ? `SOBRANTE (+S/ ${delta.toFixed(2)})`
+          : `FALTANTE / DESCUADRE (-S/ ${Math.abs(delta).toFixed(2)})`;
 
-      const text = `*REPORTE DE TRANSPORTE*\n` +
-        `${reportType === 'diario' ? 'Fecha: ' + date : reportType === 'mensual' ? 'Mes: ' + (month || 'actual') : reportType === 'rango' ? `Del ${rangeFrom} al ${rangeTo}` : 'Periodo completo'}\n` +
-        `${auditText}\n\n` +
-        `Produccion Total: S/ ${t.production.toFixed(2)}\n` +
-        `Total Gastos: S/ ${t.gastos.toFixed(2)}\n` +
-        `Km Recorridos: ${t.km.toFixed(0)} km\n\n` +
-        `Entrega Compania: S/ ${t.entregaCompania.toFixed(2)}\n` +
-        `Entrega Ayudante: S/ ${t.entregaAyudante.toFixed(2)}\n` +
-        `Total Entregado: S/ ${(t.entregaCompania + t.entregaAyudante).toFixed(2)}\n\n` +
-        `Dias Trabajados: ${t.daysWorked}\n` +
-        `_Control de Transporte_`;
+        text = `*CIERRE DE CAJA DIARIO - RUTAGO*\n` +
+          `Fecha: ${date}\n` +
+          `Estado Cuadre: ${estadoCuadre}\n\n` +
+          `Produccion Total: S/ ${t.production.toFixed(2)}\n` +
+          ` - Efectivo Ruta: S/ ${(t.production - t.cajaComun).toFixed(2)}\n` +
+          ` - Caja Comun: S/ ${t.cajaComun.toFixed(2)}\n\n` +
+          `Total Gastos: S/ ${t.gastos.toFixed(2)}\n` +
+          ` - Diesel: S/ ${(t.dieselGasto || 0).toFixed(2)} (${(t.pctDiesel || 0).toFixed(1)}%)\n` +
+          `Total Tickets: S/ ${t.tickets.toFixed(2)}\n` +
+          `Saldo a Liquidar: S/ ${saldoA.toFixed(2)}\n\n` +
+          `Entrega Compania: S/ ${t.entregaCompania.toFixed(2)}\n` +
+          `Entrega Ayudante: S/ ${t.entregaAyudante.toFixed(2)}\n` +
+          `Total Entregado: S/ ${(t.entregaCompania + t.entregaAyudante).toFixed(2)}\n\n` +
+          `Km Recorridos: ${t.km.toFixed(0)} km\n` +
+          `Rendimiento: S/ ${(t.km > 0 ? (t.production / t.km).toFixed(2) : '0.00')}/km\n` +
+          `Vueltas Realizadas: ${t.frecRealizadas || 0}\n` +
+          `_RutaGo Control Operativo v3.49.1_`;
+      } else {
+        const expected = t.expectedRecords ?? t.daysInPeriod ?? 1;
+        const found = t.foundRecords ?? t.recordCount ?? t.daysWorked;
+        const auditText = found >= expected ? `Auditoria: Completo (${found}/${expected} registros)` : `Auditoria: Incompleto (${found}/${expected} registros)`;
+        text = `*REPORTE DE TRANSPORTE - RUTAGO*\n` +
+          `${reportType === 'mensual' ? 'Mes: ' + (month || 'actual') : reportType === 'rango' ? `Del ${rangeFrom} al ${rangeTo}` : 'Periodo completo'}\n` +
+          `${auditText}\n\n` +
+          `Produccion Total: S/ ${t.production.toFixed(2)}\n` +
+          `Total Gastos: S/ ${t.gastos.toFixed(2)}\n` +
+          `Km Recorridos: ${t.km.toFixed(0)} km\n\n` +
+          `Entrega Compania: S/ ${t.entregaCompania.toFixed(2)}\n` +
+          `Entrega Ayudante: S/ ${t.entregaAyudante.toFixed(2)}\n` +
+          `Total Entregado: S/ ${(t.entregaCompania + t.entregaAyudante).toFixed(2)}\n\n` +
+          `Dias Trabajados: ${t.daysWorked}\n` +
+          `_Control de Transporte RutaGo v3.49.1_`;
+      }
 
       if (navigator.share) {
         try {
@@ -311,6 +373,182 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
             )}
           </CardContent>
         </Card>
+
+        {/* Tactical Daily Preview */}
+        {reportType === 'diario' && (
+          <>
+            {loadingPreview && (
+              <div className="flex items-center justify-center p-4 bg-white rounded-2xl border border-gray-100">
+                <Loader2 className="w-4 h-4 text-[#912D26] animate-spin mr-2" />
+                <span className="text-xs text-gray-500 font-medium">Consultando liquidación del día...</span>
+              </div>
+            )}
+
+            {!loadingPreview && dailyPreview && dailyPreview.dailySummaries?.length > 0 && (() => {
+              const t = dailyPreview.totals;
+              const dayRecs = dailyPreview.dailySummaries[0]?.records || [];
+              const saldoA = t.saldoALiquidar ?? (t.production - t.gastos - t.tickets);
+              const totalEntregado = t.totalEntregado ?? (t.entregaCompania + t.entregaAyudante);
+              const delta = t.cuadreDelta ?? (totalEntregado - saldoA);
+              const cuadra = Math.abs(delta) < 0.01;
+              const ingKm = t.ingresoPorKm ?? (t.km > 0 ? t.production / t.km : 0);
+              const pctDiesel = t.pctDiesel ?? (t.production > 0 && t.dieselGasto ? (t.dieselGasto / t.production) * 100 : 0);
+              const allTrips = dayRecs.flatMap((r: any) => r.trips || []);
+
+              return (
+                <Card className="rounded-2xl border border-[#D6D6D6] bg-white overflow-hidden shadow-sm">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#3A3A3A]/70 uppercase tracking-wider">
+                        Resumen Táctico del Día
+                      </span>
+                      <span className="text-[11px] font-semibold text-[#912D26] bg-[#912D26]/10 px-2 py-0.5 rounded-full">
+                        {dayRecs.length} {dayRecs.length === 1 ? 'hoja' : 'hojas'}
+                      </span>
+                    </div>
+
+                    {/* Semáforo de Cuadre */}
+                    {cuadra ? (
+                      <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                          <div>
+                            <p className="text-xs font-bold text-emerald-900">Caja Cuadrada Exacta</p>
+                            <p className="text-[10px] text-emerald-700">Entregas coinciden con saldo a liquidar</p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                          Δ S/ 0.00
+                        </span>
+                      </div>
+                    ) : delta > 0 ? (
+                      <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                          <div>
+                            <p className="text-xs font-bold text-amber-900">Sobrante de Caja Detectado</p>
+                            <p className="text-[10px] text-amber-700">Entregado supera al saldo a liquidar</p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                          +S/ {delta.toFixed(2)}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-red-50 border border-red-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+                          <div>
+                            <p className="text-xs font-bold text-red-900">Descuadre / Faltante de Caja</p>
+                            <p className="text-[10px] text-red-700">Falta dinero por entregar</p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-bold text-red-800 bg-red-100 px-2 py-0.5 rounded-full">
+                          -S/ {Math.abs(delta).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Grid 2x2 KPIs */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2.5 rounded-xl bg-[#F8F9FA] border border-gray-100">
+                        <p className="text-[10px] font-medium text-gray-500">Producción Total</p>
+                        <p className="text-base font-bold text-[#3A3A3A]">S/ {t.production.toFixed(2)}</p>
+                        <p className="text-[9px] text-gray-400">Ef: S/ {(t.production - t.cajaComun).toFixed(0)} | CC: S/ {t.cajaComun.toFixed(0)}</p>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[#F8F9FA] border border-gray-100">
+                        <p className="text-[10px] font-medium text-gray-500">Utilidad Neta</p>
+                        <p className="text-base font-bold text-emerald-700">S/ {(t.utilidadNeta ?? saldoA).toFixed(2)}</p>
+                        <p className="text-[9px] text-gray-400">Gastos: S/ {t.gastos.toFixed(0)} | Tk: S/ {t.tickets.toFixed(0)}</p>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[#F8F9FA] border border-gray-100">
+                        <p className="text-[10px] font-medium text-gray-500">Rendimiento Km</p>
+                        <p className="text-base font-bold text-[#3A3A3A]">S/ {ingKm.toFixed(2)}<span className="text-xs font-normal text-gray-400">/km</span></p>
+                        <p className="text-[9px] text-gray-400">{t.km.toFixed(0)} km recorridos</p>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[#F8F9FA] border border-gray-100">
+                        <p className="text-[10px] font-medium text-gray-500">% Diésel s/ Prod.</p>
+                        <p className={`text-base font-bold ${pctDiesel <= 35 ? 'text-emerald-700' : pctDiesel <= 42 ? 'text-amber-600' : 'text-red-600'}`}>
+                          {pctDiesel.toFixed(1)}%
+                        </p>
+                        <p className="text-[9px] text-gray-400">Gasto: S/ {(t.dieselGasto || 0).toFixed(0)}</p>
+                      </div>
+                    </div>
+
+                    {/* Acordeón de Vueltas */}
+                    {allTrips.length > 0 && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setShowTripsDetail(!showTripsDetail)}
+                          className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-left transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <ArrowRightLeft className="w-3.5 h-3.5 text-[#912D26]" />
+                            <span className="text-xs font-semibold text-[#3A3A3A]">
+                              Detalle de Vueltas ({allTrips.length})
+                            </span>
+                          </div>
+                          {showTripsDetail ? (
+                            <ChevronUp className="w-4 h-4 text-gray-400" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-gray-400" />
+                          )}
+                        </button>
+
+                        {showTripsDetail && (
+                          <div className="mt-2 space-y-1.5 border border-gray-100 rounded-xl p-2 bg-[#FAFAFA] max-h-48 overflow-y-auto">
+                            {allTrips.map((trip: any, idx: number) => {
+                              const isNoReal = trip.tipo === 'no_realizada';
+                              const ef = trip.efectivoReal ?? (trip.income - (trip.cajaComunMonto || 0));
+                              const cc = trip.cajaComunMonto || 0;
+                              const tot = isNoReal ? 0 : (trip.income || (ef + cc));
+
+                              return (
+                                <div
+                                  key={idx}
+                                  className="p-2 rounded-lg bg-white border border-gray-100 flex items-center justify-between text-xs"
+                                >
+                                  <div className="min-w-0 pr-2">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-bold text-gray-400 text-[10px]">#{idx + 1}</span>
+                                      <span className="font-semibold text-[#3A3A3A] truncate">
+                                        {isNoReal
+                                          ? `NR: ${trip.motivo || 'No operada'}`
+                                          : `${trip.routeFrom || '-'} → ${trip.routeTo || '-'}`}
+                                      </span>
+                                    </div>
+                                    {trip.time && (
+                                      <span className="text-[10px] text-gray-400">{trip.time}</span>
+                                    )}
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <span className="font-bold text-[#912D26]">S/ {tot.toFixed(2)}</span>
+                                    <p className="text-[9px] text-gray-400">Ef: {ef.toFixed(0)} | CC: {cc.toFixed(0)}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            <p className="text-[9px] text-gray-400 text-center pt-1 italic">
+                              * Producción = Efectivo Ruta + Caja Común
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
+            {!loadingPreview && dailyPreview && dailyPreview.dailySummaries?.length === 0 && (
+              <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 text-center">
+                <p className="text-xs font-semibold text-amber-800">Sin registros operativos para el {date}</p>
+                <p className="text-[10px] text-amber-600 mt-0.5">No se encontró hoja de liquidación para este día</p>
+              </div>
+            )}
+          </>
+        )}
 
         {/* No data message */}
         {noData && (
