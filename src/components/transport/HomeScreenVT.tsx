@@ -128,8 +128,7 @@ export function HomeScreenVT({ onSessionStart }: Props) {
           const estadosRaw = localStorage.getItem(estadosKey);
           if (estadosRaw) {
             const estados: { estado: string }[] = JSON.parse(estadosRaw);
-            const hasUnfinished = estados.some(e => e.estado === 'pendiente' || e.estado === 'abierta');
-            if (hasUnfinished) {
+            if (estados.length > 0) {
               setExistingSession(saved);
               setExistingUnfinished(true);
             }
@@ -214,6 +213,9 @@ export function HomeScreenVT({ onSessionStart }: Props) {
       localStorage.removeItem(`rg_estados_${oldVtCode}_${oldFecha}`);
       localStorage.removeItem(`arqueo_general_${oldVtCode}_${oldFecha}`);
       localStorage.removeItem('rg_vt_session');
+      localStorage.removeItem('rg_active_view');
+      localStorage.removeItem('rg_active_estado_id');
+      localStorage.removeItem('rg_active_es_ultima');
       // Eliminar ventas del VT anterior de IndexedDB
       deleteVentasByVT(oldVtCode, oldFecha).catch(() => {});
     }
@@ -225,6 +227,9 @@ export function HomeScreenVT({ onSessionStart }: Props) {
       ...newSession,
       timestamp: Date.now(),
     }));
+    localStorage.setItem('rg_active_view', 'boletos_frecuencias');
+    localStorage.removeItem('rg_active_estado_id');
+    localStorage.removeItem('rg_active_es_ultima');
     setConfirmNewSession(false);
     setExistingUnfinished(false);
     setExistingSession(null);
@@ -234,6 +239,8 @@ export function HomeScreenVT({ onSessionStart }: Props) {
   const handleResumeOld = () => {
     if (!existingSession) return;
     const { timestamp, ...sessionData } = existingSession;
+    localStorage.setItem('rg_active_view', 'boletos_frecuencias');
+    localStorage.removeItem('rg_active_estado_id');
     onSessionStart(sessionData);
   };
 

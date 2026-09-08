@@ -56,7 +56,7 @@ export default function Home() {
     setLoading(false);
   }, []);
 
-  // Auto-restore VT session if exists and has unfinished frequencies
+  // Auto-restaurar sesión VT activa y sub-pantalla exacta (tickets, frecuencias, arqueo)
   const [vtRestoreChecked, setVtRestoreChecked] = useState(false);
   useEffect(() => {
     if (user && !vtRestoreChecked) {
@@ -66,24 +66,89 @@ export default function Home() {
         if (!stored) return;
         const saved: VTSession & { timestamp: number } = JSON.parse(stored);
         if (!saved.vtCode || !saved.fecha) return;
-        // Check if there are unfinished frequencies for this VT
+
         const estadosKey = `rg_estados_${saved.vtCode}_${saved.fecha}`;
         const estadosRaw = localStorage.getItem(estadosKey);
-        if (!estadosRaw) return;
-        const estados: { estado: string }[] = JSON.parse(estadosRaw);
-        const hasUnfinished = estados.some(e => e.estado === 'pendiente' || e.estado === 'abierta');
-        if (!hasUnfinished) {
-          // All done but session not cleared — clean up
-          localStorage.removeItem('rg_vt_session');
+        let estados: FrecuenciaEstado[] = [];
+        if (estadosRaw) {
+          try { estados = JSON.parse(estadosRaw); } catch { /* ignore */ }
+        }
+
+        const activeView = localStorage.getItem('rg_active_view');
+        const activeEstadoId = localStorage.getItem('rg_active_estado_id');
+
+        // Si el usuario navegó voluntariamente a home, mantenerlo allí pero con sesión cargada
+        if (activeView === 'home') {
+          const { timestamp, ...sessionData } = saved;
+          setVtSession(sessionData);
           return;
         }
-        // Restore VT session and go directly to frequencies
+
         const { timestamp, ...sessionData } = saved;
         setVtSession(sessionData);
+
+        // 1. Si estaba vendiendo boletos en una frecuencia activa, restaurar directo a TicketScreen
+        if (activeView === 'boletos_tickets' && activeEstadoId && estados.length > 0) {
+          const targetEstado = estados.find(e => e.estadoId === activeEstadoId);
+          if (targetEstado) {
+            setCurrentEstado(targetEstado);
+            setView('boletos_tickets');
+            return;
+          }
+        }
+
+        // 2. Si estaba en el arqueo de una frecuencia, restaurar directo a ArqueoScreen
+        if (activeView === 'boletos_arqueo' && activeEstadoId && estados.length > 0) {
+          const targetEstado = estados.find(e => e.estadoId === activeEstadoId);
+          if (targetEstado) {
+            setCurrentEstado(targetEstado);
+            setEsUltimaFrecuencia(localStorage.getItem('rg_active_es_ultima') === 'true');
+            setView('boletos_arqueo');
+            return;
+          }
+        }
+
+        // 3. Si estaba en el arqueo general, restaurar a ArqueoGeneralScreen
+        if (activeView === 'boletos_arqueo_general') {
+          setView('boletos_arqueo_general');
+          return;
+        }
+
+        // 4. En cualquier otro caso (se cerró la app, se fue a almorzar tras arqueo, etc.):
+        // Restaurar directamente a la lista de frecuencias (FrecuenciaSelector)
+        // donde puede elegir vender, cancelar o hacer arqueo general
         setView('boletos_frecuencias');
-      } catch { /* ignore parse errors */ }
+      } catch (err) {
+        console.error('Error auto-restoring VT session:', err);
+      }
     }
   }, [user, vtRestoreChecked]);
+
+  // Sincronizar estado y sub-pantalla activa en localStorage en tiempo real
+  useEffect(() => {
+    if (!vtSession) return;
+    try {
+      if (view === 'boletos_tickets' && currentEstado?.estadoId) {
+        localStorage.setItem('rg_active_view', 'boletos_tickets');
+        localStorage.setItem('rg_active_estado_id', currentEstado.estadoId);
+      } else if (view === 'boletos_arqueo' && currentEstado?.estadoId) {
+        localStorage.setItem('rg_active_view', 'boletos_arqueo');
+        localStorage.setItem('rg_active_estado_id', currentEstado.estadoId);
+        localStorage.setItem('rg_active_es_ultima', esUltimaFrecuencia ? 'true' : 'false');
+      } else if (view === 'boletos_arqueo_general') {
+        localStorage.setItem('rg_active_view', 'boletos_arqueo_general');
+        localStorage.removeItem('rg_active_estado_id');
+      } else if (view === 'boletos_frecuencias') {
+        localStorage.setItem('rg_active_view', 'boletos_frecuencias');
+        localStorage.removeItem('rg_active_estado_id');
+      } else if (view === 'boletos_sync') {
+        localStorage.setItem('rg_active_view', 'boletos_sync');
+      } else if (view === 'home') {
+        localStorage.setItem('rg_active_view', 'home');
+        localStorage.removeItem('rg_active_estado_id');
+      }
+    } catch { /* ignore */ }
+  }, [view, currentEstado, vtSession, esUltimaFrecuencia]);
 
   const isAdmin = user?.rol === 'ADMIN';
 
@@ -103,6 +168,9 @@ export default function Home() {
 
   const handleLogout = () => {
     localStorage.removeItem('ct_session');
+    localStorage.removeItem('rg_active_view');
+    localStorage.removeItem('rg_active_estado_id');
+    localStorage.removeItem('rg_active_es_ultima');
     setUser(null);
     setView('home');
   };
@@ -314,7 +382,11 @@ export default function Home() {
           localStorage.removeItem(estadosKey);
           localStorage.removeItem(arqueoKey);
           localStorage.removeItem('rg_vt_session');
+          localStorage.removeItem('rg_active_view');
+          localStorage.removeItem('rg_active_estado_id');
+          localStorage.removeItem('rg_active_es_ultima');
           setVtSession(null);
+          setCurrentEstado(null);
           setView('home');
         }}
       />

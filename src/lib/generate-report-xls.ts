@@ -14,31 +14,54 @@ export async function generateExecutiveReportXLS(data: any): Promise<void> {
   const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
 
+  const t = data.totals || {};
+  const records: any[] = (data.records && data.records.length > 0)
+    ? data.records
+    : (data.dailySummaries || []).flatMap((d: any) => d.records || []);
+
+  const prodTotal = Number(t.production ?? data.totalProduction ?? 0);
+  const gastosTotal = Number(t.gastos ?? data.totalGastos ?? 0);
+  const ticketsTotal = Number(t.tickets ?? data.totalTickets ?? 0);
+  const saldoNeto = Number(t.saldoALiquidar ?? data.saldoALiquidar ?? (prodTotal - gastosTotal - ticketsTotal));
+  const entCia = Number(t.entregaCompania ?? data.totalEntregaCompania ?? 0);
+  const entAyu = Number(t.entregaAyudante ?? data.totalEntregaAyudante ?? 0);
+  const entTot = Number(t.totalEntregado ?? data.totalEntregado ?? (entCia + entAyu));
+  const delta = Number(t.cuadreDelta ?? data.cuadreDelta ?? (entTot - saldoNeto));
+  const isCuadra = t.cuadra !== undefined ? t.cuadra : (data.cuadra !== undefined ? data.cuadra : Math.abs(delta) < 0.01);
+  const kmTotal = Number(t.km ?? data.totalKm ?? 0);
+  const dieselTotal = Number(t.dieselGasto ?? data.dieselGasto ?? 0);
+  const pctDiesel = t.pctDiesel !== undefined ? t.pctDiesel : (data.pctDiesel !== undefined ? data.pctDiesel : (prodTotal > 0 ? (dieselTotal / prodTotal) * 100 : 0));
+  const ingPorKm = t.ingresoPorKm !== undefined ? t.ingresoPorKm : (data.ingresoPorKm !== undefined ? data.ingresoPorKm : (kmTotal > 0 ? prodTotal / kmTotal : 0));
+  const frecReal = t.frecRealizadas ?? data.totalFrecRealizadas ?? 0;
+  const frecProg = t.frecProgramadas ?? data.totalFrecProgramadas ?? 0;
+  const recFound = t.foundRecords ?? data.foundRecords ?? records.length;
+  const recExp = t.expectedRecords ?? data.expectedRecords ?? (data.daysInPeriod || records.length);
+
   // 1. HOJA: RESUMEN EJECUTIVO
   const balanceRows = [
     { "CONCEPTO": "RutaGo - Reporte Ejecutivo Contable", "VALOR": "" },
     { "CONCEPTO": `Período: ${data.startDate || ""} al ${data.endDate || ""}`, "VALOR": `Tipo: ${(data.type || "reporte").toUpperCase()}` },
     { "CONCEPTO": "", "VALOR": "" },
     { "CONCEPTO": "=== BALANCE CONTABLE Y LIQUIDACIÓN ===", "VALOR": "" },
-    { "CONCEPTO": "Producción Total (Ruta + Oficina)", "VALOR": Number(data.totalProduction || 0) },
-    { "CONCEPTO": "(-) Total Gastos Operativos", "VALOR": Number(data.totalGastos || 0) },
-    { "CONCEPTO": "(-) Tickets Descontados en Oficina", "VALOR": Number(data.totalTickets || 0) },
-    { "CONCEPTO": "(=) Saldo Neto a Liquidar", "VALOR": Number(data.saldoALiquidar || 0) },
-    { "CONCEPTO": "Total Entregado (Compañía + Ayudante)", "VALOR": Number(data.totalEntregado || 0) },
-    { "CONCEPTO": "Diferencia de Cuadre (Delta)", "VALOR": Number(data.cuadreDelta || 0) },
-    { "CONCEPTO": "Estado de Cuadre", "VALOR": data.cuadra ? "CUADRE EXACTO" : (data.cuadreDelta > 0 ? "SOBRANTE" : "FALTANTE") },
+    { "CONCEPTO": "Producción Total (Ruta + Oficina)", "VALOR": prodTotal },
+    { "CONCEPTO": "(-) Total Gastos Operativos", "VALOR": gastosTotal },
+    { "CONCEPTO": "(-) Tickets Descontados en Oficina", "VALOR": ticketsTotal },
+    { "CONCEPTO": "(=) Saldo Neto a Liquidar", "VALOR": saldoNeto },
+    { "CONCEPTO": "Total Entregado (Compañía + Ayudante)", "VALOR": entTot },
+    { "CONCEPTO": "Diferencia de Cuadre (Delta)", "VALOR": delta },
+    { "CONCEPTO": "Estado de Cuadre", "VALOR": isCuadra ? "CUADRE EXACTO" : (delta > 0 ? "SOBRANTE" : "FALTANTE") },
     { "CONCEPTO": "", "VALOR": "" },
     { "CONCEPTO": "=== DESGLOSE DE ENTREGAS EFECTIVAS ===", "VALOR": "" },
-    { "CONCEPTO": "Entrega a Compañía", "VALOR": Number(data.totalEntregaCompania || 0) },
-    { "CONCEPTO": "Entrega a Ayudante", "VALOR": Number(data.totalEntregaAyudante || 0) },
+    { "CONCEPTO": "Entrega a Compañía", "VALOR": entCia },
+    { "CONCEPTO": "Entrega a Ayudante", "VALOR": entAyu },
     { "CONCEPTO": "", "VALOR": "" },
     { "CONCEPTO": "=== INDICADORES DE EFICIENCIA OPERATIVA ===", "VALOR": "" },
-    { "CONCEPTO": "Kilómetros Recorridos Totales", "VALOR": `${Number(data.totalKm || 0).toFixed(1)} km` },
-    { "CONCEPTO": "Gasto en Diésel / Combustible", "VALOR": Number(data.dieselGasto || 0) },
-    { "CONCEPTO": "% Diésel sobre Producción", "VALOR": `${Number(data.pctDiesel || 0).toFixed(1)}%` },
-    { "CONCEPTO": "Rendimiento Operativo", "VALOR": `S/ ${Number(data.ingresoPorKm || 0).toFixed(2)} por km` },
-    { "CONCEPTO": "Frecuencias Operadas", "VALOR": `${data.totalFrecRealizadas || 0} realizadas de ${data.totalFrecProgramadas || 0} programadas` },
-    { "CONCEPTO": "Días Registrados en Período", "VALOR": `${data.foundRecords || 0} encontrados de ${data.expectedRecords || 0} días calendario` },
+    { "CONCEPTO": "Kilómetros Recorridos Totales", "VALOR": `${kmTotal.toFixed(1)} km` },
+    { "CONCEPTO": "Gasto en Diésel / Combustible", "VALOR": dieselTotal },
+    { "CONCEPTO": "% Diésel sobre Producción", "VALOR": `${Number(pctDiesel).toFixed(1)}%` },
+    { "CONCEPTO": "Rendimiento Operativo", "VALOR": `S/ ${Number(ingPorKm).toFixed(2)} por km` },
+    { "CONCEPTO": "Frecuencias Operadas", "VALOR": `${frecReal} realizadas de ${frecProg} programadas` },
+    { "CONCEPTO": "Días Registrados en Período", "VALOR": `${recFound} encontrados de ${recExp} días calendario` },
   ];
 
   const wsBalance = XLSX.utils.json_to_sheet(balanceRows);
@@ -46,9 +69,7 @@ export async function generateExecutiveReportXLS(data: any): Promise<void> {
   XLSX.utils.book_append_sheet(wb, wsBalance, "Resumen_Ejecutivo");
 
   // 2. HOJA: DETALLE DÍA POR DÍA
-  const records = data.records || [];
   const dailyRows: any[] = [];
-
   records.forEach((r: any) => {
     const rKmIni = r.kmInicial ? Number(r.kmInicial) : "";
     const rKmFin = r.kmFinal ? Number(r.kmFinal) : "";
@@ -58,12 +79,12 @@ export async function generateExecutiveReportXLS(data: any): Promise<void> {
     const efRuta = prod - cc;
     const gastos = Number(r.totalGastos || 0);
     const tks = Number(r.tickets || 0);
-    const saldoNeto = prod - gastos - tks;
-    const entCia = Number(r.entregaCompania || 0);
-    const entAyu = Number(r.entregaAyudante || 0);
-    const entTot = entCia + entAyu;
-    const delta = entTot - saldoNeto;
-    const cuadra = Math.abs(delta) < 0.01;
+    const saldoDia = prod - gastos - tks;
+    const entCiaDia = Number(r.entregaCompania || 0);
+    const entAyuDia = Number(r.entregaAyudante || 0);
+    const entTotDia = entCiaDia + entAyuDia;
+    const deltaDia = entTotDia - saldoDia;
+    const cuadraDia = Math.abs(deltaDia) < 0.01;
 
     // Gasto diesel del dia
     const dDiesel = (r.expenses || [])
@@ -87,12 +108,12 @@ export async function generateExecutiveReportXLS(data: any): Promise<void> {
       "Total_Gastos": gastos,
       "Gasto_Diesel": dDiesel,
       "Tickets_Oficina": tks,
-      "Saldo_Neto_Liquidar": saldoNeto,
-      "Entrega_Compania": entCia,
-      "Entrega_Ayudante": entAyu,
-      "Total_Entregado": entTot,
-      "Diferencia_Cuadre": delta,
-      "Estado": cuadra ? "CUADRA" : (delta > 0 ? "SOBRANTE" : "FALTANTE"),
+      "Saldo_Neto_Liquidar": saldoDia,
+      "Entrega_Compania": entCiaDia,
+      "Entrega_Ayudante": entAyuDia,
+      "Total_Entregado": entTotDia,
+      "Diferencia_Cuadre": deltaDia,
+      "Estado": cuadraDia ? "CUADRA" : (deltaDia > 0 ? "SOBRANTE" : "FALTANTE"),
       "Vueltas": (r.trips || []).length,
     });
   });
@@ -105,19 +126,19 @@ export async function generateExecutiveReportXLS(data: any): Promise<void> {
     "Ayudante": "",
     "Tacometro_Salida": "",
     "Tacometro_Llegada": "",
-    "Km_Recorridos": Number(data.totalKm || 0),
-    "Efectivo_Ruta": Number(data.totalProduction || 0) - Number(records.reduce((s: number, r: any) => s + (r.cajaComun || 0), 0)),
+    "Km_Recorridos": kmTotal,
+    "Efectivo_Ruta": prodTotal - Number(records.reduce((s: number, r: any) => s + (r.cajaComun || 0), 0)),
     "Caja_Comun_Oficina": Number(records.reduce((s: number, r: any) => s + (r.cajaComun || 0), 0)),
-    "Produccion_Total": Number(data.totalProduction || 0),
-    "Total_Gastos": Number(data.totalGastos || 0),
-    "Gasto_Diesel": Number(data.dieselGasto || 0),
-    "Tickets_Oficina": Number(data.totalTickets || 0),
-    "Saldo_Neto_Liquidar": Number(data.saldoALiquidar || 0),
-    "Entrega_Compania": Number(data.totalEntregaCompania || 0),
-    "Entrega_Ayudante": Number(data.totalEntregaAyudante || 0),
-    "Total_Entregado": Number(data.totalEntregado || 0),
-    "Diferencia_Cuadre": Number(data.cuadreDelta || 0),
-    "Estado": data.cuadra ? "CUADRA" : (data.cuadreDelta > 0 ? "SOBRANTE" : "FALTANTE"),
+    "Produccion_Total": prodTotal,
+    "Total_Gastos": gastosTotal,
+    "Gasto_Diesel": dieselTotal,
+    "Tickets_Oficina": ticketsTotal,
+    "Saldo_Neto_Liquidar": saldoNeto,
+    "Entrega_Compania": entCia,
+    "Entrega_Ayudante": entAyu,
+    "Total_Entregado": entTot,
+    "Diferencia_Cuadre": delta,
+    "Estado": isCuadra ? "CUADRA" : (delta > 0 ? "SOBRANTE" : "FALTANTE"),
     "Vueltas": records.reduce((s: number, r: any) => s + ((r.trips || []).length), 0),
   });
 
@@ -134,25 +155,25 @@ export async function generateExecutiveReportXLS(data: any): Promise<void> {
   // 3. HOJA: FRECUENCIAS Y VUELTAS
   const tripRows: any[] = [];
   records.forEach((r: any) => {
-    (r.trips || []).forEach((t: any) => {
-      const efReal = Number(t.efectivoReal ?? (t.income || 0));
-      const ccMonto = Number(t.cajaComunMonto || 0);
-      const isNR = t.tipo === "no_realizada";
-      const isIE = t.tipo === "ingreso_especial";
+    (r.trips || []).forEach((tItem: any) => {
+      const efReal = Number(tItem.efectivoReal ?? (tItem.income || 0));
+      const ccMonto = Number(tItem.cajaComunMonto || 0);
+      const isNR = tItem.tipo === "no_realizada";
+      const isIE = tItem.tipo === "ingreso_especial";
       const tipoLabel = isIE ? "Especial" : (isNR ? "No Realizada" : "Frecuencia");
 
       tripRows.push({
         "Fecha": formatDate(r.date),
         "Cuaderno_VT": r.vtCode || "-",
         "Ayudante": r.ayudanteNombre || "-",
-        "Hora": t.time || "-",
-        "Ruta": `${t.routeFrom || ""} - ${t.routeTo || ""}`,
+        "Hora": tItem.time || "-",
+        "Ruta": `${tItem.routeFrom || ""} - ${tItem.routeTo || ""}`,
         "Tipo": tipoLabel,
         "Efectivo_Ruta": isNR ? 0 : efReal,
         "Caja_Comun": isNR ? 0 : ccMonto,
         "Produccion_Vuelta": isNR ? 0 : (efReal + ccMonto),
-        "Boletos_Oficina": Number(t.boletos || 0),
-        "Motivo_Observacion": t.motivo || t.notaEspecial || "",
+        "Boletos_Oficina": Number(tItem.boletos || 0),
+        "Motivo_Observacion": tItem.motivo || tItem.notaEspecial || "",
       });
     });
   });
@@ -188,7 +209,7 @@ export async function generateExecutiveReportXLS(data: any): Promise<void> {
 
   // 5. HOJA: AUDITORÍA Y NOVEDADES
   const auditRows: any[] = [];
-  const missing = data.missingDates || [];
+  const missing = t.missingDates || data.missingDates || [];
   if (missing.length > 0) {
     auditRows.push({ "CATEGORIA": "FECHAS SIN REGISTRO EN EL PERÍODO", "DETALLE": `${missing.length} días sin hoja de liquidación` });
     missing.forEach((d: string) => {
@@ -197,7 +218,7 @@ export async function generateExecutiveReportXLS(data: any): Promise<void> {
     auditRows.push({ "CATEGORIA": "", "DETALLE": "" });
   }
 
-  const motivos = data.motivosPerdida || [];
+  const motivos = t.motivosPerdida || data.motivosPerdida || [];
   if (motivos.length > 0) {
     auditRows.push({ "CATEGORIA": "PÉRDIDAS OPERATIVAS (Vueltas No Realizadas)", "DETALLE": "" });
     motivos.forEach((m: any) => {
@@ -211,9 +232,18 @@ export async function generateExecutiveReportXLS(data: any): Promise<void> {
     XLSX.utils.book_append_sheet(wb, wsAudit, "Auditoria_Novedades");
   }
 
-  // Escribir archivo y disparar descarga
+  // Escribir archivo y disparar descarga compatible con móviles y navegadores
   const fileName = `rutago_reporte_${data.type || "ejecutivo"}_${data.startDate || ""}_al_${data.endDate || ""}.xlsx`;
-  XLSX.writeFile(wb, fileName);
+  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const blob = new Blob([wbout], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // Retrocompatibilidad con función clásica
@@ -223,18 +253,20 @@ export function generateReportXLS(records: SavedRecord[], from: string, to: stri
     startDate: from,
     endDate: to,
     records,
-    totalProduction: records.reduce((s, r) => s + r.production, 0),
-    totalGastos: records.reduce((s, r) => s + r.totalGastos, 0),
-    totalKm: records.reduce((s, r) => s + (parseFloat(r.km || "0") || 0), 0),
-    totalEntregaCompania: records.reduce((s, r) => s + r.entregaCompania, 0),
-    totalEntregaAyudante: records.reduce((s, r) => s + r.entregaAyudante, 0),
-    totalTickets: records.reduce((s, r) => s + r.tickets, 0),
-    totalEntregado: records.reduce((s, r) => s + (r.entregaCompania + r.entregaAyudante), 0),
-    saldoALiquidar: records.reduce((s, r) => s + (r.production - r.totalGastos - r.tickets), 0),
-    cuadreDelta: records.reduce((s, r) => s + ((r.entregaCompania + r.entregaAyudante) - (r.production - r.totalGastos - r.tickets)), 0),
-    cuadra: true,
-    foundRecords: records.length,
-    expectedRecords: records.length,
+    totals: {
+      production: records.reduce((s, r) => s + r.production, 0),
+      gastos: records.reduce((s, r) => s + r.totalGastos, 0),
+      km: records.reduce((s, r) => s + (parseFloat(r.km || "0") || 0), 0),
+      entregaCompania: records.reduce((s, r) => s + r.entregaCompania, 0),
+      entregaAyudante: records.reduce((s, r) => s + r.entregaAyudante, 0),
+      tickets: records.reduce((s, r) => s + r.tickets, 0),
+      totalEntregado: records.reduce((s, r) => s + (r.entregaCompania + r.entregaAyudante), 0),
+      saldoALiquidar: records.reduce((s, r) => s + (r.production - r.totalGastos - r.tickets), 0),
+      cuadreDelta: records.reduce((s, r) => s + ((r.entregaCompania + r.entregaAyudante) - (r.production - r.totalGastos - r.tickets)), 0),
+      cuadra: true,
+      foundRecords: records.length,
+      expectedRecords: records.length,
+    }
   };
   generateExecutiveReportXLS(dataWrapper);
 }

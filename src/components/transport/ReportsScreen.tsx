@@ -225,31 +225,41 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
     setExportingXLS(true);
     try {
       let dataToUse = previewData;
-      if (!dataToUse || !dataToUse.records) {
+      const hasPreviewRecords = dataToUse && (
+        (dataToUse.records && dataToUse.records.length > 0) ||
+        (dataToUse.dailySummaries && dataToUse.dailySummaries.length > 0)
+      );
+
+      if (!hasPreviewRecords) {
         const params = new URLSearchParams();
-        params.set('type', reportType);
-        if (reportType === 'diario') params.set('date', date);
-        else if (reportType === 'semanal') params.set('date', weekRefDate);
-        else if (reportType === 'mensual') { if (month) params.set('month', month); }
-        else if (reportType === 'conductor') { params.set('conductorId', conductorName); if (month) params.set('month', month); }
-        else if (reportType === 'rango' || reportType === 'caja-comun') { params.set('from', rangeFrom); params.set('to', rangeTo); }
+        params.set("type", reportType);
+        if (reportType === "diario") params.set("date", date);
+        else if (reportType === "semanal") params.set("date", weekRefDate);
+        else if (reportType === "mensual") { if (month) params.set("month", month); }
+        else if (reportType === "conductor") { params.set("conductorId", conductorName); if (month) params.set("month", month); }
+        else if (reportType === "rango" || reportType === "caja-comun") { params.set("from", rangeFrom); params.set("to", rangeTo); }
+
         const res = await fetch(`/api/reports?${params.toString()}`);
-        if (!res.ok) throw new Error('Error al consultar datos');
+        if (!res.ok) throw new Error("Error al consultar datos");
         dataToUse = await res.json();
       }
 
-      if (!dataToUse || !dataToUse.records || dataToUse.records.length === 0) {
-        toast({ title: 'Sin datos', description: 'No hay registros para exportar en este período.', variant: 'destructive' });
+      const recs = (dataToUse?.records && dataToUse.records.length > 0)
+        ? dataToUse.records
+        : (dataToUse?.dailySummaries || []).flatMap((d: any) => d.records || []);
+
+      if (recs.length === 0) {
+        toast({ title: "Sin datos", description: "No hay registros para exportar en este período.", variant: "destructive" });
         setExportingXLS(false);
         return;
       }
 
-      const { generateExecutiveReportXLS } = await import('@/lib/generate-report-xls');
+      const { generateExecutiveReportXLS } = await import("@/lib/generate-report-xls");
       await generateExecutiveReportXLS(dataToUse);
-      toast({ title: 'Excel generado', description: 'Archivo .xlsx descargado exitosamente.' });
+      toast({ title: "Excel generado", description: "Archivo .xlsx descargado exitosamente." });
     } catch (err) {
-      console.error('Error exporting XLS:', err);
-      toast({ title: 'Error', description: 'No se pudo generar el archivo Excel.', variant: 'destructive' });
+      console.error("Error exporting XLS:", err);
+      toast({ title: "Error", description: "No se pudo generar el archivo Excel.", variant: "destructive" });
     } finally {
       setExportingXLS(false);
     }
