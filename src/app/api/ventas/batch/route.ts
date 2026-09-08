@@ -18,12 +18,15 @@ export async function POST(request: NextRequest) {
     for (const v of ventas) {
       try {
         const {
-          fecha, vtCode, frecuenciaId, ruta, parada, tipo, pasajeroTipo,
+          fecha, fechaOperacion, diaTurno, fechaEmision,
+          vtCode, frecuenciaId, ruta, parada, tipo, pasajeroTipo,
           tarifaOficial, cobrado, hora, ayudanteId, ayudanteNombre,
           createdAt, localId, lat, lng
         } = v as Record<string, unknown>;
 
-        if (!fecha || !vtCode || typeof cobrado !== 'number') {
+        const opFecha = ((fechaOperacion || fecha) as string) || '';
+
+        if (!opFecha || !vtCode || typeof cobrado !== 'number') {
           results.push({ localId: (localId as string) || '', serverId: '', ok: false, error: 'Campos obligatorios faltantes' });
           continue;
         }
@@ -33,6 +36,7 @@ export async function POST(request: NextRequest) {
           results.push({ localId: (localId as string) || '', serverId: '', ok: false, error: 'cobrado no puede ser negativo' });
           continue;
         }
+
         const tarifaNum = typeof tarifaOficial === 'number' ? tarifaOficial : 0;
         if (tarifaNum < 0) {
           results.push({ localId: (localId as string) || '', serverId: '', ok: false, error: 'tarifaOficial no puede ser negativa' });
@@ -47,9 +51,14 @@ export async function POST(request: NextRequest) {
           } catch { /* ignore */ }
         }
 
+        const emisionDate = fechaEmision ? new Date(fechaEmision as string) : (createdAt ? new Date(createdAt as string) : new Date());
+        const diaNum = typeof diaTurno === 'number' ? diaTurno : 1;
+
         const venta = await prisma.ventaBoleto.create({
           data: {
-            fecha: fecha as string,
+            fecha: opFecha,
+            fechaOperacion: opFecha,
+            diaTurno: diaNum,
             vtCode: vtCode as string,
             frecuenciaId: validFrecuenciaId,
             ruta: (ruta as string) || '',
@@ -64,7 +73,9 @@ export async function POST(request: NextRequest) {
             ...(lat != null ? { lat: parseFloat(lat as string) || null } : {}),
             ...(lng != null ? { lng: parseFloat(lng as string) || null } : {}),
             syncStatus: 'synced',
-            createdAt: createdAt ? new Date(createdAt as string) : undefined,
+            fechaEmision: emisionDate,
+            syncedAt: new Date(),
+            createdAt: createdAt ? new Date(createdAt as string) : emisionDate,
           },
         });
 

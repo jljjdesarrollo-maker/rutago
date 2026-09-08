@@ -183,15 +183,20 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     }
 
     const now = new Date();
-    const fecha = now.toISOString().split('T')[0];
+    const fechaCal = now.toISOString().split('T')[0];
+    const fechaOperacion = session.fecha || fechaCal;
+    const diaTurno = fechaCal > fechaOperacion ? 2 : 1;
     const hora = now.toTimeString().slice(0, 5);
+    const fechaEmisionStr = now.toISOString();
 
     // ─── Crear N registros (uno por pasajero) ───
     const baseId = Date.now();
     for (let i = 0; i < cantidadEfectiva; i++) {
       const venta = {
         id: `local_${baseId}_${i}_${Math.random().toString(36).slice(2, 8)}`,
-        fecha,
+        fecha: fechaOperacion,
+        fechaOperacion,
+        diaTurno,
         vtCode: session.vtCode,
         frecuenciaId: estado.id,
         frecuenciaNombre: estado.nombre,
@@ -205,7 +210,8 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
         tarifaOriginal: esGanador ? tarifaAuto || cobradoNum : cobradoNum,
         cobrado: esGanador ? 0 : cobradoNum,
         hora,
-        createdAt: now.toISOString(),
+        fechaEmision: fechaEmisionStr,
+        createdAt: fechaEmisionStr,
         ayudanteId: session.ayudanteId,
         ayudanteNombre: session.ayudanteNombre,
         syncStatus: 'pending' as const,
@@ -342,7 +348,12 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
           </button>
           <div className="flex-1 text-center">
-            <div className="text-sm font-bold leading-tight">{estado.hora} · {rutaMatched}</div>
+            <div className="text-sm font-bold leading-tight flex items-center justify-center gap-1.5">
+              <span>{estado.hora} · {rutaMatched}</span>
+              {(session.fecha && new Date().toISOString().split('T')[0] > session.fecha) && (
+                <span className="bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.2 rounded uppercase">Día 2</span>
+              )}
+            </div>
             <div className="inline-block px-2 py-0.5 rounded-full bg-white/20 text-[9px] font-bold uppercase">{direccionLabel}</div>
           </div>
           <div className="text-right">

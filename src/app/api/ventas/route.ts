@@ -7,19 +7,24 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
-      fecha, vtCode, frecuenciaId, ruta, parada, tipo, pasajeroTipo,
+      fecha, fechaOperacion, diaTurno, fechaEmision,
+      vtCode, frecuenciaId, ruta, parada, tipo, pasajeroTipo,
       tarifaOficial, cobrado, hora, ayudanteId, ayudanteNombre,
       createdAt, localId, lat, lng
     } = body;
 
-    // Validacion server-side
-    if (!fecha || !vtCode) {
-      return NextResponse.json({ error: 'fecha y vtCode son obligatorios' }, { status: 400 });
+    const opFecha = (fechaOperacion || fecha) as string;
+
+    // Validación server-side
+    if (!opFecha || !vtCode) {
+      return NextResponse.json({ error: 'fecha/fechaOperacion y vtCode son obligatorios' }, { status: 400 });
     }
+
     const cobradoNum = parseFloat(cobrado);
     if (isNaN(cobradoNum) || cobradoNum < 0) {
       return NextResponse.json({ error: 'cobrado debe ser un numero >= 0' }, { status: 400 });
     }
+
     const tarifaNum = parseFloat(tarifaOficial) || 0;
     if (tarifaNum < 0) {
       return NextResponse.json({ error: 'tarifaOficial debe ser >= 0' }, { status: 400 });
@@ -35,9 +40,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const emisionDate = fechaEmision ? new Date(fechaEmision) : (createdAt ? new Date(createdAt) : new Date());
+    const diaNum = typeof diaTurno === 'number' ? diaTurno : 1;
+
     const venta = await prisma.ventaBoleto.create({
       data: {
-        fecha,
+        fecha: opFecha,
+        fechaOperacion: opFecha,
+        diaTurno: diaNum,
         vtCode,
         frecuenciaId: validFrecuenciaId,
         ruta,
@@ -52,7 +62,9 @@ export async function POST(request: NextRequest) {
         ...(lat != null ? { lat: parseFloat(lat) } : {}),
         ...(lng != null ? { lng: parseFloat(lng) } : {}),
         syncStatus: 'synced',
-        createdAt: createdAt ? new Date(createdAt) : undefined,
+        fechaEmision: emisionDate,
+        syncedAt: new Date(),
+        createdAt: createdAt ? new Date(createdAt) : emisionDate,
       },
       include: {
         frecuencia: true,
@@ -75,7 +87,12 @@ export async function GET(request: NextRequest) {
     const ventas = await prisma.ventaBoleto.findMany({
       where: {
         ...(vtCode ? { vtCode } : {}),
-        ...(fecha ? { fecha } : {}),
+        ...(fecha ? {
+          OR: [
+            { fechaOperacion: fecha },
+            { fecha: fecha },
+          ],
+        } : {}),
       },
       include: {
         frecuencia: true,

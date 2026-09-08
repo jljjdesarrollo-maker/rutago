@@ -106,7 +106,9 @@ model Frecuencia {
 
 model VentaBoleto {
   id              String   @id @default(cuid())
-  fecha           String
+  fecha           String   // Mantenido para retrocompatibilidad
+  fechaOperacion  String?  // Fecha contable del turno ("2026-09-08")
+  diaTurno        Int      @default(1) // 1 = Primer día del turno, 2 = Retorno tras pernocta
   vtCode          String
   frecuenciaId    String?
   ruta            String
@@ -123,9 +125,14 @@ model VentaBoleto {
   syncStatus      String   @default("pending")
   serverId        String?
   syncError       String?
+  fechaEmision    DateTime @default(now()) // Timestamp exacto de emisión
+  syncedAt        DateTime? @default(now()) // Timestamp de recepción en servidor
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   frecuencia Frecuencia? @relation(fields: [frecuenciaId], references: [id])
   vt         BusVT       @relation(fields: [vtCode], references: [codigo])
+
+  @@index([fechaOperacion, vtCode])
+  @@index([fecha, vtCode])
 }

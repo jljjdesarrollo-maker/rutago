@@ -1,7 +1,9 @@
 // IndexedDB for offline ticket storage - RutaGo
 export interface VentaLocal {
   id: string;
-  fecha: string;
+  fecha: string;               // Mantenido para retrocompatibilidad
+  fechaOperacion?: string;     // Fecha contable del turno ("2026-09-08")
+  diaTurno?: number;           // 1 = Mismo día de apertura, 2 = Retorno pernocta
   vtCode: string;
   frecuenciaId: string;         // Real Frecuencia.id (server-side FK)
   frecuenciaNombre: string;
@@ -13,6 +15,7 @@ export interface VentaLocal {
   tarifaOficial: number;
   cobrado: number;
   hora: string;
+  fechaEmision?: string;       // Timestamp exacto de emisión
   createdAt: string;
   ayudanteId: string;
   ayudanteNombre: string;
@@ -247,7 +250,7 @@ export async function deleteVentasByVT(vtCode: string, fecha: string): Promise<v
       const cursor = (event.target as IDBRequest).result;
       if (cursor) {
         const v = cursor.value as VentaLocal;
-        if (v.vtCode === vtCode && v.fecha === fecha) {
+        if (v.vtCode === vtCode && (v.fechaOperacion === fecha || v.fecha === fecha)) {
           cursor.delete();
         }
         cursor.continue();
@@ -269,7 +272,7 @@ export async function countVentasPendientesByVT(vtCode: string, fecha: string): 
       const all: VentaLocal[] = request.result;
       resolve(all.filter(v => 
         (v.syncStatus === 'pending' || v.syncStatus === 'error') &&
-        v.vtCode === vtCode && v.fecha === fecha
+        v.vtCode === vtCode && (v.fechaOperacion === fecha || v.fecha === fecha)
       ).length);
     };
     request.onerror = () => reject(request.error);
@@ -416,7 +419,11 @@ export async function syncVentasSilencioso(): Promise<{ synced: number; failed: 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ventas: batch.map(v => ({
-              fecha: v.fecha, vtCode: v.vtCode, frecuenciaId: v.frecuenciaId,
+              fecha: v.fecha,
+              fechaOperacion: v.fechaOperacion || v.fecha,
+              diaTurno: v.diaTurno || 1,
+              fechaEmision: v.fechaEmision || v.createdAt,
+              vtCode: v.vtCode, frecuenciaId: v.frecuenciaId,
               ruta: v.ruta, parada: v.parada, tipo: v.tipo,
               pasajeroTipo: v.pasajeroTipo,
               tarifaOficial: v.tarifaOficial, cobrado: v.cobrado,
@@ -446,7 +453,11 @@ export async function syncVentasSilencioso(): Promise<{ synced: number; failed: 
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  fecha: venta.fecha, vtCode: venta.vtCode, frecuenciaId: venta.frecuenciaId,
+                  fecha: venta.fecha,
+                  fechaOperacion: venta.fechaOperacion || venta.fecha,
+                  diaTurno: venta.diaTurno || 1,
+                  fechaEmision: venta.fechaEmision || venta.createdAt,
+                  vtCode: venta.vtCode, frecuenciaId: venta.frecuenciaId,
                   ruta: venta.ruta, parada: venta.parada, tipo: venta.tipo,
                   pasajeroTipo: venta.pasajeroTipo,
                   tarifaOficial: venta.tarifaOficial, cobrado: venta.cobrado,

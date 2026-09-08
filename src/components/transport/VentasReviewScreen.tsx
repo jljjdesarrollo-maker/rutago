@@ -35,6 +35,10 @@ interface FrecuenciaRel {
 interface Venta {
   id: string;
   fecha: string;
+  fechaOperacion?: string;
+  diaTurno?: number;
+  fechaEmision?: string;
+  syncedAt?: string;
   vtCode: string;
   frecuenciaId: string | null;
   ruta: string;
@@ -58,6 +62,7 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
   const [selectedVT, setSelectedVT] = useState('');
   const [selectedAyudante, setSelectedAyudante] = useState('');
   const [vts, setVts] = useState<string[]>([]);
+  const [vtCounts, setVtCounts] = useState<Record<string, number>>({});
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   // Cargar lista de VTs disponibles para la fecha seleccionada
@@ -69,6 +74,11 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
           const data: Venta[] = await res.json();
           const uniqueVTs = [...new Set(data.map(v => v.vtCode).filter(Boolean))].sort();
           setVts(uniqueVTs);
+          const counts: Record<string, number> = {};
+          data.forEach(v => {
+            if (v.vtCode) counts[v.vtCode] = (counts[v.vtCode] || 0) + 1;
+          });
+          setVtCounts(counts);
         }
       } catch { /* ignore */ }
     };
@@ -290,7 +300,9 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
             >
               <option value="">Todos ({vts.length})</option>
               {vts.map(vt => (
-                <option key={vt} value={vt}>{vt}</option>
+                <option key={vt} value={vt}>
+                  {vt} ({vtCounts[vt] || 0} boletos)
+                </option>
               ))}
             </select>
           </div>
@@ -481,9 +493,16 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
                           <span className="font-mono text-[11px] font-bold text-gray-700 block">
                             {exactTime}
                           </span>
-                          <span className="text-[9px] text-gray-400 block font-mono">
-                            #{i + 1}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[9px] text-gray-400 font-mono">
+                              #{i + 1}
+                            </span>
+                            {v.diaTurno === 2 && (
+                              <span className="bg-amber-100 text-amber-800 text-[8px] font-bold px-1 py-0.2 rounded" title="Retorno tras pernocta (Día 2)">
+                                D2
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Parada y Ruta */}
