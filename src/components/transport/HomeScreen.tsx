@@ -10,7 +10,7 @@ import type { UserSession } from './types';
 interface HomeScreenProps {
   user: UserSession;
   isAdmin: boolean;
-  onGoToForm: () => void;
+  onGoToForm?: () => void;
   onGoToCargaHistorica?: () => void;
   onGoToHistory: () => void;
   onGoToPersonal: () => void;
@@ -103,23 +103,13 @@ export function HomeScreen({ user, isAdmin, onGoToForm, onGoToCargaHistorica, on
 
       {/* Main Actions */}
       <main className="flex-1 px-5 pb-6 flex flex-col gap-3">
-        {/* Primary: Nuevo Registro */}
-        <Button
-          onClick={onGoToForm}
-          className="w-full h-18 text-lg font-semibold rounded-2xl bg-[#912D26] hover:bg-[#7A2520] text-white shadow-lg shadow-[#912D26]/20 active:scale-[0.98] transition-transform py-6"
-        >
-          <Pencil className="w-6 h-6 mr-3" />
-          Nuevo Registro
-        </Button>
-
-        {/* Carga Histórica de Cuadernos (Fase 1) */}
+        {/* Primary: Carga Histórica de Cuadernos (Reemplazo oficial de Nuevo Registro) */}
         {onGoToCargaHistorica && (
           <Button
             onClick={onGoToCargaHistorica}
-            variant="outline"
-            className="w-full h-14 text-base font-bold rounded-2xl border-2 border-[#912D26] text-[#912D26] hover:bg-[#912D26]/10 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+            className="w-full h-18 text-lg font-semibold rounded-2xl bg-[#912D26] hover:bg-[#7A2520] text-white shadow-lg shadow-[#912D26]/20 active:scale-[0.98] transition-transform py-6 flex items-center justify-center gap-3"
           >
-            <BookOpen className="w-5 h-5 text-[#912D26]" />
+            <BookOpen className="w-6 h-6" />
             Carga Histórica de Cuadernos
           </Button>
         )}
