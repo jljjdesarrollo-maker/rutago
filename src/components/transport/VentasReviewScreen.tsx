@@ -256,7 +256,7 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
               <ShieldCheck className="w-4 h-4 text-amber-300" />
               Auditoría y Revisión de Ventas
             </h1>
-            <p className="text-white/70 text-[11px]">Trazabilidad de boletos segundo a segundo</p>
+            <p className="text-white/70 text-[11px]">Auditoría por Grupo de Turno (VT) y Frecuencia</p>
           </div>
           <div className="w-6" />
         </div>
@@ -281,7 +281,7 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
           {/* Selector de Vehículo (VT) */}
           <div>
             <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
-              Unidad / VT
+              Grupo Turno (VT)
             </label>
             <select
               value={selectedVT}
@@ -412,8 +412,8 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
               >
                 <div className="flex-1 min-w-0 pr-2">
                   <div className="flex items-center gap-1.5">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#912D26]/10 text-[#912D26]">
-                      {group.vtCode}
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#912D26]/10 text-[#912D26] tracking-wide">
+                      Turno {group.vtCode}
                     </span>
                     <h3 className="text-xs font-bold text-gray-900 truncate">
                       {group.title}

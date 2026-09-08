@@ -56,6 +56,18 @@ const ROUTE_STYLES: Record<VTRouteType, {
   },
 };
 
+function isOvernightVT(frecuencias?: { time?: string }[]): boolean {
+  if (!frecuencias || frecuencias.length <= 1) return false;
+  for (let i = 1; i < frecuencias.length; i++) {
+    const prevTime = frecuencias[i - 1].time || '';
+    const currTime = frecuencias[i].time || '';
+    if (prevTime && currTime && currTime < prevTime) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function getVTRouteType(frecuencias?: { routeFrom: string; routeTo: string }[]): VTRouteType {
   if (!frecuencias || frecuencias.length === 0) return 'vilcabamba';
   const allDests = [...frecuencias.map(f => f.routeTo), ...frecuencias.map(f => f.routeFrom)];
@@ -635,34 +647,52 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
         ) : (
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
             <h2 className="text-base font-bold text-[#3A3A3A] mb-3 flex items-center gap-2">
-              <Bus className="w-4 h-4 text-[#912D26]" /> Unidad
+              <Bus className="w-4 h-4 text-[#912D26]" /> Cartilla / Grupo de Turno (VT)
             </h2>
             <div className={`grid gap-3 ${vts.length <= 2 ? 'grid-cols-2' : vts.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
               {vts.map(vt => {
                 const routeType = getVTRouteType(vt.frecuencias);
                 const style = ROUTE_STYLES[routeType];
                 const isSelected = selectedVT === vt.codigo;
+                const overnight = isOvernightVT(vt.frecuencias);
                 return (
                   <button key={vt.codigo}
                     onClick={() => vts.length === 1 ? startSession(vt.codigo) : setSelectedVT(vt.codigo)}
-                    className={`relative py-5 px-3 rounded-xl text-center transition-all active:scale-95 border ${
+                    className={`relative py-4 px-3 rounded-xl text-center transition-all active:scale-95 border flex flex-col justify-between items-center min-h-[92px] ${
                       isSelected
                         ? `${style.selectedBg} text-white shadow-md ring-2 ${style.selectedRing}`
                         : `${style.bg} ${style.border} ${style.text} hover:opacity-80 active:opacity-70`
                     }`}
                   >
-                    <div className="text-base font-bold">{vt.codigo}</div>
-                    <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/70' : style.subtext}`}>{vt.nombre}</div>
-                    {style.label && !isSelected && (
-                      <span className={`absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full ${style.badgeBg} ${style.badgeText} shadow-sm`}>
-                        {style.label}
-                      </span>
-                    )}
-                    {style.label && isSelected && (
-                      <span className="absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-white/25 text-white shadow-sm">
-                        {style.label}
-                      </span>
-                    )}
+                    <div>
+                      <div className="text-base font-black tracking-tight">{vt.codigo}</div>
+                      <div className={`text-[10px] font-semibold mt-0.5 ${isSelected ? 'text-white/85' : style.subtext}`}>
+                        {vt.frecuencias?.length || 0} frecuencias
+                      </div>
+                    </div>
+
+                    <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
+                      {overnight ? (
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
+                          isSelected ? 'bg-amber-400 text-amber-950' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          Día 1 → 2
+                        </span>
+                      ) : (
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          Mismo día
+                        </span>
+                      )}
+                      {style.label && (
+                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
+                          isSelected ? 'bg-white/30 text-white' : `${style.badgeBg} ${style.badgeText}`
+                        }`}>
+                          {style.label}
+                        </span>
+                      )}
+                    </div>
                   </button>
                 );
               })}
