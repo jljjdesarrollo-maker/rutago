@@ -54,6 +54,9 @@ export async function POST(request: NextRequest) {
         syncStatus: 'synced',
         createdAt: createdAt ? new Date(createdAt) : undefined,
       },
+      include: {
+        frecuencia: true,
+      },
     });
 
     return NextResponse.json({ success: true, venta, localId });
@@ -73,6 +76,9 @@ export async function GET(request: NextRequest) {
       where: {
         ...(vtCode ? { vtCode } : {}),
         ...(fecha ? { fecha } : {}),
+      },
+      include: {
+        frecuencia: true,
       },
       orderBy: { createdAt: 'asc' },
     });
