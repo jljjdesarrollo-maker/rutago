@@ -89,3 +89,17 @@
   - **Autobús / Unidad Física:** Es la máquina (`busId`, `numeroUnidad`, `placa`). El odómetro/tacómetro, los mantenimientos mecánicos preventivos (aceite, neumáticos) y el consumo de diésel pertenecen a la **unidad física**.
   - **VT (Vuelta Turno / Cuaderno de Servicios):** Es la hoja de programación de frecuencias que asigna la cooperativa. Los autobuses rotan entre los distintos VTs según el rol de la empresa.
   - Al expandirse a los 19 buses, el selector de unidad o sesión vinculará cada operación al `busId` correspondiente, asegurando que el tacómetro anterior se consulte estrictamente para ese mismo autobús.
+
+---
+
+## 3. Pendientes Urgentes de Implementación Futura
+
+### PENDIENTE CRÍTICO #1: Vinculación Estricta de Dispositivo Físico (Device Binding)
+- **Problema Detectado:** Si un usuario malicioso o tercero conoce el PIN del Ayudante activo del día e inicia sesión desde otro dispositivo (teléfono personal o PC) de forma simultánea, se crea una sesión paralela que puede generar boletos fantasma y duplicar el arqueo general en la base de datos.
+- **Solución Técnica Acordada (Arquitectura Offline-First + Admin Control):**
+  1. **Huella Digital Local Única (`deviceId`):** Generar y almacenar de forma inmutable un UUID criptográfico en el almacenamiento del navegador (`localStorage` + `IndexedDB`) del teléfono físico del bus en su primera inicialización.
+  2. **Emparejamiento en BD:** Asignar el `deviceId` a la entidad `Persona` (rol `AYUDANTE`) en la base de datos.
+  3. **Validación de Login:** Al autenticarse con PIN, el endpoint `/api/auth` y el flujo local deben rechazar el acceso si el `deviceId` del equipo entrante no coincide con el `deviceId` registrado para ese ayudante oficial.
+  4. **Panel de Gestión de Dispositivo (Admin):** En la pantalla `PersonalScreen`, permitir al Administrador:
+     - Visualizar el estado del teléfono vinculado (ej. "Teléfono Oficial Vinculado").
+     - Botón de emergencia **"Desvincular / Resetear Teléfono"** para liberar el usuario en caso de robo, descarga o avería del terminal en carretera y permitir la vinculación inmediata de un teléfono de reemplazo.
