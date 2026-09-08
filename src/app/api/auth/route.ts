@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
         id: admin.id,
         nombre: admin.nombre,
         rol: admin.rol,
+        esActual: admin.esActual,
       });
     }
 
@@ -121,6 +122,7 @@ export async function POST(req: NextRequest) {
       id: persona.id,
       nombre: persona.nombre,
       rol: persona.rol,
+      esActual: persona.esActual,
     });
   } catch (error) {
     console.error('Error authenticating:', error);

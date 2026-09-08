@@ -50,6 +50,17 @@ export default function Home() {
         const session = JSON.parse(stored) as UserSession;
         if (session.id && session.rol) {
           setUser(session);
+          // Si es ayudante y está en línea, refrescar estado de actividad (esActual)
+          if (typeof window !== 'undefined' && navigator.onLine && session.rol === 'AYUDANTE') {
+            fetch(`/api/personas/${session.id}`)
+              .then(res => res.json())
+              .then(data => {
+                if (data && typeof data.esActual === 'boolean') {
+                  setUser(prev => prev ? { ...prev, esActual: data.esActual } : prev);
+                }
+              })
+              .catch(() => {});
+          }
         }
       }
     } catch { /* ignore */ }
@@ -61,6 +72,8 @@ export default function Home() {
   useEffect(() => {
     if (user && !vtRestoreChecked) {
       setVtRestoreChecked(true);
+      // Auto-restaurar sesión VT exclusivamente para el rol AYUDANTE
+      if (user.rol !== 'AYUDANTE') return;
       try {
         const stored = localStorage.getItem('rg_vt_session');
         if (!stored) return;
@@ -334,9 +347,23 @@ export default function Home() {
     );
   }
 
-  // ─── Boletos views ───
+  // ─── Boletos views (Exclusivas para AYUDANTE) ───
+  if (view.startsWith('boletos_') && user.rol !== 'AYUDANTE') {
+    setView('home');
+    return null;
+  }
+
   if (view === 'boletos_home') {
-    return <HomeScreenVT onSessionStart={(s) => { setVtSession(s); setView('boletos_frecuencias'); }} />;
+    return (
+      <HomeScreenVT
+        currentUser={user}
+        onBack={() => setView('home')}
+        onSessionStart={(s) => {
+          setVtSession(s);
+          setView('boletos_frecuencias');
+        }}
+      />
+    );
   }
   if (view === 'boletos_frecuencias' && vtSession) {
     return (

@@ -3,9 +3,18 @@ import { db } from '@/lib/db';
 import { hashPin } from '@/lib/pin-hash';
 
 // GET /api/personas — List all personas
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const url = new URL(req.url);
+    const rol = url.searchParams.get('rol');
+    const esActual = url.searchParams.get('esActual');
+
+    const where: Record<string, unknown> = {};
+    if (rol) where.rol = rol;
+    if (esActual !== null) where.esActual = esActual === 'true';
+
     const personas = await db.persona.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       select: { id: true, nombre: true, cedula: true, telefono: true, rol: true, esActual: true, createdAt: true, updatedAt: true },
     });

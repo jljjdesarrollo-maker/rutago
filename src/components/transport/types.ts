@@ -61,6 +61,7 @@ export interface UserSession {
   id: string;
   nombre: string;
   rol: string;
+  esActual?: boolean;
 }
 
 export type AppView = 'home' | 'form' | 'history' | 'reports' | 'operativo' | 'personal' | 'vtconfig' | 'compare' | 'ventas_review' | 'boletos_home' | 'boletos_frecuencias' | 'boletos_tickets' | 'boletos_cierre' | 'boletos_arqueo' | 'boletos_arqueo_general' | 'boletos_sync' | 'carga_historica';

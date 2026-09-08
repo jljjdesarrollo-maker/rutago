@@ -2,14 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { type VTSession } from './types-boletos';
+import type { UserSession } from './types';
 import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVentasPendientesByVT } from '@/lib/indexeddb';
-import { Bus, User, ArrowRight, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays } from 'lucide-react';
+import { Bus, User, ArrowRight, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.49.8-fix-runtime-reportes';
+const APP_VERSION = 'v3.49.9-exclusividad-ayudante-concurrencia';
 
 interface Props {
+  currentUser?: UserSession;
   onSessionStart: (session: VTSession) => void;
+  onBack?: () => void;
 }
 
 interface VTOption {
@@ -69,7 +72,7 @@ interface AyudanteActivo {
   pin: string;
 }
 
-export function HomeScreenVT({ onSessionStart }: Props) {
+export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
   const [vts, setVts] = useState<VTOption[]>([]);
   const [ayudante, setAyudante] = useState<AyudanteActivo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,9 +96,9 @@ export function HomeScreenVT({ onSessionStart }: Props) {
   useEffect(() => {
     Promise.all([
       fetch('/api/bus-vts').then(res => res.json()),
-      fetch('/api/personas?rol=AYUDANTE&esActual=true').then(res => res.json()),
+      fetch('/api/personas').then(res => res.json()),
     ])
-      .then(([vtsData, ayudanteData]) => {
+      .then(([vtsData, personasData]) => {
         if (Array.isArray(vtsData)) {
           const mapped = vtsData.map((vt: any) => ({
             id: vt.id,
@@ -108,11 +111,11 @@ export function HomeScreenVT({ onSessionStart }: Props) {
             setSelectedVT(mapped[0].codigo);
           }
         }
-        const activos = Array.isArray(ayudanteData)
-          ? ayudanteData.filter((p: any) => p.esActual)
-          : [];
-        if (activos.length > 0) {
-          setAyudante({ id: activos[0].id, nombre: activos[0].nombre, pin: activos[0].pin });
+        const activeAyud = Array.isArray(personasData)
+          ? personasData.find((p: any) => p.rol === 'AYUDANTE' && p.esActual)
+          : null;
+        if (activeAyud) {
+          setAyudante({ id: activeAyud.id, nombre: activeAyud.nombre, pin: activeAyud.pin });
         }
       })
       .catch(err => console.error('Error cargando datos:', err))
@@ -143,6 +146,11 @@ export function HomeScreenVT({ onSessionStart }: Props) {
   const [syncingPending, setSyncingPending] = useState(false);
   const [pendingCheckDone, setPendingCheckDone] = useState(false);
 
+  // ─── Control de Autorización y Concurrencia de Ayudante ───
+  const isAuthorized = currentUser
+    ? (currentUser.rol === 'AYUDANTE' && !!ayudante && currentUser.id === ayudante.id)
+    : !!ayudante;
+
   // ─── Date picker ───
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(todayStr);
@@ -171,7 +179,7 @@ export function HomeScreenVT({ onSessionStart }: Props) {
   };
 
   const startSession = (vtCode: string, forceNew = false) => {
-    if (!ayudante) return;
+    if (!ayudante || !isAuthorized) return;
 
     const sessionDate = selectedDate;
 
@@ -197,11 +205,14 @@ export function HomeScreenVT({ onSessionStart }: Props) {
     }
 
     const vt = vts.find(v => v.codigo === vtCode)!;
+    const effectiveAyudanteId = currentUser?.id || ayudante.id;
+    const effectiveAyudanteNombre = currentUser?.nombre || ayudante.nombre;
+
     const newSession: VTSession = {
       vtCode: vt.codigo,
       nombre: vt.nombre,
-      ayudanteId: ayudante.id,
-      ayudanteNombre: ayudante.nombre,
+      ayudanteId: effectiveAyudanteId,
+      ayudanteNombre: effectiveAyudanteNombre,
       fecha: sessionDate,
     };
 
@@ -420,9 +431,20 @@ export function HomeScreenVT({ onSessionStart }: Props) {
     <div className="flex flex-col min-h-[100dvh] bg-gray-50">
       {/* Header compacto */}
       <div className="bg-[#912D26] text-white px-5 py-5 rounded-b-2xl shadow-lg">
-        <div className="flex items-center gap-3 mb-1">
-          <Bus className="w-7 h-7" />
-          <h1 className="text-xl font-bold">RutaGo</h1>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-3">
+            <Bus className="w-7 h-7" />
+            <h1 className="text-xl font-bold">RutaGo</h1>
+          </div>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold flex items-center gap-1 active:scale-95 transition-all"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Inicio</span>
+            </button>
+          )}
         </div>
         <p className="text-red-100 text-xs">TRANSPORTES VILCABAMBA</p>
         <p className="text-red-200/60 text-[9px] mt-0.5">{APP_VERSION}</p>
@@ -494,19 +516,52 @@ export function HomeScreenVT({ onSessionStart }: Props) {
       </div>
 
       <div className="flex-1 px-5 py-5 space-y-4">
-        {/* Ayudante activo — compacto */}
+        {/* Ayudante activo — compacto con indicador de autorización */}
         {ayudante ? (
-          <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-            <div>
-              <p className="font-semibold text-green-800 text-sm">{ayudante.nombre}</p>
-              <p className="text-green-600 text-[10px]">Turno activo</p>
+          <div className={`flex items-center justify-between rounded-xl px-4 py-3 border ${
+            isAuthorized ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              {isAuthorized ? (
+                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+              ) : (
+                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              )}
+              <div>
+                <p className={`font-semibold text-sm ${isAuthorized ? 'text-green-800' : 'text-red-800'}`}>
+                  {ayudante.nombre}
+                </p>
+                <p className={`text-[10px] ${isAuthorized ? 'text-green-600' : 'text-red-600'}`}>
+                  {isAuthorized ? 'Turno activo autorizado' : 'Turno activo no corresponde a tu usuario'}
+                </p>
+              </div>
             </div>
+            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+              isAuthorized ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
+            }`}>
+              {isAuthorized ? 'AUTORIZADO' : 'BLOQUEADO'}
+            </span>
           </div>
         ) : (
           <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3">
-            <p className="text-yellow-700 text-sm">No hay ayudante activo asignado</p>
-            <p className="text-yellow-600 text-xs mt-1">Configure un ayudante desde el panel de administracion</p>
+            <p className="text-yellow-700 text-sm font-semibold">No hay ayudante activo asignado</p>
+            <p className="text-yellow-600 text-xs mt-1">El Administrador debe asignar un ayudante activo en Gestión de Personal.</p>
+          </div>
+        )}
+
+        {/* Bloque de advertencia si no está autorizado */}
+        {!isAuthorized && (
+          <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-4 text-center">
+            <AlertTriangle className="w-8 h-8 text-red-600 mx-auto mb-1.5" />
+            <h3 className="font-bold text-red-900 text-sm">Acceso No Autorizado</h3>
+            <p className="text-xs text-red-700 mt-1 leading-relaxed">
+              {currentUser?.rol !== 'AYUDANTE'
+                ? `Tu usuario tiene rol ${currentUser?.rol || 'DESCONOCIDO'}. La emisión de boletos en ruta está reservada exclusivamente para el Ayudante.`
+                : `Tu usuario (${currentUser?.nombre}) no está activo. El turno oficial del día le corresponde a ${ayudante?.nombre || 'otro ayudante'}.`}
+            </p>
+            <p className="text-[11px] text-red-600/90 mt-2">
+              Para evitar duplicidad o conflictos contables, solo puede haber un ayudante activo operando en carretera.
+            </p>
           </div>
         )}
 
@@ -616,15 +671,17 @@ export function HomeScreenVT({ onSessionStart }: Props) {
         )}
 
         {/* Boton Iniciar — grande y prominente */}
-        <button onClick={handleStart} disabled={!selectedVT || !ayudante || pendingVentasCount > 0}
+        <button onClick={handleStart} disabled={!selectedVT || !ayudante || !isAuthorized || pendingVentasCount > 0}
           className={`w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 transition-all ${
-            selectedVT && ayudante && pendingVentasCount === 0
+            selectedVT && ayudante && isAuthorized && pendingVentasCount === 0
               ? 'bg-[#912D26] text-white shadow-xl shadow-red-300 active:scale-[0.97]'
               : 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed'
           }`}
         >
           {pendingVentasCount > 0
             ? `ESPERANDO SYNC — ${pendingVentasCount} VENTAS`
+            : !isAuthorized
+            ? 'TURNO NO AUTORIZADO'
             : 'Iniciar Turno'
           } <ArrowRight className="w-6 h-6" />
         </button>
