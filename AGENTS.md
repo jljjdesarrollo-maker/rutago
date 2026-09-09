@@ -83,6 +83,20 @@
   - Barra apilada interactiva de distribución de la producción en la vista previa del reporte: % Combustible (Diésel), % Costos de Operación y Personal, y % Margen Líquido.
   - Botonera ergonómica en la zona del pulgar (Thumb Zone) con acceso triple: `Generar Reporte PDF`, `Exportar a Excel (.xlsx)` y `Compartir Resumen por WhatsApp`.
 
+
+### Regla 8: Control Prudencial de Tiempos de Viaje y Agrupación Estricta de Boletos (v3.50.0)
+- **Agrupación Estricta por `frecuenciaId`:**
+  - En la pantalla de `VentasReviewScreen`, los boletos se consolidan obligatoriamente bajo la instancia oficial de su frecuencia (`frecuenciaId`), asegurando coincidencia exacta 1 a 1 con el despacho del día y la tabla `Trip`.
+  - **Bandeja de Auditoría de Boletos Huérfanos:** Boletos sin `frecuenciaId` (`null`) se agrupan en una sección diferenciada: `⚠️ Boletos No Asignados a Frecuencia` con distintivo ámbar para revisión y cuadre contable sin ocultar dinero.
+- **Límites de Tiempo de Venta por Frecuencia:**
+  - Para evitar que el ayudante venda boletos de vuelta con la frecuencia de ida seleccionada (error humano en carretera), el sistema calcula el tiempo transcurrido desde la hora programada de salida:
+    - **Troncal Corta (Loja ↔ Vilcabamba):** Advertencia a los **85 min**, bloqueo de nuevas ventas a los **90 min**.
+    - **Rutas Extendidas (Yangana, La Elvira, Zahuayco, El Tambo):** Advertencia a los **135 min**, bloqueo de nuevas ventas a los **140 min**.
+  - **Aviso Preventivo (5 min antes):** Banner visible en la zona del pulgar alertando del cierre próximo.
+  - **Transición Constructiva (Thumb-Zone):** Al expirar el tiempo, el botón de venta se desactiva y se transforma en `[ 🏁 Frecuencia Concluida (X min) • Pasar a Siguiente Vuelta ]`, guiando al ayudante a la siguiente frecuencia con un solo toque.
+  - **Cero Afectación:** Arqueo General, consulta de boletos, registro de paradas y cierre de turno permanecen 100% operativos.
+  - **Configuración Administrable:** En `VTConfigScreen`, el Administrador puede ajustar libremente los minutos de advertencia y límite según el clima o temporadas de alto tráfico.
+
 ### Regla 7: Visión de Escalabilidad a Flota de 19 Autobuses
 - **Horizonte de Flota:** Aunque actualmente la aplicación se encuentra en operación para una sola unidad física en campo, toda decisión técnica, modelo de datos y diseño funcional debe estar preparado para escalar a una **flota de 19 autobuses**, donde cada unidad contará con todas las funciones de venta, arqueo, mantenimientos y reportes.
 - **Diferenciación Conceptual de Entidades:**
@@ -103,3 +117,10 @@
   4. **Panel de Gestión de Dispositivo (Admin):** En la pantalla `PersonalScreen`, permitir al Administrador:
      - Visualizar el estado del teléfono vinculado (ej. "Teléfono Oficial Vinculado").
      - Botón de emergencia **"Desvincular / Resetear Teléfono"** para liberar el usuario en caso de robo, descarga o avería del terminal en carretera y permitir la vinculación inmediata de un teléfono de reemplazo.
+
+### PENDIENTE #2: Escalabilidad a Flota de 19 Autobuses (Multi-Bus)
+- **Objetivo:** Separar la entidad física `Bus` (número de disco, placa, odómetro/tacómetro, cambios de aceite y consumo de diésel) de la entidad operativa `VT` (itinerario de frecuencias que rotan entre buses).
+- **Alcance:** Selector de bus al iniciar turno o asignación por parte del administrador, precargando el tacómetro anterior específico de esa unidad física.
+
+### PENDIENTE #3: Reasignación Contable de Boletos Huérfanos
+- **Objetivo:** En la pantalla `VentasReviewScreen`, permitir al Administrador reasignar boletos huérfanos (`frecuenciaId == null`) a una frecuencia oficial existente con un toque para cuadre contable perfecto.
