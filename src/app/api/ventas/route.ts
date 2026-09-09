@@ -106,3 +106,61 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const vtCode = searchParams.get('vtCode');
+    const fecha = searchParams.get('fecha');
+
+    if (!vtCode || !fecha) {
+      return NextResponse.json(
+        { error: 'vtCode y fecha son requeridos para la eliminacion' },
+        { status: 400 }
+      );
+    }
+
+    // Listar boletos objetivo para trazabilidad
+    const boletosAEliminar = await prisma.ventaBoleto.findMany({
+      where: {
+        vtCode,
+        OR: [
+          { fechaOperacion: fecha },
+          { fecha: fecha },
+        ],
+      },
+      select: {
+        id: true,
+        vtCode: true,
+        fecha: true,
+        fechaOperacion: true,
+        hora: true,
+        parada: true,
+        cobrado: true,
+        ayudanteNombre: true,
+      },
+    });
+
+    // Eliminacion en lote segura
+    const result = await prisma.ventaBoleto.deleteMany({
+      where: {
+        vtCode,
+        OR: [
+          { fechaOperacion: fecha },
+          { fecha: fecha },
+        ],
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      count: result.count,
+      deletedTickets: boletosAEliminar,
+      message: `Se eliminaron exitosamente ${result.count} boletos del grupo ${vtCode} para la fecha ${fecha}`,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error al eliminar ventas';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
