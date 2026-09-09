@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Calendar, Loader2, CheckCircle, XCircle, Sparkles, AlertTriangle, Download, Building2, Coins, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 interface OperativoTrip {
   date: string;
@@ -78,6 +79,7 @@ function labelMotivo(m: string): string {
 }
 
 export function ReporteOperativoScreen({ onBack }: Props) {
+  const { toast } = useToast();
   const now = new Date();
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, '0');
@@ -149,12 +151,28 @@ export function ReporteOperativoScreen({ onBack }: Props) {
       const a = document.createElement('a');
       a.href = url;
       a.download = `reporte-operativo-${from}-a-${to}.pdf`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
+      setTimeout(() => {
+        if (document.body.contains(a)) {
+          document.body.removeChild(a);
+        }
+        URL.revokeObjectURL(url);
+      }, 1000);
+      toast({
+        title: 'Reporte Operativo',
+        description: 'PDF generado y descargado exitosamente.',
+      });
+    } catch (err: any) {
       console.error('Error exportando PDF:', err);
+      toast({
+        title: 'Error al exportar PDF',
+        description: err?.message || 'No se pudo generar el documento PDF.',
+        variant: 'destructive',
+      });
+    } finally {
+      setExporting(false);
     }
-    setExporting(false);
   };
 
   const cumplimientoColor = (c: number) =>

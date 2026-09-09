@@ -1,6 +1,6 @@
 /**
  * Generador de PDF del Reporte Operativo (A4)
- * Detalle por frecuencia: estado, motivo, ingreso especial, monto
+ * Detalle por frecuencia: estado, motivo, ingreso especial, montos (Efectivo, Caja Común, Total)
  * Paleta corporativa: Rojo Vinotinto #912D26, Gris Antracita #3A3A3A, Plata #D6D6D6, White
  */
 
@@ -19,12 +19,15 @@ const COLORS = {
 };
 
 function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-');
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length < 3) return dateStr;
+  const [y, m, d] = parts;
   return `${d}/${m}/${y}`;
 }
 
 function formatMoney(val: number): string {
-  return `S/ ${val.toFixed(2)}`;
+  return `S/ ${(val || 0).toFixed(2)}`;
 }
 
 const MOTIVO_LABELS: Record<string, string> = {
@@ -99,6 +102,15 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
   const minY = 15;
   let y = 0;
 
+  // Respaldo de totales seguros
+  const totalEfectivo = data.totalEfectivoRuta ?? data.days.reduce(
+    (acc, d) => acc + d.trips.reduce((s, t) => s + (t.efectivoReal || 0), 0), 0
+  );
+  const totalCajaComun = data.totalCajaComun ?? data.days.reduce(
+    (acc, d) => acc + d.trips.reduce((s, t) => s + (t.cajaComunMonto || 0), 0), 0
+  );
+  const promedioFrec = data.promedioPorFrecuencia ?? (data.realizadas > 0 ? data.totalIngresos / data.realizadas : 0);
+
   // ==================== HELPERS ====================
 
   const addText = (text: string, x: number, yy: number, opts: {
@@ -135,7 +147,7 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
     doc.setFillColor(...COLORS.lightRed);
     doc.roundedRect(cx, cy, cw2, cardH, 2, 2, 'F');
     addText(label, cx + 3, cy + 4, { size: 6.5, color: COLORS.dark });
-    addText(value, cx + 3, cy + 12, { size: 10, color: valueColor, bold: true });
+    addText(value, cx + 3, cy + 12, { size: 9.5, color: valueColor, bold: true });
   };
 
   const drawBlockTitle = (title: string) => {
@@ -188,7 +200,7 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
   y += 15;
 
   // ==================== KPI CARDS ====================
-  drawBlockTitle('RESUMEN EJECUTIVO');
+  drawBlockTitle('RESUMEN OPERATIVO Y FINANCIERO');
 
   const kpiCards = [
     { label: 'Programadas', value: `${data.totalProgramadas}`, color: COLORS.dark },
@@ -199,10 +211,10 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
   drawCardRow(kpiCards, 4);
 
   const kpiCards2 = [
-    { label: 'Total Ingresos', value: formatMoney(data.totalIngresos), color: COLORS.primary },
-    { label: 'Ingreso / Frec. Real.', value: data.realizadas > 0 ? formatMoney(data.totalIngresos / data.realizadas) : 'S/ 0.00', color: COLORS.dark },
-    { label: 'Ingresos Especiales', value: `${data.ingresosEspeciales}`, color: COLORS.amber },
-    { label: 'Dias con Registro', value: `${data.days.length}`, color: COLORS.dark },
+    { label: 'Produccion Total', value: formatMoney(data.totalIngresos), color: COLORS.primary },
+    { label: 'Efectivo Ruta', value: formatMoney(totalEfectivo), color: COLORS.green },
+    { label: 'Caja Comun (Ofic.)', value: formatMoney(totalCajaComun), color: COLORS.blue },
+    { label: 'Prom. / Frec. Real.', value: formatMoney(promedioFrec), color: COLORS.dark },
   ];
   drawCardRow(kpiCards2, 4);
 
@@ -223,8 +235,8 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
   // ==================== DETALLE POR DIA ====================
   drawBlockTitle('DETALLE POR DIA Y FRECUENCIA');
 
-  // Table columns: Hora | Ruta | Estado | Efectivo | C. Comun | Total | Detalle (sum = 180mm)
-  const colW = [14, 50, 14, 24, 24, 26, 28];
+  // Columnas: Hora (14) | Ruta (48) | Estado (14) | Efectivo (26) | C. Comun (26) | Total (26) | Detalle (26) = 180mm
+  const colW = [14, 48, 14, 26, 26, 26, 26];
   const colHeaders = ['Hora', 'Ruta', 'Estado', 'Efectivo', 'C. Comun', 'Total', 'Detalle'];
   const colAlign: ('left' | 'right' | 'center')[] = ['center', 'left', 'center', 'right', 'right', 'right', 'left'];
 
@@ -232,6 +244,7 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
     doc.setFillColor(...COLORS.dark);
     let rx = ml;
     colW.forEach(cwi => { doc.rect(rx, y - 3, cwi, 7, 'F'); rx += cwi; });
+
     let tx = ml;
     colHeaders.forEach((h, i) => {
       const a = colAlign[i];
@@ -256,7 +269,7 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
       drawTableHeader();
     }
 
-    day.trips.forEach((trip, ti) => {
+    day.trips.forEach(trip => {
       checkPage(8);
 
       const isRealizada = trip.tipo === 'frecuencia';
@@ -269,17 +282,27 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
       let rx = ml;
       colW.forEach(cwi => { doc.rect(rx, y - 3, cwi, 6, 'F'); rx += cwi; });
 
-      // Status icon (text-based for PDF)
+      // Status
       const estado = isRealizada ? 'OK' : isEspecial ? 'ESP' : 'NR';
       const estadoColor = isRealizada ? COLORS.green : isEspecial ? COLORS.amber : [220, 50, 50];
 
-      // Monto: produccion total = efectivoReal + cajaComunMonto
-      const produccion = (trip.efectivoReal || 0) + (trip.cajaComunMonto || 0);
-      const monto = isRealizada
-        ? (produccion > 0 ? formatMoney(produccion) : '')
+      // Efectivo, Caja Común, Total
+      const efectivo = isRealizada
+        ? ((trip.efectivoReal || 0) > 0 ? formatMoney(trip.efectivoReal || 0) : '-')
         : isEspecial
-          ? (trip.income > 0 ? formatMoney(trip.income) : '')
-          : '';
+          ? formatMoney(trip.income || 0)
+          : '-';
+
+      const cajaComun = isRealizada
+        ? ((trip.cajaComunMonto || 0) > 0 ? formatMoney(trip.cajaComunMonto || 0) : '-')
+        : '-';
+
+      const produccion = (trip.efectivoReal || 0) + (trip.cajaComunMonto || 0);
+      const totalCol = isRealizada
+        ? (produccion > 0 ? formatMoney(produccion) : '-')
+        : isEspecial
+          ? (trip.income > 0 ? formatMoney(trip.income) : '-')
+          : '-';
 
       // Detalle
       const detalle = isNoReal && trip.motivo
@@ -288,34 +311,43 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
           ? trip.notaEspecial
           : '';
 
-      const rowValues = [trip.hora, trip.nombre, estado, monto, detalle];
-      const rowColors = [COLORS.dark, COLORS.dark, estadoColor, COLORS.dark, COLORS.dark];
+      const rowValues = [trip.hora || '', trip.nombre || '', estado, efectivo, cajaComun, totalCol, detalle];
+      const rowColors = [COLORS.dark, COLORS.dark, estadoColor, COLORS.dark, COLORS.blue, COLORS.primary, COLORS.dark];
 
       let tx = ml;
       rowValues.forEach((val, i) => {
         const a = colAlign[i];
         const xPos = a === 'right' ? tx + colW[i] - 2 : a === 'center' ? tx + colW[i] / 2 : tx + 2;
         addText(val || '', xPos, y + 0.5, {
-          size: 7,
-          color: i === 2 ? estadoColor : COLORS.dark,
-          bold: i === 2,
+          size: 6.8,
+          color: rowColors[i],
+          bold: i === 2 || i === 5,
           align: a,
+          maxWidth: colW[i] - 3,
         });
         tx += colW[i];
       });
-      y += 7;
+      y += 6.5;
     });
 
     // Day subtotal
     const dayRealizadas = day.trips.filter(t => t.tipo === 'frecuencia');
-    const dayIngresoReal = dayRealizadas.reduce((s, t) => s + (t.efectivoReal || 0) + (t.cajaComunMonto || 0), 0);
+    const dayEfec = dayRealizadas.reduce((s, t) => s + (t.efectivoReal || 0), 0);
+    const dayCaja = dayRealizadas.reduce((s, t) => s + (t.cajaComunMonto || 0), 0);
+    const dayIngresoReal = dayEfec + dayCaja;
     const dayIngresoEsp = day.trips.filter(t => t.tipo === 'ingreso_especial').reduce((s, t) => s + (t.income || 0), 0);
     const dayTotal = dayIngresoReal + dayIngresoEsp;
 
     checkPage(8);
-    addLine(ml, ml + 110, y - 1, COLORS.plata);
-    addText(`Subtotal dia: ${dayRealizadas.length} realizadas`, ml + 2, y + 0.5, { size: 6.5, color: COLORS.dark });
-    addText(formatMoney(dayTotal), w - mr - 2, y + 0.5, { size: 7, color: COLORS.primary, bold: true, align: 'right' });
+    addLine(ml, w - mr, y - 1, COLORS.plata);
+    addText(`Subtotal dia: ${dayRealizadas.length} realizadas`, ml + 2, y + 0.5, { size: 6.5, color: COLORS.dark, bold: true });
+
+    // Efectivo subtotal (después de Hora 14 + Ruta 48 + Estado 14 = 76; columna Efectivo ancho 26)
+    addText(formatMoney(dayEfec), ml + 76 + 26 - 2, y + 0.5, { size: 6.5, color: COLORS.dark, bold: true, align: 'right' });
+    // Caja Común subtotal (columna C. Comun ancho 26)
+    addText(formatMoney(dayCaja), ml + 102 + 26 - 2, y + 0.5, { size: 6.5, color: COLORS.blue, bold: true, align: 'right' });
+    // Total subtotal (columna Total ancho 26)
+    addText(formatMoney(dayTotal), ml + 128 + 26 - 2, y + 0.5, { size: 7, color: COLORS.primary, bold: true, align: 'right' });
     y += 8;
   });
 
@@ -326,10 +358,10 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
   doc.setFillColor(...COLORS.primary);
   doc.rect(ml, y - 3, cw, 9, 'F');
   addText('TOTAL PRODUCCION', ml + 3, y + 1, { size: 7.5, color: COLORS.white, bold: true });
-  addText(`${data.realizadas} frec.`, ml + 36, y + 1, { size: 6.5, color: COLORS.white });
+  addText(`${data.realizadas} frec.`, ml + 38, y + 1, { size: 6.5, color: COLORS.white });
   addText(`Ruta: ${formatMoney(totalEfectivo)}`, ml + 62, y + 1, { size: 6.5, color: COLORS.white });
-  addText(`Oficina: ${formatMoney(totalCajaComun)}`, ml + 106, y + 1, { size: 6.5, color: COLORS.white });
-  addText(formatMoney(data.totalIngresos), w - mr - 2, y + 1, { size: 8.5, color: COLORS.white, bold: true, align: 'right' });
+  addText(`Oficina: ${formatMoney(totalCajaComun)}`, ml + 104, y + 1, { size: 6.5, color: COLORS.white });
+  addText(formatMoney(data.totalIngresos), w - mr - 3, y + 1, { size: 8.5, color: COLORS.white, bold: true, align: 'right' });
   y += 13;
 
   // ==================== FOOTER ====================

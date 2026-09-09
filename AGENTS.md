@@ -84,6 +84,11 @@
   - Botonera ergonómica en la zona del pulgar (Thumb Zone) con acceso triple: `Generar Reporte PDF`, `Exportar a Excel (.xlsx)` y `Compartir Resumen por WhatsApp`.
 
 
+- **Corrección de Exportación a PDF en Reporte Operativo (v3.50.3):**
+  - Se corrigió la referencia a variables de totales en `generate-operativo-pdf.ts` (`totalEfectivo`, `totalCajaComun`, `promedioFrec`), evitando el error que impedía la descarga del archivo.
+  - Se alineó la estructura de 7 columnas en el detalle de cada frecuencia (`Hora | Ruta | Estado | Efectivo | C. Común | Total | Detalle`).
+  - En la interfaz móvil (`ReporteOperativoScreen.tsx`), se agregó vinculación segura al DOM (`appendChild`/`removeChild`) y temporizador de revocación de URL compatible con smartphones, además de notificaciones visuales Toast de confirmación.
+
 - **Producción Integral con Desglose Transparente en Reporte Operativo (v3.50.2):**
   - Se cumple la ecuación contable `Producción = Efectivo Ruta + Caja Común` en el Reporte Operativo.
   - En pantalla (`ReporteOperativoScreen`), se incorpora el bloque ejecutivo de Producción Total Operativa con desglose gráfico entre `Efectivo Ruta (Ayudante)` y `Caja Común (Oficina)`, más el promedio por vuelta realizada.
