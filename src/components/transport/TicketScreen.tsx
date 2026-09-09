@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { type FrecuenciaEstado, type VTSession, loadPromoConfig } from './types-boletos';
+import { type FrecuenciaEstado, type VTSession, loadPromoConfig, calcularEstadoTiempoVenta, type EstadoTiempoVenta } from './types-boletos';
 import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta, type TipoPasajero,
          getZonaParada, isParadaPrincipal, ZONA_COLORS, type ZonaColor, PARADA_ZONA } from '@/lib/tarifas-data';
 import { saveVenta } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
-import { Check, User, UserRound, Printer, Bluetooth } from 'lucide-react';
+import { Check, User, UserRound, Printer, Bluetooth, Clock, AlertTriangle, ArrowRight } from 'lucide-react';
 import { usePrinterStatus } from '@/hooks/use-printer-status';
 
 interface Props {
@@ -47,6 +47,20 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
   const [tab, setTab] = useState<'principal' | 'intermedia'>('principal');
   const [cantidad, setCantidad] = useState(1);
   const printer = usePrinterStatus();
+
+  // ─── Control de Tiempo Prudencial de Venta (85/90 min corta, 135/140 min extendida) ───
+  const [tiempoEstado, setTiempoEstado] = useState<EstadoTiempoVenta>(() =>
+    calcularEstadoTiempoVenta(estado.hora, estado.ruta, session.fecha)
+  );
+
+  useEffect(() => {
+    const update = () => {
+      setTiempoEstado(calcularEstadoTiempoVenta(estado.hora, estado.ruta, session.fecha));
+    };
+    update();
+    const interval = setInterval(update, 15000); // evaluar cada 15 segundos
+    return () => clearInterval(interval);
+  }, [estado.hora, estado.ruta, session.fecha]);
 
   // ─── Autocomplete paradas ───
   const PARADAS_NOMBRES = Object.keys(PARADA_ZONA);
@@ -309,7 +323,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
 
   const cobradoNum = cobrado ? parseFloat(cobrado) : 0;
   const totalCobrado = cobradoNum * cantidad;
-  const canRegister = parada.trim() && cobrado.trim() && cobradoNum > 0;
+  const canRegister = !tiempoEstado.bloqueado && Boolean(parada.trim() && cobrado.trim() && cobradoNum > 0);
 
   return (
     <div className="flex flex-col h-[100dvh] bg-gray-50">
@@ -349,7 +363,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           </button>
           <div className="flex-1 text-center">
             <div className="text-sm font-bold leading-tight flex items-center justify-center gap-1.5">
-              <span>{estado.hora} · {rutaMatched}</span>
+              <span>{estado.hora} · {rutaMatched}</span>{tiempoEstado.minutosTranscurridos > 0 && <span className="text-[9px] font-mono bg-black/20 px-1 py-0.5 rounded text-white/90" title="Minutos transcurridos desde la hora programada de salida">{tiempoEstado.minutosTranscurridos}m</span>}
               {(session.fecha && new Date().toISOString().split('T')[0] > session.fecha) && (
                 <span className="bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.2 rounded uppercase">Día 2</span>
               )}
@@ -550,18 +564,50 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           />
         </div>
 
-        <button
-          onClick={handleVenta}
-          disabled={!canRegister}
-          className={`w-full py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 transition-all active:scale-95 ${
-            canRegister
-              ? 'bg-green-600 text-white shadow-lg shadow-green-200'
-              : 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed'
-          }`}
-        >
-          <Check className="w-5 h-5" />
-          REGISTRAR {cantidad > 1 ? `${cantidad}x $${cobrado ? parseFloat(cobrado).toFixed(2) : '0.00'} = $${totalCobrado.toFixed(2)}` : `$${cobrado ? parseFloat(cobrado).toFixed(2) : '0.00'}`}
-        </button>
+        {/* Advertencia preventiva 5 minutos antes del límite */}
+        {tiempoEstado.enAlerta && (
+          <div className="mb-2 bg-amber-50 border border-amber-300 rounded-xl p-2.5 text-xs text-amber-900 font-bold flex items-center gap-2 animate-pulse shadow-sm">
+            <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <span>
+              ⚠️ Advertencia: Quedan {tiempoEstado.tiempoRestante} min de venta para esta frecuencia (cierre automático a los {tiempoEstado.tiempoLimite} min).
+            </span>
+          </div>
+        )}
+
+        {/* Notificación cuando se alcanza el límite de tiempo */}
+        {tiempoEstado.bloqueado && (
+          <div className="mb-2 bg-red-50 border border-red-300 rounded-xl p-2.5 text-xs text-red-900 font-bold flex items-center gap-2 shadow-sm">
+            <Clock className="w-4 h-4 text-red-600 flex-shrink-0" />
+            <span>
+              Límite de viaje alcanzado ({tiempoEstado.tiempoLimite} min). Nuevas ventas desactivadas para esta frecuencia.
+            </span>
+          </div>
+        )}
+
+        {/* Botón de Venta o Botón de Transición Constructiva si expiró el tiempo */}
+        {tiempoEstado.bloqueado ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-4 rounded-xl font-black text-sm sm:text-base bg-[#912D26] hover:bg-[#7A2520] text-white shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
+          >
+            <span>🏁 Frecuencia Concluida ({tiempoEstado.tiempoLimite}m) • Pasar a Siguiente Vuelta</span>
+            <ArrowRight className="w-5 h-5 flex-shrink-0" />
+          </button>
+        ) : (
+          <button
+            onClick={handleVenta}
+            disabled={!canRegister}
+            className={`w-full py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 transition-all active:scale-95 ${
+              canRegister
+                ? 'bg-green-600 text-white shadow-lg shadow-green-200'
+                : 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <Check className="w-5 h-5" />
+            REGISTRAR {cantidad > 1 ? `${cantidad}x $${cobrado ? parseFloat(cobrado).toFixed(2) : '0.00'} = $${totalCobrado.toFixed(2)}` : `$${cobrado ? parseFloat(cobrado).toFixed(2) : '0.00'}`}
+          </button>
+        )}
 
         {/* ─── Guía visual de vuelto (zero toques) ─── */}
         {canRegister && totalCobrado > 0 && (() => {

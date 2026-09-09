@@ -66,10 +66,11 @@ interface FrecuenciaAgrupada {
   hora: string;
   titulo: string;
   ruta: string;
-  tipo: string; // "ida" | "vuelta"
+  tipo: string; // "ida" | "vuelta" | "especial"
   vtCode: string;
   ayudanteNombre: string;
   esPernoctaDia2: boolean;
+  esHuerfano: boolean;
   totalBoletos: number;
   totalRecaudado: number;
   primeraEmision: string;
@@ -193,36 +194,50 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
     const map: Record<string, FrecuenciaAgrupada> = {};
 
     data.forEach(v => {
-      // Clave única de la frecuencia realizada
       let key = '';
       let hora = v.frecuencia?.hora || v.hora || '--:--';
-      let titulo = '';
       let ruta = v.frecuencia?.ruta || v.ruta || 'Ruta estándar';
       let tipo = v.frecuencia?.direccion || v.tipo || 'ida';
+      let esHuerfano = false;
 
-      if (v.frecuenciaId && v.frecuencia) {
-        key = `FREC_${v.vtCode}_${v.frecuenciaId}`;
-        titulo = `${v.frecuencia.hora || hora} • ${v.frecuencia.nombre || v.frecuencia.ruta || ruta}`;
-        hora = v.frecuencia.hora || hora;
-      } else if (v.ruta) {
-        key = `RUTA_${v.vtCode}_${hora}_${v.ruta}_${tipo}`;
-        titulo = `${hora} • ${v.ruta}`;
+      // Agrupación estricta por frecuenciaId oficial que corresponde a la fecha de operación
+      if (v.frecuenciaId) {
+        key = `FREC_${v.vtCode || 'VT'}_${v.frecuenciaId}`;
+        if (v.frecuencia) {
+          hora = v.frecuencia.hora || hora;
+          ruta = v.frecuencia.nombre || v.frecuencia.ruta || ruta;
+          tipo = v.frecuencia.direccion || tipo;
+        }
       } else {
-        key = `GEN_${v.vtCode}_${hora}`;
-        titulo = `${hora} • Frecuencia ${v.vtCode}`;
+        // Boletos No Asignados a Frecuencia (Ventas registradas sin despacho oficial)
+        key = `HUERFANOS_${v.vtCode || 'GENERAL'}`;
+        esHuerfano = true;
+        hora = '--:--';
+        tipo = 'especial';
+        ruta = 'Boletos No Asignados a Frecuencia';
       }
 
       if (!map[key]) {
+        let titulo = '';
+        if (esHuerfano) {
+          titulo = '⚠️ Boletos No Asignados a Frecuencia';
+        } else if (v.frecuencia) {
+          titulo = `${hora} • ${ruta}`;
+        } else {
+          titulo = `${hora} • ${ruta}`;
+        }
+
         map[key] = {
           key,
-          frecuenciaId: v.frecuenciaId,
+          frecuenciaId: v.frecuenciaId || null,
           hora,
           titulo,
           ruta,
           tipo,
-          vtCode: v.vtCode,
-          ayudanteNombre: v.ayudanteNombre,
+          vtCode: v.vtCode || 'VT',
+          ayudanteNombre: v.ayudanteNombre || 'Sin asignar',
           esPernoctaDia2: false,
+          esHuerfano,
           totalBoletos: 0,
           totalRecaudado: 0,
           primeraEmision: '',
@@ -234,7 +249,7 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
       }
 
       // Si algún boleto pertenece al día 2 del turno, marcar la frecuencia como pernocta
-      if (v.diaTurno === 2) {
+      if (v.diaTurno === 2 && !esHuerfano) {
         map[key].esPernoctaDia2 = true;
       }
 
@@ -280,8 +295,14 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
       frec.alertasCount = alertas;
     });
 
-    // Ordenar frecuencias cronológicamente: Día 1 primero (por hora), Día 2 (Pernocta) después
+    // Ordenar frecuencias cronológicamente:
+    // 1. Frecuencias oficiales primero (no huérfanas)
+    // 2. Día 1 primero (por hora de salida), Día 2 (Pernocta) después
+    // 3. Boletos no asignados a frecuencia al final como bandeja de auditoría
     result.sort((a, b) => {
+      if (a.esHuerfano !== b.esHuerfano) {
+        return a.esHuerfano ? 1 : -1;
+      }
       if (a.esPernoctaDia2 !== b.esPernoctaDia2) {
         return a.esPernoctaDia2 ? 1 : -1;
       }

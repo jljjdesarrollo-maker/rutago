@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Plus, Trash2, ChevronDown, ChevronUp, Settings, Gift } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, ChevronDown, ChevronUp, Settings, Gift, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { type PromoViajeGratisConfig, loadPromoConfig, savePromoConfig, DEFAULT_PROMO_CONFIG } from './types-boletos';
+import { type PromoViajeGratisConfig, loadPromoConfig, savePromoConfig, DEFAULT_PROMO_CONFIG, type TiempoVentaConfig, loadTiempoVentaConfig, saveTiempoVentaConfig, DEFAULT_TIEMPO_VENTA_CONFIG } from './types-boletos';
 
 interface VTItem {
   id: string;
@@ -34,6 +34,10 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
   // Viaje Gratis promo config
   const [promoConfig, setPromoConfig] = useState<PromoViajeGratisConfig>(DEFAULT_PROMO_CONFIG);
   useEffect(() => { setPromoConfig(loadPromoConfig()); }, []);
+
+  // Tiempos límites de venta por frecuencia
+  const [tiempoConfig, setTiempoConfig] = useState<TiempoVentaConfig>(DEFAULT_TIEMPO_VENTA_CONFIG);
+  useEffect(() => { setTiempoConfig(loadTiempoVentaConfig()); }, []);
 
   useEffect(() => {
     // Seed + fetch VTs (seed runs here to ensure data is current)
@@ -312,6 +316,98 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
                 GUARDAR
               </Button>
             </div>
+          </CardContent>
+        </Card>
+        {/* ─── Control de Tiempos Límites de Venta por Frecuencia ─── */}
+        <Card className="border border-[#D6D6D6] shadow-sm rounded-2xl">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center gap-2 text-[#912D26]">
+              <Clock className="w-5 h-5" />
+              <h2 className="text-base font-bold text-[#3A3A3A]">Tiempos Límites de Venta por Frecuencia</h2>
+            </div>
+            <p className="text-xs text-[#3A3A3A]/70 leading-relaxed">
+              Desactiva automáticamente nuevas ventas al cumplirse el tiempo prudente de viaje para evitar mezclar boletos entre vueltas consecutivas. Cinco minutos antes del cierre se muestra una advertencia al ayudante. Las demás funciones (arqueo, consulta) permanecen siempre activas.
+            </p>
+
+            {/* Troncal Loja - Vilcabamba */}
+            <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-800">Ruta Loja ↔ Vilcabamba</span>
+                <span className="text-[10px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Troncal Corta</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-[#3A3A3A]/70">Minutos Advertencia</Label>
+                  <Input
+                    type="number"
+                    min={30}
+                    max={180}
+                    value={tiempoConfig.tiempoAlertaCorta}
+                    onChange={e => setTiempoConfig(prev => ({ ...prev, tiempoAlertaCorta: parseInt(e.target.value) || 85 }))}
+                    className="h-10 rounded-lg text-sm border-[#D6D6D6]"
+                  />
+                  <span className="text-[10px] text-gray-400">Por defecto: 85 min</span>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-[#3A3A3A]/70">Minutos Bloqueo Venta</Label>
+                  <Input
+                    type="number"
+                    min={35}
+                    max={200}
+                    value={tiempoConfig.tiempoLimiteCorta}
+                    onChange={e => setTiempoConfig(prev => ({ ...prev, tiempoLimiteCorta: parseInt(e.target.value) || 90 }))}
+                    className="h-10 rounded-lg text-sm border-[#D6D6D6]"
+                  />
+                  <span className="text-[10px] text-gray-400">Por defecto: 90 min</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Rutas Extendidas */}
+            <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-800">Rutas Extendidas (Yangana, El Tambo, Zahuayco, La Elvira)</span>
+                <span className="text-[10px] font-semibold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">Larga Distancia</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-[#3A3A3A]/70">Minutos Advertencia</Label>
+                  <Input
+                    type="number"
+                    min={60}
+                    max={240}
+                    value={tiempoConfig.tiempoAlertaExtendida}
+                    onChange={e => setTiempoConfig(prev => ({ ...prev, tiempoAlertaExtendida: parseInt(e.target.value) || 135 }))}
+                    className="h-10 rounded-lg text-sm border-[#D6D6D6]"
+                  />
+                  <span className="text-[10px] text-gray-400">Por defecto: 135 min</span>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-[#3A3A3A]/70">Minutos Bloqueo Venta</Label>
+                  <Input
+                    type="number"
+                    min={65}
+                    max={260}
+                    value={tiempoConfig.tiempoLimiteExtendida}
+                    onChange={e => setTiempoConfig(prev => ({ ...prev, tiempoLimiteExtendida: parseInt(e.target.value) || 140 }))}
+                    className="h-10 rounded-lg text-sm border-[#D6D6D6]"
+                  />
+                  <span className="text-[10px] text-gray-400">Por defecto: 140 min</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Guardar Tiempos */}
+            <Button
+              onClick={() => {
+                saveTiempoVentaConfig(tiempoConfig);
+                toast({ title: 'Guardado', description: 'Tiempos de viaje por frecuencia actualizados correctamente' });
+              }}
+              className="w-full h-10 rounded-xl bg-[#912D26] hover:bg-[#7A2520] text-white text-sm font-semibold"
+            >
+              <Save className="w-4 h-4 mr-1" />
+              GUARDAR TIEMPOS DE VIAJE
+            </Button>
           </CardContent>
         </Card>
       </main>
