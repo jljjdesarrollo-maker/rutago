@@ -73,6 +73,21 @@ const GASTOS_DEFAULT: GastoItem[] = [
   { description: 'Plan Renova', amount: '68' },
 ];
 
+// Helper para resolver origen y destino exactos de cada frecuencia
+function resolverRutaTrip(f: FrecuenciaResumen): { routeFrom: string; routeTo: string } {
+  if (f.isNoRealizada && !f.isIngresoEspecial) {
+    return { routeFrom: '-', routeTo: '-' };
+  }
+  const partes = (f.ruta || '').split(' - ').map(s => s.trim());
+  if (partes.length >= 2 && partes[0] && partes[1]) {
+    return { routeFrom: partes[0], routeTo: partes[1] };
+  }
+  if (f.direccion === 'ida') {
+    return { routeFrom: 'Loja', routeTo: 'Vilcabamba' };
+  }
+  return { routeFrom: 'Vilcabamba', routeTo: 'Loja' };
+}
+
 export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, onSaved }: Props) {
   const fechaTrabajo = workDate(session);
   const [frecuencias, setFrecuencias] = useState<FrecuenciaResumen[]>([]);
@@ -387,23 +402,22 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     const recorridoCalculado = kmRecorridos !== null && kmRecorridos >= 0 ? kmRecorridos.toString() : kmFinal.trim();
     try {
       // Build trips from frecuencias (all: cerradas, ingresos especiales, no realizadas)
-      const trips = frecuencias.map((f, idx) => ({
-        routeFrom: f.isNoRealizada && !f.isIngresoEspecial
-          ? '-'
-          : (f.direccion === 'ida' ? 'Loja' : f.ruta.split(' - ')[1]?.trim() || 'Loja'),
-        routeTo: f.isNoRealizada && !f.isIngresoEspecial
-          ? '-'
-          : (f.direccion === 'ida' ? f.ruta.split(' - ')[1]?.trim() || 'Vilcabamba' : 'Loja'),
-        time: f.hora,
-        income: f.totalRecaudado.toString(),
-        efectivoReal: f.efectivoContado.toString(),
-        boletos: '0',
-        cajaComunPasajeros: f.boletosCaja.toString(),
-        cajaComunMonto: (f.cajaComunMonto || 0).toString(),
-        tipo: f.isIngresoEspecial ? 'ingreso_especial' : f.isNoRealizada ? 'no_realizada' : 'frecuencia',
-        motivo: f.motivoNoRealizada || undefined,
-        notaEspecial: f.ingresoEspecialNota || undefined,
-      }));
+      const trips = frecuencias.map((f, idx) => {
+        const { routeFrom, routeTo } = resolverRutaTrip(f);
+        return {
+          routeFrom,
+          routeTo,
+          time: f.hora,
+          income: f.totalRecaudado.toString(),
+          efectivoReal: f.efectivoContado.toString(),
+          boletos: '0',
+          cajaComunPasajeros: f.boletosCaja.toString(),
+          cajaComunMonto: (f.cajaComunMonto || 0).toString(),
+          tipo: f.isIngresoEspecial ? 'ingreso_especial' : f.isNoRealizada ? 'no_realizada' : 'frecuencia',
+          motivo: f.motivoNoRealizada || undefined,
+          notaEspecial: f.ingresoEspecialNota || undefined,
+        };
+      });
       const body = {
         date: workDate(session),
         km: recorridoCalculado,
@@ -448,14 +462,22 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       console.error('Error guardando arqueo:', err);
       localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify({
         date: fechaTrabajo, km: recorridoCalculado, kmInicial: kmInicial.trim() || undefined, kmFinal: kmFinal.trim(), vtCode: session.vtCode, ayudanteNombre: session.ayudanteNombre,
-        trips: frecuencias.map(f => ({
-          routeFrom: f.isNoRealizada ? '-' : 'Loja',
-          routeTo: f.isNoRealizada ? '-' : 'Vilcabamba',
-          time: f.hora, income: f.totalRecaudado.toString(), boletos: '0',
-          tipo: f.isIngresoEspecial ? 'ingreso_especial' : f.isNoRealizada ? 'no_realizada' : 'frecuencia',
-          motivo: f.motivoNoRealizada || undefined,
-          notaEspecial: f.ingresoEspecialNota || undefined,
-        })),
+        trips: frecuencias.map(f => {
+          const { routeFrom, routeTo } = resolverRutaTrip(f);
+          return {
+            routeFrom,
+            routeTo,
+            time: f.hora,
+            income: f.totalRecaudado.toString(),
+            efectivoReal: f.efectivoContado.toString(),
+            boletos: '0',
+            cajaComunPasajeros: f.boletosCaja.toString(),
+            cajaComunMonto: (f.cajaComunMonto || 0).toString(),
+            tipo: f.isIngresoEspecial ? 'ingreso_especial' : f.isNoRealizada ? 'no_realizada' : 'frecuencia',
+            motivo: f.motivoNoRealizada || undefined,
+            notaEspecial: f.ingresoEspecialNota || undefined,
+          };
+        }),
         expenses: gastos, tickets: tickets || '0', sobrante: sobrante || '0', photoUrl: fotoPreview,
       }));
       setGuardadoOffline(true);

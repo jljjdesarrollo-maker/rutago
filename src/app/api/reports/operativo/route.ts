@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { VT_DATA } from '@/lib/seed-vts';
 
 export async function GET(req: NextRequest) {
   try {
@@ -44,13 +45,33 @@ export async function GET(req: NextRequest) {
     records.forEach(r => {
       r.trips.forEach(t => {
         const tipo = t.tipo || (t.income > 0 ? 'frecuencia' : 'frecuencia');
+
+        // Corregir de forma inteligente registros históricos con "Loja -> Loja"
+        let routeFrom = t.routeFrom || '';
+        let routeTo = t.routeTo || '';
+
+        if ((!routeFrom || !routeTo || (routeFrom === 'Loja' && routeTo === 'Loja')) && t.time && r.vtCode) {
+          const vtItem = VT_DATA.find(v => v.codigo === r.vtCode);
+          const frecMatch = vtItem?.frecuencias.find(f => f.time === t.time);
+          if (frecMatch) {
+            routeFrom = frecMatch.routeFrom;
+            routeTo = frecMatch.routeTo;
+          } else if (routeFrom === 'Loja' && routeTo === 'Loja') {
+            routeFrom = 'Vilcabamba';
+            routeTo = 'Loja';
+          }
+        }
+
+        const nombreRuta = routeFrom && routeTo ? `${routeFrom} → ${routeTo}` : (routeFrom || routeTo || '—');
+        const rutaCode = routeFrom && routeTo ? `${routeFrom}-${routeTo}` : '';
+
         trips.push({
           date: r.date,
           vtCode: r.vtCode || '—',
           ayudante: r.ayudanteNombre || '—',
           hora: t.time || '',
-          nombre: t.routeFrom && t.routeTo ? `${t.routeFrom} → ${t.routeTo}` : (t.routeFrom || t.routeTo || '—'),
-          ruta: t.routeFrom && t.routeTo ? `${t.routeFrom}-${t.routeTo}` : '',
+          nombre: nombreRuta,
+          ruta: rutaCode,
           tipo,
           motivo: t.motivo || null,
           notaEspecial: t.notaEspecial || null,

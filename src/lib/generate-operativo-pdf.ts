@@ -110,7 +110,7 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
       ? doc.splitTextToSize(text, maxWidth)
       : [text];
     lines.forEach((line: string, i: number) => {
-      const xPos = align === 'center' ? ml + cw / 2 : x;
+      const xPos = x;
       doc.text(line, xPos, yy + i * (size * 0.35), { align });
     });
     return lines.length * size * 0.35;
