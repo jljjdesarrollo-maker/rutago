@@ -17,7 +17,11 @@ import {
   CheckCircle2,
   Calendar,
   Zap,
-  Info
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  Sparkles,
+  Layers
 } from 'lucide-react';
 
 interface VentasReviewScreenProps {
@@ -54,522 +58,694 @@ interface Venta {
   frecuencia?: FrecuenciaRel | null;
 }
 
+interface FrecuenciaAgrupada {
+  key: string;
+  frecuenciaId: string | null;
+  hora: string;
+  titulo: string;
+  ruta: string;
+  tipo: string; // "ida" | "vuelta"
+  vtCode: string;
+  ayudanteNombre: string;
+  esPernoctaDia2: boolean;
+  totalBoletos: number;
+  totalRecaudado: number;
+  primeraEmision: string;
+  ultimaEmision: string;
+  boletos: Venta[];
+  tieneSospechas: boolean;
+  alertasCount: number;
+}
+
+function formatFechaOperacion(isoDate: string): string {
+  if (!isoDate) return '';
+  const parts = isoDate.split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const dateObj = new Date(y, m, d);
+    return dateObj.toLocaleDateString('es-EC', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+  return isoDate;
+}
+
+// Formato de hora, minuto y segundo exacto (HH:MM:SS) para auditoría
+function formatExactHMS(v: Venta): string {
+  const ts = v.fechaEmision || v.createdAt;
+  if (ts) {
+    try {
+      const d = new Date(ts);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString('es-EC', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        });
+      }
+    } catch { /* ignore */ }
+  }
+  return v.hora ? `${v.hora}:00` : '--:--:--';
+}
+
 export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const [selectedFecha, setSelectedFecha] = useState(todayStr);
   const [ventas, setVentas] = useState<Venta[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedFecha, setSelectedFecha] = useState(new Date().toISOString().split('T')[0]);
+
+  // Filtros rápidos opcionales
   const [selectedVT, setSelectedVT] = useState('');
-  const [selectedAyudante, setSelectedAyudante] = useState('');
-  const [vts, setVts] = useState<string[]>([]);
-  const [vtCounts, setVtCounts] = useState<Record<string, number>>({});
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState('');
+  const [expandedFrecuencias, setExpandedFrecuencias] = useState<Record<string, boolean>>({});
 
-  // Cargar lista de VTs disponibles para la fecha seleccionada
-  useEffect(() => {
-    const loadVTs = async () => {
-      try {
-        const res = await fetch(`/api/ventas?fecha=${selectedFecha}`);
-        if (res.ok) {
-          const data: Venta[] = await res.json();
-          const uniqueVTs = [...new Set(data.map(v => v.vtCode).filter(Boolean))].sort();
-          setVts(uniqueVTs);
-          const counts: Record<string, number> = {};
-          data.forEach(v => {
-            if (v.vtCode) counts[v.vtCode] = (counts[v.vtCode] || 0) + 1;
-          });
-          setVtCounts(counts);
-        }
-      } catch { /* ignore */ }
-    };
-    loadVTs();
-  }, [selectedFecha]);
-
-  // Cargar ventas cuando cambian los filtros principales
-  const loadVentas = useCallback(async () => {
+  // Cargar ventas de la fecha de operación
+  const loadVentas = useCallback(async (fecha: string) => {
     setLoading(true);
     setError('');
     try {
-      let url = `/api/ventas?fecha=${selectedFecha}`;
-      if (selectedVT) url += `&vtCode=${selectedVT}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Error al cargar datos');
+      const res = await fetch(`/api/ventas?fecha=${fecha}`);
+      if (!res.ok) throw new Error('Error al obtener las ventas del servidor');
       const data: Venta[] = await res.json();
       setVentas(data);
 
-      // Auto-expandir todos los grupos por defecto
-      const groups = buildFrequencyGroups(data, selectedAyudante);
-      const expanded: Record<string, boolean> = {};
-      Object.keys(groups).forEach(k => { expanded[k] = true; });
-      setExpandedGroups(expanded);
+      // Auto-expandir la primera frecuencia o todas si son pocas (<= 4)
+      const initialExpanded: Record<string, boolean> = {};
+      setExpandedFrecuencias(initialExpanded);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(err instanceof Error ? err.message : 'Error desconocido al conectar');
       setVentas([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedFecha, selectedVT, selectedAyudante]);
+  }, []);
 
   useEffect(() => {
-    loadVentas();
-  }, [loadVentas]);
+    loadVentas(selectedFecha);
+  }, [selectedFecha, loadVentas]);
 
-  // Filtrado en memoria por Ayudante si aplica
-  const filteredVentas = useMemo(() => {
-    if (!selectedAyudante) return ventas;
-    return ventas.filter(v => v.ayudanteNombre === selectedAyudante);
-  }, [ventas, selectedAyudante]);
+  // Lista de VTs presentes en las ventas del día
+  const vtsDisponibles = useMemo(() => {
+    const list = [...new Set(ventas.map(v => v.vtCode).filter(Boolean))].sort();
+    return list;
+  }, [ventas]);
 
-  // Función constructora de agrupación por Frecuencia Real Oficial y Turno
-  function buildFrequencyGroups(data: Venta[], ayudanteFilter: string) {
-    const items = ayudanteFilter ? data.filter(v => v.ayudanteNombre === ayudanteFilter) : data;
-    const groups: Record<string, {
-      title: string;
-      frecuenciaHora?: string;
-      ruta?: string;
-      vtCode: string;
-      items: Venta[];
-    }> = {};
+  // Conteo de boletos por VT
+  const vtCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    ventas.forEach(v => {
+      if (v.vtCode) counts[v.vtCode] = (counts[v.vtCode] || 0) + 1;
+    });
+    return counts;
+  }, [ventas]);
 
-    items.forEach(v => {
-      let groupKey: string;
-      let title: string;
-      let frecHora: string | undefined = undefined;
+  // Agrupación por Frecuencia Realizada (Lógica similar a Arqueo General)
+  const frecuenciasAgrupadas = useMemo(() => {
+    // 1. Filtrar por VT si el usuario seleccionó uno
+    let data = selectedVT ? ventas.filter(v => v.vtCode === selectedVT) : ventas;
 
-      if (v.frecuencia) {
-        groupKey = `FREC_${v.vtCode}_${v.frecuencia.id}`;
-        title = `[${v.vtCode}] ${v.frecuencia.hora || ''} ${v.frecuencia.nombre || v.frecuencia.ruta || v.ruta}`.trim();
-        frecHora = v.frecuencia.hora;
+    // 2. Filtrar por término de búsqueda si existe (parada, ayudante, ruta)
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      data = data.filter(v =>
+        v.parada?.toLowerCase().includes(term) ||
+        v.ayudanteNombre?.toLowerCase().includes(term) ||
+        v.ruta?.toLowerCase().includes(term) ||
+        v.hora?.toLowerCase().includes(term)
+      );
+    }
+
+    const map: Record<string, FrecuenciaAgrupada> = {};
+
+    data.forEach(v => {
+      // Clave única de la frecuencia realizada
+      let key = '';
+      let hora = v.frecuencia?.hora || v.hora || '--:--';
+      let titulo = '';
+      let ruta = v.frecuencia?.ruta || v.ruta || 'Ruta estándar';
+      let tipo = v.frecuencia?.direccion || v.tipo || 'ida';
+
+      if (v.frecuenciaId && v.frecuencia) {
+        key = `FREC_${v.vtCode}_${v.frecuenciaId}`;
+        titulo = `${v.frecuencia.hora || hora} • ${v.frecuencia.nombre || v.frecuencia.ruta || ruta}`;
+        hora = v.frecuencia.hora || hora;
       } else if (v.ruta) {
-        // Agrupar por VT y Ruta registrada
-        groupKey = `RUTA_${v.vtCode}_${v.ruta}_${v.tipo}`;
-        title = `[${v.vtCode}] ${v.ruta} (${v.tipo === 'ida' ? 'Ida' : 'Vuelta'})`;
+        key = `RUTA_${v.vtCode}_${hora}_${v.ruta}_${tipo}`;
+        titulo = `${hora} • ${v.ruta}`;
       } else {
-        groupKey = `VT_${v.vtCode}_GENERAL`;
-        title = `[${v.vtCode}] Ventas Generales`;
+        key = `GEN_${v.vtCode}_${hora}`;
+        titulo = `${hora} • Frecuencia ${v.vtCode}`;
       }
 
-      if (!groups[groupKey]) {
-        groups[groupKey] = {
-          title,
-          frecuenciaHora: frecHora,
-          ruta: v.ruta,
+      if (!map[key]) {
+        map[key] = {
+          key,
+          frecuenciaId: v.frecuenciaId,
+          hora,
+          titulo,
+          ruta,
+          tipo,
           vtCode: v.vtCode,
-          items: [],
+          ayudanteNombre: v.ayudanteNombre,
+          esPernoctaDia2: false,
+          totalBoletos: 0,
+          totalRecaudado: 0,
+          primeraEmision: '',
+          ultimaEmision: '',
+          boletos: [],
+          tieneSospechas: false,
+          alertasCount: 0,
         };
       }
-      groups[groupKey].items.push(v);
+
+      // Si algún boleto pertenece al día 2 del turno, marcar la frecuencia como pernocta
+      if (v.diaTurno === 2) {
+        map[key].esPernoctaDia2 = true;
+      }
+
+      map[key].boletos.push(v);
+      map[key].totalBoletos += 1;
+      map[key].totalRecaudado += v.cobrado;
     });
 
-    // Ordenar boletos dentro de cada grupo cronológicamente (más antiguo a más reciente)
-    Object.values(groups).forEach(g => {
-      g.items.sort((a, b) => {
-        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        if (timeA !== timeB) return timeA - timeB;
+    // Ordenar boletos cronológicamente (hora, min, seg) dentro de cada frecuencia
+    const result = Object.values(map);
+    result.forEach(frec => {
+      frec.boletos.sort((a, b) => {
+        const timeA = new Date(a.fechaEmision || a.createdAt).getTime();
+        const timeB = new Date(b.fechaEmision || b.createdAt).getTime();
+        if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+          return timeA - timeB;
+        }
         return (a.hora || '').localeCompare(b.hora || '');
+      });
+
+      if (frec.boletos.length > 0) {
+        frec.primeraEmision = formatExactHMS(frec.boletos[0]);
+        frec.ultimaEmision = formatExactHMS(frec.boletos[frec.boletos.length - 1]);
+      }
+
+      // Detección de sospechas antifraude dentro de la frecuencia:
+      // a) Emisiones ultra-rápidas en menos de 5 segundos
+      // b) Tarifas > $10
+      let alertas = 0;
+      for (let i = 0; i < frec.boletos.length; i++) {
+        const b = frec.boletos[i];
+        if (b.cobrado > 10) alertas++;
+        if (i > 0) {
+          const prev = frec.boletos[i - 1];
+          const tPrev = new Date(prev.fechaEmision || prev.createdAt).getTime();
+          const tCurr = new Date(b.fechaEmision || b.createdAt).getTime();
+          if (!isNaN(tPrev) && !isNaN(tCurr) && (tCurr - tPrev) >= 0 && (tCurr - tPrev) <= 4000) {
+            alertas++;
+          }
+        }
+      }
+      frec.tieneSospechas = alertas > 0;
+      frec.alertasCount = alertas;
+    });
+
+    // Ordenar frecuencias cronológicamente: Día 1 primero (por hora), Día 2 (Pernocta) después
+    result.sort((a, b) => {
+      if (a.esPernoctaDia2 !== b.esPernoctaDia2) {
+        return a.esPernoctaDia2 ? 1 : -1;
+      }
+      return (a.hora || '').localeCompare(b.hora || '');
+    });
+
+    return result;
+  }, [ventas, selectedVT, searchTerm]);
+
+  // Totales globales del día
+  const totalPasajeros = useMemo(() => ventas.reduce((acc, v) => acc + (selectedVT ? (v.vtCode === selectedVT ? 1 : 0) : 1), 0), [ventas, selectedVT]);
+  const totalRecaudado = useMemo(() => ventas.reduce((acc, v) => acc + (selectedVT ? (v.vtCode === selectedVT ? v.cobrado : 0) : v.cobrado), 0), [ventas, selectedVT]);
+  const totalFrecuencias = frecuenciasAgrupadas.length;
+
+  const toggleFrecuencia = (key: string) => {
+    setExpandedFrecuencias(prev => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const expandAll = () => {
+    const all: Record<string, boolean> = {};
+    frecuenciasAgrupadas.forEach(f => { all[f.key] = true; });
+    setExpandedFrecuencias(all);
+  };
+
+  const collapseAll = () => {
+    setExpandedFrecuencias({});
+  };
+
+  // Exportar reporte de auditoría a CSV
+  const exportCSV = () => {
+    if (ventas.length === 0) return;
+    const headers = '#_En_Frecuencia,Frecuencia_Hora,Ruta,Sentido,Grupo_VT,Dia_Turno,Hora_Minuto_Segundo,Fecha_Operacion,Timestamp_Emision_UTC,Parada_Destino,Tipo_Pasajero,Tarifa_Oficial,Monto_Cobrado,Ayudante,ID_Boleto';
+    const rows: string[] = [];
+
+    frecuenciasAgrupadas.forEach(f => {
+      f.boletos.forEach((v, idx) => {
+        const hms = formatExactHMS(v);
+        const fechaOp = v.fechaOperacion || v.fecha;
+        const diaT = v.diaTurno || (f.esPernoctaDia2 ? 2 : 1);
+        const fEmision = v.fechaEmision || v.createdAt;
+        rows.push(`${idx + 1},"${f.hora}","${f.ruta}","${f.tipo}","${v.vtCode}",${diaT},"${hms}","${fechaOp}","${fEmision}","${v.parada}","${v.pasajeroTipo || 'normal'}",${v.tarifaOficial.toFixed(2)},${v.cobrado.toFixed(2)},"${v.ayudanteNombre}","${v.id}"`);
       });
     });
 
-    return groups;
-  }
-
-  const groups = useMemo(() => {
-    return buildFrequencyGroups(ventas, selectedAyudante);
-  }, [ventas, selectedAyudante]);
-
-  // Lista de ayudantes únicos en los datos
-  const ayudantes = useMemo(() => {
-    return [...new Set(ventas.map(v => v.ayudanteNombre).filter(Boolean))].sort();
-  }, [ventas]);
-
-  // Métricas y Estadísticas
-  const totalPasajeros = filteredVentas.length;
-  const totalRecaudado = filteredVentas.reduce((s, v) => s + v.cobrado, 0);
-
-  // Alertas de sospecha:
-  // 1. Tarifa inusual (> $10)
-  // 2. Discrepancia con tarifa oficial (ej. cobró más o cobró 0 sin ser gratis)
-  const sospechosasTarifa = useMemo(() => {
-    return filteredVentas.filter(v => v.cobrado > 10 || (v.tarifaOficial > 0 && Math.abs(v.cobrado - v.tarifaOficial) > 2.0));
-  }, [filteredVentas]);
-
-  // Detección de posibles ráfagas (más de 4 boletos en menos de 60 segundos)
-  const rafagasSospechosas = useMemo(() => {
-    const alerts: { count: number; hora: string; parada: string; vtCode: string }[] = [];
-    const timeMap: Record<string, Venta[]> = {};
-    filteredVentas.forEach(v => {
-      const key = `${v.vtCode}_${v.hora?.slice(0, 5) || '00:00'}`;
-      if (!timeMap[key]) timeMap[key] = [];
-      timeMap[key].push(v);
-    });
-    Object.entries(timeMap).forEach(([k, list]) => {
-      if (list.length >= 5) {
-        alerts.push({
-          count: list.length,
-          hora: list[0].hora,
-          parada: list[0].parada,
-          vtCode: list[0].vtCode,
-        });
-      }
-    });
-    return alerts;
-  }, [filteredVentas]);
-
-  const toggleGroup = (key: string) => {
-    setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  // Formato legible de hora con segundos y timestamp exacto
-  const formatExactTime = (horaStr: string, createdAtStr: string) => {
-    if (createdAtStr) {
-      try {
-        const d = new Date(createdAtStr);
-        // Formato local HH:MM:SS
-        return d.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-      } catch { /* fallback */ }
-    }
-    return horaStr || '--:--';
-  };
-
-  const exportCSV = () => {
-    if (filteredVentas.length === 0) return;
-    const headers = '#,Vehiculo,Fecha,Hora_Emision,Timestamp_UTC,Frecuencia_Oficial,Ruta,Sentido,Parada,Tipo_Pasajero,Tarifa_Oficial,Cobrado,Ayudante,ID_Boleto';
-    const rows = filteredVentas.map((v, i) => {
-      const frecNombre = v.frecuencia ? `${v.frecuencia.hora} ${v.frecuencia.nombre}` : '';
-      return `${i + 1},"${v.vtCode}","${v.fecha}","${v.hora}","${v.createdAt}","${frecNombre}","${v.ruta}","${v.tipo}","${v.parada}","${v.pasajeroTipo || 'normal'}",${v.tarifaOficial.toFixed(2)},${v.cobrado.toFixed(2)},"${v.ayudanteNombre}","${v.id}"`;
-    });
-    const csv = [headers, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const csvContent = [headers, ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `auditoria_boletos_${selectedFecha}${selectedVT ? '_' + selectedVT : ''}.csv`;
-    a.click();
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Auditoria_Boletos_${selectedFecha}_${selectedVT || 'TODOS'}.csv`;
+    link.click();
     URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-[#F8F9FA]">
-      {/* Header Ejecutivo */}
-      <header className="bg-[#912D26] text-white px-4 py-3.5 shadow-md flex-shrink-0 sticky top-0 z-20">
-        <div className="flex items-center justify-between">
+    <div className="min-h-[100dvh] bg-gray-50 flex flex-col">
+      {/* ─── Cabecera Superior ─── */}
+      <header className="bg-[#912D26] text-white px-4 py-3 shadow-md sticky top-0 z-30 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={onBack}
-            className="p-1 -ml-1 text-white/80 hover:text-white rounded-lg active:scale-95 transition-transform"
+            className="w-10 h-10 -ml-1 rounded-xl flex items-center justify-center text-white/90 hover:text-white hover:bg-white/10 active:scale-95 transition-all"
             aria-label="Volver"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <div className="text-center">
-            <h1 className="text-base font-bold tracking-tight flex items-center justify-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-amber-300" />
-              Auditoría y Revisión de Ventas
+          <div>
+            <h1 className="text-base font-black tracking-tight leading-tight">
+              Revisión de Boletos
             </h1>
-            <p className="text-white/70 text-[11px]">Auditoría por Grupo de Turno (VT) y Frecuencia</p>
+            <p className="text-[11px] text-white/80 font-medium">
+              Detalle por frecuencias realizadas
+            </p>
           </div>
-          <div className="w-6" />
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => loadVentas(selectedFecha)}
+            disabled={loading}
+            className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/10 hover:bg-white/20 active:scale-95 transition-all"
+            title="Refrescar datos"
+          >
+            <RefreshCw className={`w-4 h-4 text-white ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          {ventas.length > 0 && (
+            <button
+              onClick={exportCSV}
+              className="px-2.5 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold flex items-center gap-1 active:scale-95 transition-all shadow-sm"
+              title="Descargar reporte en CSV con segundos"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Exportar</span>
+            </button>
+          )}
         </div>
       </header>
 
-      {/* Barra de Filtros Operativos */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 space-y-2.5 shadow-xs flex-shrink-0">
-        <div className="grid grid-cols-3 gap-2">
-          {/* Fecha */}
-          <div>
-            <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
-              Fecha
-            </label>
-            <input
-              type="date"
-              value={selectedFecha}
-              onChange={e => setSelectedFecha(e.target.value)}
-              className="w-full h-10 rounded-xl border border-gray-300 px-2.5 text-xs font-semibold text-gray-800 bg-gray-50/50 focus:bg-white focus:border-[#912D26] focus:outline-none"
-            />
+      {/* ─── Panel Principal de Control (Estilo Arqueo General) ─── */}
+      <div className="p-3 sm:p-4 space-y-3 max-w-4xl mx-auto w-full flex-1">
+        {/* Selector de Fecha de Operación */}
+        <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-[#912D26]/10 text-[#912D26] flex items-center justify-center flex-shrink-0">
+                <Calendar className="w-4 h-4" />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
+                  Fecha de Operación
+                </label>
+                <div className="text-sm font-extrabold text-gray-800 capitalize">
+                  {formatFechaOperacion(selectedFecha)}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={selectedFecha}
+                onChange={e => setSelectedFecha(e.target.value)}
+                className="h-10 px-3 rounded-xl border border-gray-300 text-xs font-bold text-gray-800 bg-gray-50 focus:bg-white focus:border-[#912D26] focus:outline-none shadow-inner"
+              />
+            </div>
           </div>
 
-          {/* Selector de Vehículo (VT) */}
-          <div>
-            <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
-              Grupo Turno (VT)
-            </label>
-            <select
-              value={selectedVT}
-              onChange={e => setSelectedVT(e.target.value)}
-              className="w-full h-10 rounded-xl border border-gray-300 px-2 text-xs font-semibold text-gray-800 bg-gray-50/50 focus:bg-white focus:border-[#912D26] focus:outline-none"
-            >
-              <option value="">Todos ({vts.length})</option>
-              {vts.map(vt => (
-                <option key={vt} value={vt}>
-                  {vt} ({vtCounts[vt] || 0} boletos)
-                </option>
+          {/* Filtro Rápido por Grupo VT (si hay más de 1) */}
+          {vtsDisponibles.length > 1 && (
+            <div className="pt-2 border-t border-gray-100 flex items-center gap-1.5 overflow-x-auto pb-0.5">
+              <span className="text-[10px] font-bold uppercase text-gray-400 mr-1 flex-shrink-0">
+                Grupo VT:
+              </span>
+              <button
+                onClick={() => setSelectedVT('')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex-shrink-0 ${
+                  selectedVT === ''
+                    ? 'bg-[#912D26] text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Todos ({ventas.length})
+              </button>
+              {vtsDisponibles.map(vt => (
+                <button
+                  key={vt}
+                  onClick={() => setSelectedVT(vt)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex-shrink-0 ${
+                    selectedVT === vt
+                      ? 'bg-[#912D26] text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {vt} ({vtCounts[vt] || 0})
+                </button>
               ))}
-            </select>
-          </div>
-
-          {/* Selector de Ayudante */}
-          <div>
-            <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
-              Ayudante
-            </label>
-            <select
-              value={selectedAyudante}
-              onChange={e => setSelectedAyudante(e.target.value)}
-              className="w-full h-10 rounded-xl border border-gray-300 px-2 text-xs font-semibold text-gray-800 bg-gray-50/50 focus:bg-white focus:border-[#912D26] focus:outline-none"
-            >
-              <option value="">Todos ({ayudantes.length})</option>
-              {ayudantes.map(a => (
-                <option key={a} value={a}>{a}</option>
-              ))}
-            </select>
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Indicadores Clave de Auditoría */}
-        {!loading && filteredVentas.length > 0 && (
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            <div className="bg-amber-50/60 border border-amber-200/70 rounded-xl p-2 text-center">
-              <div className="flex items-center justify-center gap-1 mb-0.5 text-amber-700">
+        {/* ─── Resumen General del Día ─── */}
+        {!loading && (
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-2.5 text-center shadow-sm">
+              <div className="flex items-center justify-center gap-1 mb-0.5 text-gray-500">
+                <Layers className="w-3.5 h-3.5 text-[#912D26]" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Frecuencias</span>
+              </div>
+              <span className="font-black text-lg text-gray-900">{totalFrecuencias}</span>
+            </div>
+
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-2.5 text-center shadow-sm">
+              <div className="flex items-center justify-center gap-1 mb-0.5 text-blue-600">
                 <Ticket className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-bold uppercase">Boletos</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">Boletos</span>
               </div>
-              <span className="font-extrabold text-base text-gray-900">{totalPasajeros}</span>
+              <span className="font-black text-lg text-gray-900">{totalPasajeros}</span>
             </div>
 
-            <div className="bg-emerald-50/60 border border-emerald-200/70 rounded-xl p-2 text-center">
-              <div className="flex items-center justify-center gap-1 mb-0.5 text-emerald-700">
+            <div className="bg-white border border-gray-200/80 rounded-2xl p-2.5 text-center shadow-sm">
+              <div className="flex items-center justify-center gap-1 mb-0.5 text-emerald-600">
                 <DollarSign className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-bold uppercase">Total Cobrado</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">Recaudado</span>
               </div>
-              <span className="font-extrabold text-base text-emerald-700">${totalRecaudado.toFixed(2)}</span>
-            </div>
-
-            <div className="bg-blue-50/60 border border-blue-200/70 rounded-xl p-2 text-center">
-              <div className="flex items-center justify-center gap-1 mb-0.5 text-blue-700">
-                <Bus className="w-3.5 h-3.5" />
-                <span className="text-[10px] font-bold uppercase">Frecuencias</span>
-              </div>
-              <span className="font-extrabold text-base text-blue-800">{Object.keys(groups).length}</span>
+              <span className="font-black text-lg text-emerald-700">
+                ${totalRecaudado.toFixed(2)}
+              </span>
             </div>
           </div>
         )}
 
-        {/* Alertas Antifraude */}
-        {sospechosasTarifa.length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-2.5 flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-red-700 leading-tight">
-              <p className="font-bold">{sospechosasTarifa.length} boleto(s) con tarifa atípica detectada</p>
-              <p className="text-[11px] text-red-600 mt-0.5">
-                Revise boletos con valores mayores a $10 o discrepancias marcadas respecto a la tarifa de la ruta.
-              </p>
+        {/* Buscador y botones de expandir/contraer */}
+        {frecuenciasAgrupadas.length > 0 && (
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Buscar por parada, ayudante..."
+                className="w-full h-9 pl-8 pr-3 rounded-xl border border-gray-300 text-xs text-gray-800 bg-white placeholder-gray-400 focus:border-[#912D26] focus:outline-none shadow-sm"
+              />
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={expandAll}
+                className="px-2 py-1.5 text-[11px] font-bold text-[#912D26] bg-[#912D26]/5 rounded-lg hover:bg-[#912D26]/10 active:scale-95"
+              >
+                Expandir
+              </button>
+              <button
+                onClick={collapseAll}
+                className="px-2 py-1.5 text-[11px] font-bold text-gray-500 bg-gray-100 rounded-lg hover:bg-gray-200 active:scale-95"
+              >
+                Colapsar
+              </button>
             </div>
           </div>
         )}
 
-        {rafagasSospechosas.length > 0 && (
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-2.5 flex items-start gap-2">
-            <Zap className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-orange-800 leading-tight">
-              <p className="font-bold">Alerta: Ráfagas de emisión en el mismo minuto</p>
-              <p className="text-[11px] text-orange-700 mt-0.5">
-                Detectados 5 o más boletos emitidos simultáneamente ({rafagasSospechosas.map(r => `[${r.vtCode}] ${r.hora}`).join(', ')}). Verifique si fue grupo familiar o facturación retardada.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Listado de Boletos por Frecuencia Oficial */}
-      <main className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        {/* ─── Mensaje de Carga / Error / Vacío ─── */}
         {loading && (
-          <div className="text-center py-12">
-            <div className="w-8 h-8 border-3 border-[#912D26]/20 border-t-[#912D26] rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-gray-500 text-sm font-medium">Consultando registros en base de datos...</p>
+          <div className="bg-white rounded-2xl p-8 text-center border border-gray-200/80 shadow-sm">
+            <RefreshCw className="w-8 h-8 text-[#912D26] animate-spin mx-auto mb-2.5" />
+            <p className="text-xs font-bold text-gray-600">Cargando frecuencias y boletos...</p>
           </div>
         )}
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
-            <p className="text-red-700 text-sm font-medium">{error}</p>
+        {error && !loading && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-xs font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
-        {!loading && !error && filteredVentas.length === 0 && (
-          <div className="text-center py-14 bg-white rounded-2xl border border-gray-200 p-6">
-            <Search className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-            <h3 className="text-sm font-bold text-gray-700">Sin boletos registrados</h3>
-            <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto">
-              No se encontraron ventas sincronizadas para el día {selectedFecha} con los filtros seleccionados.
+        {!loading && !error && frecuenciasAgrupadas.length === 0 && (
+          <div className="bg-white rounded-2xl p-8 text-center border border-gray-200/80 shadow-sm space-y-2">
+            <Ticket className="w-12 h-12 text-gray-300 mx-auto" />
+            <h3 className="text-sm font-extrabold text-gray-700">
+              No hay boletos registrados para esta fecha
+            </h3>
+            <p className="text-xs text-gray-400 max-w-sm mx-auto">
+              Verifica si la jornada ya fue sincronizada o selecciona otra fecha en el calendario superior.
             </p>
           </div>
         )}
 
-        {/* Frecuencias / Vueltas */}
-        {!loading && Object.entries(groups).map(([groupKey, group]) => {
-          const groupTotal = group.items.reduce((s, v) => s + v.cobrado, 0);
-          const isExpanded = expandedGroups[groupKey] !== false;
-          const primerBoleto = group.items[0];
-          const ultimoBoleto = group.items[group.items.length - 1];
+        {/* ─── LISTA DE FRECUENCIAS DEL DÍA (Tarjetas Estilo Arqueo) ─── */}
+        {!loading && frecuenciasAgrupadas.map((frec, idx) => {
+          const isExpanded = expandedFrecuencias[frec.key] ?? false;
+          const isIda = frec.tipo === 'ida';
 
           return (
             <div
-              key={groupKey}
-              className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden transition-all"
+              key={frec.key}
+              className="bg-white rounded-2xl border border-gray-200/90 shadow-sm overflow-hidden transition-all"
             >
-              {/* Encabezado de Frecuencia */}
+              {/* Encabezado Clickeable de la Frecuencia (Thumb friendly) */}
               <button
-                onClick={() => toggleGroup(groupKey)}
-                className="w-full p-3.5 flex items-center justify-between bg-gray-50/80 hover:bg-gray-100/80 active:bg-gray-200/50 text-left transition-colors border-b border-gray-100"
+                onClick={() => toggleFrecuencia(frec.key)}
+                className="w-full text-left p-3 sm:p-3.5 flex items-center justify-between gap-2.5 hover:bg-gray-50/80 active:bg-gray-100 transition-colors"
               >
-                <div className="flex-1 min-w-0 pr-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#912D26]/10 text-[#912D26] tracking-wide">
-                      Turno {group.vtCode}
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  {/* Badge de Hora / Sentido */}
+                  <div
+                    className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center flex-shrink-0 font-bold ${
+                      isIda
+                        ? 'bg-blue-50 text-blue-800 border border-blue-200/80'
+                        : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
+                    }`}
+                  >
+                    <span className="text-[13px] font-black leading-none">{frec.hora}</span>
+                    <span className="text-[9px] uppercase tracking-wider font-extrabold mt-0.5">
+                      {isIda ? 'Ida →' : '← Vlta'}
                     </span>
-                    <h3 className="text-xs font-bold text-gray-900 truncate">
-                      {group.title}
-                    </h3>
                   </div>
-                  <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500">
-                    <span className="flex items-center gap-1 font-medium">
-                      <Clock className="w-3 h-3 text-gray-400" />
-                      {primerBoleto ? formatExactTime(primerBoleto.hora, primerBoleto.createdAt) : '--:--'}
-                      {ultimoBoleto && ultimoBoleto !== primerBoleto && ` → ${formatExactTime(ultimoBoleto.hora, ultimoBoleto.createdAt)}`}
-                    </span>
-                    <span>•</span>
-                    <span className="truncate">
-                      Ayudante: <strong className="text-gray-700">{primerBoleto?.ayudanteNombre || 'Sin asignar'}</strong>
-                    </span>
+
+                  {/* Detalle de Ruta y Ayudante */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-extrabold text-gray-900 truncate">
+                        {frec.ruta}
+                      </span>
+                      {frec.esPernoctaDia2 && (
+                        <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-black px-1.5 py-0.2 rounded-md uppercase tracking-tight flex items-center gap-1">
+                          <span>🌙</span> Día 2 (Pernocta)
+                        </span>
+                      )}
+                      {frec.tieneSospechas && (
+                        <span
+                          className="bg-red-100 text-red-800 text-[9px] font-bold px-1.5 py-0.2 rounded-md flex items-center gap-0.5"
+                          title={`${frec.alertasCount} alerta(s) de posible emisión rápida o tarifa atípica`}
+                        >
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                          {frec.alertasCount} alerta(s)
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 flex-wrap">
+                      <span className="inline-flex items-center gap-1 font-semibold text-gray-700">
+                        <Bus className="w-3 h-3 text-[#912D26]" />
+                        {frec.vtCode}
+                      </span>
+                      <span>•</span>
+                      <span className="truncate">
+                        Ayudante: <strong className="text-gray-700">{frec.ayudanteNombre || 'Sin asignar'}</strong>
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="text-right flex items-center gap-2 flex-shrink-0">
+                {/* Subtotales y Chevron de despliegue */}
+                <div className="flex items-center gap-2 flex-shrink-0 text-right">
                   <div>
-                    <span className="text-xs font-black text-emerald-700 block">
-                      ${groupTotal.toFixed(2)}
-                    </span>
-                    <span className="text-[10px] text-gray-500 font-medium">
-                      {group.items.length} boleto{group.items.length !== 1 ? 's' : ''}
-                    </span>
+                    <div className="text-sm font-black text-gray-900 leading-tight">
+                      ${frec.totalRecaudado.toFixed(2)}
+                    </div>
+                    <div className="text-[10px] font-bold text-gray-400">
+                      {frec.totalBoletos} boletos
+                    </div>
                   </div>
-                  <svg
-                    className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center">
+                    {isExpanded ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </div>
                 </div>
               </button>
 
-              {/* Detalle Minuto a Minuto de los Boletos Emitidos */}
+              {/* ─── DETALLE DESPLEGABLE DE BOLETOS CON HORA:MINUTO:SEGUNDO ─── */}
               {isExpanded && (
-                <div className="divide-y divide-gray-100">
-                  {/* Encabezado de columnas */}
-                  <div className="px-3.5 py-2 bg-gray-50/50 flex items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                    <span className="w-14">Hora</span>
-                    <span className="flex-1 px-1">Parada / Tramo</span>
-                    <span className="w-16 text-center">Tipo</span>
-                    <span className="w-14 text-right">Cobrado</span>
+                <div className="border-t border-gray-100 bg-gray-50/50">
+                  {/* Barra informativa de la vuelta */}
+                  <div className="px-3.5 py-2 bg-white border-b border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
+                    <span className="font-semibold flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-[#912D26]" />
+                      Emisión: {frec.primeraEmision} a {frec.ultimaEmision}
+                    </span>
+                    <span className="font-mono text-gray-400 text-[10px]">
+                      {frec.boletos.length} tickets emitidos
+                    </span>
                   </div>
 
-                  {group.items.map((v, i) => {
-                    const exactTime = formatExactTime(v.hora, v.createdAt);
-                    const isSospechoso = v.cobrado > 10;
-                    const esMedia = v.pasajeroTipo === 'media';
+                  {/* Encabezado de columnas de auditoría */}
+                  <div className="px-3.5 py-1.5 bg-gray-100/70 text-[10px] font-black text-gray-500 uppercase tracking-wider flex items-center">
+                    <span className="w-20 font-mono">Hora (H:M:S)</span>
+                    <span className="flex-1 px-1">Parada / Destino</span>
+                    <span className="w-14 text-center">Tipo</span>
+                    <span className="w-14 text-right">Monto</span>
+                  </div>
 
-                    return (
-                      <div
-                        key={v.id}
-                        className={`px-3.5 py-2.5 flex items-center text-xs transition-colors hover:bg-gray-50/50 ${
-                          isSospechoso ? 'bg-red-50/80 text-red-900' : 'text-gray-800'
-                        }`}
-                      >
-                        {/* Minuto exacto */}
-                        <div className="w-14 flex-shrink-0">
-                          <span className="font-mono text-[11px] font-bold text-gray-700 block">
-                            {exactTime}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <span className="text-[9px] text-gray-400 font-mono">
-                              #{i + 1}
+                  {/* Filas de boletos */}
+                  <div className="divide-y divide-gray-100 bg-white">
+                    {frec.boletos.map((b, i) => {
+                      const hms = formatExactHMS(b);
+                      const esMedia = b.pasajeroTipo === 'media';
+                      const isSospechoso = b.cobrado > 10;
+
+                      // Control antifraude: calcular si se emitió en ráfaga (< 5 segs del anterior)
+                      let esRafaga = false;
+                      let segsDiferencia = null;
+                      if (i > 0) {
+                        const prev = frec.boletos[i - 1];
+                        const tPrev = new Date(prev.fechaEmision || prev.createdAt).getTime();
+                        const tCurr = new Date(b.fechaEmision || b.createdAt).getTime();
+                        if (!isNaN(tPrev) && !isNaN(tCurr)) {
+                          const diffSecs = Math.round((tCurr - tPrev) / 1000);
+                          if (diffSecs >= 0 && diffSecs <= 4) {
+                            esRafaga = true;
+                            segsDiferencia = diffSecs;
+                          }
+                        }
+                      }
+
+                      return (
+                        <div
+                          key={b.id}
+                          className={`px-3.5 py-2 flex items-center text-xs transition-colors ${
+                            isSospechoso
+                              ? 'bg-red-50/70 text-red-900'
+                              : esRafaga
+                              ? 'bg-amber-50/40 hover:bg-amber-50/70'
+                              : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          {/* Hora Minuto Segundo Exacto */}
+                          <div className="w-20 flex-shrink-0 font-mono">
+                            <span className="text-[11px] font-black text-gray-900 block tracking-tight">
+                              {hms}
                             </span>
-                            {v.diaTurno === 2 && (
-                              <span className="bg-amber-100 text-amber-800 text-[8px] font-bold px-1 py-0.2 rounded" title="Retorno tras pernocta (Día 2)">
-                                D2
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] text-gray-400 font-bold">
+                                #{i + 1}
+                              </span>
+                              {b.diaTurno === 2 && (
+                                <span className="bg-amber-100 text-amber-900 font-black text-[8px] px-1 rounded">
+                                  D2
+                                </span>
+                              )}
+                              {esRafaga && (
+                                <span
+                                  className="text-amber-600 text-[10px]"
+                                  title={`Emitido a ${segsDiferencia}s del ticket anterior`}
+                                >
+                                  ⚡
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Parada / Tramo */}
+                          <div className="flex-1 min-w-0 px-1">
+                            <div className="flex items-center gap-1 truncate">
+                              <span className="font-bold text-gray-800 text-[11px] truncate">
+                                {b.parada}
+                              </span>
+                            </div>
+                            {b.tarifaOficial > 0 && b.tarifaOficial !== b.cobrado && (
+                              <span className="text-[9px] text-gray-400 block truncate">
+                                Oficial: ${b.tarifaOficial.toFixed(2)}
                               </span>
                             )}
                           </div>
-                        </div>
 
-                        {/* Parada y Ruta */}
-                        <div className="flex-1 min-w-0 px-1">
-                          <div className="flex items-center gap-1 truncate">
-                            <span className="font-semibold text-gray-900 truncate">
-                              {v.parada}
-                            </span>
-                            <span className="text-[10px] text-gray-400 flex-shrink-0">
-                              {v.tipo === 'ida' ? '→' : '←'}
+                          {/* Tipo Pasajero */}
+                          <div className="w-14 text-center flex-shrink-0">
+                            <span
+                              className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                                esMedia
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              {esMedia ? 'Media' : 'Entero'}
                             </span>
                           </div>
-                          <span className="text-[10px] text-gray-500 truncate block">
-                            {v.ruta || 'Ruta estándar'} • Tarifa oficial: ${v.tarifaOficial.toFixed(2)}
-                          </span>
-                        </div>
 
-                        {/* Tipo de Pasajero */}
-                        <div className="w-16 text-center flex-shrink-0">
-                          <span
-                            className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold tracking-tight ${
-                              esMedia
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-gray-100 text-gray-600'
-                            }`}
-                          >
-                            {esMedia ? '½ Tarifa' : 'Entero'}
-                          </span>
-                        </div>
-
-                        {/* Monto cobrado */}
-                        <div className="w-14 text-right flex-shrink-0">
-                          <span
-                            className={`font-black text-xs ${
-                              isSospechoso ? 'text-red-600' : 'text-[#912D26]'
-                            }`}
-                          >
-                            ${v.cobrado.toFixed(2)}
-                          </span>
-                          {v.cobrado === 0 && (
-                            <span className="text-[9px] text-emerald-600 font-bold block">
-                              GRATIS
+                          {/* Monto Cobrado */}
+                          <div className="w-14 text-right flex-shrink-0 font-mono">
+                            <span
+                              className={`font-black text-xs ${
+                                b.cobrado === 0 ? 'text-green-600' : 'text-gray-900'
+                              }`}
+                            >
+                              ${b.cobrado.toFixed(2)}
                             </span>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+
+                  {/* Subtotal de la Frecuencia al pie */}
+                  <div className="px-3.5 py-2.5 bg-gray-100/90 border-t border-gray-200 flex items-center justify-between text-xs font-black text-gray-800">
+                    <span>Subtotal Frecuencia {frec.hora}:</span>
+                    <span className="font-mono text-sm text-[#912D26]">
+                      {frec.totalBoletos} boletos • ${frec.totalRecaudado.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
           );
         })}
-      </main>
-
-      {/* Botonera Inferior (Thumb Zone) */}
-      {!loading && filteredVentas.length > 0 && (
-        <div className="bg-white border-t border-gray-200 px-4 py-3 shadow-lg flex-shrink-0 sticky bottom-0 z-10">
-          <button
-            onClick={exportCSV}
-            className="w-full h-12 rounded-xl bg-[#912D26] hover:bg-[#7A2520] active:scale-[0.98] text-white font-bold text-xs flex items-center justify-center gap-2 transition-transform shadow-md shadow-[#912D26]/20"
-          >
-            <Download className="w-4 h-4" />
-            Descargar Auditoría Forense CSV ({filteredVentas.length} Boletos)
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
