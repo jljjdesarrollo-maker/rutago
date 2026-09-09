@@ -12,6 +12,7 @@ const COLORS = {
   lightRed: [245, 235, 234] as const,
   green: [34, 139, 34] as const,
   amber: [180, 120, 20] as const,
+  blue: [20, 80, 160] as const,
   lightGreen: [240, 253, 244] as const,
   lightAmber: [255, 251, 235] as const,
   lightRedBg: [254, 242, 242] as const,
@@ -76,6 +77,11 @@ export interface OperativoData {
   ingresosEspeciales: number;
   cumplimiento: number;
   totalIngresos: number;
+  totalEfectivoRuta?: number;
+  totalCajaComun?: number;
+  totalIngresosEspeciales?: number;
+  promedioPorFrecuencia?: number;
+  pctCajaComun?: number;
   motivos: OperativoMotivo[];
   days: OperativoDay[];
 }
@@ -217,10 +223,10 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
   // ==================== DETALLE POR DIA ====================
   drawBlockTitle('DETALLE POR DIA Y FRECUENCIA');
 
-  // Table columns: Hora | Ruta | Estado | Monto | Detalle
-  const colW = [16, 62, 28, 32, 42]; // sum = 180
-  const colHeaders = ['Hora', 'Ruta', 'Estado', 'Monto', 'Detalle'];
-  const colAlign: ('left' | 'right' | 'center')[] = ['center', 'left', 'center', 'right', 'left'];
+  // Table columns: Hora | Ruta | Estado | Efectivo | C. Comun | Total | Detalle (sum = 180mm)
+  const colW = [14, 50, 14, 24, 24, 26, 28];
+  const colHeaders = ['Hora', 'Ruta', 'Estado', 'Efectivo', 'C. Comun', 'Total', 'Detalle'];
+  const colAlign: ('left' | 'right' | 'center')[] = ['center', 'left', 'center', 'right', 'right', 'right', 'left'];
 
   const drawTableHeader = () => {
     doc.setFillColor(...COLORS.dark);
@@ -318,11 +324,13 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
   addLine(ml, w - mr, y - 2, COLORS.primary);
   y += 2;
   doc.setFillColor(...COLORS.primary);
-  doc.rect(ml, y - 3, cw, 8, 'F');
-  addText('TOTAL GENERAL', ml + 4, y + 0.5, { size: 8, color: COLORS.white, bold: true });
-  addText(`${data.realizadas} frec. realizadas`, ml + 40, y + 0.5, { size: 7, color: COLORS.white });
-  addText(formatMoney(data.totalIngresos), w - mr - 2, y + 0.5, { size: 9, color: COLORS.white, bold: true, align: 'right' });
-  y += 12;
+  doc.rect(ml, y - 3, cw, 9, 'F');
+  addText('TOTAL PRODUCCION', ml + 3, y + 1, { size: 7.5, color: COLORS.white, bold: true });
+  addText(`${data.realizadas} frec.`, ml + 36, y + 1, { size: 6.5, color: COLORS.white });
+  addText(`Ruta: ${formatMoney(totalEfectivo)}`, ml + 62, y + 1, { size: 6.5, color: COLORS.white });
+  addText(`Oficina: ${formatMoney(totalCajaComun)}`, ml + 106, y + 1, { size: 6.5, color: COLORS.white });
+  addText(formatMoney(data.totalIngresos), w - mr - 2, y + 1, { size: 8.5, color: COLORS.white, bold: true, align: 'right' });
+  y += 13;
 
   // ==================== FOOTER ====================
   const totalPages = doc.getNumberOfPages();

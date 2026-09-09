@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Calendar, Loader2, CheckCircle, XCircle, Sparkles, AlertTriangle, Download } from 'lucide-react';
+import { ArrowLeft, Calendar, Loader2, CheckCircle, XCircle, Sparkles, AlertTriangle, Download, Building2, Coins, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -40,6 +40,11 @@ interface OperativoData {
   ingresosEspeciales: number;
   cumplimiento: number;
   totalIngresos: number;
+  totalEfectivoRuta?: number;
+  totalCajaComun?: number;
+  totalIngresosEspeciales?: number;
+  promedioPorFrecuencia?: number;
+  pctCajaComun?: number;
   motivos: OperativoMotivo[];
   days: OperativoDay[];
 }
@@ -223,7 +228,50 @@ export function ReporteOperativoScreen({ onBack }: Props) {
 
         {data && !loading && (
           <>
-            {/* KPI Cards */}
+            {/* Bloque de Producción Operativa Consolidada */}
+            <div className="bg-white rounded-2xl p-4 border border-[#D6D6D6] shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-[#D6D6D6]/50 pb-2.5">
+                <div>
+                  <p className="text-[10px] text-[#3A3A3A]/60 uppercase font-semibold tracking-wider">Producción Total Operativa</p>
+                  <p className="text-2xl font-black text-[#912D26] tracking-tight">{formatMoney(data.totalIngresos)}</p>
+                </div>
+                {data.realizadas > 0 && (
+                  <div className="text-right">
+                    <span className="text-[10px] text-[#3A3A3A]/50 block uppercase font-medium">Promedio / Frec.</span>
+                    <span className="text-xs font-bold text-[#3A3A3A] bg-gray-100 px-2 py-0.5 rounded-md inline-block mt-0.5">
+                      {formatMoney(data.promedioPorFrecuencia ?? (data.totalIngresos / data.realizadas))}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Desglose Transparente: Efectivo Ruta vs Caja Común */}
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                <div className="bg-[#F8FAF8] rounded-xl p-2.5 border border-green-200/70">
+                  <div className="flex items-center gap-1.5 text-green-800 text-[11px] font-semibold">
+                    <Coins className="w-3.5 h-3.5 text-green-700" />
+                    <span>Efectivo Ruta</span>
+                  </div>
+                  <p className="text-base font-bold text-green-900 mt-1">
+                    {formatMoney(data.totalEfectivoRuta ?? data.days.flatMap(d => d.trips).filter(t => t.tipo === 'frecuencia').reduce((s, t) => s + (t.efectivoReal || 0), 0))}
+                  </p>
+                  <p className="text-[10px] text-green-700/80">Cobrado por Ayudante</p>
+                </div>
+
+                <div className="bg-[#F4F7FB] rounded-xl p-2.5 border border-blue-200/70">
+                  <div className="flex items-center gap-1.5 text-blue-800 text-[11px] font-semibold">
+                    <Building2 className="w-3.5 h-3.5 text-blue-700" />
+                    <span>Caja Común</span>
+                  </div>
+                  <p className="text-base font-bold text-blue-900 mt-1">
+                    {formatMoney(data.totalCajaComun ?? data.days.flatMap(d => d.trips).filter(t => t.tipo === 'frecuencia').reduce((s, t) => s + (t.cajaComunMonto || 0), 0))}
+                  </p>
+                  <p className="text-[10px] text-blue-700/80">Boletos de Oficina / Terminal</p>
+                </div>
+              </div>
+            </div>
+
+            {/* KPI Cards de Cumplimiento Operativo */}
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-white rounded-2xl p-3 border border-[#D6D6D6]">
                 <p className="text-[10px] text-[#3A3A3A]/50 uppercase font-medium">Programadas</p>
@@ -315,19 +363,33 @@ export function ReporteOperativoScreen({ onBack }: Props) {
                       {/* Main info */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-[#3A3A3A] truncate">{trip.nombre}</p>
+                        {isRealizada && (
+                          <div className="text-[11px] text-[#3A3A3A]/70 flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span className="text-green-800">Ruta: <strong>{formatMoney(trip.efectivoReal || 0)}</strong></span>
+                            {trip.cajaComunMonto > 0 && (
+                              <>
+                                <span className="text-[#D6D6D6]">•</span>
+                                <span className="text-blue-800">Oficina: <strong>{formatMoney(trip.cajaComunMonto)}</strong></span>
+                              </>
+                            )}
+                          </div>
+                        )}
                         {isNoReal && trip.motivo && (
-                          <p className="text-[11px] text-red-500">{labelMotivo(trip.motivo)}</p>
+                          <p className="text-[11px] text-red-500 mt-0.5">{labelMotivo(trip.motivo)}</p>
                         )}
                         {isEspecial && trip.notaEspecial && (
-                          <p className="text-[11px] text-amber-600">{trip.notaEspecial}</p>
+                          <p className="text-[11px] text-amber-600 mt-0.5">{trip.notaEspecial}</p>
                         )}
                       </div>
 
                       {/* Monto: produccion total = efectivoReal + cajaComunMonto */}
                       {isRealizada && (trip.efectivoReal + trip.cajaComunMonto) > 0 && (
-                        <span className="text-sm font-semibold shrink-0 text-green-700">
-                          {formatMoney((trip.efectivoReal || 0) + (trip.cajaComunMonto || 0))}
-                        </span>
+                        <div className="text-right shrink-0">
+                          <span className="text-sm font-bold text-green-800 block">
+                            {formatMoney((trip.efectivoReal || 0) + (trip.cajaComunMonto || 0))}
+                          </span>
+                          <span className="text-[9px] text-[#3A3A3A]/50 uppercase font-semibold">Producción</span>
+                        </div>
                       )}
                       {isEspecial && trip.income > 0 && (
                         <span className="text-sm font-semibold shrink-0 text-amber-700">

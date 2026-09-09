@@ -85,15 +85,26 @@ export async function GET(req: NextRequest) {
     // KPIs
     const totalProgramadas = trips.length;
     const realizadas = trips.filter(t => t.tipo === 'frecuencia').length;
-    const totalIngresos = trips.reduce((s, t) => {
-      // Produccion total de frecuencia = efectivoReal + cajaComunMonto
-      if (t.tipo === 'frecuencia') return s + (t.efectivoReal || 0) + (t.cajaComunMonto || 0);
-      if (t.tipo === 'ingreso_especial') return s + (t.income || 0);
-      return s;
-    }, 0);
     const noRealizadas = trips.filter(t => t.tipo === 'no_realizada').length;
     const ingresosEspeciales = trips.filter(t => t.tipo === 'ingreso_especial').length;
     const cumplimiento = totalProgramadas > 0 ? realizadas / totalProgramadas : 0;
+
+    // Desglose contable transparente de producción
+    const totalEfectivoRuta = trips
+      .filter(t => t.tipo === 'frecuencia')
+      .reduce((s, t) => s + (t.efectivoReal || 0), 0);
+
+    const totalCajaComun = trips
+      .filter(t => t.tipo === 'frecuencia')
+      .reduce((s, t) => s + (t.cajaComunMonto || 0), 0);
+
+    const totalIngresosEspeciales = trips
+      .filter(t => t.tipo === 'ingreso_especial')
+      .reduce((s, t) => s + (t.income || 0), 0);
+
+    const totalIngresos = totalEfectivoRuta + totalCajaComun + totalIngresosEspeciales;
+    const promedioPorFrecuencia = realizadas > 0 ? (totalEfectivoRuta + totalCajaComun) / realizadas : 0;
+    const pctCajaComun = (totalEfectivoRuta + totalCajaComun) > 0 ? totalCajaComun / (totalEfectivoRuta + totalCajaComun) : 0;
 
     // Motivos breakdown
     const motivosMap: Record<string, number> = {};
@@ -123,6 +134,11 @@ export async function GET(req: NextRequest) {
       ingresosEspeciales,
       cumplimiento,
       totalIngresos,
+      totalEfectivoRuta,
+      totalCajaComun,
+      totalIngresosEspeciales,
+      promedioPorFrecuencia,
+      pctCajaComun,
       motivos,
       days,
     });
