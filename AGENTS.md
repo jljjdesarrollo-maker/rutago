@@ -84,6 +84,10 @@
   - Botonera ergonómica en la zona del pulgar (Thumb Zone) con acceso triple: `Generar Reporte PDF`, `Exportar a Excel (.xlsx)` y `Compartir Resumen por WhatsApp`.
 
 
+- **Corrección de Rutas en Retornos y PDF Operativo (v3.50.1):**
+  - Se garantiza resolución simétrica de origen y destino (`routeFrom` y `routeTo`) en frecuencias de retorno (ej. `Vilcabamba → Loja`) en `ArqueoGeneralScreen`, evitando la distorsión histórica `Loja → Loja`.
+  - El generador de PDF del Reporte Operativo (`generate-operativo-pdf.ts`) respeta la posición horizontal individual de cada columna para textos centrados (`Hora` y `Estado`), eliminando la superposición en el centro de la hoja A4.
+
 ### Regla 8: Control Prudencial de Tiempos de Viaje y Agrupación Estricta de Boletos (v3.50.0)
 - **Agrupación Estricta por `frecuenciaId`:**
   - En la pantalla de `VentasReviewScreen`, los boletos se consolidan obligatoriamente bajo la instancia oficial de su frecuencia (`frecuenciaId`), asegurando coincidencia exacta 1 a 1 con el despacho del día y la tabla `Trip`.
