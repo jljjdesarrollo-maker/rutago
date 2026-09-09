@@ -84,6 +84,12 @@
   - Botonera ergonómica en la zona del pulgar (Thumb Zone) con acceso triple: `Generar Reporte PDF`, `Exportar a Excel (.xlsx)` y `Compartir Resumen por WhatsApp`.
 
 
+- **Producción Integral con Desglose Transparente en Reporte Operativo (v3.50.2):**
+  - Se cumple la ecuación contable `Producción = Efectivo Ruta + Caja Común` en el Reporte Operativo.
+  - En pantalla (`ReporteOperativoScreen`), se incorpora el bloque ejecutivo de Producción Total Operativa con desglose gráfico entre `Efectivo Ruta (Ayudante)` y `Caja Común (Oficina)`, más el promedio por vuelta realizada.
+  - En la lista táctica de vueltas, cada fila muestra el total en verde destacado (`Producción`) y el micro-desglose sutil `Ruta: S/ XX.XX • Oficina: S/ YY.YY`.
+  - En el documento PDF (`generate-operativo-pdf.ts`), se distribuyen los 180mm en 7 columnas dedicadas: `Hora | Ruta | Estado | Efectivo | C. Común | Total | Detalle`, con subtotales por día de efectivo y oficina, y consolidado final `TOTAL PRODUCCIÓN`.
+
 - **Corrección de Rutas en Retornos y PDF Operativo (v3.50.1):**
   - Se garantiza resolución simétrica de origen y destino (`routeFrom` y `routeTo`) en frecuencias de retorno (ej. `Vilcabamba → Loja`) en `ArqueoGeneralScreen`, evitando la distorsión histórica `Loja → Loja`.
   - El generador de PDF del Reporte Operativo (`generate-operativo-pdf.ts`) respeta la posición horizontal individual de cada columna para textos centrados (`Hora` y `Estado`), eliminando la superposición en el centro de la hoja A4.
