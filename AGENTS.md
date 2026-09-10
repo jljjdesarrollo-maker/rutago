@@ -84,6 +84,17 @@
   - Botonera ergonómica en la zona del pulgar (Thumb Zone) con acceso triple: `Generar Reporte PDF`, `Exportar a Excel (.xlsx)` y `Compartir Resumen por WhatsApp`.
 
 
+- **Auto-Resolución de Frecuencias, Sanación de Boletos Huérfanos y Reasignación Contable (v3.50.4):**
+  - **Causa Raíz Diagnosticada:** La tabla `Frecuencia` en PostgreSQL no contenía físicamente las filas de frecuencias de los VTs (generadas como objetos virtuales en memoria), por lo que la validación de clave foránea en `/api/ventas` asignaba `frecuenciaId: null`. Al aplicarse la agrupación estricta de v3.50.0, todos los boletos del día cayeron en la bandeja de huérfanos.
+  - **Módulo `frecuencia-helper.ts`:**
+    - `ensureVTFrecuencias`: Garantiza la persistencia física de las frecuencias de cada VT en la tabla `Frecuencia` de PostgreSQL.
+    - `resolveValidFrecuenciaId`: Valida y auto-resuelve el `frecuenciaId` oficial para toda venta individual o por lote, deduciendo la frecuencia por sentido y horario con tolerancia de hasta 210 min.
+    - `autoVincularVentasHuerfanas`: Al consultar `/api/ventas?fecha=...`, repara automáticamente los boletos huérfanos del día en la base de datos, asociándolos a su frecuencia oficial.
+  - **Reasignación Contable con 1 Toque (PENDIENTE #3 Cumplido):**
+    - En `VentasReviewScreen.tsx`, las tarjetas de boletos huérfanos disponen del botón ergonómico `[ Asignar Vuelta ]` que abre un Bottom Sheet táctil con el catálogo de frecuencias del VT para reasignación en lote vía `PATCH /api/ventas`.
+  - **Fallback Visual Seguro:**
+    - La interfaz agrupa inteligentemente por hora y ruta de emisión (`${hora} • ${ruta}`) si aún no hay ID foráneo, garantizando que el dinero nunca quede oculto ni desorientado.
+
 - **Corrección de Exportación a PDF en Reporte Operativo (v3.50.3):**
   - Se corrigió la referencia a variables de totales en `generate-operativo-pdf.ts` (`totalEfectivo`, `totalCajaComun`, `promedioFrec`), evitando el error que impedía la descarga del archivo.
   - Se alineó la estructura de 7 columnas en el detalle de cada frecuencia (`Hora | Ruta | Estado | Efectivo | C. Común | Total | Detalle`).

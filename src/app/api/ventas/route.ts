@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { resolveValidFrecuenciaId, autoVincularVentasHuerfanas } from '@/lib/frecuencia-helper';
 
 const prisma = new PrismaClient();
 
@@ -30,15 +31,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'tarifaOficial debe ser >= 0' }, { status: 400 });
     }
 
-    let validFrecuenciaId: string | null = null;
-    if (frecuenciaId) {
-      try {
-        const frec = await prisma.frecuencia.findUnique({ where: { id: frecuenciaId } });
-        if (frec) validFrecuenciaId = frecuenciaId;
-      } catch {
-        validFrecuenciaId = null;
-      }
-    }
+    // Resolución inteligente de frecuenciaId (asegura catálogo en BD o deduce por ruta y hora)
+    const validFrecuenciaId = await resolveValidFrecuenciaId(prisma, {
+      vtCode,
+      frecuenciaId,
+      hora,
+      ruta,
+      tipo,
+    });
 
     const emisionDate = fechaEmision ? new Date(fechaEmision) : (createdAt ? new Date(createdAt) : new Date());
     const diaNum = typeof diaTurno === 'number' ? diaTurno : 1;
@@ -84,6 +84,13 @@ export async function GET(request: NextRequest) {
     const vtCode = searchParams.get('vtCode');
     const fecha = searchParams.get('fecha');
 
+    // Auto-sanar boletos huérfanos históricos de la fecha en segundo plano seguro
+    try {
+      await autoVincularVentasHuerfanas(prisma, vtCode, fecha);
+    } catch (sanarErr) {
+      console.error('Error auto-vinculando boletos huérfanos:', sanarErr);
+    }
+
     const ventas = await prisma.ventaBoleto.findMany({
       where: {
         ...(vtCode ? { vtCode } : {}),
@@ -107,6 +114,41 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Reasignación manual de boletos huérfanos por parte del Administrador (PENDIENTE #3)
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { ticketIds, frecuenciaId } = body;
+
+    if (!Array.isArray(ticketIds) || ticketIds.length === 0 || !frecuenciaId) {
+      return NextResponse.json(
+        { error: 'ticketIds (array) y frecuenciaId son requeridos' },
+        { status: 400 }
+      );
+    }
+
+    // Verificar que la frecuencia exista
+    const frec = await prisma.frecuencia.findUnique({ where: { id: frecuenciaId } });
+    if (!frec) {
+      return NextResponse.json({ error: 'Frecuencia no encontrada' }, { status: 404 });
+    }
+
+    const updated = await prisma.ventaBoleto.updateMany({
+      where: { id: { in: ticketIds } },
+      data: { frecuenciaId: frec.id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      count: updated.count,
+      frecuencia: frec,
+      message: `Se reasignaron ${updated.count} boleto(s) a la frecuencia ${frec.hora} ${frec.nombre}`,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error al reasignar boletos';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
 
 export async function DELETE(request: NextRequest) {
   try {

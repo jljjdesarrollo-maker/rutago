@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
+import { resolveValidFrecuenciaId } from '@/lib/frecuencia-helper';
 
 const prisma = new PrismaClient();
 
@@ -25,7 +26,6 @@ export async function POST(request: NextRequest) {
         } = v as Record<string, unknown>;
 
         const opFecha = ((fechaOperacion || fecha) as string) || '';
-
         if (!opFecha || !vtCode || typeof cobrado !== 'number') {
           results.push({ localId: (localId as string) || '', serverId: '', ok: false, error: 'Campos obligatorios faltantes' });
           continue;
@@ -43,13 +43,14 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        let validFrecuenciaId: string | null = null;
-        if (frecuenciaId && typeof frecuenciaId === 'string') {
-          try {
-            const frec = await prisma.frecuencia.findUnique({ where: { id: frecuenciaId } });
-            if (frec) validFrecuenciaId = frecuenciaId;
-          } catch { /* ignore */ }
-        }
+        // Resolución inteligente de frecuenciaId (asegura catálogo en BD o deduce por ruta y hora)
+        const validFrecuenciaId = await resolveValidFrecuenciaId(prisma, {
+          vtCode: vtCode as string,
+          frecuenciaId: frecuenciaId as string | null | undefined,
+          hora: hora as string | null | undefined,
+          ruta: ruta as string | null | undefined,
+          tipo: tipo as string | null | undefined,
+        });
 
         const emisionDate = fechaEmision ? new Date(fechaEmision as string) : (createdAt ? new Date(createdAt as string) : new Date());
         const diaNum = typeof diaTurno === 'number' ? diaTurno : 1;

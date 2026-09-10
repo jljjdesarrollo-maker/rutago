@@ -135,6 +135,57 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
   const [deleting, setDeleting] = useState(false);
   const [deleteSuccessMsg, setDeleteSuccessMsg] = useState('');
 
+  // Estado para reasignación de frecuencias (PENDIENTE #3)
+  const [showReasignarModal, setShowReasignarModal] = useState(false);
+  const [frecuenciaToReasign, setFrecuenciaToReasign] = useState<FrecuenciaAgrupada | null>(null);
+  const [catalogoFrecuencias, setCatalogoFrecuencias] = useState<FrecuenciaRel[]>([]);
+  const [reasignando, setReasignando] = useState(false);
+  const [reasignSuccessMsg, setReasignSuccessMsg] = useState('');
+
+  const abrirReasignacion = async (frec: FrecuenciaAgrupada) => {
+    setFrecuenciaToReasign(frec);
+    setShowReasignarModal(true);
+    try {
+      const res = await fetch('/api/frecuencias?all=true');
+      if (res.ok) {
+        const data: FrecuenciaRel[] = await res.json();
+        const filtered = frec.vtCode && frec.vtCode !== 'VT' && frec.vtCode !== 'GENERAL'
+          ? data.filter(d => (d as any).vtCode === frec.vtCode)
+          : data;
+        setCatalogoFrecuencias(filtered.length > 0 ? filtered : data);
+      }
+    } catch (err) {
+      console.error('Error cargando frecuencias:', err);
+    }
+  };
+
+  const ejecutarReasignacion = async (targetFrecuenciaId: string) => {
+    if (!frecuenciaToReasign) return;
+    setReasignando(true);
+    try {
+      const ticketIds = frecuenciaToReasign.boletos.map(b => b.id);
+      const res = await fetch('/api/ventas', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticketIds,
+          frecuenciaId: targetFrecuenciaId,
+        }),
+      });
+      if (!res.ok) throw new Error('Error al reasignar boletos');
+      const json = await res.json();
+      setReasignSuccessMsg(json.message || 'Boletos reasignados con éxito');
+      setTimeout(() => setReasignSuccessMsg(''), 4000);
+      setShowReasignarModal(false);
+      setFrecuenciaToReasign(null);
+      await loadVentas(selectedFecha);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al reasignar boletos');
+    } finally {
+      setReasignando(false);
+    }
+  };
+
   // Cargar ventas de la fecha de operación
   const loadVentas = useCallback(async (fecha: string) => {
     setLoading(true);
@@ -208,6 +259,10 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
           ruta = v.frecuencia.nombre || v.frecuencia.ruta || ruta;
           tipo = v.frecuencia.direccion || tipo;
         }
+      } else if (v.ruta) {
+        // Fallback inteligente: si aún no tiene frecuenciaId enlazado en BD pero tiene ruta y hora de venta,
+        // se agrupa por su salida operativa real para NO esconder los boletos del día
+        key = `RUTA_${v.vtCode || 'VT'}_${hora.slice(0, 5)}_${ruta}_${tipo}`;
       } else {
         // Boletos No Asignados a Frecuencia (Ventas registradas sin despacho oficial)
         key = `HUERFANOS_${v.vtCode || 'GENERAL'}`;
@@ -693,6 +748,25 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
               {/* ─── DETALLE DESPLEGABLE DE BOLETOS CON HORA:MINUTO:SEGUNDO ─── */}
               {isExpanded && (
                 <div className="border-t border-gray-100 bg-gray-50/50">
+                  {frec.esHuerfano && (
+                    <div className="p-3 bg-amber-50 border-b border-amber-200/80 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-xs text-amber-900 font-semibold">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                        <span>Boletos pendientes de asignación a frecuencia oficial.</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          abrirReasignacion(frec);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-[#912D26] hover:bg-[#7a251f] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all flex-shrink-0"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Asignar Vuelta</span>
+                      </button>
+                    </div>
+                  )}
                   {/* Barra informativa de la vuelta */}
                   <div className="px-3.5 py-2 bg-white border-b border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
                     <span className="font-semibold flex items-center gap-1">
@@ -721,7 +795,7 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
 
                       // Control antifraude: calcular si se emitió en ráfaga (< 5 segs del anterior)
                       let esRafaga = false;
-                      let segsDiferencia = null;
+                      let segsDiferencia: number | null = null;
                       if (i > 0) {
                         const prev = frec.boletos[i - 1];
                         const tPrev = new Date(prev.fechaEmision || prev.createdAt).getTime();
