@@ -20,6 +20,7 @@ import { TicketScreen } from '@/components/transport/TicketScreen';
 import { ArqueoScreen } from '@/components/transport/ArqueoScreen';
 import { ArqueoGeneralScreen } from '@/components/transport/ArqueoGeneralScreen';
 import { SyncScreen } from '@/components/transport/SyncScreen';
+import OwnerExpensesScreen from '@/components/socio/OwnerExpensesScreen';
 import { type AppView, type RecordFormData, type SavedRecord, type UserSession, num } from '@/components/transport/types';
 import { type VTSession, type FrecuenciaEstado } from '@/components/transport/types-boletos';
 import { useToast } from '@/hooks/use-toast';
@@ -329,6 +330,15 @@ export default function Home() {
     );
   }
 
+  // Gastos del Socio Propietario
+  if (view === 'socio_gastos') {
+    return (
+      <OwnerExpensesScreen
+        onBackToHome={() => setView('home')}
+      />
+    );
+  }
+
   // Compare Frequencies screen (all users)
   if (view === 'compare') {
     return (
@@ -466,6 +476,7 @@ export default function Home() {
           onGoToCompare={() => setView('compare')}
           onGoToBoletos={() => setView('boletos_home')}
           onGoToVentasReview={() => setView('ventas_review')}
+          onGoToSocioGastos={() => setView('socio_gastos')}
           onLogout={handleLogout}
           recordCount={recordCount}
         />

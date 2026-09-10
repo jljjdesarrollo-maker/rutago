@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { History, Pencil, BookOpen, Truck, Users, LogOut, User, FileText, Database, Loader2, Share2, Settings, ArrowLeftRight, Ticket, Eye, Activity, ArrowRight, AlertCircle } from 'lucide-react';
+import { History, Pencil, BookOpen, Truck, Users, LogOut, User, FileText, Database, Loader2, Share2, Settings, ArrowLeftRight, Ticket, Eye, Activity, ArrowRight, AlertCircle, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -20,11 +20,12 @@ interface HomeScreenProps {
   onGoToCompare: () => void;
   onGoToBoletos: () => void;
   onGoToVentasReview: () => void;
+  onGoToSocioGastos?: () => void;
   onLogout: () => void;
   recordCount: number;
 }
 
-export function HomeScreen({ user, isAdmin, onGoToForm, onGoToCargaHistorica, onGoToHistory, onGoToPersonal, onGoToReports, onGoToOperativo, onGoToVtConfig, onGoToCompare, onGoToBoletos, onGoToVentasReview, onLogout, recordCount }: HomeScreenProps) {
+export function HomeScreen({ user, isAdmin, onGoToForm, onGoToCargaHistorica, onGoToHistory, onGoToPersonal, onGoToReports, onGoToOperativo, onGoToVtConfig, onGoToCompare, onGoToBoletos, onGoToVentasReview, onGoToSocioGastos, onLogout, recordCount }: HomeScreenProps) {
   const [backupLoading, setBackupLoading] = useState(false);
   const { toast } = useToast();
 
@@ -279,6 +280,32 @@ export function HomeScreen({ user, isAdmin, onGoToForm, onGoToCargaHistorica, on
                 </div>
               </CardContent>
             </Card>
+
+            {/* Gastos del Socio Propietario */}
+            {onGoToSocioGastos && (
+              <Card
+                onClick={onGoToSocioGastos}
+                className="cursor-pointer hover:shadow-md transition-all rounded-2xl border border-emerald-300 bg-emerald-50/40"
+              >
+                <CardContent className="flex items-center justify-between p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                      <Receipt className="w-5 h-5 text-emerald-700" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-[#3A3A3A] flex items-center gap-1.5">
+                        <span>Gastos del Socio</span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-200/80 text-emerald-900">
+                          9 Categorías
+                        </span>
+                      </p>
+                      <p className="text-xs text-[#3A3A3A]/60">Pagos, transferencias y deudas con talleres</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-emerald-600 shrink-0" />
+                </CardContent>
+              </Card>
+            )}
 
             {/* Datos section */}
             <div className="pt-2">

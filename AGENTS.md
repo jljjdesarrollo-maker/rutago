@@ -1,7 +1,7 @@
 # Reglas y Directivas de Proyecto: RutaGo
 
 ## 1. Identidad y Propósito del Proyecto
-- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.49.3-fase2-reportes` (base GitHub: `v3.48.0`)
+- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en producción: `v3.51.0-gastos-socio` (base GitHub: `v3.50.3`)
 - **Repositorio Oficial:** `https://github.com/jljjdesarrollo-maker/rutago`
 - **Stack Técnico:** Next.js (App Router), React 19, TypeScript, Tailwind CSS, Prisma ORM, IndexedDB (Offline-First), Radix UI, ESC/POS & JSPDF.
 - **Entorno de Despliegue:** Vercel (CI/CD conectado a GitHub) y uso directo en smartphones.
