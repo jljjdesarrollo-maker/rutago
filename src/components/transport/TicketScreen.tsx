@@ -242,8 +242,8 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
         if (!isBluetoothAvailable()) return;
         const device = await getPrinterDevice();
         if (!device) return;
-        const dateParts = fecha.split('-');
-        const fechaImp = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : fecha;
+        const dateParts = fechaOperacion.split('-');
+        const fechaImp = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : fechaOperacion;
         const bytes = generateTicketBytes({
           ruta: rutaMatched,
           horaFrecuencia: estado.hora,

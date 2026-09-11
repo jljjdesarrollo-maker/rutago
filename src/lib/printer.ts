@@ -237,3 +237,8 @@ export async function printTicket(device: BluetoothDevice, commands: Uint8Array)
     return false;
   }
 }
+
+// Auto-connect to last paired printer (alias for getPrinterDevice)
+export async function autoConnectPrinter(): Promise<BluetoothDevice | null> {
+  return await getPrinterDevice();
+}
