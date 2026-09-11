@@ -17,7 +17,7 @@ export async function ensureVTFrecuencias(prisma: PrismaClient, vtCode: string) 
   // 1. Revisar si ya existen en tabla Frecuencia
   const existing = await prisma.frecuencia.findMany({
     where: { vtCode, activo: true },
-    orderBy: { hora: 'asc' },
+    orderBy: { id: 'asc' },
   });
 
   if (existing.length > 0) {
@@ -75,7 +75,7 @@ export async function ensureVTFrecuencias(prisma: PrismaClient, vtCode: string) 
 
   return prisma.frecuencia.findMany({
     where: { vtCode, activo: true },
-    orderBy: { hora: 'asc' },
+    orderBy: { id: 'asc' },
   });
 }
 

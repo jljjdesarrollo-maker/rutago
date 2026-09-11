@@ -140,8 +140,22 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
 
         // Try loading saved estados from localStorage first
         const saved = loadEstadosFromLS(session.vtCode, fecha);
-        if (saved && saved.length === data.length) {
-          setEstados(saved);
+                if (saved && saved.length === data.length) {
+          // Mantener el orden canónico del catálogo (por ID/creación), respetando los datos de cada estado guardado
+          const orderedSaved = data.map((f: FrecuenciaData) => saved.find(s => s.frecuenciaId === f.id || s.id === f.id) || {
+            id: f.id,
+            estadoId: `${fecha}_${f.id}`,
+            frecuenciaId: f.id,
+            nombre: f.nombre,
+            ruta: f.ruta,
+            hora: f.hora,
+            direccion: f.direccion,
+            estado: 'pendiente' as const,
+            ventasCount: 0,
+            totalRecaudado: 0,
+          });
+          setEstados(orderedSaved);
+          saveEstadosToLS(session.vtCode, fecha, orderedSaved);
         } else {
           // Create fresh pendiente estados
           const newEstados: FrecuenciaEstado[] = data.map((f: FrecuenciaData) => ({
