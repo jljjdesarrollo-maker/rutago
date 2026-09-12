@@ -24,7 +24,9 @@ import {
   Clock,
   Sparkles,
   Info,
+  FileSpreadsheet,
 } from 'lucide-react';
+import OwnerIncomeStatementModal from './OwnerIncomeStatementModal';
 import {
   OwnerExpense,
   OwnerExpenseCategory,
@@ -57,6 +59,7 @@ export default function OwnerExpensesScreen({
 
   // Modales
   const [isNewExpenseOpen, setIsNewExpenseOpen] = useState(false);
+  const [isIncomeStatementOpen, setIsIncomeStatementOpen] = useState(false);
   const [abonoTargetExpense, setAbonoTargetExpense] = useState<OwnerExpense | null>(null);
   const [filterCategory, setFilterCategory] = useState<OwnerExpenseCategory | 'ALL'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -416,6 +419,29 @@ export default function OwnerExpensesScreen({
               Septiembre 2026 (Actual)
             </button>
           </div>
+        </div>
+
+        {/* BOTÓN EJECUTIVO: ESTADO DE RESULTADOS INTEGRAL & UTILIDAD NETA */}
+        <div className="bg-gradient-to-r from-[#912D26] to-[#73231d] rounded-2xl p-3.5 text-white shadow-md flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-red-200 text-xs font-bold uppercase tracking-wider">
+              <FileSpreadsheet className="w-4 h-4 text-white" />
+              <span>Reporte Fase 4.1</span>
+            </div>
+            <h2 className="text-sm font-black tracking-tight mt-0.5">
+              Estado de Resultados del Bus
+            </h2>
+            <p className="text-[11px] text-red-100/90 leading-tight mt-0.5">
+              Boletaje (-) Gastos Ayudante/Diésel (-) Gastos Socio = Utilidad Real
+            </p>
+          </div>
+          <button
+            id="btn-open-income-statement"
+            onClick={() => setIsIncomeStatementOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-white text-[#912D26] hover:bg-red-50 text-xs font-black shadow-sm shrink-0 transition active:scale-95 cursor-pointer"
+          >
+            Ver Utilidad
+          </button>
         </div>
 
         {/* TARJETA RESUMEN FINANCIERO DEL MES */}
@@ -1149,6 +1175,15 @@ export default function OwnerExpensesScreen({
           </div>
         </div>
       )}
+
+      {/* MODAL REPORTE: ESTADO DE RESULTADOS INTEGRAL DE LA UNIDAD */}
+      <OwnerIncomeStatementModal
+        isOpen={isIncomeStatementOpen}
+        onClose={() => setIsIncomeStatementOpen(false)}
+        busId={busId}
+        selectedYearMonth={selectedYearMonth}
+        allExpenses={allExpenses}
+      />
     </div>
   );
 }
