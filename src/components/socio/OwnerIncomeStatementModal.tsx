@@ -131,19 +131,28 @@ export default function OwnerIncomeStatementModal({
       ? (utilidadNetaReal / routeSummary.totalProduccionBruta) * 100
       : 0;
 
+  const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
+
   // Manejador de descarga de PDF
-  const handleDownloadPDF = () => {
-    const reportData: OwnerIncomeStatementData = {
-      busId,
-      monthStr: selectedYearMonth,
-      monthFormatted,
-      routeData: routeSummary,
-      ownerExpenses: ownerExpensesSummary,
-      margenOperativoCarretera: routeSummary.entregaNetaCarretera,
-      utilidadNetaReal,
-      margenUtilidadPorcentaje,
-    };
-    generateOwnerIncomeStatementPDF(reportData);
+  const handleDownloadPDF = async () => {
+    try {
+      setIsGeneratingPDF(true);
+      const reportData: OwnerIncomeStatementData = {
+        busId,
+        monthStr: selectedYearMonth,
+        monthFormatted,
+        routeData: routeSummary,
+        ownerExpenses: ownerExpensesSummary,
+        margenOperativoCarretera: routeSummary.entregaNetaCarretera,
+        utilidadNetaReal,
+        margenUtilidadPorcentaje,
+      };
+      await generateOwnerIncomeStatementPDF(reportData);
+    } catch (err) {
+      console.error('Error generando PDF de Estado de Resultados:', err);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   return (
@@ -382,10 +391,11 @@ export default function OwnerIncomeStatementModal({
         <div className="p-4 border-t border-gray-100 bg-gray-50 flex items-center gap-2">
           <button
             onClick={handleDownloadPDF}
-            className="flex-1 min-h-[48px] rounded-2xl bg-[#912D26] hover:bg-[#a6342c] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
+            disabled={isGeneratingPDF}
+            className="flex-1 min-h-[48px] rounded-2xl bg-[#912D26] hover:bg-[#a6342c] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer disabled:opacity-75"
           >
-            <Download className="w-4 h-4" />
-            <span>Descargar PDF Estado de Resultados</span>
+            <Download className={`w-4 h-4 ${isGeneratingPDF ? 'animate-bounce' : ''}`} />
+            <span>{isGeneratingPDF ? 'Generando PDF Oficial...' : 'Descargar PDF Estado de Resultados'}</span>
           </button>
           <button
             onClick={onClose}

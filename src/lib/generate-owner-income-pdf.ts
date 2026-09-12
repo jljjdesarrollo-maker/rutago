@@ -1,6 +1,3 @@
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
-
 export interface RouteFinancialSummary {
   totalProduccionBruta: number;
   totalVueltas: number;
@@ -46,212 +43,278 @@ export interface OwnerIncomeStatementData {
 
 /**
  * Genera el documento PDF formal de Estado de Resultados de la Unidad
- * con membrete institucional de Cooperativa Vilcabambaturis
+ * utilizando la API nativa de jsPDF (sin requerir dependencias externas adicionales como autotable),
+ * asegurando 100% de compatibilidad tanto en Vite como en Next.js / Turbopack en Vercel.
  */
-export function generateOwnerIncomeStatementPDF(data: OwnerIncomeStatementData) {
+export async function generateOwnerIncomeStatementPDF(data: OwnerIncomeStatementData): Promise<void> {
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const margin = 14;
+  const contentWidth = pageWidth - margin * 2; // 182mm
+
+  // Colores Institucionales
+  const COLOR_PRIMARY = [145, 45, 38] as const; // #912D26 (Rojo Vinotinto)
+  const COLOR_DARK = [40, 40, 40] as const;
+  const COLOR_MUTED = [100, 100, 100] as const;
+  const COLOR_BG_ROW = [248, 248, 248] as const;
+  const COLOR_EMERALD = [6, 95, 70] as const;
+  const COLOR_ROSE = [159, 18, 57] as const;
 
   // --- CABECERA INSTITUCIONAL VILCABAMBATURIS ---
-  doc.setFillColor(145, 45, 38); // #912D26 (Rojo Vinotinto Institucional)
-  doc.rect(0, 0, pageWidth, 32, 'F');
+  doc.setFillColor(...COLOR_PRIMARY);
+  doc.rect(0, 0, pageWidth, 30, 'F');
 
-  // Título
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(15);
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('COOPERATIVA DE TRANSPORTES VILCABAMBATURIS', pageWidth / 2, 12, { align: 'center' });
+  doc.text('COOPERATIVA DE TRANSPORTES VILCABAMBATURIS', pageWidth / 2, 11, { align: 'center' });
 
-  doc.setFontSize(10);
+  doc.setFontSize(9.5);
   doc.setFont('helvetica', 'normal');
-  doc.text('ESTADO DE RESULTADOS INTEGRAL Y LIQUIDACIÓN NETA MENSUAL', pageWidth / 2, 19, { align: 'center' });
+  doc.text('ESTADO DE RESULTADOS INTEGRAL Y LIQUIDACIÓN NETA MENSUAL', pageWidth / 2, 18, { align: 'center' });
 
-  doc.setFontSize(9);
-  doc.text(`Unidad: ${data.busId}  |  Mes Contable: ${data.monthFormatted}  |  Emisión: ${new Date().toLocaleDateString('es-EC')}`, pageWidth / 2, 26, { align: 'center' });
+  doc.setFontSize(8.5);
+  doc.text(
+    `Unidad: ${data.busId}  |  Mes Contable: ${data.monthFormatted}  |  Fecha de Emisión: ${new Date().toLocaleDateString('es-EC')}`,
+    pageWidth / 2,
+    24,
+    { align: 'center' }
+  );
 
-  let currentY = 40;
+  let y = 38;
 
-  // --- SECCIÓN 1: RESUMEN EJECUTIVO (KPIs) ---
-  doc.setTextColor(58, 58, 58);
-  doc.setFontSize(11);
+  // --- 1. RESUMEN EJECUTIVO (KPIs PRINCIPALES) ---
+  doc.setTextColor(...COLOR_PRIMARY);
+  doc.setFontSize(10.5);
   doc.setFont('helvetica', 'bold');
-  doc.text('1. RESUMEN EJECUTIVO DE RESULTADOS DEL BUS', 14, currentY);
-  currentY += 4;
+  doc.text('1. RESUMEN EJECUTIVO DE RESULTADOS DEL BUS', margin, y);
+  y += 5;
 
-  const kpiData = [
-    [
-      'Ingresos Brutos de Boletaje (Ruta)',
-      `$${data.routeData.totalProduccionBruta.toFixed(2)}`,
-      '100.0%',
-    ],
-    [
-      '(-) Gastos de Ruta Pagados por Ayudante/Chofer (Diésel, sueldos, peajes)',
-      `$${data.routeData.gastosRuta.totalGastosRuta.toFixed(2)}`,
-      `${data.routeData.totalProduccionBruta > 0 ? ((data.routeData.gastosRuta.totalGastosRuta / data.routeData.totalProduccionBruta) * 100).toFixed(1) : 0}%`,
-    ],
-    [
-      '(=) Entrega Operativa Neta de Carretera (Caja Líquida de Ruta)',
-      `$${data.routeData.entregaNetaCarretera.toFixed(2)}`,
-      `${data.routeData.totalProduccionBruta > 0 ? ((data.routeData.entregaNetaCarretera / data.routeData.totalProduccionBruta) * 100).toFixed(1) : 0}%`,
-    ],
-    [
-      '(-) Gastos Directos del Socio Propietario (8 Categorías contabilizadas)',
-      `$${data.ownerExpenses.totalGastosSocio.toFixed(2)}`,
-      `${data.routeData.totalProduccionBruta > 0 ? ((data.ownerExpenses.totalGastosSocio / data.routeData.totalProduccionBruta) * 100).toFixed(1) : 0}%`,
-    ],
-    [
-      '(=) UTILIDAD NETA REAL DISPONIBLE DEL SOCIO',
-      `$${data.utilidadNetaReal.toFixed(2)}`,
-      `${data.margenUtilidadPorcentaje.toFixed(1)}%`,
-    ],
+  // Cabecera de tabla de resumen
+  doc.setFillColor(...COLOR_PRIMARY);
+  doc.rect(margin, y, contentWidth, 7, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Concepto Financiero', margin + 3, y + 4.8);
+  doc.text('Monto USD', margin + contentWidth - 45, y + 4.8, { align: 'right' });
+  doc.text('% s/ Ingreso', margin + contentWidth - 3, y + 4.8, { align: 'right' });
+  y += 7;
+
+  const pct = (val: number) =>
+    data.routeData.totalProduccionBruta > 0
+      ? `${((val / data.routeData.totalProduccionBruta) * 100).toFixed(1)}%`
+      : '0.0%';
+
+  const kpiRows = [
+    {
+      label: 'Ingresos Brutos de Boletaje (Ruta)',
+      val: `+$${data.routeData.totalProduccionBruta.toFixed(2)}`,
+      pct: '100.0%',
+      isBold: true,
+      color: COLOR_DARK,
+    },
+    {
+      label: '(-) Gastos de Ruta Pagados por Ayudante/Chofer (Diésel, sueldos, peajes)',
+      val: `-$${data.routeData.gastosRuta.totalGastosRuta.toFixed(2)}`,
+      pct: pct(data.routeData.gastosRuta.totalGastosRuta),
+      isBold: false,
+      color: COLOR_DARK,
+    },
+    {
+      label: '(=) Entrega Operativa Neta de Carretera (Caja Líquida)',
+      val: `$${data.routeData.entregaNetaCarretera.toFixed(2)}`,
+      pct: pct(data.routeData.entregaNetaCarretera),
+      isBold: true,
+      color: COLOR_DARK,
+    },
+    {
+      label: '(-) Gastos Directos del Socio Propietario (8 Categorías)',
+      val: `-$${data.ownerExpenses.totalGastosSocio.toFixed(2)}`,
+      pct: pct(data.ownerExpenses.totalGastosSocio),
+      isBold: false,
+      color: COLOR_DARK,
+    },
+    {
+      label: '(=) UTILIDAD NETA REAL DISPONIBLE DEL SOCIO',
+      val: `$${data.utilidadNetaReal.toFixed(2)}`,
+      pct: `${data.margenUtilidadPorcentaje.toFixed(1)}%`,
+      isBold: true,
+      color: data.utilidadNetaReal >= 0 ? COLOR_EMERALD : COLOR_ROSE,
+      highlight: true,
+    },
   ];
 
-  autoTable(doc, {
-    startY: currentY,
-    head: [['Concepto Financiero', 'Monto (USD)', '% s/ Ingreso']],
-    body: kpiData,
-    theme: 'striped',
-    headStyles: { fillColor: [145, 45, 38], textColor: 255, fontStyle: 'bold', fontSize: 9 },
-    bodyStyles: { fontSize: 9, textColor: [50, 50, 50] },
-    columnStyles: {
-      0: { cellWidth: 120 },
-      1: { cellWidth: 35, halign: 'right', fontStyle: 'bold' },
-      2: { cellWidth: 25, halign: 'right' },
-    },
-    didParseCell: (hookData) => {
-      // Resaltar la fila de Utilidad Neta
-      if (hookData.section === 'body' && hookData.row.index === 4) {
-        hookData.cell.styles.fillColor = data.utilidadNetaReal >= 0 ? [236, 253, 245] : [255, 241, 242];
-        hookData.cell.styles.textColor = data.utilidadNetaReal >= 0 ? [6, 95, 70] : [159, 18, 57];
-        hookData.cell.styles.fontStyle = 'bold';
-      }
-    },
-    margin: { left: 14, right: 14 },
+  kpiRows.forEach((row, i) => {
+    if (row.highlight) {
+      doc.setFillColor(data.utilidadNetaReal >= 0 ? 236 : 255, data.utilidadNetaReal >= 0 ? 253 : 241, data.utilidadNetaReal >= 0 ? 245 : 242);
+      doc.rect(margin, y, contentWidth, 7, 'F');
+    } else if (i % 2 === 1) {
+      doc.setFillColor(...COLOR_BG_ROW);
+      doc.rect(margin, y, contentWidth, 6.5, 'F');
+    }
+
+    doc.setFont('helvetica', row.isBold ? 'bold' : 'normal');
+    doc.setFontSize(row.highlight ? 9 : 8);
+    doc.setTextColor(...row.color);
+    doc.text(row.label, margin + 3, y + (row.highlight ? 4.8 : 4.5));
+    doc.text(row.val, margin + contentWidth - 45, y + (row.highlight ? 4.8 : 4.5), { align: 'right' });
+    doc.text(row.pct, margin + contentWidth - 3, y + (row.highlight ? 4.8 : 4.5), { align: 'right' });
+
+    doc.setDrawColor(230, 230, 230);
+    doc.setLineWidth(0.2);
+    doc.line(margin, y + (row.highlight ? 7 : 6.5), margin + contentWidth, y + (row.highlight ? 7 : 6.5));
+    y += row.highlight ? 7 : 6.5;
   });
 
-  currentY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? currentY + 45;
-  currentY += 8;
+  y += 7;
 
-  // --- SECCIÓN 2: DESGLOSE DE GASTOS DE RUTA (AYUDANTE / CHOFER) ---
-  doc.setTextColor(58, 58, 58);
-  doc.setFontSize(11);
+  // --- 2. GASTOS DE CARRETERA ASUMIDOS EN RUTA ---
+  doc.setTextColor(...COLOR_PRIMARY);
+  doc.setFontSize(10.5);
   doc.setFont('helvetica', 'bold');
-  doc.text('2. GASTOS DE CARRETERA ASUMIDOS EN RUTA (AYUDANTE / CHOFER)', 14, currentY);
-  currentY += 4;
+  doc.text('2. GASTOS DE RUTA PAGADOS POR AYUDANTE / CHOFER', margin, y);
+  y += 5;
 
-  const rutaBody = [
-    ['Combustible Diésel', `$${data.routeData.gastosRuta.diesel.toFixed(2)}`],
-    ['Diario / Comisión de Chofer', `$${data.routeData.gastosRuta.chofer.toFixed(2)}`],
-    ['Diario / Comisión de Ayudante', `$${data.routeData.gastosRuta.ayudante.toFixed(2)}`],
-    ['Peajes, Terminales y Andenes', `$${data.routeData.gastosRuta.peajesTerminales.toFixed(2)}`],
-    ['Fondo Plan Renova / Interno', `$${data.routeData.gastosRuta.planRenova.toFixed(2)}`],
-    ['Otros Gastos Menores de Carretera', `$${data.routeData.gastosRuta.otrosRuta.toFixed(2)}`],
-    ['TOTAL GASTOS DE RUTA', `$${data.routeData.gastosRuta.totalGastosRuta.toFixed(2)}`],
+  doc.setFillColor(70, 70, 70);
+  doc.rect(margin, y, contentWidth, 6.5, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Rubro de Carretera', margin + 3, y + 4.5);
+  doc.text('Total Desembolsado (USD)', margin + contentWidth - 3, y + 4.5, { align: 'right' });
+  y += 6.5;
+
+  const rutaRows = [
+    { name: 'Combustible Diésel', amount: data.routeData.gastosRuta.diesel },
+    { name: 'Diario / Comisión de Chofer', amount: data.routeData.gastosRuta.chofer },
+    { name: 'Diario / Comisión de Ayudante', amount: data.routeData.gastosRuta.ayudante },
+    { name: 'Peajes, Terminales y Andenes', amount: data.routeData.gastosRuta.peajesTerminales },
+    { name: 'Fondo Plan Renova / Interno', amount: data.routeData.gastosRuta.planRenova },
+    { name: 'Otros Gastos Menores de Carretera', amount: data.routeData.gastosRuta.otrosRuta },
   ];
 
-  autoTable(doc, {
-    startY: currentY,
-    head: [['Rubro de Ruta', 'Total Desembolsado']],
-    body: rutaBody,
-    theme: 'plain',
-    headStyles: { fillColor: [80, 80, 80], textColor: 255, fontStyle: 'bold', fontSize: 9 },
-    bodyStyles: { fontSize: 8.5, cellPadding: 2 },
-    columnStyles: {
-      0: { cellWidth: 140 },
-      1: { cellWidth: 40, halign: 'right', fontStyle: 'bold' },
-    },
-    didParseCell: (hookData) => {
-      if (hookData.section === 'body' && hookData.row.index === 6) {
-        hookData.cell.styles.fontStyle = 'bold';
-        hookData.cell.styles.fillColor = [240, 240, 240];
-      }
-    },
-    margin: { left: 14, right: 14 },
+  rutaRows.forEach((r, i) => {
+    if (i % 2 === 1) {
+      doc.setFillColor(...COLOR_BG_ROW);
+      doc.rect(margin, y, contentWidth, 5.5, 'F');
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...COLOR_DARK);
+    doc.text(r.name, margin + 3, y + 3.8);
+    doc.text(`$${r.amount.toFixed(2)}`, margin + contentWidth - 3, y + 3.8, { align: 'right' });
+    y += 5.5;
   });
 
-  currentY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? currentY + 45;
-  currentY += 8;
-
-  // --- SECCIÓN 3: GASTOS DIRECTOS DEL SOCIO (8 CATEGORÍAS) ---
-  doc.setTextColor(58, 58, 58);
-  doc.setFontSize(11);
+  // Fila Total Gastos Ruta
+  doc.setFillColor(235, 235, 235);
+  doc.rect(margin, y, contentWidth, 6, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.text('3. GASTOS E INVERSIONES DEL SOCIO PROPIETARIO (8 CATEGORÍAS)', 14, currentY);
-  currentY += 4;
+  doc.setTextColor(...COLOR_DARK);
+  doc.text('TOTAL GASTOS DE RUTA', margin + 3, y + 4.2);
+  doc.text(`$${data.routeData.gastosRuta.totalGastosRuta.toFixed(2)}`, margin + contentWidth - 3, y + 4.2, { align: 'right' });
+  y += 11;
 
-  const categoriesBody = data.ownerExpenses.categories.map((c) => [
-    `${c.name}`,
-    c.count.toString(),
-    `$${c.totalAmount.toFixed(2)}`,
-    `$${c.paidAmount.toFixed(2)}`,
-    `$${c.pendingBalance.toFixed(2)}`,
-  ]);
+  // --- 3. GASTOS DIRECTOS DEL SOCIO (8 CATEGORÍAS) ---
+  doc.setTextColor(...COLOR_PRIMARY);
+  doc.setFontSize(10.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('3. GASTOS E INVERSIONES DEL SOCIO PROPIETARIO (8 CATEGORÍAS)', margin, y);
+  y += 5;
 
-  // Fila de Total
-  categoriesBody.push([
-    'TOTAL GASTOS DEL SOCIO',
+  doc.setFillColor(...COLOR_PRIMARY);
+  doc.rect(margin, y, contentWidth, 6.5, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Categoría', margin + 3, y + 4.5);
+  doc.text('Cant.', margin + 75, y + 4.5, { align: 'center' });
+  doc.text('Costo Total', margin + 115, y + 4.5, { align: 'right' });
+  doc.text('Pagado', margin + 148, y + 4.5, { align: 'right' });
+  doc.text('Saldo Deuda', margin + contentWidth - 3, y + 4.5, { align: 'right' });
+  y += 6.5;
+
+  data.ownerExpenses.categories.forEach((cat, i) => {
+    if (i % 2 === 1) {
+      doc.setFillColor(...COLOR_BG_ROW);
+      doc.rect(margin, y, contentWidth, 5.5, 'F');
+    }
+    doc.setFont('helvetica', cat.count > 0 ? 'bold' : 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...(cat.count > 0 ? COLOR_DARK : COLOR_MUTED));
+    doc.text(cat.name, margin + 3, y + 3.8);
+    doc.text(cat.count.toString(), margin + 75, y + 3.8, { align: 'center' });
+    doc.text(`$${cat.totalAmount.toFixed(2)}`, margin + 115, y + 3.8, { align: 'right' });
+    doc.text(`$${cat.paidAmount.toFixed(2)}`, margin + 148, y + 3.8, { align: 'right' });
+
+    if (cat.pendingBalance > 0) {
+      doc.setTextColor(...COLOR_ROSE);
+      doc.setFont('helvetica', 'bold');
+    }
+    doc.text(`$${cat.pendingBalance.toFixed(2)}`, margin + contentWidth - 3, y + 3.8, { align: 'right' });
+
+    doc.setDrawColor(235, 235, 235);
+    doc.setLineWidth(0.2);
+    doc.line(margin, y + 5.5, margin + contentWidth, y + 5.5);
+    y += 5.5;
+  });
+
+  // Fila Total Gastos Socio
+  doc.setFillColor(235, 235, 235);
+  doc.rect(margin, y, contentWidth, 6.5, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLOR_DARK);
+  doc.text('TOTAL GASTOS DEL SOCIO', margin + 3, y + 4.5);
+  doc.text(
     data.ownerExpenses.categories.reduce((s, c) => s + c.count, 0).toString(),
-    `$${data.ownerExpenses.totalGastosSocio.toFixed(2)}`,
-    `$${data.ownerExpenses.totalPagadoEfectivoTransf.toFixed(2)}`,
-    `$${data.ownerExpenses.totalDeudasTalleresPendientes.toFixed(2)}`,
-  ]);
-
-  autoTable(doc, {
-    startY: currentY,
-    head: [['Categoría', 'Cant.', 'Costo Total', 'Pagado', 'Saldo Deuda']],
-    body: categoriesBody,
-    theme: 'grid',
-    headStyles: { fillColor: [145, 45, 38], textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
-    bodyStyles: { fontSize: 8, cellPadding: 2 },
-    columnStyles: {
-      0: { cellWidth: 70 },
-      1: { cellWidth: 18, halign: 'center' },
-      2: { cellWidth: 32, halign: 'right' },
-      3: { cellWidth: 30, halign: 'right' },
-      4: { cellWidth: 30, halign: 'right', fontStyle: 'bold' },
-    },
-    didParseCell: (hookData) => {
-      // Resaltar última fila de totales
-      if (hookData.section === 'body' && hookData.row.index === categoriesBody.length - 1) {
-        hookData.cell.styles.fontStyle = 'bold';
-        hookData.cell.styles.fillColor = [245, 245, 245];
-      }
-    },
-    margin: { left: 14, right: 14 },
-  });
-
-  currentY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? currentY + 50;
-  currentY += 12;
-
-  // Si se pasa de la página, saltar
-  if (currentY > 260) {
-    doc.addPage();
-    currentY = 25;
-  }
+    margin + 75,
+    y + 4.5,
+    { align: 'center' }
+  );
+  doc.text(`$${data.ownerExpenses.totalGastosSocio.toFixed(2)}`, margin + 115, y + 4.5, { align: 'right' });
+  doc.text(`$${data.ownerExpenses.totalPagadoEfectivoTransf.toFixed(2)}`, margin + 148, y + 4.5, { align: 'right' });
+  doc.setTextColor(...(data.ownerExpenses.totalDeudasTalleresPendientes > 0 ? COLOR_ROSE : COLOR_DARK));
+  doc.text(`$${data.ownerExpenses.totalDeudasTalleresPendientes.toFixed(2)}`, margin + contentWidth - 3, y + 4.5, { align: 'right' });
+  y += 14;
 
   // --- PIE Y FIRMAS DE RESPONSABILIDAD ---
-  doc.setFontSize(8.5);
-  doc.setTextColor(120, 120, 120);
-  doc.text('* Este documento consolida la recaudación de ruta menos los egresos de viaje y los gastos contables del socio.', 14, currentY);
-  currentY += 18;
+  if (y > pageHeight - 35) {
+    doc.addPage();
+    y = 25;
+  }
 
-  const colWidth = (pageWidth - 28) / 2;
-  doc.setDrawColor(180, 180, 180);
-  doc.line(20, currentY, 20 + colWidth - 10, currentY);
-  doc.line(pageWidth / 2 + 10, currentY, pageWidth - 20, currentY);
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(60, 60, 60);
-  doc.text('SOCIO PROPIETARIO', 20 + (colWidth - 10) / 2, currentY + 5, { align: 'center' });
-  doc.text('ADMINISTRACIÓN / AUDITORÍA', pageWidth / 2 + 10 + (colWidth - 10) / 2, currentY + 5, { align: 'center' });
-
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
+  doc.setTextColor(...COLOR_MUTED);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 100, 100);
-  doc.text(`Unidad ${data.busId}`, 20 + (colWidth - 10) / 2, currentY + 9, { align: 'center' });
-  doc.text('Coo. Vilcabambaturis', pageWidth / 2 + 10 + (colWidth - 10) / 2, currentY + 9, { align: 'center' });
+  doc.text(
+    '* Reporte emitido bajo el principio de una unidad por socio. Consolida ingresos de boletaje, deducciones de ruta y gastos patrimoniales.',
+    margin,
+    y
+  );
+  y += 16;
 
-  // Descarga del documento
+  const halfWidth = contentWidth / 2;
+  doc.setDrawColor(180, 180, 180);
+  doc.setLineWidth(0.4);
+  doc.line(margin + 10, y, margin + halfWidth - 10, y);
+  doc.line(margin + halfWidth + 10, y, margin + contentWidth - 10, y);
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...COLOR_DARK);
+  doc.text('SOCIO PROPIETARIO', margin + halfWidth / 2, y + 4.5, { align: 'center' });
+  doc.text('ADMINISTRACIÓN / AUDITORÍA', margin + halfWidth + halfWidth / 2, y + 4.5, { align: 'center' });
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...COLOR_MUTED);
+  doc.text(`Unidad ${data.busId}`, margin + halfWidth / 2, y + 8.5, { align: 'center' });
+  doc.text('Coo. Vilcabambaturis', margin + halfWidth + halfWidth / 2, y + 8.5, { align: 'center' });
+
+  // Guardar archivo
   doc.save(`Estado_Resultados_${data.busId}_${data.monthStr}.pdf`);
 }
