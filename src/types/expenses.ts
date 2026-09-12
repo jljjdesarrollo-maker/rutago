@@ -1,12 +1,11 @@
 export type OwnerExpenseCategory =
   | 'LLANTAS'
-  | 'MECANICA_REPUESTOS'
-  | 'ELECTRICO_AC'
-  | 'SEGURO'
-  | 'COOPERATIVA'
-  | 'TRAMITES'
-  | 'LIMPIEZA_ASEO'
-  | 'MULTAS_ATRASOS'
+  | 'ACEITES_FILTROS'
+  | 'MOTOR_CAJA_CORONA'
+  | 'FRENOS_RODAJE'
+  | 'ELECTRICO'
+  | 'PAGOS_COMPANIA'
+  | 'TRAMITES_PERMISOS'
   | 'OTROS';
 
 export interface CategoryMeta {
@@ -20,66 +19,59 @@ export interface CategoryMeta {
 export const OWNER_EXPENSE_CATEGORIES: CategoryMeta[] = [
   {
     id: 'LLANTAS',
-    name: 'Llantas / Alineación',
+    name: 'Llantas',
     icon: '🛞',
-    description: 'Compra de llantas nuevas o recauchadas, alineación y balanceo',
-    badgeColor: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    description: 'Compra de llantas nuevas, vulcanizado, parchado, rotación, tramado y alineación',
+    badgeColor: 'bg-amber-50 text-amber-800 border-amber-300',
   },
   {
-    id: 'MECANICA_REPUESTOS',
-    name: 'Mecánica y Repuestos',
+    id: 'ACEITES_FILTROS',
+    name: 'Aceites y Filtros',
+    icon: '🛢️',
+    description: 'Cambios de aceite (motor, caja, corona) y filtros de aceite, combustible y aire',
+    badgeColor: 'bg-orange-50 text-orange-800 border-orange-200',
+  },
+  {
+    id: 'MOTOR_CAJA_CORONA',
+    name: 'Motor, Caja y Corona',
     icon: '⚙️',
-    description: 'Motor, caja, corona, válvulas, zapatas, muelles, aceite, repuestos',
-    badgeColor: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
+    description: 'Reparaciones mecánicas mayores, válvulas, empaques, correas, caja, corona y mano de obra',
+    badgeColor: 'bg-blue-50 text-blue-800 border-blue-200',
   },
   {
-    id: 'ELECTRICO_AC',
+    id: 'FRENOS_RODAJE',
+    name: 'Frenos y Rodaje',
+    icon: '🛑',
+    description: 'Zapatas, pastillas, rectificación de tambores, rodillos, rodamientos, rachers y sistema de aire',
+    badgeColor: 'bg-rose-50 text-rose-800 border-rose-300',
+  },
+  {
+    id: 'ELECTRICO',
     name: 'Eléctrico y A/C',
     icon: '⚡',
-    description: 'Luces, alternadores, baterías, recarga y mantenimiento de aire acondicionado',
-    badgeColor: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30',
+    description: 'Baterías, alternadores, arrancador, focos, cableado, fusibles y aire acondicionado',
+    badgeColor: 'bg-yellow-50 text-yellow-800 border-yellow-300',
   },
   {
-    id: 'SEGURO',
-    name: 'Seguro Vehicular',
-    icon: '🛡️',
-    description: 'Pólizas, primas y coberturas de protección vehicular',
-    badgeColor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-  },
-  {
-    id: 'COOPERATIVA',
-    name: 'Cuota Cooperativa',
+    id: 'PAGOS_COMPANIA',
+    name: 'Pagos a la Compañía',
     icon: '🏢',
-    description: 'Cuotas administrativas mensuales, aportes y compromisos internos',
-    badgeColor: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
+    description: 'Cuotas cooperativas, aportes internos, pólizas de seguro vehicular y deducibles',
+    badgeColor: 'bg-[#912D26]/10 text-[#912D26] border-[#912D26]/30',
   },
   {
-    id: 'TRAMITES',
-    name: 'Trámites / Matrícula',
+    id: 'TRAMITES_PERMISOS',
+    name: 'Trámites y Permisos',
     icon: '📄',
-    description: 'Revisión técnica vehicular, matrícula, permisos ANT y trámites legales',
-    badgeColor: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
-  },
-  {
-    id: 'LIMPIEZA_ASEO',
-    name: 'Limpieza y Aseo',
-    icon: '🧼',
-    description: 'Insumos de limpieza, lavado general a presión y polverizado',
-    badgeColor: 'bg-teal-500/15 text-teal-300 border-teal-500/30',
-  },
-  {
-    id: 'MULTAS_ATRASOS',
-    name: 'Multas y Atrasos',
-    icon: '⚠️',
-    description: 'Sanciones internas por retrasos en frecuencias o faltas operativas',
-    badgeColor: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+    description: 'Revisión técnica vehicular (RTV), matriculación ANT, habilitaciones y permisos',
+    badgeColor: 'bg-indigo-50 text-indigo-800 border-indigo-200',
   },
   {
     id: 'OTROS',
-    name: 'Otros Gastos Socio',
+    name: 'Otros (Limpieza, Multas y Varios)',
     icon: '📦',
-    description: 'Garajes especiales, viáticos imprevistos del socio, pagos menores',
-    badgeColor: 'bg-neutral-500/15 text-neutral-300 border-neutral-500/30',
+    description: 'Lavado general/diario, insumos de aseo, multas e infracciones de tránsito y gastos menores',
+    badgeColor: 'bg-gray-100 text-[#3A3A3A] border-gray-300',
   },
 ];
 
