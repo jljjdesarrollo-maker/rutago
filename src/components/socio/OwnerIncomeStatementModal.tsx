@@ -57,35 +57,52 @@ export default function OwnerIncomeStatementModal({
   // 1. OBTENER / CONSOLIDAR DATOS DE RUTA DEL MES
   // Para el mes seleccionado calculamos o tomamos los registros operativos
   const routeSummary: RouteFinancialSummary = useMemo(() => {
-    // Si es septiembre 2026 o agosto 2026, proveemos estimación realista basada en las frecuencias de la unidad
+    // Si es agosto 2026, usamos exactamente las cifras de la auditoría mensual oficial (Reporte 01/08/2026 al 31/08/2026)
     const isAugust = selectedYearMonth === '2026-08';
     
-    // Simulación de valores operativos estándar de un bus activo en la ruta Loja-Vilcabamba
-    const totalProduccionBruta = isAugust ? 4850.0 : 5420.0;
-    const diesel = isAugust ? 1280.0 : 1420.0;
-    const chofer = isAugust ? 900.0 : 960.0;
-    const ayudante = isAugust ? 600.0 : 640.0;
-    const peajesTerminales = isAugust ? 210.0 : 230.0;
-    const planRenova = isAugust ? 180.0 : 180.0;
-    const otrosRuta = isAugust ? 60.0 : 75.0;
+    if (isAugust) {
+      return {
+        totalProduccionBruta: 12334.75,
+        efectivoRuta: 11094.10,
+        cajaComun: 1234.95,
+        sobrante: 5.70,
+        totalEgresosRuta: 8419.50, // Gastos S/ 8271.00 + Tickets S/ 148.50
+        gastosRutaDetalle: {
+          diesel: 3685.50, // 29.9% s/ producción
+          otrosGastosCarretera: 4585.50, // Chofer, ayudante, peajes, turnos
+          totalGastosCarretera: 8271.00,
+          totalTickets: 148.50,
+        },
+        entregas: {
+          entregaAyudante: 2828.80, // Efectivo entregado al socio
+          entregaCompania: 1086.45, // Caja común / retenciones
+          totalEntregado: 3915.25, // Saldo a liquidar de ruta
+        },
+        kilometrosRecorridos: 23004873,
+        frecuenciasRealizadas: 195,
+      };
+    }
 
-    const totalGastosRuta = diesel + chofer + ayudante + peajesTerminales + planRenova + otrosRuta;
-    const entregaNetaCarretera = totalProduccionBruta - totalGastosRuta;
-
+    // Septiembre 2026 (mes en curso proyectado)
     return {
-      totalProduccionBruta,
-      totalVueltas: isAugust ? 124 : 138,
-      totalBoletos: isAugust ? 3420 : 3890,
-      gastosRuta: {
-        diesel,
-        chofer,
-        ayudante,
-        peajesTerminales,
-        planRenova,
-        otrosRuta,
-        totalGastosRuta,
+      totalProduccionBruta: 6450.00,
+      efectivoRuta: 5800.00,
+      cajaComun: 650.00,
+      sobrante: 0.00,
+      totalEgresosRuta: 4320.00,
+      gastosRutaDetalle: {
+        diesel: 1950.00,
+        otrosGastosCarretera: 2310.00,
+        totalGastosCarretera: 4260.00,
+        totalTickets: 60.00,
       },
-      entregaNetaCarretera,
+      entregas: {
+        entregaAyudante: 1480.00,
+        entregaCompania: 650.00,
+        totalEntregado: 2130.00,
+      },
+      kilometrosRecorridos: 9500,
+      frecuenciasRealizadas: 98,
     };
   }, [selectedYearMonth]);
 
@@ -125,10 +142,16 @@ export default function OwnerIncomeStatementModal({
   }, [allExpenses, selectedYearMonth]);
 
   // 3. RESULTADOS CONTABLES FINALES
-  const utilidadNetaReal = routeSummary.entregaNetaCarretera - ownerExpensesSummary.totalGastosSocio;
+  // Utilidad Real en el Bolsillo: Efectivo neto entregado por el ayudante menos gastos directos del socio
+  const saldoLiquidarRuta = routeSummary.entregas.totalEntregado; // S/ 3,915.25
+  const entregaEfectivoAyudante = routeSummary.entregas.entregaAyudante; // S/ 2,828.80
+  const retencionCompania = routeSummary.entregas.entregaCompania; // S/ 1,086.45
+
+  const utilidadNetaRealBolsillo = entregaEfectivoAyudante - ownerExpensesSummary.totalGastosSocio;
+  const utilidadNetaConsolidada = saldoLiquidarRuta - ownerExpensesSummary.totalGastosSocio;
   const margenUtilidadPorcentaje =
     routeSummary.totalProduccionBruta > 0
-      ? (utilidadNetaReal / routeSummary.totalProduccionBruta) * 100
+      ? (utilidadNetaRealBolsillo / routeSummary.totalProduccionBruta) * 100
       : 0;
 
   const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
@@ -143,8 +166,11 @@ export default function OwnerIncomeStatementModal({
         monthFormatted,
         routeData: routeSummary,
         ownerExpenses: ownerExpensesSummary,
-        margenOperativoCarretera: routeSummary.entregaNetaCarretera,
-        utilidadNetaReal,
+        saldoLiquidarRuta,
+        entregaEfectivoAyudante,
+        retencionCompania,
+        utilidadNetaRealBolsillo,
+        utilidadNetaConsolidada,
         margenUtilidadPorcentaje,
       };
       await generateOwnerIncomeStatementPDF(reportData);
@@ -188,29 +214,29 @@ export default function OwnerIncomeStatementModal({
 
         {/* CUERPO DEL ESTADO DE RESULTADOS */}
         <div className="p-4 space-y-4 overflow-y-auto flex-1 text-[#3A3A3A]">
-          {/* TARJETA DESTACADA: UTILIDAD NETA DISPONIBLE */}
+          {/* TARJETA DESTACADA: UTILIDAD REAL EN BOLSILLO */}
           <div
             className={`p-4 rounded-2xl border-2 flex items-center justify-between shadow-xs ${
-              utilidadNetaReal >= 0
+              utilidadNetaRealBolsillo >= 0
                 ? 'bg-emerald-50/70 border-emerald-300'
                 : 'bg-rose-50/70 border-rose-300'
             }`}
           >
             <div>
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 block">
-                Utilidad Neta Disponible (Bolsillo Socio)
+                Utilidad Real Neta (Bolsillo Socio)
               </span>
               <div className="flex items-baseline gap-2 mt-0.5">
                 <span
                   className={`text-2xl font-black ${
-                    utilidadNetaReal >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                    utilidadNetaRealBolsillo >= 0 ? 'text-emerald-700' : 'text-rose-700'
                   }`}
                 >
-                  ${utilidadNetaReal.toFixed(2)}
+                  ${utilidadNetaRealBolsillo.toFixed(2)}
                 </span>
                 <span
                   className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                    utilidadNetaReal >= 0
+                    utilidadNetaRealBolsillo >= 0
                       ? 'bg-emerald-100 text-emerald-800'
                       : 'bg-rose-100 text-rose-800'
                   }`}
@@ -219,17 +245,17 @@ export default function OwnerIncomeStatementModal({
                 </span>
               </div>
               <p className="text-[11px] text-gray-500 mt-0.5">
-                Dinero libre tras cubrir gastos de ruta y las 8 categorías de gastos
+                Efectivo entregado por ayudante (${entregaEfectivoAyudante.toFixed(2)}) (-) Gastos socio (${ownerExpensesSummary.totalGastosSocio.toFixed(2)})
               </p>
             </div>
             <div
               className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                utilidadNetaReal >= 0
+                utilidadNetaRealBolsillo >= 0
                   ? 'bg-emerald-100 text-emerald-700'
                   : 'bg-rose-100 text-rose-700'
               }`}
             >
-              {utilidadNetaReal >= 0 ? (
+              {utilidadNetaRealBolsillo >= 0 ? (
                 <TrendingUp className="w-6 h-6 stroke-[2.5]" />
               ) : (
                 <TrendingDown className="w-6 h-6 stroke-[2.5]" />
@@ -241,7 +267,7 @@ export default function OwnerIncomeStatementModal({
           <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3.5 space-y-3">
             <h3 className="text-xs font-black text-[#3A3A3A] uppercase tracking-wider flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-[#912D26]" />
-              <span>Cascada Contable del Mes</span>
+              <span>Cascada Contable del Mes (Auditoría Oficial)</span>
             </h3>
 
             <div className="space-y-2 text-xs">
@@ -249,62 +275,71 @@ export default function OwnerIncomeStatementModal({
               <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-gray-200">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="font-bold text-[#3A3A3A]">Ingresos Brutos de Boletaje</span>
+                  <div>
+                    <span className="font-bold text-[#3A3A3A] block">Total Ingresos Boletaje</span>
+                    <span className="text-[10px] text-gray-400">
+                      {routeSummary.frecuenciasRealizadas || 195} frecuencias • Efectivo ${routeSummary.efectivoRuta.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
                 <span className="font-extrabold text-emerald-700">
                   +${routeSummary.totalProduccionBruta.toFixed(2)}
                 </span>
               </div>
 
-              {/* 2. Gastos de Ruta Pagados por Ayudante */}
+              {/* 2. Total Egresos de Ruta */}
               <div className="p-2.5 rounded-xl bg-white border border-gray-200 space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-orange-500" />
                     <span className="font-bold text-[#3A3A3A]">
-                      (-) Gastos de Ruta (Ayudante/Chofer)
+                      (-) Total Egresos de Carretera (Ayudante)
                     </span>
                   </div>
                   <span className="font-extrabold text-orange-700">
-                    -${routeSummary.gastosRuta.totalGastosRuta.toFixed(2)}
+                    -${routeSummary.totalEgresosRuta.toFixed(2)}
                   </span>
                 </div>
 
                 {/* Sub-desglose de ruta */}
                 <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-gray-100 text-[11px] text-gray-500">
                   <div className="flex justify-between">
-                    <span>⛽ Diésel:</span>
+                    <span>⛽ Diésel (29.9%):</span>
                     <span className="font-semibold text-gray-700">
-                      ${routeSummary.gastosRuta.diesel.toFixed(2)}
+                      ${routeSummary.gastosRutaDetalle.diesel.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>👨‍✈️ Chofer:</span>
+                    <span>👨‍✈️ Sueldos y Ruta:</span>
                     <span className="font-semibold text-gray-700">
-                      ${routeSummary.gastosRuta.chofer.toFixed(2)}
+                      ${routeSummary.gastosRutaDetalle.otrosGastosCarretera.toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>🧑‍💼 Ayudante:</span>
+                  <div className="flex justify-between col-span-2">
+                    <span>🎟️ Tickets Terminal:</span>
                     <span className="font-semibold text-gray-700">
-                      ${routeSummary.gastosRuta.ayudante.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>🛣️ Peajes/Andén:</span>
-                    <span className="font-semibold text-gray-700">
-                      ${routeSummary.gastosRuta.peajesTerminales.toFixed(2)}
+                      ${routeSummary.gastosRutaDetalle.totalTickets.toFixed(2)}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* 3. Entrega Neta Carretera */}
-              <div className="flex items-center justify-between px-2 py-1 text-gray-600 font-medium">
-                <span>(=) Entrega Operativa de Carretera:</span>
-                <span className="font-bold text-[#3A3A3A]">
-                  ${routeSummary.entregaNetaCarretera.toFixed(2)}
-                </span>
+              {/* 3. Saldo a Liquidar de Ruta (Entregas) */}
+              <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200 space-y-1 text-[#3A3A3A]">
+                <div className="flex items-center justify-between font-bold">
+                  <span>(=) Saldo a Liquidar de Carretera:</span>
+                  <span className="text-amber-900 font-black">
+                    ${saldoLiquidarRuta.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-gray-600 pt-1 border-t border-amber-100">
+                  <span>• Entregado por Ayudante (Efectivo Socio):</span>
+                  <span className="font-bold text-emerald-700">${entregaEfectivoAyudante.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-gray-600">
+                  <span>• Retención Compañía (Caja Común):</span>
+                  <span className="font-bold text-blue-700">${retencionCompania.toFixed(2)}</span>
+                </div>
               </div>
 
               {/* 4. Gastos Directos del Socio */}

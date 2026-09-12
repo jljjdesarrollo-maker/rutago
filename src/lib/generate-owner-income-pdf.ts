@@ -1,17 +1,22 @@
 export interface RouteFinancialSummary {
-  totalProduccionBruta: number;
-  totalVueltas: number;
-  totalBoletos: number;
-  gastosRuta: {
-    diesel: number;
-    chofer: number;
-    ayudante: number;
-    peajesTerminales: number;
-    planRenova: number;
-    otrosRuta: number;
-    totalGastosRuta: number;
+  totalProduccionBruta: number; // Ej: S/ 12,334.75
+  efectivoRuta: number; // S/ 11,094.10
+  cajaComun: number; // S/ 1,234.95
+  sobrante: number; // S/ 5.70
+  totalEgresosRuta: number; // S/ 8,419.50
+  gastosRutaDetalle: {
+    diesel: number; // S/ 3,685.50
+    otrosGastosCarretera: number; // S/ 4,585.50 (Chofer, ayudante, peajes, turnos)
+    totalGastosCarretera: number; // S/ 8,271.00
+    totalTickets: number; // S/ 148.50
   };
-  entregaNetaCarretera: number; // Producción Bruta - Gastos Ruta
+  entregas: {
+    entregaAyudante: number; // S/ 2,828.80 (Efectivo neto entregado al socio/caja)
+    entregaCompania: number; // S/ 1,086.45 (Retenciones/Caja Común de la Cooperativa)
+    totalEntregado: number; // S/ 3,915.25 (Saldo a liquidar de ruta)
+  };
+  kilometrosRecorridos?: number;
+  frecuenciasRealizadas?: number;
 }
 
 export interface OwnerExpenseCategoryBreakdown {
@@ -26,8 +31,8 @@ export interface OwnerExpenseCategoryBreakdown {
 
 export interface OwnerIncomeStatementData {
   busId: string;
-  monthStr: string; // ej: "2026-09"
-  monthFormatted: string; // ej: "Septiembre 2026"
+  monthStr: string; // ej: "2026-08" o "2026-09"
+  monthFormatted: string; // ej: "Agosto 2026"
   routeData: RouteFinancialSummary;
   ownerExpenses: {
     categories: OwnerExpenseCategoryBreakdown[];
@@ -36,9 +41,12 @@ export interface OwnerIncomeStatementData {
     totalDeudasTalleresPendientes: number;
   };
   // Resultados contables de la unidad
-  margenOperativoCarretera: number; // entregaNetaCarretera
-  utilidadNetaReal: number; // entregaNetaCarretera - totalGastosSocio
-  margenUtilidadPorcentaje: number; // (utilidadNetaReal / totalProduccionBruta) * 100
+  saldoLiquidarRuta: number; // totalEntregado (S/ 3,915.25)
+  entregaEfectivoAyudante: number; // entregaAyudante (S/ 2,828.80)
+  retencionCompania: number; // entregaCompania (S/ 1,086.45)
+  utilidadNetaRealBolsillo: number; // entregaAyudante - totalGastosSocio
+  utilidadNetaConsolidada: number; // totalEntregado - totalGastosSocio
+  margenUtilidadPorcentaje: number; // (utilidadNetaRealBolsillo / totalProduccionBruta) * 100
 }
 
 /**
@@ -110,24 +118,38 @@ export async function generateOwnerIncomeStatementPDF(data: OwnerIncomeStatement
 
   const kpiRows = [
     {
-      label: 'Ingresos Brutos de Boletaje (Ruta)',
+      label: 'Ingresos Brutos de Boletaje (195 Frecuencias)',
       val: `+$${data.routeData.totalProduccionBruta.toFixed(2)}`,
       pct: '100.0%',
       isBold: true,
       color: COLOR_DARK,
     },
     {
-      label: '(-) Gastos de Ruta Pagados por Ayudante/Chofer (Diésel, sueldos, peajes)',
-      val: `-$${data.routeData.gastosRuta.totalGastosRuta.toFixed(2)}`,
-      pct: pct(data.routeData.gastosRuta.totalGastosRuta),
+      label: '(-) Total Egresos de Carretera (Diésel, chofer, ayudante, peajes)',
+      val: `-$${data.routeData.totalEgresosRuta.toFixed(2)}`,
+      pct: pct(data.routeData.totalEgresosRuta),
       isBold: false,
       color: COLOR_DARK,
     },
     {
-      label: '(=) Entrega Operativa Neta de Carretera (Caja Líquida)',
-      val: `$${data.routeData.entregaNetaCarretera.toFixed(2)}`,
-      pct: pct(data.routeData.entregaNetaCarretera),
+      label: '(=) Saldo a Liquidar de Ruta (Entregas)',
+      val: `$${data.saldoLiquidarRuta.toFixed(2)}`,
+      pct: pct(data.saldoLiquidarRuta),
       isBold: true,
+      color: COLOR_DARK,
+    },
+    {
+      label: '   • Entrega Efectivo Ayudante (Caja Directa al Socio)',
+      val: `$${data.entregaEfectivoAyudante.toFixed(2)}`,
+      pct: pct(data.entregaEfectivoAyudante),
+      isBold: false,
+      color: COLOR_DARK,
+    },
+    {
+      label: '   • Entrega Compañía (Retenciones / Caja Común)',
+      val: `$${data.retencionCompania.toFixed(2)}`,
+      pct: pct(data.retencionCompania),
+      isBold: false,
       color: COLOR_DARK,
     },
     {
@@ -138,11 +160,11 @@ export async function generateOwnerIncomeStatementPDF(data: OwnerIncomeStatement
       color: COLOR_DARK,
     },
     {
-      label: '(=) UTILIDAD NETA REAL DISPONIBLE DEL SOCIO',
-      val: `$${data.utilidadNetaReal.toFixed(2)}`,
+      label: '(=) UTILIDAD REAL NETA EN BOLSILLO DEL SOCIO',
+      val: `$${data.utilidadNetaRealBolsillo.toFixed(2)}`,
       pct: `${data.margenUtilidadPorcentaje.toFixed(1)}%`,
       isBold: true,
-      color: data.utilidadNetaReal >= 0 ? COLOR_EMERALD : COLOR_ROSE,
+      color: data.utilidadNetaRealBolsillo >= 0 ? COLOR_EMERALD : COLOR_ROSE,
       highlight: true,
     },
   ];
@@ -188,12 +210,9 @@ export async function generateOwnerIncomeStatementPDF(data: OwnerIncomeStatement
   y += 6.5;
 
   const rutaRows = [
-    { name: 'Combustible Diésel', amount: data.routeData.gastosRuta.diesel },
-    { name: 'Diario / Comisión de Chofer', amount: data.routeData.gastosRuta.chofer },
-    { name: 'Diario / Comisión de Ayudante', amount: data.routeData.gastosRuta.ayudante },
-    { name: 'Peajes, Terminales y Andenes', amount: data.routeData.gastosRuta.peajesTerminales },
-    { name: 'Fondo Plan Renova / Interno', amount: data.routeData.gastosRuta.planRenova },
-    { name: 'Otros Gastos Menores de Carretera', amount: data.routeData.gastosRuta.otrosRuta },
+    { name: 'Combustible Diésel (29.9% de producción)', amount: data.routeData.gastosRutaDetalle.diesel },
+    { name: 'Otros Gastos de Carretera (Chofer, ayudante, peajes, andenes)', amount: data.routeData.gastosRutaDetalle.otrosGastosCarretera },
+    { name: 'Tickets de Terminal / Andén', amount: data.routeData.gastosRutaDetalle.totalTickets },
   ];
 
   rutaRows.forEach((r, i) => {
@@ -209,13 +228,13 @@ export async function generateOwnerIncomeStatementPDF(data: OwnerIncomeStatement
     y += 5.5;
   });
 
-  // Fila Total Gastos Ruta
+  // Fila Total Egresos Ruta
   doc.setFillColor(235, 235, 235);
   doc.rect(margin, y, contentWidth, 6, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...COLOR_DARK);
-  doc.text('TOTAL GASTOS DE RUTA', margin + 3, y + 4.2);
-  doc.text(`$${data.routeData.gastosRuta.totalGastosRuta.toFixed(2)}`, margin + contentWidth - 3, y + 4.2, { align: 'right' });
+  doc.text('TOTAL EGRESOS DE RUTA', margin + 3, y + 4.2);
+  doc.text(`$${data.routeData.totalEgresosRuta.toFixed(2)}`, margin + contentWidth - 3, y + 4.2, { align: 'right' });
   y += 11;
 
   // --- 3. GASTOS DIRECTOS DEL SOCIO (8 CATEGORÍAS) ---
