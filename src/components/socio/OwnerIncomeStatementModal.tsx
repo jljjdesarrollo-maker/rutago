@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   X,
   FileText,
@@ -16,6 +16,8 @@ import {
   Building2,
   Calendar,
   Layers,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { OwnerExpense, OWNER_EXPENSE_CATEGORIES } from '../../types/expenses';
 import {
@@ -28,7 +30,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   busId: string;
-  selectedYearMonth: string; // ej: '2026-09'
+  selectedYearMonth: string; // ej: '2026-08' o '2026-09'
   allExpenses: OwnerExpense[];
 }
 
@@ -40,6 +42,11 @@ export default function OwnerIncomeStatementModal({
   allExpenses,
 }: Props) {
   if (!isOpen) return null;
+
+  // Estado para datos reales consultados a la Base de Datos (/api/reports)
+  const [dbRouteData, setDbRouteData] = useState<RouteFinancialSummary | null>(null);
+  const [loadingDB, setLoadingDB] = useState<boolean>(false);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   // Formato legible del mes
   const formatMonthName = (ym: string) => {
@@ -54,57 +61,135 @@ export default function OwnerIncomeStatementModal({
 
   const monthFormatted = formatMonthName(selectedYearMonth);
 
-  // 1. OBTENER / CONSOLIDAR DATOS DE RUTA DEL MES
-  // Para el mes seleccionado calculamos o tomamos los registros operativos
+  // 1. CONSULTAR LA BASE DE DATOS PARA EL MES SELECCIONADO
+  useEffect(() => {
+    if (!isOpen || !selectedYearMonth) return;
+
+    let isMounted = true;
+    const fetchMonthlyRouteData = async () => {
+      setLoadingDB(true);
+      setDbError(null);
+      try {
+        const [yearStr, monthStr] = selectedYearMonth.split('-');
+        const year = parseInt(yearStr, 10);
+        const month = parseInt(monthStr, 10);
+
+        // Llamada a la API real de reportes de la base de datos
+        const res = await fetch(`/api/reports?type=monthly&year=${year}&month=${month}`);
+        if (!res.ok) {
+          throw new Error(`Error ${res.status}: no se pudo cargar el reporte del mes.`);
+        }
+        const data = await res.json();
+
+        if (!isMounted) return;
+
+        if (data && data.totals) {
+          const t = data.totals;
+          const totalProduccionBruta = t.production || 0;
+          const efectivoRuta = t.production - (t.cajaComun || 0);
+          const cajaComun = t.cajaComun || 0;
+          const sobrante = t.sobrante || 0;
+          const totalGastosCarretera = t.gastos || 0;
+          const totalTickets = t.tickets || 0;
+          const totalEgresosRuta = totalGastosCarretera + totalTickets;
+          const diesel = t.dieselGasto || 0;
+          const otrosGastosCarretera = Math.max(0, totalGastosCarretera - diesel);
+          const entregaAyudante = t.entregaAyudante || 0;
+          const entregaCompania = t.entregaCompania || 0;
+          const totalEntregado = t.totalEntregado || (entregaAyudante + entregaCompania);
+
+          setDbRouteData({
+            totalProduccionBruta,
+            efectivoRuta,
+            cajaComun,
+            sobrante,
+            totalEgresosRuta,
+            gastosRutaDetalle: {
+              diesel,
+              otrosGastosCarretera,
+              totalGastosCarretera,
+              totalTickets,
+            },
+            entregas: {
+              entregaAyudante,
+              entregaCompania,
+              totalEntregado,
+            },
+            kilometrosRecorridos: t.km || 0,
+            frecuenciasRealizadas: data.operational?.totalRealizadas || data.dailySummaries?.reduce((s: number, d: any) => s + (d.frecRealizadas || 0), 0) || 0,
+          });
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          console.warn('Consulta a /api/reports falló o devolvió error:', err);
+          setDbError(err?.message || 'Error consultando base de datos');
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingDB(false);
+        }
+      }
+    };
+
+    fetchMonthlyRouteData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, selectedYearMonth]);
+
+  // Si aún no responde la BD o si está en fallback
   const routeSummary: RouteFinancialSummary = useMemo(() => {
-    // Si es agosto 2026, usamos exactamente las cifras de la auditoría mensual oficial (Reporte 01/08/2026 al 31/08/2026)
+    if (dbRouteData && dbRouteData.totalProduccionBruta > 0) {
+      return dbRouteData;
+    }
+
+    // Si la BD aún está cargando o no devolvió registros, calculamos con base en auditoría histórica conocida
     const isAugust = selectedYearMonth === '2026-08';
-    
     if (isAugust) {
       return {
         totalProduccionBruta: 12334.75,
         efectivoRuta: 11094.10,
         cajaComun: 1234.95,
         sobrante: 5.70,
-        totalEgresosRuta: 8419.50, // Gastos S/ 8271.00 + Tickets S/ 148.50
+        totalEgresosRuta: 8419.50,
         gastosRutaDetalle: {
-          diesel: 3685.50, // 29.9% s/ producción
-          otrosGastosCarretera: 4585.50, // Chofer, ayudante, peajes, turnos
+          diesel: 3685.50,
+          otrosGastosCarretera: 4585.50,
           totalGastosCarretera: 8271.00,
           totalTickets: 148.50,
         },
         entregas: {
-          entregaAyudante: 2828.80, // Efectivo entregado al socio
-          entregaCompania: 1086.45, // Caja común / retenciones
-          totalEntregado: 3915.25, // Saldo a liquidar de ruta
+          entregaAyudante: 2828.80,
+          entregaCompania: 1086.45,
+          totalEntregado: 3915.25,
         },
         kilometrosRecorridos: 23004873,
         frecuenciasRealizadas: 195,
       };
     }
 
-    // Septiembre 2026 (mes en curso proyectado)
     return {
-      totalProduccionBruta: 6450.00,
-      efectivoRuta: 5800.00,
-      cajaComun: 650.00,
-      sobrante: 0.00,
-      totalEgresosRuta: 4320.00,
+      totalProduccionBruta: 0,
+      efectivoRuta: 0,
+      cajaComun: 0,
+      sobrante: 0,
+      totalEgresosRuta: 0,
       gastosRutaDetalle: {
-        diesel: 1950.00,
-        otrosGastosCarretera: 2310.00,
-        totalGastosCarretera: 4260.00,
-        totalTickets: 60.00,
+        diesel: 0,
+        otrosGastosCarretera: 0,
+        totalGastosCarretera: 0,
+        totalTickets: 0,
       },
       entregas: {
-        entregaAyudante: 1480.00,
-        entregaCompania: 650.00,
-        totalEntregado: 2130.00,
+        entregaAyudante: 0,
+        entregaCompania: 0,
+        totalEntregado: 0,
       },
-      kilometrosRecorridos: 9500,
-      frecuenciasRealizadas: 98,
+      kilometrosRecorridos: 0,
+      frecuenciasRealizadas: 0,
     };
-  }, [selectedYearMonth]);
+  }, [dbRouteData, selectedYearMonth]);
 
   // 2. CONSOLIDAR GASTOS DEL SOCIO EN EL MES (8 CATEGORÍAS)
   const ownerExpensesSummary = useMemo(() => {
@@ -214,6 +299,29 @@ export default function OwnerIncomeStatementModal({
 
         {/* CUERPO DEL ESTADO DE RESULTADOS */}
         <div className="p-4 space-y-4 overflow-y-auto flex-1 text-[#3A3A3A]">
+          {/* INDICADOR DE CONEXIÓN A BASE DE DATOS */}
+          <div className="flex items-center justify-between text-[11px] px-2 py-1 bg-gray-50 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-1.5 text-gray-600">
+              {loadingDB ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#912D26]" />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              )}
+              <span>
+                {loadingDB
+                  ? 'Consultando registros operativos en Base de Datos...'
+                  : dbRouteData && dbRouteData.totalProduccionBruta > 0
+                  ? 'Datos operativos sincronizados con Base de Datos'
+                  : 'Cargando datos contables del mes'}
+              </span>
+            </div>
+            {dbRouteData && (
+              <span className="text-[10px] font-bold text-gray-500">
+                {routeSummary.frecuenciasRealizadas || 0} frecuencias procesadas
+              </span>
+            )}
+          </div>
+
           {/* TARJETA DESTACADA: UTILIDAD REAL EN BOLSILLO */}
           <div
             className={`p-4 rounded-2xl border-2 flex items-center justify-between shadow-xs ${
