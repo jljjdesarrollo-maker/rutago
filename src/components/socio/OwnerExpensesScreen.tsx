@@ -59,7 +59,7 @@ interface Props {
 }
 
 export default function OwnerExpensesScreen({
-  initialBusId = 'BUS-04',
+  initialBusId = 'BUS-01',
   onBackToHome,
 }: Props) {
   const [busId, setBusId] = useState<string>(initialBusId);

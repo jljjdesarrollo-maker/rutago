@@ -101,11 +101,11 @@ export function HomeScreen({
 
     try {
       // 1. Lectura inmediata desde caché
-      const cached = getOwnerExpenses('BUS-04');
+      const cached = getOwnerExpenses('BUS-01');
       updateSummaryFromList(cached);
 
       // 2. Consulta asíncrona a la base de datos central
-      fetchOwnerExpensesFromApi('BUS-04').then((online) => {
+      fetchOwnerExpensesFromApi('BUS-01').then((online) => {
         if (online && online.length > 0) {
           updateSummaryFromList(online);
         }

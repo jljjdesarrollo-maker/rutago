@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const busId = searchParams.get('busId') || 'BUS-04';
+    const busId = searchParams.get('busId') || 'BUS-01';
     const yearMonth = searchParams.get('yearMonth');
     const category = searchParams.get('category');
     const status = searchParams.get('status');
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         const upserted = await db.ownerExpense.upsert({
           where: { id: item.id || `EXP-${Date.now()}-${Math.random().toString(36).substring(2, 7)}` },
           update: {
-            busId: item.busId || 'BUS-04',
+            busId: item.busId || 'BUS-01',
             expenseDate: item.expenseDate,
             category: item.category || 'OTROS',
             description: item.description,
@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
           },
           create: {
             id: item.id || undefined,
-            busId: item.busId || 'BUS-04',
+            busId: item.busId || 'BUS-01',
             expenseDate: item.expenseDate,
             category: item.category || 'OTROS',
             description: item.description,
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
     // Caso 2: Registro individual de nuevo gasto
     const {
       id,
-      busId = 'BUS-04',
+      busId = 'BUS-01',
       expenseDate,
       category,
       description,

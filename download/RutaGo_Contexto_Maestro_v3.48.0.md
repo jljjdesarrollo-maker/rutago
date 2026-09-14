@@ -1187,3 +1187,20 @@ Transformar RutaGo de un sistema centrado en una sola unidad fija (`BUS-04`) a u
 4. **Fase 4**: Módulo de Benchmark Estadístico y Auditoría de Tripulaciones (Ingreso Bruto) con dos grupos de auditoría simétrica:
    - **Grupo Troncal VT**: Bus 01 y demás socios + Bus 18.
    - **Grupo Especial P**: Buses 16, 17 y 19 de la compañía comparados entre sí.
+
+---
+
+## 19. Ejecución y Cierre de la Fase 1: Desacople Total de BUS-04 e Inicialización de BUS-01 (v3.49.4 - 2026-09-14)
+> Estado: COMPLETADA CON ÉXITO.
+
+### 19.1 Acciones Realizadas
+1. **Erradicación de `BUS-04` del Código**:
+   - `src/types/expenses.ts`: Tipos parametrizados para inicializar con `BUS-01`.
+   - `src/lib/owner-expenses-storage.ts`: Todas las funciones de lectura, guardado, limpieza y semillado apuntan por defecto a `BUS-01`.
+   - `src/app/api/owner-expenses/route.ts`: Parámetro `busId` por defecto actualizado a `BUS-01`.
+   - `src/components/socio/OwnerExpensesScreen.tsx`: `initialBusId` establecido en `BUS-01`. Cabecera y distintivos muestran **BUS-01**.
+   - `src/components/transport/HomeScreen.tsx`: Métricas rápidas de balance y gastos del socio consumen `BUS-01`.
+2. **Migración Transparente de Datos Locales**:
+   - En `owner-expenses-storage.ts` se implementó un hook automático que detecta si el navegador del socio tenía registros bajo `BUS-04` y los reasigna de inmediato a `BUS-01` sin pérdida de información contable previa.
+3. **Respaldo de Todo el Código**:
+   - Cambios listos para sincronización en la rama `main` de GitHub.

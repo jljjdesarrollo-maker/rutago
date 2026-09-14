@@ -89,7 +89,7 @@ export interface PaymentAbono {
 
 export interface OwnerExpense {
   id: string;
-  busId: string; // ej. "BUS-04"
+  busId: string; // ej. "BUS-01"
   
   // Eje fundamental: Fecha real contable del desembolso o compra
   expenseDate: string; // YYYY-MM-DD

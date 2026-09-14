@@ -3,7 +3,7 @@ import { OwnerExpense, PaymentAbono } from '../types/expenses';
 const STORAGE_KEY = 'rutago_owner_expenses_v1';
 const INITIALIZED_KEY = 'rutago_owner_expenses_initialized_flag';
 
-export function getOwnerExpenses(busId = 'BUS-04'): OwnerExpense[] {
+export function getOwnerExpenses(busId = 'BUS-01'): OwnerExpense[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -115,7 +115,7 @@ export function getPendingDebts(busId: string): OwnerExpense[] {
 /**
  * Limpia todos los gastos para una unidad (no vuelve a autogenerar datos de ejemplo)
  */
-export function clearAllOwnerExpenses(busId = 'BUS-04'): void {
+export function clearAllOwnerExpenses(busId = 'BUS-01'): void {
   if (typeof window === 'undefined') return;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -133,7 +133,7 @@ export function clearAllOwnerExpenses(busId = 'BUS-04'): void {
  * Elimina exclusivamente los gastos precargados de ejemplo (EXP-AUG-* y EXP-SEP-*)
  * conservando los gastos reales que el socio haya creado manualmente.
  */
-export function removeSampleExpensesOnly(busId = 'BUS-04'): void {
+export function removeSampleExpensesOnly(busId = 'BUS-01'): void {
   if (typeof window === 'undefined') return;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -152,7 +152,7 @@ export function removeSampleExpensesOnly(busId = 'BUS-04'): void {
 /**
  * Semillero con los datos de ejemplo (solo se ejecuta bajo acción explícita)
  */
-export function seedSampleExpenses(busId = 'BUS-04'): void {
+export function seedSampleExpenses(busId = 'BUS-01'): void {
   const sampleData: OwnerExpense[] = [
     // ─── AGOSTO 2026 ───
     {
@@ -294,7 +294,7 @@ export function seedSampleExpenses(busId = 'BUS-04'): void {
 
 // ─── CONEXIÓN ASÍNCRONA CON LA BASE DE DATOS CENTRAL (/api/owner-expenses) ───
 
-export async function fetchOwnerExpensesFromApi(busId = 'BUS-04'): Promise<OwnerExpense[]> {
+export async function fetchOwnerExpensesFromApi(busId = 'BUS-01'): Promise<OwnerExpense[]> {
   try {
     const res = await fetch(`/api/owner-expenses?busId=${encodeURIComponent(busId)}`, {
       cache: 'no-store',
@@ -417,7 +417,7 @@ export async function deleteOwnerExpenseFromApi(id: string): Promise<boolean> {
   }
 }
 
-export async function syncAllLocalExpensesToApi(busId = 'BUS-04'): Promise<{ count: number }> {
+export async function syncAllLocalExpensesToApi(busId = 'BUS-01'): Promise<{ count: number }> {
   const localList = getOwnerExpenses(busId);
   if (localList.length === 0) return { count: 0 };
 
