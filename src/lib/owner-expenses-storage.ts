@@ -291,3 +291,132 @@ export function seedSampleExpenses(busId = 'BUS-04'): void {
     localStorage.setItem(INITIALIZED_KEY, 'true');
   }
 }
+
+// ─── CONEXIÓN ASÍNCRONA CON LA BASE DE DATOS CENTRAL (/api/owner-expenses) ───
+
+export async function fetchOwnerExpensesFromApi(busId = 'BUS-04'): Promise<OwnerExpense[]> {
+  try {
+    const res = await fetch(`/api/owner-expenses?busId=${encodeURIComponent(busId)}`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      const parsed: OwnerExpense[] = json.data.map((item: any) => ({
+        ...item,
+        abonos: typeof item.abonos === 'string' ? JSON.parse(item.abonos || '[]') : (item.abonos || []),
+      }));
+
+      // Si la nube tiene datos, sincronizar la copia local (caché offline)
+      if (typeof window !== 'undefined' && parsed.length > 0) {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const existing: OwnerExpense[] = raw ? JSON.parse(raw) : [];
+        // Reemplazar los del bus actual por los de la nube
+        const otherBuses = existing.filter((e) => e.busId !== busId);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([...parsed, ...otherBuses]));
+        localStorage.setItem(INITIALIZED_KEY, 'true');
+      }
+
+      return parsed;
+    }
+  } catch (err) {
+    console.warn('No se pudo conectar a la base de datos central, usando caché local:', err);
+  }
+  // Fallback transparente a almacenamiento local
+  return getOwnerExpenses(busId);
+}
+
+export async function saveOwnerExpenseToApi(expense: OwnerExpense): Promise<OwnerExpense> {
+  // 1. Guardar de inmediato en local para respuesta táctil instantánea (optimistic UI)
+  saveOwnerExpense(expense);
+
+  // 2. Enviar a la base de datos central
+  try {
+    const res = await fetch('/api/owner-expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(expense),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        return {
+          ...json.data,
+          abonos: typeof json.data.abonos === 'string' ? JSON.parse(json.data.abonos || '[]') : (json.data.abonos || []),
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Guardado en nube pendiente (se conservó localmente):', err);
+  }
+  return expense;
+}
+
+export async function registerAbonoToApi(
+  expenseId: string,
+  abono: Omit<PaymentAbono, 'id' | 'createdAt'>
+): Promise<OwnerExpense | null> {
+  // 1. Actualizar localmente
+  const localUpdated = registerAbonoToExpense(expenseId, abono);
+
+  // 2. Sincronizar con API
+  try {
+    const res = await fetch('/api/owner-expenses', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: expenseId,
+        abono,
+      }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        return {
+          ...json.data,
+          abonos: typeof json.data.abonos === 'string' ? JSON.parse(json.data.abonos || '[]') : (json.data.abonos || []),
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Abono en nube pendiente (se conservó localmente):', err);
+  }
+  return localUpdated;
+}
+
+export async function deleteOwnerExpenseFromApi(id: string): Promise<boolean> {
+  // 1. Eliminar localmente
+  deleteOwnerExpense(id);
+
+  // 2. Eliminar en API
+  try {
+    const res = await fetch(`/api/owner-expenses?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Eliminación en nube falló:', err);
+    return true; // Localmente ya se borró
+  }
+}
+
+export async function syncAllLocalExpensesToApi(busId = 'BUS-04'): Promise<{ count: number }> {
+  const localList = getOwnerExpenses(busId);
+  if (localList.length === 0) return { count: 0 };
+
+  try {
+    const res = await fetch('/api/owner-expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bulk: localList }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return { count: json.migratedCount || localList.length };
+    }
+  } catch (err) {
+    console.error('Error al sincronizar gastos a la base de datos:', err);
+    throw err;
+  }
+  return { count: 0 };
+}

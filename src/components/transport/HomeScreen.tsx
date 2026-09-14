@@ -33,7 +33,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import type { UserSession } from './types';
-import { getOwnerExpenses } from '@/lib/owner-expenses-storage';
+import { getOwnerExpenses, fetchOwnerExpensesFromApi } from '@/lib/owner-expenses-storage';
 
 interface HomeScreenProps {
   user: UserSession;
@@ -84,10 +84,9 @@ export function HomeScreen({
   });
   const { toast } = useToast();
 
-  // Calcular balance financiero en vivo para el socio
+  // Calcular balance financiero en vivo para el socio (con sincronización en línea)
   useEffect(() => {
-    try {
-      const expenses = getOwnerExpenses('BUS-04');
+    const updateSummaryFromList = (expenses: any[]) => {
       const augExpenses = expenses.filter(e => e.expenseDate && e.expenseDate.startsWith('2026-08'));
       const totalCost = augExpenses.reduce((sum, e) => sum + (e.totalAmount || 0), 0);
       const debts = expenses.filter(e => e.pendingBalance > 0).reduce((sum, e) => sum + e.pendingBalance, 0);
@@ -98,6 +97,19 @@ export function HomeScreen({
         netProfit: routeIncome - totalCost,
         pendingDebts: debts,
       });
+    };
+
+    try {
+      // 1. Lectura inmediata desde caché
+      const cached = getOwnerExpenses('BUS-04');
+      updateSummaryFromList(cached);
+
+      // 2. Consulta asíncrona a la base de datos central
+      fetchOwnerExpensesFromApi('BUS-04').then((online) => {
+        if (online && online.length > 0) {
+          updateSummaryFromList(online);
+        }
+      }).catch(() => {});
     } catch {
       /* ignore */
     }

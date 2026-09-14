@@ -136,3 +136,27 @@ model VentaBoleto {
   @@index([fechaOperacion, vtCode])
   @@index([fecha, vtCode])
 }
+
+// ─── Módulo de Gastos y Pagos del Socio Propietario ───
+model OwnerExpense {
+  id              String   @id @default(cuid())
+  busId           String   @default("BUS-04")
+  expenseDate     String   // YYYY-MM-DD
+  category        String   // LLANTAS, ACEITES_FILTROS, MOTOR_CAJA_CORONA, FRENOS_RODAJE, ELECTRICO, PAGOS_COMPANIA, TRAMITES_PERMISOS, OTROS
+  description     String
+  provider        String?
+  totalAmount     Float    @default(0)
+  paidAmount      Float    @default(0)
+  pendingBalance  Float    @default(0)
+  paymentMethod   String   @default("EFECTIVO") // TRANSFERENCIA, EFECTIVO, CREDITO_PENDIENTE
+  comprobanteRef  String?
+  bankName        String?
+  receiptPhotoUrl String?
+  abonos          Json     @default("[]")
+  status          String   @default("PAGADO") // PAGADO | PENDIENTE
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([busId, expenseDate])
+  @@index([busId, status])
+}

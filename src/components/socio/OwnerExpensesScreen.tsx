@@ -46,6 +46,11 @@ import {
   seedSampleExpenses,
   clearAllOwnerExpenses,
   removeSampleExpensesOnly,
+  fetchOwnerExpensesFromApi,
+  saveOwnerExpenseToApi,
+  registerAbonoToApi,
+  deleteOwnerExpenseFromApi,
+  syncAllLocalExpensesToApi,
 } from '../../lib/owner-expenses-storage';
 
 interface Props {
@@ -59,6 +64,8 @@ export default function OwnerExpensesScreen({
 }: Props) {
   const [busId, setBusId] = useState<string>(initialBusId);
   const [allExpenses, setAllExpenses] = useState<OwnerExpense[]>([]);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [isOnlineDb, setIsOnlineDb] = useState<boolean>(true);
 
   // Mes contable activo para visualización (Formato YYYY-MM)
   // Por defecto inicializamos en Agosto 2026 (mes con datos operativos auditados de $3915.25)
@@ -102,15 +109,36 @@ export default function OwnerExpensesScreen({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Cargar datos sin re-sembrar automáticamente
-  const loadData = () => {
-    const list = getOwnerExpenses(busId);
-    setAllExpenses(list);
+  // Cargar datos conectando directamente con la API central y sincronizando caché local
+  const loadData = async () => {
+    try {
+      const list = await fetchOwnerExpensesFromApi(busId);
+      setAllExpenses(list);
+      setIsOnlineDb(true);
+    } catch {
+      const list = getOwnerExpenses(busId);
+      setAllExpenses(list);
+      setIsOnlineDb(false);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, [busId]);
+
+  // Sincronizar todos los gastos locales con la base de datos central
+  const handleSyncToDb = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await syncAllLocalExpensesToApi(busId);
+      showToast(`☁️ ${res.count} gastos respaldados en la Base de Datos Central`);
+      await loadData();
+    } catch (err) {
+      showToast("⚠️ Error al sincronizar con la base de datos");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Lista de meses disponibles para navegación fácil
   const availableMonths = useMemo(() => {
@@ -251,7 +279,7 @@ export default function OwnerExpensesScreen({
   };
 
   // Guardar nuevo gasto ("Modo Rápido 1-2-3")
-  const handleSaveExpense = (e: React.FormEvent) => {
+  const handleSaveExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     const total = parseFloat(formTotalAmount);
     if (isNaN(total) || total <= 0) {
@@ -288,8 +316,8 @@ export default function OwnerExpensesScreen({
       status: pending <= 0 ? 'PAGADO' : 'PENDIENTE',
     };
 
-    saveOwnerExpense(newExpense);
-    loadData();
+    await saveOwnerExpenseToApi(newExpense);
+    await loadData();
     setIsNewExpenseOpen(false);
 
     // Si la fecha corresponde a otro mes, avisar al usuario
@@ -313,7 +341,7 @@ export default function OwnerExpensesScreen({
   };
 
   // Guardar abono
-  const handleSaveAbono = (e: React.FormEvent) => {
+  const handleSaveAbono = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!abonoTargetExpense) return;
 
@@ -342,10 +370,10 @@ export default function OwnerExpensesScreen({
   };
 
   // Eliminar gasto
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('¿Seguro que deseas eliminar este registro de gasto?')) {
-      deleteOwnerExpense(id);
-      loadData();
+      await deleteOwnerExpenseFromApi(id);
+      await loadData();
       showToast('🗑️ Registro eliminado');
     }
   };
@@ -388,8 +416,12 @@ export default function OwnerExpensesScreen({
             </div>
           </div>
 
-          {/* Placa e Identificación Fija de la Unidad (1 Aplicación = 1 Unidad) */}
-          <div className="flex items-center gap-1.5">
+          {/* Placa e Identificación Fija de la Unidad y Estado BD */}
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 bg-white/15 border border-white/25 rounded-xl text-white text-[11px] font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>☁️ En Línea BD</span>
+            </div>
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-black/20 border border-white/20 rounded-xl text-white">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <div className="text-right">
@@ -403,6 +435,23 @@ export default function OwnerExpensesScreen({
 
       {/* CUERPO PRINCIPAL */}
       <main className="max-w-md mx-auto px-4 pt-4 space-y-4">
+        {/* DISTINTIVO DE BASE DE DATOS Y BOTÓN DE SINCRONIZACIÓN */}
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-2xl p-2.5 flex items-center justify-between gap-2 shadow-xs">
+          <div className="flex items-center gap-2 text-xs text-emerald-950 font-bold">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="tracking-tight">☁️ En Línea BD (PostgreSQL)</span>
+          </div>
+          <button
+            id="btn-sync-cloud-expenses"
+            onClick={handleSyncToDb}
+            disabled={isSyncing}
+            className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 disabled:opacity-50 shadow-sm"
+            title="Subir gastos guardados en el teléfono a la base de datos central"
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+            <span>{isSyncing ? "Sincronizando..." : "☁️ Sincronizar"}</span>
+          </button>
+        </div>
         {/* NAVEGADOR DE MES CONTABLE (EJE CARDINAL DE FECHA) */}
         <div className="bg-white border-2 border-gray-200 rounded-2xl p-3 shadow-sm">
           <div className="flex items-center justify-between">
