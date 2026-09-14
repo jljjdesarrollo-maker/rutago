@@ -1055,3 +1055,45 @@ Transformar RutaGo de un sistema centrado en una sola unidad fija (`BUS-04`) a u
      - Línea de referencia: `Promedio de la Cooperativa en frecuencias equivalentes`.
   3. Tarjeta de Diagnóstico y Semáforo de Desempeño (🟢 Óptimo, 🟡 Precaución, 🔴 Alerta de Fuga).
 - **Resultado Entregable**: Panel de control de tripulaciones y detección de fuga de capital en manos de cada socio.
+
+---
+
+## 16. Corrección de Arquitectura: Unificación Total de Flota (Buses de la Cía. = Buses de Socios) (v3.49.1 - 2026-09-14)
+> Directiva del Usuario y Homogeneización de la Entidad Autobús.
+
+### 16.1 Análisis y Rectificación
+- **Observación del Usuario**: ¿Por qué separar a los buses de la compañía en un tratamiento diferente si operativamente y contablemente funcionan exactamente igual que cualquier otro bus?
+- **Corrección Aceptada 100%**:
+  - En la práctica del transporte, **un autobús es un autobús**: los buses 16, 17, 18 y 19 hacen los mismos turnos VT, tienen la misma tripulación (chofer y ayudante), generan el mismo ingreso bruto, tienen gastos de diésel, llantas, aceites y requieren el mismo control.
+  - La única diferencia no es el software ni el vehículo, sino simplemente quién es el "dueño" registrado en la ficha (en lugar del nombre de una persona natural, dice "VilcabambaTuris Cía. Ltda.").
+  - **Ventaja de la Unificación**:
+    1. Se elimina código duplicado o pantallas especiales innecesarias.
+    2. Simplifica el sistema: se reduce de 5 fases a **4 fases más limpias y directas**.
+    3. Los buses 16, 17, 18 y 19 se registran en el mismo formulario web que el Bus 01 y el Bus 10.
+
+---
+
+### 16.2 Plan Maestro de Implementación Definitivo (4 Fases Unificadas)
+
+#### FASE 1: Desacople de Unidad Fija y Activación Dinámica del Bus 01
+- Desvincular el `BUS-04` hardcodeado en la app y backend.
+- Parametrizar las pantallas de gastos, reportes y arqueos para aceptar cualquier `busId`.
+- Establecer el selector de unidades dinámico con el **Bus 01** como caso piloto del socio líder.
+
+#### FASE 2: Formulario Web de Registro Manual de Unidades (CRUD Flota)
+- Crear endpoints en Prisma/PostgreSQL (`GET /api/buses`, `POST /api/buses`, `PUT /api/buses`).
+- Pantalla web con botón `[+ Registrar Nueva Unidad]` para dar de alta cualquier unidad en cualquier momento:
+  * Número de Disco (01, 10, 12, 16, etc.)
+  * Placa, Marca, Modelo, Año, Asientos.
+  * Propietario (Persona natural o "VilcabambaTuris Cía. Ltda.").
+
+#### FASE 3: Despliegue Progresivo de la Flota (Socios y Compañía en la misma plataforma)
+- Incorporación del **Bus 10** y **Bus 12** (socios individuales).
+- Incorporación de los **Buses 16, 17, 18 y 19** (unidades de la compañía) usando el mismo formulario y la misma estructura.
+- Validación del socio con **2 buses** (conmutación fluida en el selector de unidad).
+- Verificación del aislamiento contable entre cuentas y permisos.
+
+#### FASE 4: Módulo de Benchmark Estadístico y Auditoría de Tripulaciones (Ingreso Bruto)
+- Motor de cálculo: Ingreso Bruto, Ingreso Promedio por Frecuencia (IPF), Matriz `[Grupo VT] x [Tipo de Día]`.
+- Gráfica comparativa con anonimización (`Bus A`, `Bus B`, etc.) y semáforo de desempeño (🟢, 🟡, 🔴).
+- Detección de fuga de capital y tratamiento de excepciones (frecuencias no realizadas, ingresos especiales y días de taller).
