@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
       startDate = monday.toISOString().split('T')[0];
       endDate = sunday.toISOString().split('T')[0];
     } else if (type === 'mensual' || type === 'conductor' || type === 'monthly') {
-      const yearParam = searchParams.get('year');
+      const yearParam = url.searchParams.get('year');
       let yStr = '';
       let mStr = '';
       if (month && month.includes('-')) {
