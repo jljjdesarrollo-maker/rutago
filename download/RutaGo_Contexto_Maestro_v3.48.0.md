@@ -988,3 +988,70 @@ Para garantizar justicia absoluta a la tripulación y detectar la fuga real de c
     $$\text{Días Operativos Reales} = \text{COUNT(DISTINCT DailyRecord.date) para ese busId en el mes}$$
   - El cálculo del promedio diario jamás divide para 30 días ciegos, sino estrictamente para los días con operaciones reportadas (ej. 18 días).
   - Los 12 días faltantes se reflejan en el reporte gerencial como *"Días Inactivos sin Operación"* de forma automática, sin requerir registros manuales en blanco.
+
+---
+
+## 15. Plan Maestro de Implementación por Fases (v3.49.0 - 2026-09-14)
+> Hoja de Ruta Ejecutiva para Construcción Gradual y Eficiente de Créditos en Google AI Studio.
+
+### Objetivo General
+Transformar RutaGo de un sistema centrado en una sola unidad fija (`BUS-04`) a una plataforma SaaS multi-unidad, con registro manual de flota, control de suscripciones por activo y módulo de benchmark estadístico anonimizado de tripulaciones, ejecutado en 5 fases incrementales y auto-contenidas.
+
+---
+
+### Fase 1: Desacople de Unidad Fija y Piloto Bus 01 (Golden Sample)
+- **Alcance Funcional**:
+  1. Reemplazar los valores fijos `BUS-04` en `OwnerExpensesScreen.tsx`, `HomeScreen.tsx`, `owner-expenses-storage.ts` y APIs para aceptar un `busId` dinámico.
+  2. Implementar un selector rápido de unidad en la cabecera (Navbar) inicializado con el **Bus 01**.
+  3. Validar el flujo completo contable y operativo (arqueo, gastos del socio, reportes e histórico) con los datos del Bus 01.
+- **Resultado Entregable**: La aplicación opera de forma dinámica permitiendo cambiar de bus sin código hardcodeado.
+
+---
+
+### Fase 2: Formulario Web de Registro Manual de Unidades (CRUD de Flota)
+- **Alcance Funcional**:
+  1. Diseñar el endpoint de backend `POST /api/buses` y `GET /api/buses` en Prisma/PostgreSQL.
+  2. Crear la pantalla web de **"Gestión de Flota / Mis Unidades"** con el botón `[+ Registrar Nueva Unidad]`.
+  3. Campos del formulario:
+     - Número de Disco (ej. `01`, `10`, `12`).
+     - Placa Vehicular (ej. `LAA-1234`).
+     - Tipo de Pertenencia (Socio Persona Natural vs. Unidad de la Compañía).
+     - Nombre / Email del Propietario asignado.
+     - Marca, Modelo y Año.
+     - Capacidad de Asientos y Kilometraje inicial.
+- **Resultado Entregable**: El usuario puede dar de alta el Bus 01, y posteriormente el Bus 10 o Bus 12 en cualquier momento desde la interfaz web, sin intervención de programadores.
+
+---
+
+### Fase 3: Incorporación Progresiva de Socios Externos y Validación Multi-Tenancy
+- **Alcance Funcional**:
+  1. Registro del **Bus 10** (primer socio externo) mediante la interfaz creada en la Fase 2.
+  2. Comprobación del **aislamiento estricto de datos** (los gastos y arqueos del Bus 10 no se cruzan con el Bus 01).
+  3. Registro del **Bus 12** para verificar concurrencia y estabilidad de 3 unidades activas.
+  4. Incorporación del caso del socio con **2 buses** (validación del selector dual bajo una misma cuenta).
+- **Resultado Entregable**: Multi-tenancy validado en producción con datos de múltiples socios independientes.
+
+---
+
+### Fase 4: Módulo de Unidades Institucionales de la Compañía (Buses 16, 17, 18 y 19)
+- **Alcance Funcional**:
+  1. Alta de las unidades 16, 17, 18 y 19 categorizadas como `tipoPropiedad = "COMPANIA"`.
+  2. Vista administrativa corporativa para la gerencia de VilcabambaTuris Cía. Ltda.
+  3. Esquema de reporte consolidado institucional para las 4 unidades de la empresa.
+- **Resultado Entregable**: La flota completa (socios + empresa) coexiste de forma ordenada en la misma base de datos.
+
+---
+
+### Fase 5: Módulo de Inteligencia y Benchmark Estadístico de Tripulaciones (Ingreso Bruto Anonimizado)
+- **Alcance Funcional**:
+  1. Motor analítico en backend que computa:
+     - Ingreso Bruto Total (`efectivoReal + boletos + cajaComun + ingresosEspeciales`).
+     - Ingreso Promedio por Frecuencia Efectiva (`IPF`).
+     - Matriz de demanda cíclica: `[Grupo VT] x [Tipo de Día (Laboral vs Fin de Semana)]`.
+     - Tratamiento nativo de frecuencias no realizadas y días inactivos sin registro (días en mecánica).
+  2. Gráfica comparativa anonimizada con `recharts`:
+     - Barra Vinotinto: `Tu Bus (ej. Bus 01)`.
+     - Barras Grises: `Bus A`, `Bus B`, `Bus C` (anonimizados).
+     - Línea de referencia: `Promedio de la Cooperativa en frecuencias equivalentes`.
+  3. Tarjeta de Diagnóstico y Semáforo de Desempeño (🟢 Óptimo, 🟡 Precaución, 🔴 Alerta de Fuga).
+- **Resultado Entregable**: Panel de control de tripulaciones y detección de fuga de capital en manos de cada socio.
