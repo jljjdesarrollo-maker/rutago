@@ -1,6 +1,7 @@
 import { OwnerExpense, PaymentAbono } from '../types/expenses';
 
 const STORAGE_KEY = 'rutago_owner_expenses_v1';
+const INITIALIZED_KEY = 'rutago_owner_expenses_initialized_flag';
 
 export function getOwnerExpenses(busId = 'BUS-04'): OwnerExpense[] {
   if (typeof window === 'undefined') return [];
@@ -29,6 +30,7 @@ export function saveOwnerExpense(expense: OwnerExpense): OwnerExpense {
     }
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    localStorage.setItem(INITIALIZED_KEY, 'true');
     return expense;
   } catch (err) {
     console.error('Error guardando gasto de socio:', err);
@@ -44,6 +46,7 @@ export function deleteOwnerExpense(id: string): boolean {
     const all: OwnerExpense[] = JSON.parse(raw);
     const filtered = all.filter((e) => e.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    localStorage.setItem(INITIALIZED_KEY, 'true');
     return true;
   } catch (err) {
     console.error('Error eliminando gasto de socio:', err);
@@ -84,6 +87,7 @@ export function registerAbonoToExpense(
 
     all[index] = updated;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    localStorage.setItem(INITIALIZED_KEY, 'true');
     return updated;
   } catch (err) {
     console.error('Error registrando abono:', err);
@@ -109,7 +113,44 @@ export function getPendingDebts(busId: string): OwnerExpense[] {
 }
 
 /**
- * Semillero con los datos de ejemplo sugeridos para Agosto y Septiembre 2026
+ * Limpia todos los gastos para una unidad (no vuelve a autogenerar datos de ejemplo)
+ */
+export function clearAllOwnerExpenses(busId = 'BUS-04'): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const all: OwnerExpense[] = JSON.parse(raw);
+    const filtered = all.filter((e) => e.busId !== busId);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    localStorage.setItem(INITIALIZED_KEY, 'true');
+  } catch (err) {
+    console.error('Error limpiando gastos:', err);
+  }
+}
+
+/**
+ * Elimina exclusivamente los gastos precargados de ejemplo (EXP-AUG-* y EXP-SEP-*)
+ * conservando los gastos reales que el socio haya creado manualmente.
+ */
+export function removeSampleExpensesOnly(busId = 'BUS-04'): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const all: OwnerExpense[] = JSON.parse(raw);
+    const filtered = all.filter(
+      (e) => !(e.busId === busId && (e.id.startsWith('EXP-AUG-') || e.id.startsWith('EXP-SEP-')))
+    );
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    localStorage.setItem(INITIALIZED_KEY, 'true');
+  } catch (err) {
+    console.error('Error eliminando gastos de muestra:', err);
+  }
+}
+
+/**
+ * Semillero con los datos de ejemplo (solo se ejecuta bajo acción explícita)
  */
 export function seedSampleExpenses(busId = 'BUS-04'): void {
   const sampleData: OwnerExpense[] = [
@@ -247,19 +288,6 @@ export function seedSampleExpenses(busId = 'BUS-04'): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleData));
     localStorage.setItem(STORAGE_KEY + '_seeded', 'true');
-  }
-}
-
-export function clearAllOwnerExpenses(busId = 'BUS-04'): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const all: OwnerExpense[] = JSON.parse(raw);
-    const filtered = all.filter((e) => e.busId !== busId);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-    localStorage.setItem(STORAGE_KEY + '_seeded', 'true'); // Marca que ya fue inicializado para no volver a auto-crear prueba
-  } catch (err) {
-    console.error('Error limpiando gastos:', err);
+    localStorage.setItem(INITIALIZED_KEY, 'true');
   }
 }

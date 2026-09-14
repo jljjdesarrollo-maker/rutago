@@ -41,12 +41,11 @@ export default function OwnerIncomeStatementModal({
   selectedYearMonth,
   allExpenses,
 }: Props) {
-  if (!isOpen) return null;
-
   // Estado para datos reales consultados a la Base de Datos (/api/reports)
   const [dbRouteData, setDbRouteData] = useState<RouteFinancialSummary | null>(null);
   const [loadingDB, setLoadingDB] = useState<boolean>(false);
   const [dbError, setDbError] = useState<string | null>(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState<boolean>(false);
 
   // Formato legible del mes
   const formatMonthName = (ym: string) => {
@@ -227,19 +226,20 @@ export default function OwnerIncomeStatementModal({
   }, [allExpenses, selectedYearMonth]);
 
   // 3. RESULTADOS CONTABLES FINALES
-  // Utilidad Real en el Bolsillo: Efectivo neto entregado por el ayudante menos gastos directos del socio
+  // Saldo a liquidar de ruta: Utilidad neta operativa generada entre lo que entregó el ayudante y la compañía (S/ 3,915.25)
   const saldoLiquidarRuta = routeSummary.entregas.totalEntregado; // S/ 3,915.25
   const entregaEfectivoAyudante = routeSummary.entregas.entregaAyudante; // S/ 2,828.80
   const retencionCompania = routeSummary.entregas.entregaCompania; // S/ 1,086.45
 
-  const utilidadNetaRealBolsillo = entregaEfectivoAyudante - ownerExpensesSummary.totalGastosSocio;
+  // Utilidad Neta Consolidada del Socio: Total Entregado ($3,915.25) menos gastos registrados por el socio
   const utilidadNetaConsolidada = saldoLiquidarRuta - ownerExpensesSummary.totalGastosSocio;
+  // Efectivo directo de ayudante menos gastos directos
+  const utilidadNetaRealBolsillo = entregaEfectivoAyudante - ownerExpensesSummary.totalGastosSocio;
+
   const margenUtilidadPorcentaje =
     routeSummary.totalProduccionBruta > 0
-      ? (utilidadNetaRealBolsillo / routeSummary.totalProduccionBruta) * 100
+      ? (utilidadNetaConsolidada / routeSummary.totalProduccionBruta) * 100
       : 0;
-
-  const [isGeneratingPDF, setIsGeneratingPDF] = React.useState(false);
 
   // Manejador de descarga de PDF
   const handleDownloadPDF = async () => {
@@ -265,6 +265,8 @@ export default function OwnerIncomeStatementModal({
       setIsGeneratingPDF(false);
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
@@ -322,29 +324,29 @@ export default function OwnerIncomeStatementModal({
             )}
           </div>
 
-          {/* TARJETA DESTACADA: UTILIDAD REAL EN BOLSILLO */}
+          {/* TARJETA DESTACADA: UTILIDAD NETA FINAL DEL SOCIO */}
           <div
             className={`p-4 rounded-2xl border-2 flex items-center justify-between shadow-xs ${
-              utilidadNetaRealBolsillo >= 0
+              utilidadNetaConsolidada >= 0
                 ? 'bg-emerald-50/70 border-emerald-300'
                 : 'bg-rose-50/70 border-rose-300'
             }`}
           >
             <div>
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 block">
-                Utilidad Real Neta (Bolsillo Socio)
+                Utilidad Neta Final del Socio
               </span>
               <div className="flex items-baseline gap-2 mt-0.5">
                 <span
                   className={`text-2xl font-black ${
-                    utilidadNetaRealBolsillo >= 0 ? 'text-emerald-700' : 'text-rose-700'
+                    utilidadNetaConsolidada >= 0 ? 'text-emerald-700' : 'text-rose-700'
                   }`}
                 >
-                  ${utilidadNetaRealBolsillo.toFixed(2)}
+                  ${utilidadNetaConsolidada.toFixed(2)}
                 </span>
                 <span
                   className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                    utilidadNetaRealBolsillo >= 0
+                    utilidadNetaConsolidada >= 0
                       ? 'bg-emerald-100 text-emerald-800'
                       : 'bg-rose-100 text-rose-800'
                   }`}
@@ -352,22 +354,34 @@ export default function OwnerIncomeStatementModal({
                   {margenUtilidadPorcentaje.toFixed(1)}% margen
                 </span>
               </div>
-              <p className="text-[11px] text-gray-500 mt-0.5">
-                Efectivo entregado por ayudante (${entregaEfectivoAyudante.toFixed(2)}) (-) Gastos socio (${ownerExpensesSummary.totalGastosSocio.toFixed(2)})
+              <p className="text-[11px] text-gray-600 mt-1 font-medium">
+                Utilidad Operativa (${saldoLiquidarRuta.toFixed(2)}) (-) Gastos Registrados Socio (${ownerExpensesSummary.totalGastosSocio.toFixed(2)})
               </p>
             </div>
             <div
               className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                utilidadNetaRealBolsillo >= 0
+                utilidadNetaConsolidada >= 0
                   ? 'bg-emerald-100 text-emerald-700'
                   : 'bg-rose-100 text-rose-700'
               }`}
             >
-              {utilidadNetaRealBolsillo >= 0 ? (
+              {utilidadNetaConsolidada >= 0 ? (
                 <TrendingUp className="w-6 h-6 stroke-[2.5]" />
               ) : (
                 <TrendingDown className="w-6 h-6 stroke-[2.5]" />
               )}
+            </div>
+          </div>
+
+          {/* SUB-TARJETAS DE ENTREGAS OFICIALES DE RUTA */}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="p-2.5 rounded-xl bg-white border border-gray-200">
+              <span className="text-[10px] text-gray-500 font-bold block">Entrega Ayudante (Efectivo)</span>
+              <span className="text-sm font-extrabold text-emerald-700">${entregaEfectivoAyudante.toFixed(2)}</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-white border border-gray-200">
+              <span className="text-[10px] text-gray-500 font-bold block">Entrega Compañía (Caja Común)</span>
+              <span className="text-sm font-extrabold text-blue-700">${retencionCompania.toFixed(2)}</span>
             </div>
           </div>
 
@@ -471,6 +485,21 @@ export default function OwnerIncomeStatementModal({
                     Quedó fiado en taller: ${ownerExpensesSummary.totalDeudasTalleresPendientes.toFixed(2)}
                   </span>
                 </div>
+              </div>
+
+              {/* 5. Utilidad Neta Final del Socio */}
+              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-between font-bold text-xs">
+                <div>
+                  <span className="text-emerald-900 block font-black">
+                    (=) Utilidad Neta Final del Socio:
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-medium">
+                    ${saldoLiquidarRuta.toFixed(2)} (Ruta) (-) ${ownerExpensesSummary.totalGastosSocio.toFixed(2)} (Socio)
+                  </span>
+                </div>
+                <span className="text-base font-black text-emerald-800">
+                  ${utilidadNetaConsolidada.toFixed(2)}
+                </span>
               </div>
             </div>
           </div>

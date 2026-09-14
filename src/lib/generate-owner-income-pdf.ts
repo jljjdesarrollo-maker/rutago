@@ -160,18 +160,18 @@ export async function generateOwnerIncomeStatementPDF(data: OwnerIncomeStatement
       color: COLOR_DARK,
     },
     {
-      label: '(=) UTILIDAD REAL NETA EN BOLSILLO DEL SOCIO',
-      val: `$${data.utilidadNetaRealBolsillo.toFixed(2)}`,
+      label: '(=) UTILIDAD NETA FINAL DEL SOCIO (Cía + Ayudante - Gastos Socio)',
+      val: `$${data.utilidadNetaConsolidada.toFixed(2)}`,
       pct: `${data.margenUtilidadPorcentaje.toFixed(1)}%`,
       isBold: true,
-      color: data.utilidadNetaRealBolsillo >= 0 ? COLOR_EMERALD : COLOR_ROSE,
+      color: data.utilidadNetaConsolidada >= 0 ? COLOR_EMERALD : COLOR_ROSE,
       highlight: true,
     },
   ];
 
   kpiRows.forEach((row, i) => {
     if (row.highlight) {
-      doc.setFillColor(data.utilidadNetaReal >= 0 ? 236 : 255, data.utilidadNetaReal >= 0 ? 253 : 241, data.utilidadNetaReal >= 0 ? 245 : 242);
+      doc.setFillColor(data.utilidadNetaConsolidada >= 0 ? 236 : 255, data.utilidadNetaConsolidada >= 0 ? 253 : 241, data.utilidadNetaConsolidada >= 0 ? 245 : 242);
       doc.rect(margin, y, contentWidth, 7, 'F');
     } else if (i % 2 === 1) {
       doc.setFillColor(...COLOR_BG_ROW);

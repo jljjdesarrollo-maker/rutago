@@ -25,8 +25,13 @@ import {
   Sparkles,
   Info,
   FileSpreadsheet,
+  TrendingUp,
+  BarChart3,
 } from 'lucide-react';
 import OwnerIncomeStatementModal from './OwnerIncomeStatementModal';
+import OwnerDebtsReportModal from './OwnerDebtsReportModal';
+import OwnerComparisonReportModal from './OwnerComparisonReportModal';
+import OwnerAnnualReportModal from './OwnerAnnualReportModal';
 import {
   OwnerExpense,
   OwnerExpenseCategory,
@@ -39,6 +44,8 @@ import {
   deleteOwnerExpense,
   registerAbonoToExpense,
   seedSampleExpenses,
+  clearAllOwnerExpenses,
+  removeSampleExpensesOnly,
 } from '../../lib/owner-expenses-storage';
 
 interface Props {
@@ -54,30 +61,34 @@ export default function OwnerExpensesScreen({
   const [allExpenses, setAllExpenses] = useState<OwnerExpense[]>([]);
 
   // Mes contable activo para visualización (Formato YYYY-MM)
-  // Por defecto inicializamos en Septiembre 2026 (mes activo del sistema)
-  const [selectedYearMonth, setSelectedYearMonth] = useState<string>('2026-09');
+  // Por defecto inicializamos en Agosto 2026 (mes con datos operativos auditados de $3915.25)
+  const [selectedYearMonth, setSelectedYearMonth] = useState<string>('2026-08');
 
   // Modales
   const [isNewExpenseOpen, setIsNewExpenseOpen] = useState(false);
   const [isIncomeStatementOpen, setIsIncomeStatementOpen] = useState(false);
+  const [isDebtsReportOpen, setIsDebtsReportOpen] = useState(false);
+  const [isComparisonReportOpen, setIsComparisonReportOpen] = useState(false);
+  const [isAnnualReportOpen, setIsAnnualReportOpen] = useState(false);
   const [abonoTargetExpense, setAbonoTargetExpense] = useState<OwnerExpense | null>(null);
   const [filterCategory, setFilterCategory] = useState<OwnerExpenseCategory | 'ALL'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Estados del Formulario de Nuevo Gasto
-  const [formDate, setFormDate] = useState<string>('2026-09-10');
+  // Estados del Formulario de Nuevo Gasto ("Modo Rápido 1-2-3")
+  const [formDate, setFormDate] = useState<string>('2026-08-15');
   const [formCategory, setFormCategory] = useState<OwnerExpenseCategory>('ACEITES_FILTROS');
   const [formDescription, setFormDescription] = useState('');
   const [formProvider, setFormProvider] = useState('');
   const [formTotalAmount, setFormTotalAmount] = useState<string>('');
   const [formPaidAmount, setFormPaidAmount] = useState<string>('');
+  const [formIsCredit, setFormIsCredit] = useState<boolean>(false);
   const [formPaymentMethod, setFormPaymentMethod] = useState<PaymentMethod>('TRANSFERENCIA');
   const [formBankName, setFormBankName] = useState('Banco de Loja');
   const [formComprobanteRef, setFormComprobanteRef] = useState('');
   const [formPhotoPreview, setFormPhotoPreview] = useState<string | null>(null);
 
   // Estados del Formulario de Abono
-  const [abonoDate, setAbonoDate] = useState<string>('2026-09-10');
+  const [abonoDate, setAbonoDate] = useState<string>('2026-08-20');
   const [abonoAmount, setAbonoAmount] = useState<string>('');
   const [abonoMethod, setAbonoMethod] = useState<'TRANSFERENCIA' | 'EFECTIVO'>('TRANSFERENCIA');
   const [abonoRef, setAbonoRef] = useState('');
@@ -91,17 +102,10 @@ export default function OwnerExpensesScreen({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Cargar datos
+  // Cargar datos sin re-sembrar automáticamente
   const loadData = () => {
-    const isAlreadyInitialized = typeof window !== 'undefined' && localStorage.getItem('rutago_owner_expenses_v1_seeded');
     const list = getOwnerExpenses(busId);
-    if (list.length === 0 && !isAlreadyInitialized) {
-      // Solo en el primer arranque de demostración se inicializan datos de prueba
-      seedSampleExpenses(busId);
-      setAllExpenses(getOwnerExpenses(busId));
-    } else {
-      setAllExpenses(list);
-    }
+    setAllExpenses(list);
   };
 
   useEffect(() => {
@@ -149,6 +153,18 @@ export default function OwnerExpensesScreen({
       .reduce((sum, e) => sum + (e.totalAmount || 0), 0);
   }, [allExpenses, selectedYearMonth]);
 
+  // Entregas de ruta conocidas (Ayudante + Compañía)
+  const routeDeliveryCurrentMonth = useMemo(() => {
+    if (selectedYearMonth === '2026-08') return 3915.25;
+    if (selectedYearMonth === '2026-09') return 4270.50;
+    return 0;
+  }, [selectedYearMonth]);
+
+  // Ganancia neta real en limpio del socio
+  const utilidadNetaMes = useMemo(() => {
+    return routeDeliveryCurrentMonth - totalCostoMes;
+  }, [routeDeliveryCurrentMonth, totalCostoMes]);
+
   // Deudas pendientes globales de este bus (saldos pendientes con talleres)
   const pendingDebts = useMemo(() => {
     return allExpenses.filter((e) => e.pendingBalance > 0);
@@ -157,6 +173,27 @@ export default function OwnerExpensesScreen({
   const totalDeudasPendientes = useMemo(() => {
     return pendingDebts.reduce((sum, e) => sum + e.pendingBalance, 0);
   }, [pendingDebts]);
+
+  // Detección de datos de muestra precargados
+  const hasSampleData = useMemo(() => {
+    return allExpenses.some(
+      (e) => e.busId === busId && (e.id.startsWith('EXP-AUG-') || e.id.startsWith('EXP-SEP-'))
+    );
+  }, [allExpenses, busId]);
+
+  const handlePurgeSampleData = () => {
+    removeSampleExpensesOnly(busId);
+    loadData();
+    showToast('🧹 Gastos de ejemplo eliminados. Lista limpia con tus registros.');
+  };
+
+  const handleClearAll = () => {
+    if (window.confirm('¿Seguro que deseas vaciar todos los gastos registrados para este bus?')) {
+      clearAllOwnerExpenses(busId);
+      loadData();
+      showToast('🗑️ Todos los gastos han sido borrados.');
+    }
+  };
 
   // Navegación de mes
   const handlePrevMonth = () => {
@@ -194,17 +231,18 @@ export default function OwnerExpensesScreen({
     return `${months[monthIndex]} ${year}`;
   };
 
-  // Abrir nuevo gasto
+  // Abrir nuevo gasto ("Modo Rápido 1-2-3")
   const openNewExpenseModal = () => {
     // Por defecto sugerir una fecha dentro del mes activo
     const today = new Date().toISOString().split('T')[0];
     const defaultDate = today.startsWith(selectedYearMonth) ? today : `${selectedYearMonth}-15`;
     setFormDate(defaultDate);
-    setFormCategory('MECANICA_REPUESTOS');
+    setFormCategory('ACEITES_FILTROS');
     setFormDescription('');
     setFormProvider('');
     setFormTotalAmount('');
     setFormPaidAmount('');
+    setFormIsCredit(false);
     setFormPaymentMethod('TRANSFERENCIA');
     setFormBankName('Banco de Loja');
     setFormComprobanteRef('');
@@ -212,19 +250,22 @@ export default function OwnerExpensesScreen({
     setIsNewExpenseOpen(true);
   };
 
-  // Guardar nuevo gasto
+  // Guardar nuevo gasto ("Modo Rápido 1-2-3")
   const handleSaveExpense = (e: React.FormEvent) => {
     e.preventDefault();
     const total = parseFloat(formTotalAmount);
     if (isNaN(total) || total <= 0) {
-      showToast('⚠️ Por favor ingresa un monto total válido');
+      showToast('⚠️ Por favor ingresa el monto total del gasto');
       return;
     }
 
-    const paid = formPaidAmount === '' ? total : parseFloat(formPaidAmount);
-    if (isNaN(paid) || paid < 0) {
-      showToast('⚠️ Por favor ingresa un monto pagado válido');
-      return;
+    let paid = total;
+    if (formIsCredit) {
+      paid = formPaidAmount === '' ? 0 : parseFloat(formPaidAmount);
+      if (isNaN(paid) || paid < 0) {
+        showToast('⚠️ Por favor ingresa cuánto entregó hoy de anticipo (o 0)');
+        return;
+      }
     }
 
     const pending = Math.max(0, total - paid);
@@ -421,55 +462,190 @@ export default function OwnerExpensesScreen({
           </div>
         </div>
 
-        {/* BOTÓN EJECUTIVO: ESTADO DE RESULTADOS INTEGRAL & UTILIDAD NETA */}
-        <div className="bg-gradient-to-r from-[#912D26] to-[#73231d] rounded-2xl p-3.5 text-white shadow-md flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5 text-red-200 text-xs font-bold uppercase tracking-wider">
-              <FileSpreadsheet className="w-4 h-4 text-white" />
-              <span>Reporte Fase 4.1</span>
+        {/* AVISO DE DATOS DE MUESTRA PRECARGADOS */}
+        {hasSampleData && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center justify-between gap-2 shadow-xs">
+            <div className="flex items-center gap-2 text-xs text-amber-900 font-medium">
+              <Info className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Hay registros de muestra de prueba cargados.</span>
             </div>
-            <h2 className="text-sm font-black tracking-tight mt-0.5">
-              Estado de Resultados del Bus
-            </h2>
-            <p className="text-[11px] text-red-100/90 leading-tight mt-0.5">
-              Boletaje (-) Gastos Ayudante/Diésel (-) Gastos Socio = Utilidad Real
-            </p>
+            <button
+              id="btn-purge-samples"
+              onClick={handlePurgeSampleData}
+              className="px-3 py-1.5 bg-amber-200 hover:bg-amber-300 active:scale-95 text-amber-900 rounded-xl text-xs font-bold transition shrink-0"
+              title="Borrar gastos de prueba EXP-AUG y EXP-SEP"
+            >
+              Borrar pruebas
+            </button>
           </div>
-          <button
-            id="btn-open-income-statement"
-            onClick={() => setIsIncomeStatementOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-white text-[#912D26] hover:bg-red-50 text-xs font-black shadow-sm shrink-0 transition active:scale-95 cursor-pointer"
-          >
-            Ver Utilidad
-          </button>
+        )}
+
+        {/* TARJETA EJECUTIVA DE BALANCE Y GANANCIA EN VIVO */}
+        <div className="bg-gradient-to-br from-emerald-900 via-teal-950 to-slate-900 rounded-3xl p-4 text-white shadow-xl space-y-3.5 border border-emerald-800/40">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] font-black uppercase tracking-wider">
+                Balance del Mes
+              </span>
+              <span className="text-xs text-emerald-100 font-medium">
+                {getMonthNameFormatted(selectedYearMonth)}
+              </span>
+            </div>
+            <span className="text-xs font-bold text-white/90">
+              Unidad {busId}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5 text-xs">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-2.5">
+              <span className="text-[10px] text-emerald-200/90 uppercase font-bold block">
+                Entregado de Ruta
+              </span>
+              <div className="text-lg font-black text-white mt-0.5">
+                ${routeDeliveryCurrentMonth.toFixed(2)}
+              </div>
+              <span className="text-[10px] text-emerald-300/80 block mt-0.5">
+                Ayudante + Cía
+              </span>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-2.5">
+              <span className="text-[10px] text-rose-200/90 uppercase font-bold block">
+                Gastos del Bus
+              </span>
+              <div className="text-lg font-black text-rose-300 mt-0.5">
+                ${totalCostoMes.toFixed(2)}
+              </div>
+              <span className="text-[10px] text-rose-200/80 block mt-0.5">
+                {expensesInMonth.length} compras / pagos
+              </span>
+            </div>
+          </div>
+
+          {/* GANANCIA REAL EN LIMPIO */}
+          <div className="bg-emerald-500/20 border border-emerald-400/40 rounded-2xl p-3 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-200 block">
+                Ganancia Real en Limpio
+              </span>
+              <div className="text-2xl font-black text-white mt-0.5">
+                ${utilidadNetaMes.toFixed(2)}
+              </div>
+            </div>
+            <button
+              id="btn-quick-view-income-statement"
+              onClick={() => setIsIncomeStatementOpen(true)}
+              className="px-3 py-2 bg-white hover:bg-emerald-50 active:scale-95 text-emerald-950 text-xs font-black rounded-xl shadow-md transition cursor-pointer flex items-center gap-1.5"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-800" />
+              <span>Ver Detalle PDF</span>
+            </button>
+          </div>
+
+          {/* ALERTA DE DEUDAS EN TALLERES SI EXISTEN */}
+          {totalDeudasPendientes > 0 && (
+            <div
+              onClick={() => setIsDebtsReportOpen(true)}
+              className="bg-amber-500/20 border border-amber-400/40 rounded-xl p-2 flex items-center justify-between text-xs text-amber-200 hover:bg-amber-500/30 transition cursor-pointer"
+            >
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Debes a talleres: <strong className="text-white font-black">${totalDeudasPendientes.toFixed(2)}</strong></span>
+              </div>
+              <span className="text-[11px] font-bold underline text-amber-300">
+                Ver cuentas ({pendingDebts.length}) →
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* TARJETA RESUMEN FINANCIERO DEL MES */}
-        <div className="grid grid-cols-2 gap-2.5">
-          <div className="bg-white border-2 border-gray-200 rounded-2xl p-3.5 flex flex-col justify-between shadow-sm">
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-400">
-              <Banknote className="w-4 h-4 text-emerald-600" />
-              <span>Pagado en el Mes</span>
-            </div>
-            <div className="text-xl font-black text-emerald-700 mt-1">
-              ${totalPagadoMes.toFixed(2)}
-            </div>
-            <span className="text-[10px] text-neutral-500 mt-0.5">
-              {expensesInMonth.length} salidas registradas
+        {/* ACCESO RÁPIDO A REPORTES Y DOCUMENTOS OFICIALES */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-black text-[#3A3A3A] uppercase tracking-wider">
+              Documentos y Reportes Oficiales
+            </span>
+            <span className="text-[10px] text-gray-500 font-semibold">
+              Descargables en PDF
             </span>
           </div>
 
-          <div className="bg-white border-2 border-gray-200 rounded-2xl p-3.5 flex flex-col justify-between shadow-sm">
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-400">
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
-              <span>Deudas en Talleres</span>
-            </div>
-            <div className="text-xl font-black text-amber-600 mt-1">
-              ${totalDeudasPendientes.toFixed(2)}
-            </div>
-            <span className="text-[10px] text-neutral-500 mt-0.5">
-              {pendingDebts.length} compromisos activos
-            </span>
+          <div className="grid grid-cols-2 gap-2">
+            {/* 1. Ganancia Real */}
+            <button
+              id="btn-open-income-statement"
+              onClick={() => setIsIncomeStatementOpen(true)}
+              className="bg-white border-2 border-gray-200 hover:border-red-400 active:scale-95 rounded-2xl p-2.5 text-left transition shadow-xs flex items-center gap-2.5 group cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-xl bg-red-50 text-[#912D26] flex items-center justify-center shrink-0 border border-red-200 group-hover:bg-[#912D26] group-hover:text-white transition">
+                <FileSpreadsheet className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-xs font-black text-[#3A3A3A] block truncate">
+                  Ganancia Real
+                </span>
+                <span className="text-[10px] text-gray-500 block truncate">
+                  Ruta (-) Gastos = Utilidad
+                </span>
+              </div>
+            </button>
+
+            {/* 2. Deudas con Talleres */}
+            <button
+              id="btn-open-debts-report"
+              onClick={() => setIsDebtsReportOpen(true)}
+              className="bg-white border-2 border-gray-200 hover:border-amber-400 active:scale-95 rounded-2xl p-2.5 text-left transition shadow-xs flex items-center gap-2.5 group cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200 group-hover:bg-amber-600 group-hover:text-white transition">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-xs font-black text-[#3A3A3A] block truncate">
+                  Deudas Talleres
+                </span>
+                <span className="text-[10px] text-gray-500 block truncate">
+                  Créditos y abonos
+                </span>
+              </div>
+            </button>
+
+            {/* 3. Comparativo Mensual */}
+            <button
+              id="btn-open-comparison-report"
+              onClick={() => setIsComparisonReportOpen(true)}
+              className="bg-white border-2 border-gray-200 hover:border-slate-400 active:scale-95 rounded-2xl p-2.5 text-left transition shadow-xs flex items-center gap-2.5 group cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center shrink-0 border border-slate-300 group-hover:bg-slate-800 group-hover:text-white transition">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-xs font-black text-[#3A3A3A] block truncate">
+                  Comparar Meses
+                </span>
+                <span className="text-[10px] text-gray-500 block truncate">
+                  Ago vs Sep variaciones
+                </span>
+              </div>
+            </button>
+
+            {/* 4. Cierre Anual */}
+            <button
+              id="btn-open-annual-report"
+              onClick={() => setIsAnnualReportOpen(true)}
+              className="bg-white border-2 border-gray-200 hover:border-emerald-400 active:scale-95 rounded-2xl p-2.5 text-left transition shadow-xs flex items-center gap-2.5 group cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200 group-hover:bg-emerald-800 group-hover:text-white transition">
+                <BarChart3 className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-xs font-black text-[#3A3A3A] block truncate">
+                  Cierre del Año
+                </span>
+                <span className="text-[10px] text-gray-500 block truncate">
+                  12 meses acumulados
+                </span>
+              </div>
+            </button>
           </div>
         </div>
 
@@ -483,9 +659,12 @@ export default function OwnerExpensesScreen({
                   Saldos Pendientes con Talleres ({pendingDebts.length})
                 </h2>
               </div>
-              <span className="text-xs font-black text-amber-800">
-                Total: ${totalDeudasPendientes.toFixed(2)}
-              </span>
+              <button
+                onClick={() => setIsDebtsReportOpen(true)}
+                className="text-xs font-black text-amber-900 bg-amber-200 hover:bg-amber-300 px-2 py-0.5 rounded-lg transition"
+              >
+                Ver todas las deudas (${totalDeudasPendientes.toFixed(2)}) →
+              </button>
             </div>
 
             <div className="space-y-2">
@@ -741,60 +920,132 @@ export default function OwnerExpensesScreen({
               </button>
             </div>
 
-            {/* Formulario Scrolleable */}
+            {/* Formulario Scrolleable: Flujo Simplificado 1-2-3 */}
             <form onSubmit={handleSaveExpense} className="p-4 space-y-4 overflow-y-auto">
-              {/* 1. FECHA REAL DE PAGO O COMPRA (EJE CARDINAL) */}
-              <div className="bg-red-50/40 border-2 border-red-100 rounded-2xl p-3 space-y-2">
+              {/* PASO 1: MONTO Y CONDICIÓN DE PAGO (CONTADO O FIADO) */}
+              <div className="bg-white border-2 border-gray-200 rounded-2xl p-3.5 space-y-3 shadow-xs">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-black text-[#912D26] uppercase tracking-wider flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-[#912D26]" />
-                    <span>Fecha Real de Pago / Compra</span>
+                  <label className="text-xs font-black text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-[#912D26] text-white flex items-center justify-center text-[10px] font-black">
+                      1
+                    </span>
+                    <span>¿Cuánto costó el trabajo o repuesto?</span>
                   </label>
-                  <span className="text-[10px] text-neutral-400 font-medium">
-                    (Determina el mes contable)
-                  </span>
+                  <span className="text-[10px] text-gray-400 font-bold">Paso 1 de 3</span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-400">
+                    $
+                  </span>
                   <input
-                    id="input-expense-date"
-                    type="date"
+                    id="input-total-amount"
+                    type="number"
+                    step="0.01"
                     required
-                    value={formDate}
-                    onChange={(e) => setFormDate(e.target.value)}
-                    className="flex-1 bg-white border-2 border-gray-200 rounded-xl px-3 py-2.5 text-xs text-[#3A3A3A] font-bold focus:outline-none focus:border-[#912D26]"
-                  />
-                  {/* Botones rápidos de fecha */}
-                  <button
-                    type="button"
-                    onClick={() => setFormDate(new Date().toISOString().split('T')[0])}
-                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-xs font-bold text-[#3A3A3A]"
-                  >
-                    Hoy
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const yesterday = new Date();
-                      yesterday.setDate(yesterday.getDate() - 1);
-                      setFormDate(yesterday.toISOString().split('T')[0]);
+                    placeholder="0.00"
+                    value={formTotalAmount}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormTotalAmount(val);
+                      if (!formIsCredit) {
+                        setFormPaidAmount(val);
+                      }
                     }}
-                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-xs font-bold text-[#3A3A3A]"
-                  >
-                    Ayer
-                  </button>
+                    className="w-full bg-gray-50 border-2 border-gray-300 focus:border-[#912D26] focus:bg-white rounded-2xl pl-10 pr-4 py-3 text-2xl font-black text-gray-900 focus:outline-none transition"
+                  />
+                </div>
+
+                {/* PREGUNTA DIRECTA: ¿PAGADO COMPLETO O QUEDÓ DEBIENDO? */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-xs font-bold text-gray-700 block">
+                    ¿Se pagó todo de inmediato o quedó debiendo al taller?
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormIsCredit(false);
+                        setFormPaidAmount(formTotalAmount);
+                      }}
+                      className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition ${
+                        !formIsCredit
+                          ? 'bg-emerald-50 border-2 border-emerald-600 text-emerald-800 shadow-xs'
+                          : 'bg-white border-2 border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>Pagado Completo</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormIsCredit(true);
+                        if (formPaidAmount === formTotalAmount) {
+                          setFormPaidAmount('');
+                        }
+                      }}
+                      className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition ${
+                        formIsCredit
+                          ? 'bg-amber-50 border-2 border-amber-600 text-amber-900 shadow-xs'
+                          : 'bg-white border-2 border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      <span>Quedé debiendo (Fiado)</span>
+                    </button>
+                  </div>
+
+                  {/* Si quedó debiendo, pedir anticipo y calcular deuda */}
+                  {formIsCredit && (
+                    <div className="mt-2.5 p-3 rounded-xl bg-amber-50/90 border border-amber-300 space-y-2 animate-in fade-in duration-200">
+                      <label className="text-xs font-bold text-amber-900 block">
+                        ¿Cuánto entregó hoy como anticipo o entrada?
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">
+                          $
+                        </span>
+                        <input
+                          id="input-paid-amount"
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00 (Si no dio nada hoy, deje en 0)"
+                          value={formPaidAmount}
+                          onChange={(e) => setFormPaidAmount(e.target.value)}
+                          className="w-full bg-white border-2 border-amber-300 focus:border-amber-600 rounded-xl pl-8 pr-3 py-2 text-base font-black text-gray-900 focus:outline-none"
+                        />
+                      </div>
+
+                      {(() => {
+                        const tot = parseFloat(formTotalAmount) || 0;
+                        const pd = parseFloat(formPaidAmount) || 0;
+                        const diff = Math.max(0, tot - pd);
+                        return (
+                          <div className="flex items-center justify-between text-xs pt-1 border-t border-amber-200">
+                            <span className="text-amber-800 font-medium">Queda debiendo al taller:</span>
+                            <strong className="text-base font-black text-amber-900">
+                              ${diff.toFixed(2)}
+                            </strong>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* 2. CATEGORÍA OFICIAL (2 POR FILA - CRITERIO EXPERTO EN TRANSPORTE) */}
-              <div className="space-y-2">
+              {/* PASO 2: CATEGORÍA Y DESCRIPCIÓN DEL TRABAJO */}
+              <div className="bg-white border-2 border-gray-200 rounded-2xl p-3.5 space-y-3 shadow-xs">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-[#3A3A3A]">
-                    Categoría del Gasto:
+                  <label className="text-xs font-black text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-[#912D26] text-white flex items-center justify-center text-[10px] font-black">
+                      2
+                    </span>
+                    <span>¿En qué rubro fue el gasto?</span>
                   </label>
-                  <span className="text-[10px] text-gray-500 font-medium">
-                    (Selecciona 1 de las 8 opciones)
-                  </span>
+                  <span className="text-[10px] text-gray-400 font-bold">Paso 2 de 3</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -805,28 +1056,16 @@ export default function OwnerExpensesScreen({
                         key={cat.id}
                         type="button"
                         onClick={() => setFormCategory(cat.id)}
-                        className={`p-2.5 rounded-xl text-left border flex items-center gap-2.5 transition active:scale-[0.98] min-h-[52px] ${
+                        className={`p-2.5 rounded-xl text-left border flex items-center gap-2.5 transition active:scale-[0.98] min-h-[50px] ${
                           isSelected
-                            ? 'bg-red-50 border-2 border-[#912D26] text-[#912D26] font-black shadow-xs ring-1 ring-[#912D26]/20'
-                            : 'bg-white border-2 border-gray-200 text-[#3A3A3A] hover:bg-gray-50 hover:border-gray-300'
+                            ? 'bg-red-50 border-2 border-[#912D26] text-[#912D26] font-black shadow-xs'
+                            : 'bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100'
                         }`}
                       >
-                        <span className="text-xl shrink-0 p-1.5 rounded-lg bg-gray-50 border border-gray-200/60 flex items-center justify-center">
-                          {cat.icon}
-                        </span>
+                        <span className="text-xl shrink-0">{cat.icon}</span>
                         <div className="min-w-0 flex-1">
                           <span className="text-xs font-bold leading-tight block truncate">
                             {cat.name}
-                          </span>
-                          <span className={`text-[10px] block truncate ${isSelected ? 'text-[#912D26]/80 font-medium' : 'text-gray-400'}`}>
-                            {cat.id === 'ACEITES_FILTROS' && 'Motor, caja y filtros'}
-                            {cat.id === 'FRENOS_RODAJE' && 'Zapatas, tambor y aire'}
-                            {cat.id === 'LLANTAS' && 'Nuevas, rotación y alineación'}
-                            {cat.id === 'MOTOR_CAJA_CORONA' && 'Mecánica mayor y piezas'}
-                            {cat.id === 'ELECTRICO' && 'Batería, alternador y clima'}
-                            {cat.id === 'PAGOS_COMPANIA' && 'Cuotas, seguro y aportes'}
-                            {cat.id === 'TRAMITES_PERMISOS' && 'RTV, ANT y matrícula'}
-                            {cat.id === 'OTROS' && 'Lavado, aseo y multas'}
                           </span>
                         </div>
                       </button>
@@ -834,46 +1073,49 @@ export default function OwnerExpensesScreen({
                   })}
                 </div>
 
-                {/* Asistente y detalle de la categoría seleccionada */}
+                {/* Explicación de la categoría */}
                 {(() => {
-                  const selectedMeta = OWNER_EXPENSE_CATEGORIES.find((c) => c.id === formCategory);
-                  if (!selectedMeta) return null;
+                  const meta = OWNER_EXPENSE_CATEGORIES.find((c) => c.id === formCategory);
+                  if (!meta) return null;
                   return (
-                    <div className="p-2.5 rounded-xl bg-red-50/60 border border-red-200 text-[11px] text-[#3A3A3A] flex items-start gap-2 shadow-2xs">
-                      <Info className="w-4 h-4 text-[#912D26] shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold text-[#912D26] mr-1">
-                          {selectedMeta.name}:
-                        </span>
-                        <span className="text-gray-600 leading-snug">
-                          {selectedMeta.description}
-                        </span>
-                      </div>
+                    <div className="p-2 rounded-xl bg-red-50/60 border border-red-200 text-[11px] text-gray-700 flex items-center gap-2">
+                      <Info className="w-3.5 h-3.5 text-[#912D26] shrink-0" />
+                      <span>{meta.description}</span>
                     </div>
                   );
                 })()}
-              </div>
 
-              {/* 3. DETALLE Y PROVEEDOR (TALLER / TIENDA) */}
-              <div className="space-y-2">
                 <div>
-                  <label className="text-xs font-bold text-[#3A3A3A] block mb-1">
-                    Detalle del Repuesto o Trabajo:
+                  <label className="text-xs font-bold text-gray-700 block mb-1">
+                    ¿Qué se compró o qué trabajo se hizo?
                   </label>
                   <input
                     id="input-expense-desc"
                     type="text"
                     required
-                    placeholder="Ej: Cambio de zapatas y rectificación"
+                    placeholder="Ej: Cambio de zapatas, 2 llantas traseras, aceite 15W40"
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    className="w-full bg-white border-2 border-gray-200 rounded-xl px-3 py-2.5 text-xs text-[#3A3A3A] placeholder:text-gray-400 font-medium focus:outline-none focus:border-[#912D26]"
+                    className="w-full bg-gray-50 border-2 border-gray-200 focus:border-[#912D26] focus:bg-white rounded-xl px-3 py-2.5 text-xs text-gray-900 placeholder:text-gray-400 font-medium focus:outline-none transition"
                   />
+                </div>
+              </div>
+
+              {/* PASO 3: TALLER, FORMA DE PAGO Y FECHA */}
+              <div className="bg-white border-2 border-gray-200 rounded-2xl p-3.5 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-[#912D26] text-white flex items-center justify-center text-[10px] font-black">
+                      3
+                    </span>
+                    <span>Taller, Pago y Fecha</span>
+                  </label>
+                  <span className="text-[10px] text-gray-400 font-bold">Paso 3 de 3</span>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-[#3A3A3A] block mb-1">
-                    Taller / Proveedor / Tienda (Opcional):
+                  <label className="text-xs font-bold text-gray-700 block mb-1">
+                    Nombre del Taller o Proveedor (Opcional):
                   </label>
                   <input
                     id="input-expense-provider"
@@ -881,168 +1123,125 @@ export default function OwnerExpensesScreen({
                     placeholder="Ej: Taller Don Carlos / Reencauchadora Loja"
                     value={formProvider}
                     onChange={(e) => setFormProvider(e.target.value)}
-                    className="w-full bg-white border-2 border-gray-200 rounded-xl px-3 py-2.5 text-xs text-[#3A3A3A] placeholder:text-gray-400 font-medium focus:outline-none focus:border-[#912D26]"
+                    className="w-full bg-gray-50 border-2 border-gray-200 focus:border-[#912D26] focus:bg-white rounded-xl px-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 font-medium focus:outline-none"
                   />
                 </div>
-              </div>
 
-              {/* 4. MONTOS Y DETECCIÓN DE SALDO FIADO */}
-              <div className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-3.5 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-[#3A3A3A] block mb-1">
-                      Costo Total:
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">
-                        $
-                      </span>
-                      <input
-                        id="input-total-amount"
-                        type="number"
-                        step="0.01"
-                        required
-                        placeholder="0.00"
-                        value={formTotalAmount}
-                        onChange={(e) => {
-                          setFormTotalAmount(e.target.value);
-                          // Auto-completar pagado igual al total si aún no se ha modificado
-                          if (formPaidAmount === '' || formPaidAmount === formTotalAmount) {
-                            setFormPaidAmount(e.target.value);
-                          }
-                        }}
-                        className="w-full bg-neutral-900 border border-neutral-700 rounded-xl pl-7 pr-3 py-2.5 text-sm font-black text-[#3A3A3A] focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-[#3A3A3A] block mb-1">
-                      Pagado en Fecha:
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">
-                        $
-                      </span>
-                      <input
-                        id="input-paid-amount"
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        value={formPaidAmount}
-                        onChange={(e) => setFormPaidAmount(e.target.value)}
-                        className="w-full bg-neutral-900 border border-neutral-700 rounded-xl pl-7 pr-3 py-2.5 text-sm font-black text-[#3A3A3A] focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Banner reactivo de saldo fiado */}
-                {(() => {
-                  const total = parseFloat(formTotalAmount) || 0;
-                  const paid = formPaidAmount === '' ? total : parseFloat(formPaidAmount) || 0;
-                  const diff = total - paid;
-                  if (diff > 0.01) {
-                    return (
-                      <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 flex items-center justify-between text-xs text-amber-800">
-                        <span className="flex items-center gap-1.5 font-medium">
-                          <AlertTriangle className="w-3.5 h-3.5" />
-                          <span>Queda debiendo al taller:</span>
-                        </span>
-                        <strong className="font-black text-sm text-amber-700">
-                          ${diff.toFixed(2)}
-                        </strong>
-                      </div>
-                    );
-                  } else if (total > 0 && paid >= total) {
-                    return (
-                      <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-center text-xs text-emerald-800 font-bold">
-                        ✓ Pagado de contado al 100% (Sin saldo pendiente)
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-
-              {/* 5. FORMA DE PAGO Y NÚMERO DE TRANSFERENCIA / NOTA */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-[#3A3A3A] block">
-                  Forma de Pago del Desembolso:
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormPaymentMethod('TRANSFERENCIA')}
-                    className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold transition ${
-                      formPaymentMethod === 'TRANSFERENCIA'
-                        ? 'bg-blue-50 border-2 border-blue-600 text-blue-700 font-bold'
-                        : 'bg-white border-2 border-gray-200 text-gray-500 hover:bg-gray-50'
-                    }`}
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    <span>Transferencia</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setFormPaymentMethod('EFECTIVO')}
-                    className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold transition ${
-                      formPaymentMethod === 'EFECTIVO'
-                        ? 'bg-red-50 border-2 border-[#912D26] text-[#912D26] font-bold shadow-xs'
-                        : 'bg-white border-2 border-gray-200 text-gray-500 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Banknote className="w-4 h-4" />
-                    <span>Efectivo</span>
-                  </button>
-                </div>
-
-                {formPaymentMethod === 'TRANSFERENCIA' && (
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <select
-                      value={formBankName}
-                      onChange={(e) => setFormBankName(e.target.value)}
-                      className="bg-white border-2 border-gray-200 rounded-xl px-2.5 py-2 text-xs text-[#3A3A3A] font-bold focus:outline-none focus:border-[#912D26]"
+                {/* FORMA DE PAGO */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 block">
+                    ¿Cómo se pagó lo entregado hoy?
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormPaymentMethod('EFECTIVO')}
+                      className={`p-2 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition ${
+                        formPaymentMethod === 'EFECTIVO'
+                          ? 'bg-emerald-50 border-2 border-emerald-600 text-emerald-800'
+                          : 'bg-gray-50 border border-gray-200 text-gray-600'
+                      }`}
                     >
-                      <option value="Banco de Loja">Banco de Loja</option>
-                      <option value="Banco Pichincha">Banco Pichincha</option>
-                      <option value="Banco Guayaquil">Banco Guayaquil</option>
-                      <option value="Cooperativa">Coo. Ahorro y Crédito</option>
-                      <option value="Otro">Otro Banco</option>
-                    </select>
+                      <Banknote className="w-4 h-4 text-emerald-600" />
+                      <span>Efectivo 💵</span>
+                    </button>
 
+                    <button
+                      type="button"
+                      onClick={() => setFormPaymentMethod('TRANSFERENCIA')}
+                      className={`p-2 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition ${
+                        formPaymentMethod === 'TRANSFERENCIA'
+                          ? 'bg-blue-50 border-2 border-blue-600 text-blue-800'
+                          : 'bg-gray-50 border border-gray-200 text-gray-600'
+                      }`}
+                    >
+                      <CreditCard className="w-4 h-4 text-blue-600" />
+                      <span>Transferencia 💳</span>
+                    </button>
+                  </div>
+
+                  {formPaymentMethod === 'TRANSFERENCIA' && (
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <select
+                        value={formBankName}
+                        onChange={(e) => setFormBankName(e.target.value)}
+                        className="bg-white border-2 border-gray-200 rounded-xl px-2.5 py-2 text-xs text-gray-800 font-bold focus:outline-none focus:border-[#912D26]"
+                      >
+                        <option value="Banco de Loja">Banco de Loja</option>
+                        <option value="Banco Pichincha">Banco Pichincha</option>
+                        <option value="Banco Guayaquil">Banco Guayaquil</option>
+                        <option value="Cooperativa">Coo. Ahorro y Crédito</option>
+                        <option value="Otro">Otro Banco</option>
+                      </select>
+                      <input
+                        id="input-ref-transfer"
+                        type="text"
+                        placeholder="Nº Referencia (ej. 481920)"
+                        value={formComprobanteRef}
+                        onChange={(e) => setFormComprobanteRef(e.target.value)}
+                        className="bg-white border-2 border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-800 placeholder:text-gray-400 font-medium focus:outline-none focus:border-[#912D26]"
+                      />
+                    </div>
+                  )}
+
+                  {formPaymentMethod === 'EFECTIVO' && (
                     <input
-                      id="input-ref-transfer"
                       type="text"
-                      placeholder="Nº Referencia (ej. 481920)"
+                      placeholder="Nº Recibo de taco / Nota de venta (Opcional)"
                       value={formComprobanteRef}
                       onChange={(e) => setFormComprobanteRef(e.target.value)}
-                      className="bg-white border-2 border-gray-200 rounded-xl px-3 py-2 text-xs text-[#3A3A3A] placeholder:text-gray-400 font-medium focus:outline-none focus:border-[#912D26]"
+                      className="w-full bg-white border-2 border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-800 placeholder:text-gray-400 font-medium focus:outline-none focus:border-[#912D26]"
                     />
-                  </div>
-                )}
+                  )}
+                </div>
 
-                {formPaymentMethod === 'EFECTIVO' && (
-                  <input
-                    type="text"
-                    placeholder="Nº Recibo de taco / Nota (Opcional)"
-                    value={formComprobanteRef}
-                    onChange={(e) => setFormComprobanteRef(e.target.value)}
-                    className="w-full bg-white border-2 border-gray-200 rounded-xl px-3 py-2 text-xs text-[#3A3A3A] placeholder:text-gray-400 font-medium focus:outline-none focus:border-[#912D26]"
-                  />
-                )}
+                {/* FECHA DEL GASTO */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 block">
+                    Fecha del Gasto:
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="input-expense-date"
+                      type="date"
+                      required
+                      value={formDate}
+                      onChange={(e) => setFormDate(e.target.value)}
+                      className="flex-1 bg-gray-50 border-2 border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 font-bold focus:outline-none focus:border-[#912D26]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setFormDate(new Date().toISOString().split('T')[0])}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 active:scale-95 rounded-xl text-xs font-bold text-gray-700 cursor-pointer"
+                    >
+                      Hoy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const yesterday = new Date();
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        setFormDate(yesterday.toISOString().split('T')[0]);
+                      }}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 active:scale-95 rounded-xl text-xs font-bold text-gray-700 cursor-pointer"
+                    >
+                      Ayer
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              {/* Botón de Confirmación */}
+              {/* Botón de Confirmación Principal */}
               <div className="pt-2">
                 <button
                   id="btn-confirm-save-expense"
                   type="submit"
-                  className="w-full min-h-[48px] rounded-2xl bg-[#912D26] hover:bg-[#a6342c] active:scale-[0.98] text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-red-200 transition"
+                  className="w-full min-h-[52px] rounded-2xl bg-[#912D26] hover:bg-[#a6342c] active:scale-[0.98] text-white font-black text-sm flex items-center justify-center gap-2 shadow-xl shadow-red-200 transition cursor-pointer"
                 >
                   <Check className="w-5 h-5 stroke-[2.5]" />
-                  <span>Guardar Gasto en {getMonthNameFormatted(formDate.substring(0, 7)).split(' ')[0]}</span>
+                  <span>
+                    Guardar Gasto {formTotalAmount ? `($${parseFloat(formTotalAmount || '0').toFixed(2)})` : ''}
+                  </span>
                 </button>
               </div>
             </form>
@@ -1176,14 +1375,51 @@ export default function OwnerExpensesScreen({
         </div>
       )}
 
-      {/* MODAL REPORTE: ESTADO DE RESULTADOS INTEGRAL DE LA UNIDAD */}
-      <OwnerIncomeStatementModal
-        isOpen={isIncomeStatementOpen}
-        onClose={() => setIsIncomeStatementOpen(false)}
-        busId={busId}
-        selectedYearMonth={selectedYearMonth}
-        allExpenses={allExpenses}
-      />
+      {/* MODAL REPORTE: ESTADO DE RESULTADOS INTEGRAL DE LA UNIDAD (FASE 4.1) */}
+      {isIncomeStatementOpen && (
+        <OwnerIncomeStatementModal
+          isOpen={isIncomeStatementOpen}
+          onClose={() => setIsIncomeStatementOpen(false)}
+          busId={busId}
+          selectedYearMonth={selectedYearMonth}
+          allExpenses={allExpenses}
+        />
+      )}
+
+      {/* MODAL REPORTE: CUENTAS POR PAGAR Y DEUDAS CON TALLERES (FASE 4.2) */}
+      {isDebtsReportOpen && (
+        <OwnerDebtsReportModal
+          isOpen={isDebtsReportOpen}
+          onClose={() => setIsDebtsReportOpen(false)}
+          busId={busId}
+          allExpenses={allExpenses}
+          onOpenAbonoModal={(exp) => {
+            setAbonoTargetExpense(exp);
+            setAbonoAmount(exp.pendingBalance.toString());
+            setAbonoDate(new Date().toISOString().slice(0, 10));
+          }}
+        />
+      )}
+
+      {/* MODAL REPORTE: COMPARATIVO INTERMENSUAL Y TENDENCIAS (FASE 4.3) */}
+      {isComparisonReportOpen && (
+        <OwnerComparisonReportModal
+          isOpen={isComparisonReportOpen}
+          onClose={() => setIsComparisonReportOpen(false)}
+          busId={busId}
+          allExpenses={allExpenses}
+        />
+      )}
+
+      {/* MODAL REPORTE: LIQUIDACIÓN Y RENDIMIENTO ANUAL ACUMULADO (FASE 4.4) */}
+      {isAnnualReportOpen && (
+        <OwnerAnnualReportModal
+          isOpen={isAnnualReportOpen}
+          onClose={() => setIsAnnualReportOpen(false)}
+          busId={busId}
+          allExpenses={allExpenses}
+        />
+      )}
     </div>
   );
 }

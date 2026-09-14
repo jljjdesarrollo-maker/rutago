@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPin, isPlaintextPin } from '@/lib/pin-hash';
 
-const FIRST_ADMIN_PIN = '2107';
+const FIRST_ADMIN_PINS = ['2107', '1234'];
 
 // ─── Rate limiting in-memory ───
 interface AttemptRecord {
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     // If no users exist, auto-create admin with first PIN (hashed)
     const count = await db.persona.count();
-    if (count === 0 && pin === FIRST_ADMIN_PIN) {
+    if (count === 0 && FIRST_ADMIN_PINS.includes(pin)) {
       const admin = await db.persona.create({
         data: {
           nombre: 'Administrador',

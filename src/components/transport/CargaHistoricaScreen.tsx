@@ -20,6 +20,10 @@ import {
   ChevronDown,
   User,
   Users,
+  BookOpen,
+  Info,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -119,6 +123,7 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [successDayInfo, setSuccessDayInfo] = useState<string>('¡Registro Guardado Exitosamente!');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -420,18 +425,30 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
           </Button>
           <div>
             <h1 className="text-base font-bold leading-tight">Carga Histórica de Cuadernos</h1>
-            <p className="text-[11px] text-red-200">Fase 1 · Alimentación Directa VT</p>
+            <p className="text-[11px] text-red-200">Regularización de días y vueltas pasadas</p>
           </div>
         </div>
         <div className="text-right">
-          <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono font-bold">
-            v3.49.0
+          <span className="text-[10px] bg-amber-400 text-amber-950 px-2 py-0.5 rounded-full font-bold">
+            Regularización
           </span>
         </div>
       </header>
 
       {/* Contenido scrolleable con zona del pulgar respetada */}
       <main className="flex-1 px-4 py-4 pb-32 max-w-lg mx-auto w-full space-y-4">
+        {/* Banner Pedagógico de Regularización para el Transportista */}
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 flex items-start gap-3 text-amber-900 shadow-2xs">
+          <div className="w-9 h-9 rounded-xl bg-amber-200/80 text-amber-900 flex items-center justify-center shrink-0 mt-0.5">
+            <BookOpen className="w-5 h-5" />
+          </div>
+          <div className="text-xs leading-relaxed">
+            <p className="font-bold text-amber-950">¿Para qué sirve esta opción?</p>
+            <p className="text-amber-800/90 mt-0.5">
+              Aquí puedes transcribir las hojas de tus <strong>cuadernos de apuntes anteriores</strong>. Elige la fecha que trabajaste en el pasado para que esos ingresos, diésel y vueltas se sumen al historial sin afectar la caja de hoy.
+            </p>
+          </div>
+        </div>
         {/* Notificación de éxito */}
         {savedSuccess && (
           <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 p-4 rounded-2xl flex items-center gap-3">
