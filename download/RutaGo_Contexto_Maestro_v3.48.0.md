@@ -751,3 +751,38 @@ export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
   3. Modelo de datos propuesto en Prisma Schema (`Bus`, `BusPropietario`, estados de suscripción).
   4. Políticas de corte y reglas de acceso para los 19 buses.
   5. Hoja de ruta en 5 fases para ejecución no disruptiva.
+
+---
+
+## 9. Registro de Análisis Estratégico y Sesiones Recientes (v3.48.1 - 2026-09-14)
+> Documentación preventiva para continuidad de sesión ante límites de cuota en Google AI Studio.
+
+### 9.1 Sesión A: Fases de Incorporación de la Flota (Estrategia Iterativa)
+- **Premisa Acordada**: No incorporar los 19 buses de golpe, sino mediante un despliegue progresivo por etapas para mitigar riesgos operativos:
+  1. **Fase 1 (Golden Sample / Piloto)**: Cuenta maestra del socio líder con el **Bus 01**. Validación completa del flujo de gastos, reportes, arqueos y comprobantes.
+  2. **Fase 2 (Primer Socio Externo)**: Incorporación del **Bus 10**. Validación del aislamiento estricto de datos entre dos socios distintos.
+  3. **Fase 3 (Consolidación)**: Incorporación del **Bus 12**. Prueba de concurrencia y cobro independiente de suscripciones.
+  4. **Fase 4 (Buses Institucionales)**: Incorporación de los buses **16, 17, 18 y 19** de la compañía (VilcabambaTuris Cía. Ltda.), con cuenta corporativa/gerencial y administración centralizada.
+
+### 9.2 Sesión B: Diagnóstico y Requerimiento de Registro Manual de Unidades (CRUD Web)
+- **Diagnóstico del Sistema Actual**:
+  - Actualmente la aplicación tiene el identificador `BUS-04` fijado (*hardcoded*) por defecto en el cliente (`OwnerExpensesScreen.tsx`, almacenamiento local).
+  - La tabla `BusVT` se alimenta de un archivo estático (`seed-vts.ts`).
+  - **No existe** una interfaz gráfica web para que un socio o administrador cree nuevas unidades manualmente.
+- **Dictamen de Arquitectura**:
+  - Es **indispensable** implementar un módulo web con botón `[+ Registrar Nueva Unidad]`.
+  - Debe permitir introducir de forma autónoma: Número de Disco (`01`, `10`, etc.), Placa, Propietario/Email, Marca/Modelo, Capacidad de Asientos y Kilometraje inicial.
+  - El backend expondrá endpoints REST (`GET`, `POST`, `PUT /api/buses`) con persistencia en PostgreSQL (Supabase), eliminando la dependencia de intervención técnica para dar de alta unidades.
+
+### 9.3 Sesión C: Valor Agregado - Benchmark Anonimizado de Rendimiento de Tripulaciones
+- **Objetivo de Negocio**:
+  - Resolver el problema crítico del transporte: la desconfianza sobre la entrega real de dinero en efectivo por parte de choferes y ayudantes.
+  - Ofrecer al socio una gráfica comparativa donde contraste el rendimiento de su unidad frente al resto de la flota.
+- **Enfoque de Privacidad (Privacy by Design)**:
+  - Los demás buses se muestran **100% anonimizados** (`Bus A`, `Bus B`, `Bus C` o `Promedio Flota`) para evitar disputas, celos o conflictos internos en la cooperativa.
+  - La unidad del socio en sesión se destaca claramente (ej. `Bus 01 (Tú)` en color Vinotinto `#912D26`, mientras las demás barras aparecen en gris neutral).
+- **Métricas Comparativas Clave en Análisis**:
+  1. **Entrega Neta de Efectivo por Frecuencia / Turno**: Comparar lo entregado en mano por la tripulación versus el promedio de las frecuencias homólogas.
+  2. **Ingreso por Kilómetro Recorrido (IPK)**: Normaliza la comparación independientemente de si la ruta fue corta (Vilcabamba) o larga (Yangana/El Tambo).
+  3. **Rendimiento por Franja Horaria**: Evaluar si los turnos pico de la mañana o noche rindieron acorde a la afluencia general del terminal.
+  4. **Índice de Desviación / Semáforo de Alerta**: Calificar la entrega en *Rango Esperado (Verde)*, *Desviación Moderada (Amarillo)* o *Bajo Rendimiento Crítico (Rojo)* para detectar posible fuga de efectivo.
