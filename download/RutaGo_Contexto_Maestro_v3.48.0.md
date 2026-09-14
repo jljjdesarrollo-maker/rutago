@@ -719,3 +719,35 @@ export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
      - **Si Caja Común > 0**: La compañía asume los tickets (`entregaCompania = cajaComun - tickets`). El ayudante solo rinde su efectivo menos gastos operativos (`entregaAyudante = efectivoReal + sobrante - totalGastos`).
      - **Si Caja Común === 0**: La compañía no entrega nada (`entregaCompania = 0`), y los tickets son pagados por el ayudante, sumándose a sus deducciones (`entregaAyudante = (efectivoReal + sobrante) - (totalGastos + tickets)`).
    - Implementado y sincronizado tanto en frontend (`ArqueoGeneralScreen.tsx`) como en backend API (`/api/records`).
+
+---
+
+## 8. Análisis de Escalabilidad de Flota y Modelo SaaS Multi-Bus (19 Buses)
+> Fecha de Análisis: 2026-09-14 | Dictamen Técnico: Arquitecto de Software Cloud & Especialista SaaS B2B
+
+### 8.1 Diagnóstico de la Flota
+- **Total Unidades**: 19 Buses (VilcabambaTuris Cía. Ltda.).
+- **Segmentación de Propiedad**:
+  - **4 Buses de la Compañía**: Gestión interna / institucional.
+  - **15 Buses de Socios**:
+    - **13 Socios**: Poseen 1 bus cada uno.
+    - **1 Socio**: Posee 2 buses independientes.
+- **Premisa de Negocio**: Cada bus opera y rinde cuentas de manera 100% aislada. Cada bus administrado debe generar el pago de una suscripción de software individual (hasta 19 suscripciones).
+
+### 8.2 Dictamen Arquitectónico: Unificación de Cuenta vs. Cuentas Separadas
+- **Rechazo de Cuentas Separadas para el Socio Multi-Bus**: Obligar a un socio a tener 2 correos y 2 contraseñas genera fricción crítica, riesgo de registrar gastos en la cuenta equivocada y abandono de suscripción.
+- **Enfoque Aprobado: Multi-Tenancy a nivel de Activo (1 Usuario, N Buses, N Suscripciones)**:
+  - El socio inicia sesión con sus únicas credenciales maestras.
+  - En la barra superior dispone de un selector dinámico de bus (`[🚌 Bus 04] | [🚌 Bus 08]`).
+  - Al alternar, el contexto contable, operativo y de reportes conmuta instantáneamente sin mezclar datos.
+  - La facturación se consolida en un solo panel de pago pero desglosada por cada unidad suscrita.
+  - El control de acceso y corte por falta de pago opera a nivel de `busId`, no de la persona (si vence un bus, el otro sigue activo).
+
+### 8.3 Documento Formal en PDF
+- **Ruta del Documento Generado**: `/download/RutaGo_Analisis_Escalabilidad_19_Buses.pdf`
+- Contiene:
+  1. Premisas y requerimientos comerciales.
+  2. Matriz comparativa de arquitectura (UX, Facturación, Aislamiento de Datos, Escalabilidad).
+  3. Modelo de datos propuesto en Prisma Schema (`Bus`, `BusPropietario`, estados de suscripción).
+  4. Políticas de corte y reglas de acceso para los 19 buses.
+  5. Hoja de ruta en 5 fases para ejecución no disruptiva.
