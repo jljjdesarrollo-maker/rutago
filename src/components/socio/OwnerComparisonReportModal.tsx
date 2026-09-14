@@ -157,24 +157,24 @@ export default function OwnerComparisonReportModal({
       };
     } else if (ym === '2026-09') {
       routeSummary = {
-        totalProduccionBruta: 13120.50,
-        efectivoRuta: 11800.00,
-        cajaComun: 1320.50,
-        sobrante: 12.00,
-        totalEgresosRuta: 8850.00,
+        totalProduccionBruta: 4260.72,
+        efectivoRuta: 3936.52,
+        cajaComun: 324.20,
+        sobrante: 0,
+        totalEgresosRuta: 3257.50,
         gastosRutaDetalle: {
-          diesel: 3820.00,
-          otrosGastosCarretera: 4890.00,
-          totalGastosCarretera: 8710.00,
-          totalTickets: 140.00,
+          diesel: 1420.00,
+          otrosGastosCarretera: 1774.50,
+          totalGastosCarretera: 3194.50,
+          totalTickets: 63.00,
         },
         entregas: {
-          entregaAyudante: 3040.50,
-          entregaCompania: 1230.00,
-          totalEntregado: 4270.50,
+          entregaAyudante: 679.02,
+          entregaCompania: 324.20,
+          totalEntregado: 1003.22,
         },
-        kilometrosRecorridos: 24100000,
-        frecuenciasRealizadas: 202,
+        kilometrosRecorridos: 830000,
+        frecuenciasRealizadas: 74,
       };
     } else {
       routeSummary = {

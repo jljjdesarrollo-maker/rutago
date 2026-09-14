@@ -38,13 +38,70 @@ export default function OwnerAnnualReportModal({
 }: Props) {
   const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState<boolean>(false);
+  const [dbMonthsData, setDbMonthsData] = useState<Record<number, { prod: number; egresos: number; entregado: number }>>({});
+  const [loadingData, setLoadingData] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let isMounted = true;
+    setLoadingData(true);
+
+    const fetchYearData = async () => {
+      try {
+        // Consultar cada mes que tenga potenciales registros (o los 12 meses)
+        const monthsToFetch = [1, 2, 7, 8, 9, 10, 11, 12];
+        const results = await Promise.all(
+          monthsToFetch.map(async (m) => {
+            try {
+              const res = await fetch(`/api/reports?type=monthly&year=${selectedYear}&month=${m}`);
+              if (res.ok) {
+                const data = await res.json();
+                if (data && data.totals && (data.totals.production > 0 || data.dailySummaries?.length > 0)) {
+                  const t = data.totals;
+                  const prod = t.production || 0;
+                  const gastosCarretera = t.gastos || 0;
+                  const tickets = t.tickets || 0;
+                  const egresos = gastosCarretera + tickets;
+                  const ay = t.entregaAyudante || 0;
+                  const cia = t.entregaCompania || 0;
+                  const entregado = t.totalEntregado || (ay + cia);
+                  return { m, prod, egresos, entregado };
+                }
+              }
+            } catch (e) {
+              // ignore
+            }
+            return null;
+          })
+        );
+
+        if (isMounted) {
+          const map: Record<number, { prod: number; egresos: number; entregado: number }> = {};
+          results.forEach((r) => {
+            if (r) {
+              map[r.m] = { prod: r.prod, egresos: r.egresos, entregado: r.entregado };
+            }
+          });
+          setDbMonthsData(map);
+          setLoadingData(false);
+        }
+      } catch (err) {
+        if (isMounted) setLoadingData(false);
+      }
+    };
+
+    fetchYearData();
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, selectedYear]);
 
   // Consolidado mensual para los 12 meses
   const annualData = useMemo(() => {
-    // Datos auditados conocidos para los meses activos del año
-    const routeKnownData: Record<number, { prod: number; egresos: number; entregado: number }> = {
+    // Datos auditados de respaldo en caso de offline
+    const routeFallbackData: Record<number, { prod: number; egresos: number; entregado: number }> = {
       8: { prod: 12334.75, egresos: 8419.50, entregado: 3915.25 }, // Agosto 2026
-      9: { prod: 13120.50, egresos: 8850.00, entregado: 4270.50 }, // Septiembre 2026
+      9: { prod: 4260.72, egresos: 3257.50, entregado: 1003.22 }, // Septiembre 2026 (al 14/09)
     };
 
     const months: MonthAnnualRow[] = [];
@@ -61,7 +118,7 @@ export default function OwnerAnnualReportModal({
       const monthStr = m < 10 ? `0${m}` : `${m}`;
       const ym = `${selectedYear}-${monthStr}`;
 
-      const known = routeKnownData[m] || { prod: 0, egresos: 0, entregado: 0 };
+      const known = dbMonthsData[m] || routeFallbackData[m] || { prod: 0, egresos: 0, entregado: 0 };
       const prod = known.prod;
       const egresos = known.egresos;
       const entregado = known.entregado;
