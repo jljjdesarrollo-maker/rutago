@@ -1097,3 +1097,61 @@ Transformar RutaGo de un sistema centrado en una sola unidad fija (`BUS-04`) a u
 - Motor de cálculo: Ingreso Bruto, Ingreso Promedio por Frecuencia (IPF), Matriz `[Grupo VT] x [Tipo de Día]`.
 - Gráfica comparativa con anonimización (`Bus A`, `Bus B`, etc.) y semáforo de desempeño (🟢, 🟡, 🔴).
 - Detección de fuga de capital y tratamiento de excepciones (frecuencias no realizadas, ingresos especiales y días de taller).
+
+---
+
+## 17. Hallazgo Operativo Crítico: Segmentación Operativa de Flota (Troncal VT vs. Alimentadoras P) (v3.49.2 - 2026-09-14)
+> Impacto de Arquitectura de Software, Asignación de Rutas y Normalización Estadística.
+
+### 17.1 Realidad Operativa Revelada por el Socio
+1. **Unidades Pequeñas / Especiales (Buses 16, 17 y 19)**:
+   - Son microbuses / unidades de menor porte y gálibo vehicular.
+   - **Razón Física / Geográfica**: Deben cruzar un puente estrecho o de capacidad limitada inaccesible para los buses grandes de la cooperativa.
+   - **Rutas Exclusivas**: Cubren exclusivamente los grupos de frecuencias **P1, P2 y P3** (Rutas Periféricas / Alimentadoras a sectores especiales).
+   - **No participan** en la rueda rotativa general de VT01 a VT15.
+2. **Unidad 18 (Bus Grande de la Compañía)**:
+   - Es un autobús estándar de gran tamaño.
+   - **Sí participa** en la rueda rotativa general de los grupos **VT01 a VT15** a la par de los buses de los socios (1, 10, 12, etc.).
+
+### 17.2 Impacto Directo en la Arquitectura de Software (Prevención de Errores Futuros)
+- **1. En el Modelo de Datos (`Bus`)**:
+  - Se debe incluir el atributo `tipoOperacion: "TRONCAL_VT" | "ALIMENTADOR_P"` o `grupoRutasAsignadas: string[]` (ej. `["VT01"..."VT15"]` vs. `["P1", "P2", "P3"]`).
+  - Esto evita que el sistema le programe o sugiera por error un turno VT05 al Bus 16, o un turno P1 al Bus 01 grande.
+- **2. En el Benchmark y Auditoría de Tripulaciones (Fase 4)**:
+  - **REGLA DE ORO ESTADÍSTICA**: **Prohibido mezclar en la misma gráfica a una unidad P con una unidad VT**.
+  - Un bus P (pequeño) tiene menor capacidad de asientos y tarifa diferente por cruzar el puente hacia sectores rurales específicos. Si se comparara con un bus VT de 45 pasajeros, el bus P siempre parecería tener "fuga de dinero".
+  - **Segmentación de Comparación**:
+    * **Grupo Troncal (VT01 al VT15)**: Compara a los 16 buses grandes (Bus 01, Bus 10, Bus 12... y Bus 18) entre sí.
+    * **Grupo Alimentador (P1, P2 y P3)**: Compara exclusivamente a las 3 unidades pequeñas (Buses 16, 17 y 19) entre sí.
+
+---
+
+### 17.3 Plan Maestro de Implementación Actualizado y Blindado
+
+#### FASE 1: Desacople de Unidad Fija y Activación Dinámica del Bus 01
+- Desvincular el `BUS-04` hardcodeado en la app y APIs.
+- Parametrizar las pantallas para operar de forma 100% dinámica con cualquier `busId`.
+- Habilitar el selector de unidad con el **Bus 01** como caso piloto del socio líder.
+
+#### FASE 2: Formulario Web de Registro Manual de Unidades con Tipo de Operación (CRUD Flota)
+- Crear endpoints en Prisma/PostgreSQL (`GET`, `POST`, `PUT /api/buses`).
+- Formulario web con botón `[+ Registrar Nueva Unidad]` incluyendo:
+  * Número de Disco (01, 10, 16, etc.)
+  * Placa, Marca, Modelo, Año, Capacidad de Asientos.
+  * Propietario (Socio o VilcabambaTuris Cía. Ltda.).
+  * **Nuevo Campo Esencial**: **Tipo de Operación / Circuito**:
+    - `Troncal General (Grupos VT01 - VT15)` -> (ej. Bus 01, 10, 12, 18).
+    - `Sector Especial / Puente (Grupos P1 - P3)` -> (exclusivo Buses 16, 17 y 19).
+
+#### FASE 3: Despliegue Progresivo y Homologación de Flota
+- Registro de los buses de socios individuales (**Bus 10** y **Bus 12**).
+- Registro del bus grande de la empresa (**Bus 18** en circuito VT).
+- Registro de las 3 unidades especiales de la empresa (**Buses 16, 17 y 19** en circuito P).
+- Validación del socio con 2 buses y prueba de aislamiento contable.
+
+#### FASE 4: Módulo de Benchmark Estadístico con Segmentación Inteligente
+- Motor de cálculo: Ingreso Bruto e Ingreso Promedio por Frecuencia (IPF).
+- **Clusterización Automática de Gráficas**:
+  * Tab 1: *Benchmark Flota Troncal (Buses VT)* -> Compara tu Bus 01 con los demás buses grandes de la rueda rotativa.
+  * Tab 2: *Benchmark Circuito Especial (Buses P)* -> Compara las unidades 16, 17 y 19 entre sí de forma justa.
+- Semáforo de Desempeño y detección de fuga de capital respetando la capacidad de asientos de cada vehículo.
