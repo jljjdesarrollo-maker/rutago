@@ -786,3 +786,33 @@ export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
   2. **Ingreso por Kilómetro Recorrido (IPK)**: Normaliza la comparación independientemente de si la ruta fue corta (Vilcabamba) o larga (Yangana/El Tambo).
   3. **Rendimiento por Franja Horaria**: Evaluar si los turnos pico de la mañana o noche rindieron acorde a la afluencia general del terminal.
   4. **Índice de Desviación / Semáforo de Alerta**: Calificar la entrega en *Rango Esperado (Verde)*, *Desviación Moderada (Amarillo)* o *Bajo Rendimiento Crítico (Rojo)* para detectar posible fuga de efectivo.
+
+---
+
+## 10. Panel Multidisciplinario: Análisis de Métricas y Benchmark de Rendimiento (v3.48.2 - 2026-09-14)
+> Panel de Expertos: Experto en Administración de Empresas | Experto en Transporte Público Interparroquial | Arquitecto de Software & Analítica de Datos
+
+### 10.1 Directiva del Usuario y Regla Fundamental de Comparación
+- **Principio Rector**: La variable reina y primaria de comparación entre unidades es el **INGRESO BRUTO** (recaudación total generada en ruta antes de cualquier deducción).
+- **Justificación Operativa / Negocio**: Cada socio y cada unidad gestiona sus gastos operativos de manera completamente heterogénea:
+  - En ciertas unidades, la tripulación (chofer/ayudante) paga directamente de la caja diaria el combustible, peajes, comidas, lavadas o viáticos.
+  - En otras unidades, el socio/dueño asume y paga todos los gastos de su bolsillo (vía transferencia, crédito mensual en la gasolinera o desembolso directo), exigiendo a la tripulación que entregue el 100% del efectivo recaudado en mano.
+  - **Conclusión**: Comparar entregas netas o dinero en mano distorsionaría por completo la realidad estadística. El **Ingreso Bruto** es el único indicador neutral, homogéneo y comparable entre los 19 buses.
+
+### 10.2 Dictamen del Experto en Administración de Empresas (Control de Gestión y Gobernanza)
+- **Normalización Financiera**: Al aislar los gastos operativos y centrar el benchmark en el *Ingreso Bruto*, se elimina el sesgo del modelo de compensación laboral de cada socio.
+- **Auditoría de Desviaciones (Revenue Leakage)**: Permite a los socios identificar si existe una fuga de ingresos antes de que se mezclen con los egresos operativos. La administración visualiza la "capacidad real de generación de valor" de cada vehículo en la cooperativa.
+- **Prevención de Conflictos**: Al no comparar gastos (que son decisiones privadas de cada dueño con su tripulación), se respeta la autonomía de gestión de cada socio protegiendo su estrategia de costos.
+
+### 10.3 Dictamen del Experto en Transporte Público (Operación en Ruta y Afluencia)
+- **Comportamiento de la Demanda en Ruta (Loja - Malacatos - Vilcabamba - Yangana)**: La recaudación bruta refleja la verdadera captura de pasajeros en los tres puntos de aforo: terminal terrestre, paradas intermedias de paso y retorno.
+- **Homogeneización por Frecuencia / Turno**: Dado que los turnos rotan en la cooperativa (un bus no hace siempre los mismos horarios), el ingreso bruto por frecuencia permite saber si en el turno de las 06:15 o de las 17:30 la tripulación recaudó lo que la demanda de la carretera históricamente produce.
+- **Control de Tarifas Mixtas**: Considera el ingreso total generado por pasajes completos y medios pasajes (estudiantes, tercera edad, discapacitados) sin importar quién pagó el diésel al terminar la jornada.
+
+### 10.4 Dictamen del Arquitecto de Software y Analítica de Datos (Estructura Técnica)
+- **Fuente de Datos en BD**: El Ingreso Bruto se computa a partir de:
+  - `Producción Total = Efectivo Real Recaudado en Frecuencias + Boletos Digitales + Caja Común Pasajeros + Ingresos Especiales (encomiendas/fletes)`.
+- **Anonimización Dinámica**:
+  - `Bus del Usuario`: Visualizado con su identificador real (ej. `Bus 01`) en color Vinotinto `#912D26`.
+  - `Buses Comparativos`: Enmascarados aleatoriamente (`Bus A`, `Bus B`, `Bus C`, etc.) o consolidados en el indicador `Promedio Cooperativa en Rutas Equivalentes`.
+- **Estructura Modular**: Preparado para recibir las variables adicionales que el socio detallará en las siguientes sesiones.
