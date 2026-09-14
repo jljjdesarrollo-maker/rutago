@@ -418,7 +418,7 @@ export default function OwnerExpensesScreen({
 
           {/* Placa e Identificación Fija de la Unidad y Estado BD */}
           <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 bg-white/15 border border-white/25 rounded-xl text-white text-[11px] font-bold">
+            <div className="flex items-center gap-1 px-2 py-1 bg-emerald-500/30 border border-emerald-400/50 rounded-xl text-emerald-100 text-[10px] sm:text-xs font-bold shrink-0">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>☁️ En Línea BD</span>
             </div>
