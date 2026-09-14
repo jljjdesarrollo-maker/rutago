@@ -34,20 +34,23 @@ export async function GET(req: NextRequest) {
       sunday.setDate(monday.getDate() + 6);
       startDate = monday.toISOString().split('T')[0];
       endDate = sunday.toISOString().split('T')[0];
-    } else if (type === 'mensual' || type === 'conductor') {
-      if (month) {
-        const [y, m] = month.split('-');
-        const daysInMonth = new Date(parseInt(y), parseInt(m), 0).getDate();
-        startDate = `${y}-${m}-01`;
-        endDate = `${y}-${m}-${String(daysInMonth).padStart(2, '0')}`;
+    } else if (type === 'mensual' || type === 'conductor' || type === 'monthly') {
+      const yearParam = searchParams.get('year');
+      let yStr = '';
+      let mStr = '';
+      if (month && month.includes('-')) {
+        [yStr, mStr] = month.split('-');
+      } else if (yearParam && month) {
+        yStr = String(yearParam);
+        mStr = String(month).padStart(2, '0');
       } else {
         const now = new Date();
-        const y = now.getFullYear();
-        const m = String(now.getMonth() + 1).padStart(2, '0');
-        const daysInMonth = new Date(y, parseInt(m), 0).getDate();
-        startDate = `${y}-${m}-01`;
-        endDate = `${y}-${m}-${String(daysInMonth).padStart(2, '0')}`;
+        yStr = String(now.getFullYear());
+        mStr = String(now.getMonth() + 1).padStart(2, '0');
       }
+      const daysInMonth = new Date(parseInt(yStr), parseInt(mStr), 0).getDate();
+      startDate = `${yStr}-${mStr}-01`;
+      endDate = `${yStr}-${mStr}-${String(daysInMonth).padStart(2, '0')}`;
     }
 
     const where: Record<string, unknown> = {};
