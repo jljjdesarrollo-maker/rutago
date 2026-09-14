@@ -816,3 +816,77 @@ export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
   - `Bus del Usuario`: Visualizado con su identificador real (ej. `Bus 01`) en color Vinotinto `#912D26`.
   - `Buses Comparativos`: Enmascarados aleatoriamente (`Bus A`, `Bus B`, `Bus C`, etc.) o consolidados en el indicador `Promedio Cooperativa en Rutas Equivalentes`.
 - **Estructura Modular**: Preparado para recibir las variables adicionales que el socio detallará en las siguientes sesiones.
+
+---
+
+## 11. Modelado Matemático de Demanda Cíclica y Rotación de Turnos (VT01 - VT15) (v3.48.3 - 2026-09-14)
+> Panel de Expertos: Experto en Ciencia de Datos y Estadística Predictiva | Experto en Planificación Operativa de Transporte | Experto en Administración de Empresas
+
+### 11.1 Realidad Operativa Declarada por el Socio
+1. **Comportamiento Asimétrico de Demanda**:
+   - Hay turnos eminentemente turísticos/familiares (ej. 09:45 hacia Vilcabamba) con baja demanda lunes-viernes pero alta afluencia sábados y domingos.
+   - Hay turnos eminentemente laborales/escolares/comerciales que son excelentes de lunes a viernes y decaen drásticamente el fin de semana.
+2. **Esquema de Rueda Rotativa de la Cooperativa (VT01 al VT15)**:
+   - 17 autobuses rotan secuencialmente los grupos de frecuencias: Unidad 01 realiza hoy el VT01, mañana el VT02, y así sucesivamente hasta el VT15 para reiniciar el ciclo en VT01.
+   - Esto significa que el rendimiento de un bus no depende de una "buena o mala ruta fija", sino de la intersección exacta entre: **[Grupo VT Asignado] × [Día de la Semana (L-V vs S-D)]**.
+3. **Mito en el Transporte Desmentido con Datos**:
+   - Existe la creencia empírica de que "rutas malas pueden volverse mágicamente rentables", cuando en realidad la demanda responde a factores cíclicos, horarios y estacionales medibles.
+
+### 11.2 Dictamen del Experto en Ciencia de Datos y Estadística Predictiva
+- **Técnica de Normalización**: Prohíbe comparar un lunes con un domingo, o un VT01 contra un VT08.
+- **Índice de Rendimiento Esperado Normalizado (IREN)**:
+  - Se calcula la **Mediana Móvil de Ingreso Bruto** para cada celda de la matriz: `Matriz_Esperada[Grupo_VT, Tipo_Dia]`.
+  - Donde `Tipo_Dia` se clasifica en:
+    * `LABORAL`: Lunes a Jueves.
+    * `VIERNES`: Día de retorno / fin de semana anticipado.
+    * `FIN_DE_SEMANA_TURISTICO`: Sábado y Domingo (afluencia a valles de Vilcabamba / Malacatos).
+    * `FERIADO`: Comportamiento atípico especial.
+- **Fórmula de Calificación de la Tripulación (Benchmark Justo)**:
+  $$\text{Eficiencia Tripulación (\%)} = \frac{\text{Ingreso Bruto Real del Bus en (VT_X, Día_Y)}}{\text{Mediana Histórica de la Flota en ese mismo (VT_X, Día_Y)}} \times 100$$
+  - Si el resultado es $\ge 95\%$, la tripulación operó con máxima honestidad y eficiencia para las condiciones reales de ese día.
+  - Si el resultado es $< 85\%$, se activa una alerta objetiva de sub-recaudación.
+
+### 11.3 Dictamen del Experto en Planificación Operativa de Transporte
+- **Equidad de la Rueda Rotativa**: El sistema de rotación VT01-VT15 está diseñado para que todos los socios pasen por turnos buenos y malos de forma democrática a lo largo de un mes.
+- **Desmitificación Operativa**: Al cruzar el turno rotativo con el día del calendario, el socio deja de culpar a la "mala suerte" y puede saber con exactitud si el turno de las 09:45 un martes rindió los $35 normales, o si el domingo rindió los $90 esperados.
+
+### 11.4 Dictamen del Experto en Administración de Empresas
+- **Presupuesto Base Cero por Turno/Día**: El socio puede proyectar el ingreso bruto mensual esperado de su unidad simplemente conociendo el calendario de rotación de su bus para el mes entrante.
+- **Tranquilidad Laboral y Transparencia**: Elimina disputas injustas con los choferes cuando les toca un turno estructuralmente flojo, concentrando el reclamo únicamente en desvíos estadísticos demostrables.
+
+---
+
+## 11. Modelado Matemático de Demanda Cíclica y Rotación de Turnos (VT01 - VT15) (v3.48.3 - 2026-09-14)
+> Panel de Expertos: Experto en Ciencia de Datos y Estadística Predictiva | Experto en Planificación Operativa de Transporte | Experto en Administración de Empresas
+
+### 11.1 Realidad Operativa Declarada por el Socio
+1. **Comportamiento Asimétrico de Demanda**:
+   - Hay turnos eminentemente turísticos/familiares (ej. 09:45 hacia Vilcabamba) con baja demanda lunes-viernes pero alta afluencia sábados y domingos.
+   - Hay turnos eminentemente laborales/escolares/comerciales que son excelentes de lunes a viernes y decaen drásticamente el fin de semana.
+2. **Esquema de Rueda Rotativa de la Cooperativa (VT01 al VT15)**:
+   - 17 autobuses rotan secuencialmente los grupos de frecuencias: Unidad 01 realiza hoy el VT01, mañana el VT02, y así sucesivamente hasta el VT15 para reiniciar el ciclo en VT01.
+   - Esto significa que el rendimiento de un bus no depende de una "buena o mala ruta fija", sino de la intersección exacta entre: **[Grupo VT Asignado] x [Día de la Semana (L-V vs S-D)]**.
+3. **Mito en el Transporte Desmentido con Datos**:
+   - Existe la creencia empírica de que "rutas malas pueden volverse mágicamente rentables", cuando en realidad la demanda responde a factores cíclicos, horarios y estacionales medibles.
+
+### 11.2 Dictamen del Experto en Ciencia de Datos y Estadística Predictiva
+- **Técnica de Normalización**: Prohíbe comparar un lunes con un domingo, o un VT01 contra un VT08.
+- **Índice de Rendimiento Esperado Normalizado (IREN)**:
+  - Se calcula la **Mediana Móvil de Ingreso Bruto** para cada celda de la matriz: Matriz_Esperada[Grupo_VT, Tipo_Dia].
+  - Donde Tipo_Dia se clasifica en:
+    * LABORAL: Lunes a Jueves.
+    * VIERNES: Día de retorno / fin de semana anticipado.
+    * FIN_DE_SEMANA_TURISTICO: Sábado y Domingo (afluencia a valles de Vilcabamba / Malacatos).
+    * FERIADO: Comportamiento atípico especial.
+- **Fórmula de Calificación de la Tripulación (Benchmark Justo)**:
+  - Eficiencia Tripulación (%) = (Ingreso Bruto Real del Bus en VT_X, Día_Y) / (Mediana Histórica de la Flota en ese mismo VT_X, Día_Y) * 100
+  - Si el resultado es >= 95%, la tripulación operó con máxima honestidad y eficiencia para las condiciones reales de ese día.
+  - Si el resultado es < 85%, se activa una alerta objetiva de sub-recaudación.
+
+### 11.3 Dictamen del Experto en Planificación Operativa de Transporte
+- **Equidad de la Rueda Rotativa**: El sistema de rotación VT01-VT15 está diseñado para que todos los socios pasen por turnos buenos y malos de forma democrática a lo largo de un mes.
+- **Desmitificación Operativa**: Al cruzar el turno rotativo con el día del calendario, el socio deja de culpar a la "mala suerte" y puede saber con exactitud si el turno de las 09:45 un martes rindió los $35 normales, o si el domingo rindió los $90 esperados.
+
+### 11.4 Dictamen del Experto en Administración de Empresas
+- **Presupuesto Base Cero por Turno/Día**: El socio puede proyectar el ingreso bruto mensual esperado de su unidad simplemente conociendo el calendario de rotación de su bus para el mes entrante.
+- **Tranquilidad Laboral y Transparencia**: Elimina disputas injustas con los choferes cuando les toca un turno estructuralmente flojo, concentrando el reclamo únicamente en desvíos estadísticos demostrables.
