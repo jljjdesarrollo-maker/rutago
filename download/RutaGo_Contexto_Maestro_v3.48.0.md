@@ -964,3 +964,27 @@ Para garantizar justicia absoluta a la tripulación y detectar la fuga real de c
 ### 13.5 Estado del Análisis y Preparación para Futura Fase de Construcción
 - Con las Secciones 8, 9, 10, 11, 12 y 13, el análisis de arquitectura, multi-tenancy, modelo SaaS, asignación de flota (19 buses), y benchmark estadístico de tripulaciones queda **100% CERRADO, DOCUMENTADO Y BLINDADO**.
 - El proyecto queda en espera de la autorización del usuario para iniciar la fase de implementación por etapas cuando lo considere oportuno.
+
+---
+
+## 14. Ajuste Operativo: Gestión de Excepciones de Ruta y Ausencia de Registros (v3.48.6 - 2026-09-14)
+> Clarificación y Directiva Operativa del Socio Líder | Validación de Arquitectura y Lógica de Negocio
+
+### 14.1 Precisión sobre Eventos Especiales vs. Lógica Nativa Existente en RutaGo
+- **Aclaración Clave del Usuario**:
+  - No se requiere una "bandera global abstracta" de eventos o clima para distorsionar la estadística, porque **la aplicación ya cuenta a nivel de cada frecuencia con los tipos de registro nativos precisos**:
+    1. **Frecuencia No Realizada (`Trip.tipo = "no_realizada"`)**:
+       - Con catálogo de motivos existentes: `motivo: "mantenimiento" | "daño_unidad" | "clima" | "sin_pasajeros" | "problema_ruta" | "orden_superior" | "otro"`.
+    2. **Ingreso Especial (`Trip.tipo = "ingreso_especial"`)**:
+       - Para registrar viajes contratados directamente, desvíos a la Romería del Cisne, fletes de grupos o servicios expresos en lugar de la frecuencia ordinaria, junto con su `notaEspecial`.
+- **Tratamiento Estadístico en el Benchmark**:
+  - Los **Ingresos Especiales** se contabilizan dentro del Ingreso Bruto global del bus (dinero que efectivamente ingresó a la caja), pero **se aíslan del cálculo del IPF (Ingreso Promedio por Frecuencia ordinaria)** para no distorsionar el promedio de la ruta regular de línea.
+
+### 14.2 Tratamiento de Días en Taller Mecánico (Días sin Registro)
+- **Lógica de Base de Datos para Días Inactivos**:
+  - Si un bus está 12 días en reparación en el taller, **no existirá ningún registro diario (`DailyRecord`) para esos 12 días** en la base de datos (ausencia natural de datos).
+- **Cómputo en el Reporte Mensual**:
+  - El sistema calcula:
+    $$\text{Días Operativos Reales} = \text{COUNT(DISTINCT DailyRecord.date) para ese busId en el mes}$$
+  - El cálculo del promedio diario jamás divide para 30 días ciegos, sino estrictamente para los días con operaciones reportadas (ej. 18 días).
+  - Los 12 días faltantes se reflejan en el reporte gerencial como *"Días Inactivos sin Operación"* de forma automática, sin requerir registros manuales en blanco.
