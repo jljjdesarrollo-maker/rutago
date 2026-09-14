@@ -890,3 +890,39 @@ export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
 ### 11.4 Dictamen del Experto en Administración de Empresas
 - **Presupuesto Base Cero por Turno/Día**: El socio puede proyectar el ingreso bruto mensual esperado de su unidad simplemente conociendo el calendario de rotación de su bus para el mes entrante.
 - **Tranquilidad Laboral y Transparencia**: Elimina disputas injustas con los choferes cuando les toca un turno estructuralmente flojo, concentrando el reclamo únicamente en desvíos estadísticos demostrables.
+
+---
+
+## 12. Comparativo Mensual de Ingreso Bruto vs. Nivel Frecuencia (v3.48.4 - 2026-09-14)
+> Panel de Expertos: Experto en Administración de Empresas | Experto en Planificación Operativa de Transporte | Científico de Datos & Auditor Financiero
+
+### 12.1 Las Dos Escalas de Análisis: Frecuencia vs. Mes Consolidado
+- **Escala 1: Análisis por Frecuencia / Turno Diario (Táctico / Operativo)**:
+  - Sirve para el control diario en caliente. Detecta si en el viaje de las 06:15 o 09:45 de hoy la tripulación entregó lo que el día producía.
+- **Escala 2: Comparativo Mensual Consolidado (Estratégico / Gerencial)**:
+  - Responde a la pregunta del dueño a fin de mes: *¿Mi bus produjo lo que debía en los 30 días comparado con los demás socios de la cooperativa?*
+
+### 12.2 ¿Es Viable y Justo el Comparativo Mensual? (Dictamen del Panel)
+- **Veredicto**: Es **100% VIABLE y SUMAMENTE JUSTO**, siempre y cuando se aplique la **Cláusula de Normalización de Unidades Inactivas o Averiadas**.
+- **La Trampa del Ingreso Bruto Plano Mensual**:
+  - Si el Bus 01 trabajó 30 días e ingresó $4,200 (promedio $140/día).
+  - Y el Bus 05 sufrió una avería mecánica grave (caja/corona) y solo operó 18 días, recaudando $2,700 (promedio $150/día).
+  - Un reporte plano mostraría al Bus 05 en el último lugar por tener menor ingreso bruto acumulado, cuando en realidad su tripulación fue más productiva en los días que estuvo activa.
+- **Solución: La Rueda Rotativa de 15 Turnos Neutraliza la Variabilidad en 30 Días**:
+  - Al rotar 17 buses a lo largo de 15 grupos VT, en un mes calendario completo (30 días), prácticamente todos los buses dan **dos vueltas completas exactas** a la rueda.
+  - Esto significa que todos los buses pasaron por la misma cantidad de turnos buenos, turnos malos, fines de semana y días laborables. La suerte se anula por la ley de los grandes números.
+
+### 12.3 Las 3 Columnas Obligatorias del Reporte Mensual Anonimizado
+Para garantizar justicia absoluta a la tripulación y detectar la fuga real de capital, el reporte mensual debe presentar:
+1. **Ingreso Bruto Total Mensual ($)**: El volumen acumulado de recaudación.
+2. **Frecuencias Realizadas vs. Programadas**: (ej. 142 / 150 realizadas, 8 no realizadas por taller/daño).
+3. **Ingreso Bruto Promedio por Frecuencia Efectiva**:
+   $$\text{IPF} = \frac{\text{Ingreso Bruto Mensual Total}}{\text{Total Frecuencias Efectivamente Realizadas}}$$
+4. **Ingreso Bruto Diario Promedio Operativo**:
+   $$\text{IDP} = \frac{\text{Ingreso Bruto Mensual Total}}{\text{Días Efectivamente Trabajados}}$$
+
+### 12.4 Ejemplo de Visualización para el Socio (Mockup Conceptual)
+- `Bus 01 (Tú)`: $4,350 Bruto | 148 frecuencias | **$29.39 / frecuencia** | 🟢 Rendimiento Óptimo (Rank 3/17)
+- `Bus A (Anonimizado)`: $4,420 Bruto | 150 frecuencias | **$29.46 / frecuencia** | 🟢 (Rank 2/17)
+- `Bus B (Anonimizado - Bus Avariado)`: $2,800 Bruto | 95 frecuencias | **$29.47 / frecuencia** | 🟢 Normalizado Justo
+- `Bus C (Anonimizado - Sospecha Fuga)`: $3,510 Bruto | 148 frecuencias | **$23.71 / frecuencia** | 🔴 Alerta (-19% vs promedio)
