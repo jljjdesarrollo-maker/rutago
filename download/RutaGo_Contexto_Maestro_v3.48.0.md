@@ -1155,3 +1155,35 @@ Transformar RutaGo de un sistema centrado en una sola unidad fija (`BUS-04`) a u
   * Tab 1: *Benchmark Flota Troncal (Buses VT)* -> Compara tu Bus 01 con los demás buses grandes de la rueda rotativa.
   * Tab 2: *Benchmark Circuito Especial (Buses P)* -> Compara las unidades 16, 17 y 19 entre sí de forma justa.
 - Semáforo de Desempeño y detección de fuga de capital respetando la capacidad de asientos de cada vehículo.
+
+---
+
+## 18. Flexibilidad Operativa: Asignación Sin Restricciones Rígidas y Regla de Benchmark P (v3.49.3 - 2026-09-14)
+> Directiva Operativa del Usuario: Cero Bloqueos en Despacho + Reglas Claras de Auditoría.
+
+### 18.1 Principio de Realidad Operativa en Despacho (Zero-Locking)
+- **Principio Esencial**: **NO SE DEBEN IMPONER RESTRICCIONES RÍGIDAS DE BLOQUEO en la asignación de turnos/frecuencias**.
+- **Casos Reales de Operación en Carretera**:
+  1. Si una unidad pequeña (16, 17 o 19) se avería o falta, la administración de la cooperativa **asigna un bus grande (VT) al turno P**.
+  2. El bus grande avanza en la ruta hasta donde el gálibo físico lo permite (hasta antes del puente) para no dejar sin servicio a los usuarios del sector.
+  3. En contingencias o rotaciones extraordinarias, cualquier vehículo puede terminar haciendo turnos de otros grupos.
+- **Directiva de Software**:
+  - El sistema **NUNCA debe impedir ni bloquear** que el usuario o despachador asigne cualquier bus a cualquier turno (VT o P).
+  - Como máximo, el sistema presentará un **mensaje informativo o advertencia suave (Warning / Toast no bloqueante)**: *(ej. "Aviso: Unidad grande asignada a circuito con puente estrecho")*, permitiendo continuar la operación con normalidad.
+
+### 18.2 Confirmación de la Regla de Benchmark para los Buses 16, 17 y 19
+- **Regla de Comparación Homogénea**:
+  - La comparación de las unidades de la compañía se restringe y concentra estrictamente entre los **Buses 16, 17 y 19**.
+  - **Motivo**: Estos tres vehículos operan de forma principal y casi exclusiva por la misma ruta periférica/alimentadora.
+  - Al comparar 16 vs 17 vs 19, la comparación es 100% simétrica y justa, revelando de inmediato la eficiencia y honestidad de sus respectivas tripulaciones.
+  - La unidad **18** de la compañía se compara directamente en la rueda troncal VT con los buses de los socios (Bus 01, Bus 10, Bus 12, etc.).
+
+---
+
+### 18.3 Resumen Consolidado de Fases de Construcción
+1. **Fase 1**: Desacople del `BUS-04` hardcodeado y activación dinámica del **Bus 01** del socio líder.
+2. **Fase 2**: Formulario Web de Registro Manual de Unidades (`[+ Registrar Nueva Unidad]`) con flexibilidad total de asignación y advertencias no bloqueantes.
+3. **Fase 3**: Despliegue progresivo de flota (Bus 10, 12, 18 en circuito VT; 16, 17, 19 en circuito P).
+4. **Fase 4**: Módulo de Benchmark Estadístico y Auditoría de Tripulaciones (Ingreso Bruto) con dos grupos de auditoría simétrica:
+   - **Grupo Troncal VT**: Bus 01 y demás socios + Bus 18.
+   - **Grupo Especial P**: Buses 16, 17 y 19 de la compañía comparados entre sí.
