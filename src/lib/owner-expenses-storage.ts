@@ -302,22 +302,39 @@ export async function fetchOwnerExpensesFromApi(busId = 'BUS-04'): Promise<Owner
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     if (json.success && Array.isArray(json.data)) {
-      const parsed: OwnerExpense[] = json.data.map((item: any) => ({
-        ...item,
-        abonos: typeof item.abonos === 'string' ? JSON.parse(item.abonos || '[]') : (item.abonos || []),
-      }));
+      if (json.data.length > 0) {
+        // 1. La base de datos central ya tiene gastos guardados
+        const parsed: OwnerExpense[] = json.data.map((item: any) => ({
+          ...item,
+          abonos: typeof item.abonos === 'string' ? JSON.parse(item.abonos || '[]') : (item.abonos || []),
+        }));
 
-      // Si la nube tiene datos, sincronizar la copia local (caché offline)
-      if (typeof window !== 'undefined' && parsed.length > 0) {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        const existing: OwnerExpense[] = raw ? JSON.parse(raw) : [];
-        // Reemplazar los del bus actual por los de la nube
-        const otherBuses = existing.filter((e) => e.busId !== busId);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([...parsed, ...otherBuses]));
-        localStorage.setItem(INITIALIZED_KEY, 'true');
+        if (typeof window !== 'undefined') {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          const existing: OwnerExpense[] = raw ? JSON.parse(raw) : [];
+          const otherBuses = existing.filter((e) => e.busId !== busId);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify([...parsed, ...otherBuses]));
+          localStorage.setItem(INITIALIZED_KEY, 'true');
+        }
+
+        return parsed;
+      } else {
+        // 2. La base de datos central está vacía (tabla recién creada)
+        // Verificamos si en este teléfono ya existían gastos (ej: los $809 de Agosto)
+        const localList = getOwnerExpenses(busId);
+        if (localList.length > 0) {
+          console.log(`Auto-migrando ${localList.length} gastos locales a la base de datos central...`);
+          // Subirlos a la nube en segundo plano para que queden asegurados
+          fetch('/api/owner-expenses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bulk: localList }),
+          }).catch((err) => console.warn('Error en auto-migracion:', err));
+
+          return localList;
+        }
+        return [];
       }
-
-      return parsed;
     }
   } catch (err) {
     console.warn('No se pudo conectar a la base de datos central, usando caché local:', err);

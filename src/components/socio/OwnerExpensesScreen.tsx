@@ -63,7 +63,7 @@ export default function OwnerExpensesScreen({
   onBackToHome,
 }: Props) {
   const [busId, setBusId] = useState<string>(initialBusId);
-  const [allExpenses, setAllExpenses] = useState<OwnerExpense[]>([]);
+  const [allExpenses, setAllExpenses] = useState<OwnerExpense[]>(() => getOwnerExpenses(initialBusId));
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [isOnlineDb, setIsOnlineDb] = useState<boolean>(true);
 
@@ -113,7 +113,14 @@ export default function OwnerExpensesScreen({
   const loadData = async () => {
     try {
       const list = await fetchOwnerExpensesFromApi(busId);
-      setAllExpenses(list);
+      if (list && list.length > 0) {
+        setAllExpenses(list);
+      } else {
+        const local = getOwnerExpenses(busId);
+        if (local && local.length > 0) {
+          setAllExpenses(local);
+        }
+      }
       setIsOnlineDb(true);
     } catch {
       const list = getOwnerExpenses(busId);
