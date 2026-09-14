@@ -926,3 +926,41 @@ Para garantizar justicia absoluta a la tripulación y detectar la fuga real de c
 - `Bus A (Anonimizado)`: $4,420 Bruto | 150 frecuencias | **$29.46 / frecuencia** | 🟢 (Rank 2/17)
 - `Bus B (Anonimizado - Bus Avariado)`: $2,800 Bruto | 95 frecuencias | **$29.47 / frecuencia** | 🟢 Normalizado Justo
 - `Bus C (Anonimizado - Sospecha Fuga)`: $3,510 Bruto | 148 frecuencias | **$23.71 / frecuencia** | 🔴 Alerta (-19% vs promedio)
+
+---
+
+## 13. Conclusiones y Propuestas Finales del Panel de Expertos (v3.48.5 - 2026-09-14)
+> Panel de Cierre: Experto en Administración de Empresas | Experto en Operaciones de Transporte | Científico de Datos & Auditor Financiero | Arquitecto de Software Cloud
+
+### 13.1 Propuesta 1: La "Matriz de Frecuencias Perdidas" (Impacto Financiero de Talleres)
+- **Aporte del Administrador de Empresas**:
+  - Cuando un bus se avería y deja de hacer 8 frecuencias en el mes, el socio solo ve la factura del mecánico.
+  - **Métrica Sugerida: Costo de Oportunidad por Inactividad (Lucro Cesante)**:
+    $$\text{Lucro Cesante} = \text{Frecuencias No Realizadas} \times \text{IPF Promedio de la Flota en ese Turno}$$
+  - Permite al socio saber con precisión: *"Estar 4 días en el taller me costó $350 en repuestos + $280 que el bus dejó de producir en la carretera"*.
+
+### 13.2 Propuesta 2: El "Factor Clima y Eventos Especiales" (Feria de Loja / Romería de El Cisne / Feriados)
+- **Aporte del Experto en Transporte Interparroquial**:
+  - En la provincia de Loja existen estacionalidades extremas:
+    * Septiembre (Feria de Loja y Romería de la Virgen del Cisne).
+    * Feriados de Carnaval y Semana Santa (éxodo masivo hacia Vilcabamba y Malacatos).
+    * Días de lluvia intensa con deslaves o derrumbes en la vía Loja-Malacatos.
+  - **Bandera de Evento Extraordinario en Sistema**: Un botón administrativo para etiquetar el día como *"Día de Alta Demanda Extraordinaria"* o *"Día con Derrumbe / Vía Cerrada"*, evitando que días anormales distorsionen la media histórica de los turnos normales.
+
+### 13.3 Propuesta 3: Auditoría Cruzada de Boletos vs. Pasaje en Ruta (Ratio Boletera)
+- **Aporte del Científico de Datos & Auditor**:
+  - Un bus puede tener un buen ingreso bruto simplemente porque viajaron muchos pasajeros, pero aun así sufrir fuga en paradas intermedias donde no se entrega boleto.
+  - **Índice de Bancarización / Emisión Digital**:
+    $$\text{Tasa Emisión Boletos} = \frac{\text{Ingreso Registrado con Ticket Digital/Impreso}}{\text{Ingreso Bruto Total Declarado}} \times 100$$
+  - Si la flota promedia 75% de boletos emitidos y una tripulación específica marca 35%, el sistema advierte al socio que su tripulación está operando "a ciegas" en el cobro manual de mano.
+
+### 13.4 Propuesta 4: El "Score de Integridad de la Tripulación" (0 a 100 Puntos)
+- **Aporte del Arquitecto de Software & UX**:
+  - Para no abrumar al socio con números complejos en su teléfono, se consolida todo en un puntaje único mensual para el Chofer / Ayudante:
+    * **90 – 100 Pts (Tripulación Estrella)**: Ingreso bruto por frecuencia acorde a la flota + alto porcentaje de emisión de boletos + puntualidad en frecuencias.
+    * **75 – 89 Pts (Tripulación Regular)**: Desviaciones menores tolerables.
+    * **< 75 Pts (Tripulación Bajo Observación)**: Alerta por sub-recaudación constante frente a frecuencias homólogas.
+
+### 13.5 Estado del Análisis y Preparación para Futura Fase de Construcción
+- Con las Secciones 8, 9, 10, 11, 12 y 13, el análisis de arquitectura, multi-tenancy, modelo SaaS, asignación de flota (19 buses), y benchmark estadístico de tripulaciones queda **100% CERRADO, DOCUMENTADO Y BLINDADO**.
+- El proyecto queda en espera de la autorización del usuario para iniciar la fase de implementación por etapas cuando lo considere oportuno.
