@@ -5,9 +5,11 @@ import { type VTSession } from './types-boletos';
 import type { UserSession } from './types';
 import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVentasPendientesByVT } from '@/lib/indexeddb';
 import { Bus, User, ArrowRight, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays } from 'lucide-react';
+import { BusSelector } from './BusSelector';
+import { getActiveBus } from '@/lib/fleet-storage';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.49.9-exclusividad-ayudante-concurrencia';
+const APP_VERSION = 'v3.52.1-bus-selector-activo';
 
 interface Props {
   currentUser?: UserSession;
@@ -219,6 +221,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
     const vt = vts.find(v => v.codigo === vtCode)!;
     const effectiveAyudanteId = currentUser?.id || ayudante.id;
     const effectiveAyudanteNombre = currentUser?.nombre || ayudante.nombre;
+    const currentActiveBus = getActiveBus();
 
     const newSession: VTSession = {
       vtCode: vt.codigo,
@@ -226,6 +229,9 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
       ayudanteId: effectiveAyudanteId,
       ayudanteNombre: effectiveAyudanteNombre,
       fecha: sessionDate,
+      busId: currentActiveBus.id,
+      numeroDisco: currentActiveBus.numeroDisco,
+      placaBus: currentActiveBus.placa,
     };
 
     // ─── Limpieza completa al forzar nuevo VT ───
@@ -448,15 +454,18 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
             <Bus className="w-7 h-7" />
             <h1 className="text-xl font-bold">RutaGo</h1>
           </div>
-          {onBack && (
-            <button
-              onClick={onBack}
-              className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold flex items-center gap-1 active:scale-95 transition-all"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Inicio</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <BusSelector compact />
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold flex items-center gap-1 active:scale-95 transition-all"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Inicio</span>
+              </button>
+            )}
+          </div>
         </div>
         <p className="text-red-100 text-xs">TRANSPORTES VILCABAMBA</p>
         <p className="text-red-200/60 text-[9px] mt-0.5">{APP_VERSION}</p>
@@ -576,6 +585,19 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
             </p>
           </div>
         )}
+
+        {/* Selector de Autobús de la Jornada (Fase 3 Multi-Bus) */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between px-1">
+            <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+              <Bus className="w-3.5 h-3.5 text-[#912D26]" /> Autobús de la Jornada
+            </label>
+            <span className="text-[10px] font-medium text-gray-400">
+              Máquina física asignada
+            </span>
+          </div>
+          <BusSelector />
+        </div>
 
         {/* Selector de fecha */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">

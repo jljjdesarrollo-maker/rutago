@@ -34,6 +34,9 @@ export interface VTSession {
   ayudanteId: string;
   ayudanteNombre: string;
   fecha: string; // Fecha del turno (cuando se inició, no necesariamente hoy)
+  busId?: string; // Disco o ID del autobús físico de la jornada (Fase 3 Multi-bus)
+  numeroDisco?: string;
+  placaBus?: string;
 }
 
 // ─── Viaje Gratis Promotion ───

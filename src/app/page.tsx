@@ -21,6 +21,8 @@ import { ArqueoScreen } from '@/components/transport/ArqueoScreen';
 import { ArqueoGeneralScreen } from '@/components/transport/ArqueoGeneralScreen';
 import { SyncScreen } from '@/components/transport/SyncScreen';
 import OwnerExpensesScreen from '@/components/socio/OwnerExpensesScreen';
+import { FlotaScreen } from '@/components/transport/FlotaScreen';
+import { BenchmarkScreen } from '@/components/transport/BenchmarkScreen';
 import { type AppView, type RecordFormData, type SavedRecord, type UserSession, num } from '@/components/transport/types';
 import { type VTSession, type FrecuenciaEstado } from '@/components/transport/types-boletos';
 import { useToast } from '@/hooks/use-toast';
@@ -339,6 +341,24 @@ export default function Home() {
     );
   }
 
+  // Gestión de Flota de Autobuses
+  if (view === 'flota_gestion') {
+    return (
+      <FlotaScreen
+        onBack={() => setView('home')}
+      />
+    );
+  }
+
+  // Benchmark de Flota & IPF (todos los usuarios)
+  if (view === 'benchmark') {
+    return (
+      <BenchmarkScreen
+        onBack={() => setView('home')}
+      />
+    );
+  }
+
   // Compare Frequencies screen (all users)
   if (view === 'compare') {
     return (
@@ -477,6 +497,8 @@ export default function Home() {
           onGoToBoletos={() => setView('boletos_home')}
           onGoToVentasReview={() => setView('ventas_review')}
           onGoToSocioGastos={() => setView('socio_gastos')}
+          onGoToFlota={() => setView('flota_gestion')}
+          onGoToBenchmark={() => setView('benchmark')}
           onLogout={handleLogout}
           recordCount={recordCount}
         />

@@ -4,10 +4,19 @@ import { useState, useEffect, useCallback, useMemo, useRef, type ChangeEvent } f
 import { type VTSession, type FrecuenciaEstado } from './types-boletos';
 import { getVentasByFrecuencia } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
+import { BusSelector } from './BusSelector';
+import {
+  getActiveBus,
+  getBusByDisco,
+  subscribeToActiveBus,
+  saveBusOdometer,
+  getLatestBusOdometer,
+} from '@/lib/fleet-storage';
+import { type BusItem } from '../types/fleet';
 import {
   ChevronLeft, DollarSign, Camera, X, Save, Loader2,
   CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles, Pencil, XCircle, Gauge,
-  CalendarDays
+  CalendarDays, Bus
 } from 'lucide-react';
 
 interface Props {
@@ -90,6 +99,24 @@ function resolverRutaTrip(f: FrecuenciaResumen): { routeFrom: string; routeTo: s
 
 export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, onSaved }: Props) {
   const fechaTrabajo = workDate(session);
+
+  // Unidad física activa (Fase 3.2: Desacople de Odómetro y persistencia por Bus)
+  const [currentBus, setCurrentBus] = useState<BusItem>(() => {
+    if (session.busId) {
+      const b = getBusByDisco(session.busId);
+      if (b) return b;
+    }
+    return getActiveBus();
+  });
+
+  // Suscribirse a cambios reactivos de la unidad física
+  useEffect(() => {
+    const unsub = subscribeToActiveBus((bus) => {
+      setCurrentBus(bus);
+    });
+    return () => unsub();
+  }, []);
+
   const [frecuencias, setFrecuencias] = useState<FrecuenciaResumen[]>([]);
   const [loading, setLoading] = useState(true);
   const [kmInicial, setKmInicial] = useState('');
@@ -227,21 +254,33 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     return Math.round((fin - ini) * 10) / 10;
   }, [kmInicial, kmFinal]);
 
-  // Precarga inteligente del último tacómetro registrado
-  // NOTA CRÍTICA: El odómetro está instalado en el autobús físico, NO en el cuaderno (VT).
-  // La búsqueda es cronológica estricta: el día inmediatamente anterior (< fechaActual),
-  // sin filtrar por vtCode porque los cuadernos rotan día a día.
+  // Precarga inteligente del último tacómetro registrado POR UNIDAD FÍSICA
+  // Regla de Oro: El odómetro pertenece a la máquina física (Bus), NO al cuaderno VT ni a la ruta.
   useEffect(() => {
     let cancelled = false;
     async function fetchPrevOdometro() {
       try {
         setBuscandoKmPrevio(true);
         const fechaActual = workDate(session);
+        const targetDisco = currentBus.numeroDisco.padStart(2, '0');
+        const targetBusId = currentBus.id.toUpperCase();
 
-        // 1. Consultar registros del servidor (hasta 60 para tener cobertura histórica)
+        // 0. Consultar almacenamiento dedicado de odómetro por bus (Fase 3.2)
+        const dedicated = getLatestBusOdometer(targetDisco);
+        let dedicatedCandidate: any = null;
+        if (dedicated && dedicated.date && dedicated.date < fechaActual && dedicated.kmFinal) {
+          dedicatedCandidate = {
+            date: dedicated.date,
+            kmFinal: dedicated.kmFinal,
+            busId: targetBusId,
+            numeroDisco: targetDisco,
+          };
+        }
+
+        // 1. Consultar registros del servidor (hasta 90 para tener amplia cobertura histórica)
         let serverRecords: any[] = [];
         try {
-          const res = await fetch('/api/records?limit=60');
+          const res = await fetch('/api/records?limit=90');
           if (res.ok) {
             serverRecords = await res.json();
           }
@@ -254,31 +293,58 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         try {
           if (typeof window !== 'undefined' && window.localStorage) {
             for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('arqueo_general_')) {
-              const item = localStorage.getItem(key);
-              if (item) {
-                try {
-                  const parsed = JSON.parse(item);
-                  if (parsed && parsed.date && (parsed.kmFinal || parsed.km)) {
-                    localRecords.push(parsed);
-                  }
-                } catch { /* ignorar */ }
+              const key = localStorage.key(i);
+              if (key && (key.startsWith('arqueo_general_') || key.startsWith('rutago_odometro_bus_'))) {
+                const item = localStorage.getItem(key);
+                if (item) {
+                  try {
+                    const parsed = JSON.parse(item);
+                    if (parsed && parsed.date && (parsed.kmFinal || parsed.km)) {
+                      localRecords.push(parsed);
+                    }
+                  } catch { /* ignorar */ }
+                }
               }
-            }
             }
           }
         } catch (e) {
           console.warn('Error leyendo registros locales:', e);
         }
 
-        // 3. Unificar todos los registros
-        const allCandidates = [...serverRecords, ...localRecords];
+        // 3. Unificar todos los registros candidatos
+        const allCandidates = [
+          ...(dedicatedCandidate ? [dedicatedCandidate] : []),
+          ...serverRecords,
+          ...localRecords,
+        ];
 
         // 4. Filtrar días estrictamente anteriores a la fecha actual (< fechaActual)
-        // y ordenar cronológicamente de forma descendente (el más reciente primero)
+        // y que pertenezcan con certeza al autobús físico actualmente seleccionado
         const prevCandidates = allCandidates
-          .filter(r => r.date && r.date < fechaActual && (r.kmFinal || r.km))
+          .filter((r) => {
+            if (!r.date || r.date >= fechaActual || (!r.kmFinal && !r.km)) return false;
+
+            const rBusId = String(r.busId || '').toUpperCase();
+            const rDisco = String(r.numeroDisco || '').padStart(2, '0');
+            const rConductor = String(r.conductor || '').toUpperCase();
+
+            // Coincidencia directa por busId o numeroDisco
+            if (rBusId === targetBusId || rBusId === `BUS-${targetDisco}` || rDisco === targetDisco) {
+              return true;
+            }
+
+            // Coincidencia por campo conductor estructurado ("BUS-XX")
+            if (rConductor === `BUS-${targetDisco}` || rConductor === targetDisco) {
+              return true;
+            }
+
+            // Registros históricos antiguos sin bus asignado pertenecen a la Unidad Piloto 01
+            if (!r.busId && !r.numeroDisco && (!r.conductor || !r.conductor.startsWith('BUS-'))) {
+              return targetDisco === '01';
+            }
+
+            return false;
+          })
           .sort((a, b) => b.date.localeCompare(a.date));
 
         const prev = prevCandidates[0];
@@ -286,8 +352,12 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           // Priorizar siempre kmFinal (tacómetro acumulado del odómetro de llegada)
           const valor = prev.kmFinal ? prev.kmFinal : prev.km;
           setKmInicial(valor.toString());
-          setKmInicialOrigen(`Sugerido del ${prev.date}`);
+          setKmInicialOrigen(`Sugerido del ${prev.date} (Bus ${currentBus.numeroDisco})`);
           return;
+        } else if (!cancelled) {
+          // Si este bus es nuevo o no tiene historial previo (ej. Bus 10 en su primer arqueo)
+          setKmInicial('');
+          setKmInicialOrigen(null);
         }
       } catch (err) {
         console.warn('No se pudo precargar odómetro previo:', err);
@@ -297,7 +367,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     }
     fetchPrevOdometro();
     return () => { cancelled = true; };
-  }, [session.fecha, session.vtCode]);
+  }, [session.fecha, session.vtCode, currentBus.id, currentBus.numeroDisco]);
 
   const totalIngresosAuto = useMemo(() =>
     frecuencias.reduce((s, f) => s + f.totalRecaudado, 0),
@@ -423,9 +493,12 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         km: recorridoCalculado,
         kmInicial: kmInicial.trim() || undefined,
         kmFinal: kmFinal.trim(),
-        conductor: '',
+        conductor: `BUS-${currentBus.numeroDisco}`,
         ayudanteNombre: session.ayudanteNombre,
         vtCode: session.vtCode,
+        busId: currentBus.id,
+        numeroDisco: currentBus.numeroDisco,
+        placaBus: currentBus.placa,
         trips,
         expenses: gastos,
         tickets: tickets || '0',
@@ -433,6 +506,9 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         sobrante: sobrante || '0',
         photoUrl: fotoPreview,
       };
+
+      // Guardar odómetro dedicado de la unidad física (Fase 3.2)
+      saveBusOdometer(currentBus.numeroDisco, kmFinal.trim(), fechaTrabajo);
 
       const isOnline = navigator.onLine;
 
@@ -460,8 +536,19 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       }
     } catch (err) {
       console.error('Error guardando arqueo:', err);
+      // Guardar odómetro dedicado de la unidad física ante fallback
+      saveBusOdometer(currentBus.numeroDisco, kmFinal.trim(), fechaTrabajo);
       localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify({
-        date: fechaTrabajo, km: recorridoCalculado, kmInicial: kmInicial.trim() || undefined, kmFinal: kmFinal.trim(), vtCode: session.vtCode, ayudanteNombre: session.ayudanteNombre,
+        date: fechaTrabajo,
+        km: recorridoCalculado,
+        kmInicial: kmInicial.trim() || undefined,
+        kmFinal: kmFinal.trim(),
+        conductor: `BUS-${currentBus.numeroDisco}`,
+        vtCode: session.vtCode,
+        ayudanteNombre: session.ayudanteNombre,
+        busId: currentBus.id,
+        numeroDisco: currentBus.numeroDisco,
+        placaBus: currentBus.placa,
         trips: frecuencias.map(f => {
           const { routeFrom, routeTo } = resolverRutaTrip(f);
           return {
@@ -652,6 +739,35 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
             </div>
           </div>
         </div>
+
+        {/* Banner de Unidad Física Asignada (Fase 3.2: Desacople por Bus) */}
+        <div className="bg-white rounded-2xl border border-blue-100 p-3.5 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-800 flex items-center justify-center flex-shrink-0 font-black text-sm border border-blue-200">
+              {currentBus.numeroDisco}
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Unidad Física Asignada</div>
+              <div className="text-sm font-black text-[#3A3A3A] flex items-center gap-1.5 flex-wrap">
+                <span>Bus {currentBus.numeroDisco}</span>
+                <span className="text-[11px] font-mono font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                  {currentBus.placa}
+                </span>
+                {currentBus.numeroDisco === '01' && (
+                  <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
+                    Socio Líder
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-0.5">
+                {currentBus.marca} {currentBus.modelo || ''} • {currentBus.tipoOperacion === 'ALIMENTADOR_P' ? 'Alimentador P' : 'Troncal VT'}
+              </p>
+            </div>
+          </div>
+          <div className="flex-shrink-0">
+            <BusSelector compact />
+          </div>
+        </div>
         {/* Errores */}
         {errors.length > 0 && (
           <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm space-y-1">
@@ -819,11 +935,17 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Gauge className="w-4 h-4 text-[#912D26]" />
-              <h3 className="font-bold text-[#3A3A3A] text-sm uppercase">Odómetro del Vehículo</h3>
+              <h3 className="font-bold text-[#3A3A3A] text-sm uppercase">
+                Odómetro: Bus {currentBus.numeroDisco} ({currentBus.placa})
+              </h3>
             </div>
-            {buscandoKmPrevio && (
+            {buscandoKmPrevio ? (
               <span className="text-[10px] text-gray-400 flex items-center gap-1">
                 <Loader2 className="w-3 h-3 animate-spin" /> Buscando anterior...
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
+                Unidad {currentBus.numeroDisco}
               </span>
             )}
           </div>
@@ -833,9 +955,13 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
             <div>
               <label className="text-xs font-medium text-gray-500 flex items-center justify-between">
                 <span>Tacómetro Inicial (Salida)</span>
-                {kmInicialOrigen && (
-                  <span className="text-[10px] text-emerald-700 font-semibold truncate max-w-[170px]">
+                {kmInicialOrigen ? (
+                  <span className="text-[10px] text-emerald-700 font-semibold truncate max-w-[200px]">
                     {kmInicialOrigen}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-amber-600 font-medium">
+                    Sin lectura previa (Bus {currentBus.numeroDisco})
                   </span>
                 )}
               </label>
@@ -869,7 +995,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                 className="w-full mt-1 h-11 rounded-xl border border-[#D6D6D6] px-3 text-sm font-semibold text-[#3A3A3A]"
               />
               <p className="text-[10px] text-gray-400 mt-1">
-                Lectura actual del tablero al cerrar la jornada
+                Lectura actual del tablero al cerrar la jornada de la Unidad {currentBus.numeroDisco}
               </p>
             </div>
           </div>

@@ -1,7 +1,7 @@
 # Reglas y Directivas de Proyecto: RutaGo
 
 ## 1. Identidad y Propósito del Proyecto
-- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en producción: `v3.51.0-gastos-socio` (base GitHub: `v3.50.3`)
+- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.52.0-flota-gestion` (base producción: `v3.51.0-gastos-socio`)
 - **Repositorio Oficial:** `https://github.com/jljjdesarrollo-maker/rutago`
 - **Stack Técnico:** Next.js (App Router), React 19, TypeScript, Tailwind CSS, Prisma ORM, IndexedDB (Offline-First), Radix UI, ESC/POS & JSPDF.
 - **Entorno de Despliegue:** Vercel (CI/CD conectado a GitHub) y uso directo en smartphones.
@@ -145,8 +145,17 @@
      - Botón de emergencia **"Desvincular / Resetear Teléfono"** para liberar el usuario en caso de robo, descarga o avería del terminal en carretera y permitir la vinculación inmediata de un teléfono de reemplazo.
 
 ### PENDIENTE #2: Escalabilidad a Flota de 19 Autobuses (Multi-Bus)
-- **Objetivo:** Separar la entidad física `Bus` (número de disco, placa, odómetro/tacómetro, cambios de aceite y consumo de diésel) de la entidad operativa `VT` (itinerario de frecuencias que rotan entre buses).
-- **Alcance:** Selector de bus al iniciar turno o asignación por parte del administrador, precargando el tacómetro anterior específico de esa unidad física.
+- **Documento Maestro Completo:** Consultar `download/RutaGo_Contexto_Maestro_v3.52.0.md` para todo el detalle histórico, arquitectónico y operativo.
+- **Diferenciación Conceptual Inmutable:**
+  * **Unidad Física (Bus):** Máquina (`busId`, `numeroUnidad`, `placa`, odómetro/tacómetro, mantenimientos, capacidad).
+  * **VT (Vuelta Turno):** Hoja de programación de frecuencias que rota entre los autobuses.
+- **Progreso por Fases:**
+  * **FASE 1 (COMPLETADA - v3.49.4):** Desacople total de `BUS-04` hardcodeado y activación dinámica de `BUS-01` (Unidad Piloto del Socio Líder).
+  * **FASE 2 (COMPLETADA - v3.52.0):** Formulario web y pantalla táctil de gestión de flota (`FlotaScreen.tsx`), API `/api/buses`, tipos y almacenamiento offline-first (`fleet-storage.ts`). Incorpora diferenciación de circuito (`Troncal General VT` vs `Alimentador Especial P`) y política Zero-Locking (cero bloqueos en carretera).
+  * **FASE 3 (COMPLETADA - v3.52.2):** Despliegue progresivo de unidades y selector dinámico de autobús (`BusSelector`).
+    - Sub-Fase 3.1 (COMPLETADA - v3.52.1): Selector táctil `BusSelector.tsx`, persistencia local reactiva de `activeBusId` con fallback a Bus 01 y badge de unidad en `HomeScreenVT`.
+    - Sub-Fase 3.2 (COMPLETADA - v3.52.2): Odómetro inteligente por autobús en `ArqueoGeneralScreen`, precarga aislada de `kmInicial` por unidad física, campo `busId` en `DailyRecord` (Prisma y `/api/records`) y almacenamiento dedicado offline.
+  * **FASE 4 (COMPLETADA - v3.53.0):** Módulo de Benchmark Estadístico y Auditoría de Tripulaciones (Ingreso Bruto e IPF) con doble agrupación simétrica obligatoria: Troncal VT (45 pax) vs Alimentadores P (28 pax). Motor de cálculo matemático puro (`benchmark-metrics.ts`), pantalla móvil ergonómica (`BenchmarkScreen.tsx`), semáforo de media, ranking, desglose de ayudantes y exportación a WhatsApp.
 
 ### PENDIENTE #3: Reasignación Contable de Boletos Huérfanos
 - **Objetivo:** En la pantalla `VentasReviewScreen`, permitir al Administrador reasignar boletos huérfanos (`frecuenciaId == null`) a una frecuencia oficial existente con un toque para cuadre contable perfecto.

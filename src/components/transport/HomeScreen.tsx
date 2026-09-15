@@ -28,6 +28,8 @@ import {
   CheckCircle2,
   ShieldCheck,
   FolderSync,
+  Bus,
+  Award,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -49,6 +51,8 @@ interface HomeScreenProps {
   onGoToBoletos: () => void;
   onGoToVentasReview: () => void;
   onGoToSocioGastos?: () => void;
+  onGoToFlota?: () => void;
+  onGoToBenchmark?: () => void;
   onLogout: () => void;
   recordCount: number;
 }
@@ -67,6 +71,8 @@ export function HomeScreen({
   onGoToBoletos,
   onGoToVentasReview,
   onGoToSocioGastos,
+  onGoToFlota,
+  onGoToBenchmark,
   onLogout,
   recordCount,
 }: HomeScreenProps) {
@@ -471,6 +477,33 @@ export function HomeScreen({
                 </CardContent>
               </Card>
             </div>
+
+            {/* Benchmark de Flota & IPF */}
+            {onGoToBenchmark && (
+              <Card
+                onClick={onGoToBenchmark}
+                id="btn-goto-benchmark"
+                className="mt-2.5 cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-white"
+              >
+                <CardContent className="flex items-center justify-between p-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-800 shrink-0">
+                      <Award className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-bold text-sm text-[#3A3A3A]">Benchmark de Flota & IPF</p>
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 tracking-wide">
+                          Simétrico
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">Ranking Troncal (45 pax) vs Alimentadores (28 pax) e ingreso por vuelta</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
@@ -498,6 +531,30 @@ export function HomeScreen({
                     <div>
                       <p className="font-bold text-sm text-[#3A3A3A]">Personal (Choferes y Ayudantes)</p>
                       <p className="text-xs text-gray-500">Asignar turno activo de hoy y claves PIN</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-gray-400" />
+                </CardContent>
+              </Card>
+
+              {/* Gestión de Flota y Unidades */}
+              <Card
+                onClick={onGoToFlota}
+                className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-blue-200 bg-white"
+              >
+                <CardContent className="flex items-center justify-between p-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-700">
+                      <Bus className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-bold text-sm text-[#3A3A3A]">Flota y Unidades (Buses)</p>
+                        <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 tracking-wide">
+                          19 Buses
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">Discos, placas Hino AK, circuito Troncal VT y Alimentadores P</p>
                     </div>
                   </div>
                   <ArrowRight className="w-4 h-4 text-gray-400" />

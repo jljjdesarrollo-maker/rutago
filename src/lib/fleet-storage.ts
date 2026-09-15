@@ -18,32 +18,171 @@ export const INITIAL_PILOT_BUS: BusItem = {
   notas: 'Unidad Piloto del Socio Líder • Circuito Troncal General (VT01 - VT15)',
 };
 
+// ─── FLOTA DEMO / BENCHMARK COOPERATIVA (19 BUSES DE REFERENCIA) ───
+export const BENCHMARK_FLEET_BUSES: BusItem[] = [
+  INITIAL_PILOT_BUS,
+  {
+    id: 'BUS-02',
+    numeroDisco: '02',
+    placa: 'TAA-4102',
+    marca: 'Hino AK',
+    modelo: 'AK',
+    anio: 2021,
+    capacidadAsientos: 45,
+    propietario: 'Socio VilcabambaTuris',
+    tipoOperacion: 'TRONCAL_VT',
+    activo: true,
+  },
+  {
+    id: 'BUS-03',
+    numeroDisco: '03',
+    placa: 'TAA-3903',
+    marca: 'Hino AK',
+    modelo: 'AK',
+    anio: 2020,
+    capacidadAsientos: 45,
+    propietario: 'Socio VilcabambaTuris',
+    tipoOperacion: 'TRONCAL_VT',
+    activo: true,
+  },
+  {
+    id: 'BUS-04',
+    numeroDisco: '04',
+    placa: 'TAA-4004',
+    marca: 'Hino AK',
+    modelo: 'AK',
+    anio: 2019,
+    capacidadAsientos: 45,
+    propietario: 'Socio VilcabambaTuris',
+    tipoOperacion: 'TRONCAL_VT',
+    activo: true,
+  },
+  {
+    id: 'BUS-10',
+    numeroDisco: '10',
+    placa: 'TAA-3420',
+    marca: 'Hino AK',
+    modelo: 'AK',
+    anio: 2022,
+    capacidadAsientos: 45,
+    propietario: 'Socio VilcabambaTuris',
+    tipoOperacion: 'TRONCAL_VT',
+    activo: true,
+    notas: 'Unidad Troncal de Alta Capacidad • VT01 - VT15',
+  },
+  {
+    id: 'BUS-12',
+    numeroDisco: '12',
+    placa: 'TAA-4212',
+    marca: 'Hino AK',
+    modelo: 'AK',
+    anio: 2021,
+    capacidadAsientos: 45,
+    propietario: 'Socio VilcabambaTuris',
+    tipoOperacion: 'TRONCAL_VT',
+    activo: true,
+    notas: 'Unidad Troncal de Alta Capacidad • VT01 - VT15',
+  },
+  {
+    id: 'BUS-16',
+    numeroDisco: '16',
+    placa: 'LBA-7816',
+    marca: 'Hino FC',
+    modelo: 'FC Microbús',
+    anio: 2023,
+    capacidadAsientos: 28,
+    propietario: 'Socio Alimentador',
+    tipoOperacion: 'ALIMENTADOR_P',
+    activo: true,
+    notas: 'Circuito Especial Alimentador P1-P3 (Yangana / La Elvira / Quinara)',
+  },
+  {
+    id: 'BUS-17',
+    numeroDisco: '17',
+    placa: 'LBA-7917',
+    marca: 'Hino FC',
+    modelo: 'FC Microbús',
+    anio: 2023,
+    capacidadAsientos: 28,
+    propietario: 'Socio Alimentador',
+    tipoOperacion: 'ALIMENTADOR_P',
+    activo: true,
+    notas: 'Circuito Especial Alimentador P1-P3 (Yangana / La Elvira / Quinara)',
+  },
+  {
+    id: 'BUS-18',
+    numeroDisco: '18',
+    placa: 'TAA-4018',
+    marca: 'Hino AK',
+    modelo: 'AK',
+    anio: 2021,
+    capacidadAsientos: 45,
+    propietario: 'Socio VilcabambaTuris',
+    tipoOperacion: 'TRONCAL_VT',
+    activo: true,
+    notas: 'Unidad Troncal de Alta Capacidad • VT01 - VT15',
+  },
+  {
+    id: 'BUS-19',
+    numeroDisco: '19',
+    placa: 'TAA-4919',
+    marca: 'Hino AK',
+    modelo: 'AK',
+    anio: 2022,
+    capacidadAsientos: 45,
+    propietario: 'Socio VilcabambaTuris',
+    tipoOperacion: 'TRONCAL_VT',
+    activo: true,
+    notas: 'Unidad Troncal de Alta Capacidad • VT01 - VT15',
+  },
+];
+
 /**
  * Obtiene todas las unidades de la flota guardadas localmente.
- * Si no existen, inicializa automáticamente con la Unidad 01 del Socio Líder.
+ * Si no existen o faltan unidades de la cooperativa, inicializa automáticamente
+ * respetando a la Unidad 01 del Socio Líder en primer lugar.
  */
 export function getAllBuses(): BusItem[] {
-  if (typeof window === 'undefined') return [INITIAL_PILOT_BUS];
+  if (typeof window === 'undefined') return BENCHMARK_FLEET_BUSES;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      // Primera inicialización automática con Bus 01
-      const initial = [INITIAL_PILOT_BUS];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
+      // Primera inicialización automática con la flota oficial
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(BENCHMARK_FLEET_BUSES));
       localStorage.setItem(INITIALIZED_KEY, 'true');
-      return initial;
+      return BENCHMARK_FLEET_BUSES;
     }
     const list: BusItem[] = JSON.parse(raw);
-    // Garantizar que la Unidad 01 siempre exista con los datos oficiales
-    const hasBus01 = list.some((b) => b.numeroDisco === '01' || b.id === 'BUS-01');
-    if (!hasBus01) {
+    let modified = false;
+
+    // Garantizar que todas las unidades de la cooperativa estén disponibles
+    BENCHMARK_FLEET_BUSES.forEach((b) => {
+      const exists = list.some(
+        (item) => item.numeroDisco === b.numeroDisco || item.id === b.id
+      );
+      if (!exists) {
+        list.push(b);
+        modified = true;
+      }
+    });
+
+    // Garantizar que la Unidad 01 siempre exista con los datos oficiales del Socio Líder
+    const bus01Index = list.findIndex((b) => b.numeroDisco === '01' || b.id === 'BUS-01');
+    if (bus01Index < 0) {
       list.unshift(INITIAL_PILOT_BUS);
+      modified = true;
+    }
+
+    if (modified) {
+      list.sort((a, b) =>
+        a.numeroDisco.localeCompare(b.numeroDisco, undefined, { numeric: true })
+      );
       localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
     }
     return list;
   } catch (err) {
     console.error('Error cargando catálogo de flota:', err);
-    return [INITIAL_PILOT_BUS];
+    return BENCHMARK_FLEET_BUSES;
   }
 }
 
@@ -178,3 +317,148 @@ export async function deleteBusFromApi(id: string): Promise<boolean> {
     return false;
   }
 }
+
+export function seedBenchmarkFleet(): BusItem[] {
+  if (typeof window === 'undefined') return BENCHMARK_FLEET_BUSES;
+  try {
+    const current = getAllBuses();
+    const map = new Map<string, BusItem>();
+    // Pre-cargar los actuales
+    current.forEach((b) => map.set(b.numeroDisco, b));
+    // Agregar benchmark sin sobreescribir si ya existe
+    BENCHMARK_FLEET_BUSES.forEach((b) => {
+      if (!map.has(b.numeroDisco)) {
+        map.set(b.numeroDisco, b);
+      }
+    });
+    const merged = Array.from(map.values()).sort((a, b) =>
+      a.numeroDisco.localeCompare(b.numeroDisco, undefined, { numeric: true })
+    );
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    return merged;
+  } catch (err) {
+    console.error('Error semillando benchmark de flota:', err);
+    return getAllBuses();
+  }
+}
+
+// ─── GESTIÓN DE UNIDAD FÍSICA ACTIVA EN JORNADA (FASE 3) ───
+export const ACTIVE_BUS_KEY = 'rutago_active_bus_id';
+
+/**
+ * Obtiene el autobús físico actualmente activo en el dispositivo.
+ * Si no se ha seleccionado ninguno, retorna por defecto la Unidad Piloto 01 del Socio Líder.
+ */
+export function getActiveBus(): BusItem {
+  if (typeof window === 'undefined') return INITIAL_PILOT_BUS;
+  try {
+    const savedId = localStorage.getItem(ACTIVE_BUS_KEY);
+    if (savedId) {
+      const found = getBusByDisco(savedId);
+      if (found) return found;
+    }
+    // Fallback prioritario: Unidad 01
+    const bus01 = getBusByDisco('01');
+    if (bus01) return bus01;
+    return INITIAL_PILOT_BUS;
+  } catch (err) {
+    console.error('Error obteniendo bus activo:', err);
+    return INITIAL_PILOT_BUS;
+  }
+}
+
+/**
+ * Asigna y persiste el autobús físico activo en el dispositivo.
+ * Despacha el evento `rutago:active_bus_changed` para reactividad en todas las pantallas.
+ */
+export function setActiveBus(discoOrId: string): BusItem {
+  const bus = getBusByDisco(discoOrId) || INITIAL_PILOT_BUS;
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(ACTIVE_BUS_KEY, bus.id);
+      window.dispatchEvent(new CustomEvent('rutago:active_bus_changed', { detail: bus }));
+    } catch (err) {
+      console.error('Error guardando bus activo:', err);
+    }
+  }
+  return bus;
+}
+
+/**
+ * Suscripción reactiva al cambio de unidad física activa.
+ */
+export function subscribeToActiveBus(callback: (bus: BusItem) => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const handler = (event: Event) => {
+    const custom = event as CustomEvent<BusItem>;
+    if (custom.detail) {
+      callback(custom.detail);
+    } else {
+      callback(getActiveBus());
+    }
+  };
+  window.addEventListener('rutago:active_bus_changed', handler);
+  window.addEventListener('storage', (e) => {
+    if (e.key === ACTIVE_BUS_KEY) {
+      callback(getActiveBus());
+    }
+  });
+  return () => {
+    window.removeEventListener('rutago:active_bus_changed', handler);
+  };
+}
+
+// ─── CONTROL DE ODÓMETRO AISLADO POR AUTOBÚS FÍSICO (FASE 3.2) ───
+
+export interface BusOdometerRecord {
+  busId: string;
+  numeroDisco: string;
+  kmFinal: string;
+  date: string;
+  updatedAt: string;
+}
+
+/**
+ * Almacena de forma persistente y dedicada la última lectura del odómetro para un autobús específico.
+ */
+export function saveBusOdometer(busIdOrDisco: string, kmFinal: string, date: string): void {
+  if (typeof window === 'undefined' || !kmFinal || !kmFinal.trim()) return;
+  try {
+    const cleanDisco = busIdOrDisco.replace(/^BUS-/, '').padStart(2, '0');
+    const key = `rutago_odometro_bus_${cleanDisco}`;
+    const payload: BusOdometerRecord = {
+      busId: `BUS-${cleanDisco}`,
+      numeroDisco: cleanDisco,
+      kmFinal: kmFinal.trim(),
+      date,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(key, JSON.stringify(payload));
+  } catch (err) {
+    console.error('Error guardando odómetro de bus:', err);
+  }
+}
+
+/**
+ * Obtiene la última lectura conocida del odómetro para un autobús físico específico.
+ */
+export function getLatestBusOdometer(busIdOrDisco: string): { kmFinal: string; date: string } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const cleanDisco = busIdOrDisco.replace(/^BUS-/, '').padStart(2, '0');
+    const key = `rutago_odometro_bus_${cleanDisco}`;
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.kmFinal) {
+        return { kmFinal: parsed.kmFinal, date: parsed.date || '' };
+      }
+    }
+    return null;
+  } catch (err) {
+    console.error('Error leyendo odómetro de bus:', err);
+    return null;
+  }
+}
+
+
