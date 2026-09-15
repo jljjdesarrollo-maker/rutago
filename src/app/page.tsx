@@ -23,6 +23,8 @@ import { SyncScreen } from '@/components/transport/SyncScreen';
 import OwnerExpensesScreen from '@/components/socio/OwnerExpensesScreen';
 import { FlotaScreen } from '@/components/transport/FlotaScreen';
 import { BenchmarkScreen } from '@/components/transport/BenchmarkScreen';
+import { SaaSAdminScreen } from '@/components/transport/SaaSAdminScreen';
+import { MantenimientoScreen } from '@/components/transport/MantenimientoScreen';
 import { type AppView, type RecordFormData, type SavedRecord, type UserSession, num } from '@/components/transport/types';
 import { type VTSession, type FrecuenciaEstado } from '@/components/transport/types-boletos';
 import { useToast } from '@/hooks/use-toast';
@@ -359,6 +361,24 @@ export default function Home() {
     );
   }
 
+  // Suscripciones SaaS (SuperAdmin)
+  if (view === 'saas_admin') {
+    return (
+      <SaaSAdminScreen
+        onBack={() => setView('home')}
+      />
+    );
+  }
+
+  // Mantenimiento Mecánico Preventivo (Socio / Chofer)
+  if (view === 'mantenimiento') {
+    return (
+      <MantenimientoScreen
+        onBack={() => setView('home')}
+      />
+    );
+  }
+
   // Compare Frequencies screen (all users)
   if (view === 'compare') {
     return (
@@ -499,6 +519,8 @@ export default function Home() {
           onGoToSocioGastos={() => setView('socio_gastos')}
           onGoToFlota={() => setView('flota_gestion')}
           onGoToBenchmark={() => setView('benchmark')}
+          onGoToSaaSAdmin={() => setView('saas_admin')}
+          onGoToMantenimiento={() => setView('mantenimiento')}
           onLogout={handleLogout}
           recordCount={recordCount}
         />

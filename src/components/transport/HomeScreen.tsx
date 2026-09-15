@@ -30,12 +30,15 @@ import {
   FolderSync,
   Bus,
   Award,
+  Wrench,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import type { UserSession } from './types';
 import { getOwnerExpenses, fetchOwnerExpensesFromApi } from '@/lib/owner-expenses-storage';
+import { SuperAdminHomeScreen } from './SuperAdminHomeScreen';
+import { getAllBuses, getActiveBusId } from '@/lib/fleet-storage';
 
 interface HomeScreenProps {
   user: UserSession;
@@ -53,6 +56,8 @@ interface HomeScreenProps {
   onGoToSocioGastos?: () => void;
   onGoToFlota?: () => void;
   onGoToBenchmark?: () => void;
+  onGoToSaaSAdmin?: () => void;
+  onGoToMantenimiento?: () => void;
   onLogout: () => void;
   recordCount: number;
 }
@@ -73,6 +78,8 @@ export function HomeScreen({
   onGoToSocioGastos,
   onGoToFlota,
   onGoToBenchmark,
+  onGoToSaaSAdmin,
+  onGoToMantenimiento,
   onLogout,
   recordCount,
 }: HomeScreenProps) {
@@ -172,6 +179,37 @@ export function HomeScreen({
       setBackupLoading(false);
     }
   };
+
+  const isSuperAdmin = Boolean(
+    user.id === 'saas-superadmin' ||
+    user.id === 'user-superadmin' ||
+    user.nombre?.toLowerCase().includes('superadmin') ||
+    user.rol === 'SUPERADMIN_SAAS'
+  );
+
+  if (isSuperAdmin) {
+    return (
+      <SuperAdminHomeScreen
+        user={user}
+        onGoToSaaSAdmin={onGoToSaaSAdmin}
+        onGoToFlota={onGoToFlota}
+        onGoToBenchmark={onGoToBenchmark}
+        onGoToOperativo={onGoToOperativo}
+        onGoToCompare={onGoToCompare}
+        onGoToReports={onGoToReports}
+        onGoToVentasReview={onGoToVentasReview}
+        onGoToPersonal={onGoToPersonal}
+        onGoToVtConfig={onGoToVtConfig}
+        onBackup={handleBackup}
+        backupLoading={backupLoading}
+        onLogout={onLogout}
+      />
+    );
+  }
+
+  const activeBus = getAllBuses().find(b => b.id === getActiveBusId());
+  const busNumero = activeBus?.numeroDisco || '01';
+
   return (
     <div className="flex flex-col min-h-[100dvh] bg-white">
       {/* Header with user info & Bus identifier */}
@@ -185,7 +223,7 @@ export function HomeScreen({
               <div className="flex items-center gap-2">
                 <span className="text-base font-black text-[#3A3A3A] tracking-tight">RutaGo</span>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#912D26] text-white">
-                  UNIDAD 04
+                  UNIDAD {busNumero}
                 </span>
               </div>
               <p className="text-xs text-[#3A3A3A]/70 font-medium">Coo. Vilcabambaturis</p>
@@ -264,17 +302,45 @@ export function HomeScreen({
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="font-black text-sm text-emerald-950">Gastos y Mantenimiento del Bus</p>
+                        <p className="font-black text-sm text-emerald-950">Gastos y Negocio del Bus</p>
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-950">
                           Socio
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 mt-0.5">
-                        Registrar compras, lubricadora, repuestos y deudas
+                        Registrar compras, combustible, repuestos y deudas
                       </p>
                     </div>
                   </div>
                   <ArrowRight className="w-5 h-5 text-emerald-700 shrink-0" />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Mantenimiento Mecánico y Tacómetro del Bus */}
+            {isAdmin && onGoToMantenimiento && (
+              <Card
+                onClick={onGoToMantenimiento}
+                className="cursor-pointer hover:shadow-md transition-all rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-50/60 to-white shadow-xs"
+              >
+                <CardContent className="flex items-center justify-between p-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center shadow-xs">
+                      <Wrench className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-black text-sm text-gray-900">Mantenimiento Preventivo</p>
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-100 text-amber-900">
+                          Tacómetro
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Alertas de cambio de aceite, frenos, filtros y corona
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
                 </CardContent>
               </Card>
             )}

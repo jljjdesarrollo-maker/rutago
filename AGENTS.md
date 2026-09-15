@@ -1,10 +1,10 @@
 # Reglas y Directivas de Proyecto: RutaGo
 
 ## 1. Identidad y Propósito del Proyecto
-- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.52.0-flota-gestion` (base producción: `v3.51.0-gastos-socio`)
+- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.55.0-roles-depuracion` (base previa: `v3.54.4-saas-core`)
 - **Repositorio Oficial:** `https://github.com/jljjdesarrollo-maker/rutago`
-- **Stack Técnico:** Next.js (App Router), React 19, TypeScript, Tailwind CSS, Prisma ORM, IndexedDB (Offline-First), Radix UI, ESC/POS & JSPDF.
-- **Entorno de Despliegue:** Vercel (CI/CD conectado a GitHub) y uso directo en smartphones.
+- **Stack Técnico:** Next.js (App Router), React 19, TypeScript, Tailwind CSS, Prisma ORM, PostgreSQL, IndexedDB (Offline-First), Radix UI, ESC/POS & JSPDF.
+- **Entorno de Despliegue:** Vercel (CI/CD conectado a GitHub rama `main`) y uso directo en smartphones.
 
 ---
 
@@ -157,10 +157,11 @@
     - Sub-Fase 3.2 (COMPLETADA - v3.52.2): Odómetro inteligente por autobús en `ArqueoGeneralScreen`, precarga aislada de `kmInicial` por unidad física, campo `busId` en `DailyRecord` (Prisma y `/api/records`) y almacenamiento dedicado offline.
   * **FASE 4 (COMPLETADA - v3.53.0):** Módulo de Benchmark Estadístico y Auditoría de Tripulaciones (Ingreso Bruto e IPF) con doble agrupación simétrica obligatoria: Troncal VT (45 pax) vs Alimentadores P (28 pax). Motor de cálculo matemático puro (`benchmark-metrics.ts`), pantalla móvil ergonómica (`BenchmarkScreen.tsx`), semáforo de media, ranking, desglose de ayudantes y exportación a WhatsApp.
   * **FASE 5 (COMPLETADA - v3.54.0):** Cuentas Independientes (2 PINs: SuperAdmin `9999` vs Socio Bus 01 `0101`) & Nomenclatura Operativa Oficial (Ruta General 45 Pax vs Ruta Exclusiva 28 Pax) en `src/types/saas.ts`, `src/lib/saas-storage.ts` y `BenchmarkScreen.tsx`.
-  * **FASE 6 (LISTA PARA EJECUTAR TRAS CONFIRMACIÓN 'continuar'):** Módulo Comercial de Suscripciones SaaS (`SaaSAdminScreen`, cobros mensuales por bus, MRR cooperativo, estado de cuenta del socio).
-  * **FASE 7 (PENDIENTE):** Delegación de Tripulación por Socio & Pool Laboral Compartido (Cédula Única sin duplicados de chofer al rotar).
+  * **FASE 6 (COMPLETADA - v3.54.4):** Módulo Comercial de Suscripciones SaaS (`SaaSAdminScreen`, cobros mensuales de $20/mes por bus, MRR cooperativo proyectado de $380/mes, estado de cuenta de los 19 socios).
+  * **FASE 7 (COMPLETADA - v3.54.4):** Delegación de Tripulación por Socio & Pool Laboral Compartido (Cédula Única sin duplicados de chofer al rotar).
   * **FASE 8 (PENDIENTE):** Promoción Opcional de Pasajes Gratis por Bus en VT & Benchmark Anónimo (Su Bus vs Unidad A, B).
-  * **FASE 9 (PENDIENTE):** Módulo de Mantenimientos Preventivos para el Chofer (`MantenimientoScreen`, alertas preventivas por tacómetro/km).
+  * **FASE 9 (COMPLETADA - v3.54.4):** Módulo de Mantenimientos Preventivos para el Chofer (`MantenimientoScreen`, alertas mecánicas por odómetro/km).
+  * **FASE 10 (EN EJECUCIÓN - v3.55.0):** Depuración Integral de Interfaces por Rol (SuperAdmin `9999`, Socio `0101`, Tripulante `2107`). El Super Admin ve exclusivamente herramientas corporativas/SaaS y cero gastos personales de bus ni emisión manual de boletos.
 
 ### PENDIENTE #3: Reasignación Contable de Boletos Huérfanos
 - **Objetivo:** En la pantalla `VentasReviewScreen`, permitir al Administrador reasignar boletos huérfanos (`frecuenciaId == null`) a una frecuencia oficial existente con un toque para cuadre contable perfecto.

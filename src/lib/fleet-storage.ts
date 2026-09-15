@@ -368,6 +368,13 @@ export function getActiveBus(): BusItem {
 }
 
 /**
+ * Obtiene el ID del autobús físico activo (ej. 'BUS-01').
+ */
+export function getActiveBusId(): string {
+  return getActiveBus().id;
+}
+
+/**
  * Asigna y persiste el autobús físico activo en el dispositivo.
  * Despacha el evento `rutago:active_bus_changed` para reactividad en todas las pantallas.
  */
