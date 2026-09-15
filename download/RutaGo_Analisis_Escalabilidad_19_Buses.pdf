@@ -1,0 +1,869 @@
+%PDF-1.3
+%ºß¬à
+3 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 11224
+>>
+stream
+0.5670000000000001 w
+0 G
+0.57 0.18 0.15 rg
+39.6850393700787407 802.2049606299211746 515.9099212598424629 -68.031496062992133 re
+f
+BT
+/F2 13 Tf
+14.9499999999999993 TL
+1. g
+56.6929133858267775 776.69314960629913 Td
+(RutaGo - DICTAMEN DE ARQUITECTURA & ESCALABILIDAD) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+1. g
+56.6929133858267775 754.0159842519684616 Td
+(Modelo Multi-Unidad y Suscripción SaaS para Flota de 19 Buses | VilcabambaTuris Cía. Ltda.) Tj
+ET
+0.97 0.98 0.98 rg
+0.86 0.88 0.9 RG
+45.354330708661422 717.1655905511810261 m
+549.9256692913385223 717.1655905511810261 l
+553.056732439985467 717.1655905511810261 555.5949606299211609 714.6273623612453321 555.5949606299211609 711.4962992125983874 c
+555.5949606299211609 660.4726771653542983 l
+555.5949606299211609 657.3416140167072399 552.4638974812742163 654.8033858267716596 549.9256692913385223 654.8033858267716596 c
+45.354330708661422 654.8033858267716596 l
+42.2232675600144063 654.8033858267716596 39.6850393700787407 657.9344489754186043 39.6850393700787407 660.4726771653542983 c
+39.6850393700787407 711.4962992125983874 l
+39.6850393700787407 714.6273623612453321 42.8161025187257636 717.1655905511810261 45.354330708661422 717.1655905511810261 c
+h
+B
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.227 g
+51.0236220472441033 700.15771653543311 Td
+(DICTAMEN EMITIDO POR:) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.227 g
+51.0236220472441033 685.9844881889763428 Td
+(• Arquitecto de Software Cloud & Multi-Tenancy) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.227 g
+51.0236220472441033 671.8112598425196893 Td
+(• Especialista en Modelos de Suscripción SaaS B2B) Tj
+ET
+BT
+/F2 8 Tf
+9.1999999999999993 TL
+0.227 g
+308.9763779527559109 700.15771653543311 Td
+(PARQUE AUTOMOTOR EVALUADO:) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.227 g
+308.9763779527559109 685.9844881889763428 Td
+(• Flota total: 19 Buses \(4 de la Cía. + 15 de Socios\)) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.227 g
+308.9763779527559109 671.8112598425196893 Td
+(• 1 Socio multi-unidad \(2 buses\) | 13 Socios mono-unidad \(1 bus\)) Tj
+ET
+BT
+/F2 10.5 Tf
+12.0749999999999993 TL
+0.569 0.176 0.149 rg
+39.6850393700787407 637.7955118110235162 Td
+(1. PREMISA Y REQUERIMIENTO DEL CLIENTE) Tj
+ET
+0.57 0.18 0.15 RG
+39.6850393700787407 633.5435433070865656 m
+280.629921259842547 633.5435433070865656 l
+S
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+39.6850393700787407 620.7876377952754865 Td
+(La compañía VilcabambaTuris cuenta con 19 buses que operan bajo un modelo de administración contable y financiera 100%) Tj
+T* (independiente entre unidades. De ellos, 4 pertenecen a la propia compañía y 15 pertenecen a socios individuales. Uno de los socios) Tj
+T* (posee dos buses. La regla comercial es estricta: cada bus administrado debe generar el pago de una suscripción de software individual) Tj
+T* (\(hasta 19 suscripciones\). Se analiza el impacto de exigir cuentas separadas versus una cuenta unificada multi-unidad.) Tj
+ET
+BT
+/F2 10.5 Tf
+12.0749999999999993 TL
+0.569 0.176 0.149 rg
+39.6850393700787407 558.9923622047243725 Td
+(2. DICTAMEN COMPARATIVO: 2 CUENTAS VS. CUENTA UNIFICADA MULTI-BUS) Tj
+ET
+0.57 0.18 0.15 RG
+39.6850393700787407 554.7403937007873083 m
+450.7086614173229009 554.7403937007873083 l
+S
+0.23 g
+39.6850393700787407 541.9844881889763428 515.9099212598424629 -18.4251968503937036 re
+f
+BT
+/F2 7.5 Tf
+8.625 TL
+1. g
+45.354330708661422 529.2285826771653774 Td
+(Criterio de Evaluación) Tj
+ET
+BT
+/F2 7.5 Tf
+8.625 TL
+1. g
+147.4015748031496287 529.2285826771653774 Td
+(Enfoque A: 2 Cuentas Separadas \(Rechazado\)) Tj
+ET
+BT
+/F2 7.5 Tf
+8.625 TL
+1. g
+354.3307086614173613 529.2285826771653774 Td
+(Enfoque B: 1 Cuenta con Multi-Bus \(Aprobado\)) Tj
+ET
+1. g
+0.86 0.88 0.9 RG
+39.6850393700787407 523.559291338582625 515.9099212598424629 -42.236220472440948 re
+B
+BT
+/F2 7.5 Tf
+8.625 TL
+0.227 g
+45.354330708661422 512.2207086614173477 Td
+(Experiencia de Usuario) Tj
+T* (\(UX\)) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.227 g
+147.4015748031496287 512.2207086614173477 Td
+(Fricción crítica. El socio debe memorizar 2 correos y) Tj
+T* (contraseñas. Requiere cerrar e iniciar sesión para ver) Tj
+T* (su otro bus.) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.227 g
+354.3307086614173613 512.2207086614173477 Td
+(Óptima. 1 solo inicio de sesión con selector) Tj
+T* (desplegable de bus en barra superior. Conmutación) Tj
+T* (instantánea en 1 clic.) Tj
+ET
+0.97 0.98 0.98 rg
+0.86 0.88 0.9 RG
+39.6850393700787407 481.323070866141677 515.9099212598424629 -42.236220472440948 re
+B
+BT
+/F2 7.5 Tf
+8.625 TL
+0.227 g
+45.354330708661422 469.9844881889763428 Td
+(Cobro de Suscripción) Tj
+T* (\(Billing\)) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.227 g
+147.4015748031496287 469.9844881889763428 Td
+(Riesgoso. Dos cobros desarticulados. Si un bus queda) Tj
+T* (impago, el socio pierde trazabilidad o abandona por) Tj
+T* (frustración.) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.227 g
+354.3307086614173613 469.9844881889763428 Td
+(Efectivo y Ordenado. Paga 2 suscripciones en un solo) Tj
+T* (estado de cuenta consolidado con desglose por cada bus.) Tj
+ET
+1. g
+0.86 0.88 0.9 RG
+39.6850393700787407 439.086850393700729 515.9099212598424629 -31.4645669291338592 re
+B
+BT
+/F2 7.5 Tf
+8.625 TL
+0.227 g
+45.354330708661422 427.7482677165353948 Td
+(Aislamiento Contable y) Tj
+T* (Datos) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.227 g
+147.4015748031496287 427.7482677165353948 Td
+(Aislamiento artificial. Propenso a errores humanos al) Tj
+T* (registrar gastos en la cuenta equivocada.) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.227 g
+354.3307086614173613 427.7482677165353948 Td
+(Aislamiento riguroso por busId en base de datos. Ningún) Tj
+T* (registro contable ni de ruta se mezcla jamás.) Tj
+ET
+0.97 0.98 0.98 rg
+0.86 0.88 0.9 RG
+39.6850393700787407 407.6222834645668627 515.9099212598424629 -31.4645669291338592 re
+B
+BT
+/F2 7.5 Tf
+8.625 TL
+0.227 g
+45.354330708661422 396.2837007874015285 Td
+(Operatividad de Personal) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.227 g
+147.4015748031496287 396.2837007874015285 Td
+(Dificulta asignar choferes o ayudantes de confianza entre) Tj
+T* (las dos unidades del mismo dueño.) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.227 g
+354.3307086614173613 396.2837007874015285 Td
+(Permite rotar o vincular personal a cada bus de manera) Tj
+T* (transparente según la unidad activa.) Tj
+ET
+1. g
+0.86 0.88 0.9 RG
+39.6850393700787407 376.1577165354330532 515.9099212598424629 -31.4645669291338592 re
+B
+BT
+/F2 7.5 Tf
+8.625 TL
+0.227 g
+45.354330708661422 364.819133858267719 Td
+(Escalabilidad Futura) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.227 g
+147.4015748031496287 364.819133858267719 Td
+(Inviable. Si un socio adquiere un 3er bus o la flota crece a) Tj
+T* (25+, el modelo de cuentas colapsa.) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.227 g
+354.3307086614173613 364.819133858267719 Td
+(Arquitectura Enterprise lista para flotas de 100+ buses sin) Tj
+T* (requerir cambios de software.) Tj
+ET
+BT
+/F2 10.5 Tf
+12.0749999999999993 TL
+0.569 0.176 0.149 rg
+39.6850393700787407 327.685275590551214 Td
+(3. MODELO DE DATOS RECOMENDADO \(PRISMA SCHEMA\)) Tj
+ET
+0.57 0.18 0.15 RG
+39.6850393700787407 323.4333070866141497 m
+351.496062992126042 323.4333070866141497 l
+S
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+39.6850393700787407 310.6774015748031843 Td
+(El principio arquitectónico clave consiste en separar la Identidad del Usuario \(quién inicia sesión\) del Recurso Facturable \(el Bus\). De) Tj
+T* (este modo, una persona puede poseer 1 o varios buses, y cada bus conserva su estado de suscripción independiente:) Tj
+ET
+0.14 0.16 0.19 rg
+39.6850393700787407 282.3309448818897636 515.9099212598424629 -147.4015748031496287 re
+f
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 269.5750393700786844 Td
+(// 1. Maestro de Buses con Control de Suscripción) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 261.3545669291338527 Td
+(model Bus {) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 253.1340944881889072 Td
+(  id                String            @id // e.g. "BUS-04", "BUS-08") Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 244.9136220472440755 Td
+(  numeroDisco       String            @unique // "04", "08") Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 236.69314960629913 Td
+(  placa             String) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 228.4726771653541846 Td
+(  tipoPropiedad     String            @default\("SOCIO"\) // "COMPANIA" \(4 buses\) | "SOCIO" \(15 buses\)) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 220.2522047244093528 Td
+(  estadoSuscripcion String            @default\("ACTIVA"\) // "ACTIVA" | "VENCIDA" | "PRUEBA") Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 212.0317322834644074 Td
+(  fechaVencimiento  DateTime?) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 203.8112598425195756 Td
+(  montoMensual      Float             @default\(25.00\) // Tarifa por bus) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 195.5907874015746302 Td
+(  propietarios      BusPropietario[]) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 187.3703149606297984 Td
+(  gastosSocio       OwnerExpense[]) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 179.149842519684853 Td
+(}) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 162.7088976377950758 Td
+(// 2. Tabla Intermedia de Propiedad Multi-Bus) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 154.4884251968501303 Td
+(model BusPropietario {) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 146.2679527559052985 Td
+(  id          String   @id @default\(cuid\(\)\)) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 138.0474803149603531 Td
+(  userId      String) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 129.8270078740154077 Td
+(  busId       String) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 121.6065354330705759 Td
+(  esPrincipal Boolean  @default\(true\)) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 113.3860629921257441 Td
+(  user        User     @relation\(fields: [userId], references: [id]\)) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 105.1655905511809124 Td
+(  bus         Bus      @relation\(fields: [busId], references: [id]\)) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 96.9451181102360806 Td
+(  @@unique\([userId, busId]\)) Tj
+ET
+BT
+/F5 7.2 Tf
+8.2799999999999994 TL
+0.902 0.922 0.961 rg
+51.0236220472441033 88.7246456692912489 Td
+(}) Tj
+ET
+0.84 G
+39.6850393700787407 28.3464566929133888 m
+555.5949606299211609 28.3464566929133888 l
+S
+BT
+/F1 7.5 Tf
+8.625 TL
+0.51 g
+39.6850393700787407 17.0078740157480297 Td
+(RutaGo © 2026 | VilcabambaTuris Cía. Ltda. - Dictamen de Arquitectura y Negocio) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.51 g
+504.5713385826770718 17.0078740157480297 Td
+(Página 1 de 2) Tj
+ET
+endstream
+endobj
+5 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 6 0 R
+>>
+endobj
+6 0 obj
+<<
+/Length 4214
+>>
+stream
+0.5670000000000001 w
+0.57 0.18 0.15 RG
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.471 g
+39.6850393700787407 799.3703149606299121 Td
+(RutaGo | Dictamen de Arquitectura y Negocio: Multi-Tenancy Flota \(19 Buses\)) Tj
+ET
+0.82 G
+39.6850393700787407 793.7010236220471597 m
+555.5949606299211609 793.7010236220471597 l
+S
+BT
+/F2 10.5 Tf
+12.0749999999999993 TL
+0.569 0.176 0.149 rg
+39.6850393700787407 776.69314960629913 Td
+(4. DESGLOSE DE LA FLOTA \(19 BUSES\) Y REGLAS DE ACCESO) Tj
+ET
+0.57 0.18 0.15 RG
+39.6850393700787407 772.4411811023621794 m
+394.0157480314961163 772.4411811023621794 l
+S
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+45.354330708661422 759.6852755905511003 Td
+(• 4 Buses Institucionales \(Compañía\): Administrados por la gerencia. Pueden agruparse bajo una cuenta central sin costo de) Tj
+T* (suscripción individual o como tarifa plana corporativa.) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+45.354330708661422 731.3388188976377933 Td
+(• 13 Socios con 1 Bus: Inician sesión con su correo personal y acceden inmediatamente a su respectivo bus. Pagan 1 suscripción) Tj
+T* (activa cada mes.) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+45.354330708661422 702.9923622047243725 Td
+(• 1 Socio con 2 Buses: Inicia sesión con su correo único. En la parte superior de la aplicación dispone de un selector [Bus 1 | Bus 2].) Tj
+T* (Paga 2 suscripciones mensuales independientes en un solo estado de cuenta.) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+45.354330708661422 674.6459055118109518 Td
+(• Política de Suspensión por Falta de Pago: El bloqueo de acceso actúa a nivel del Bus, nunca de la persona. Si el segundo bus no ha) Tj
+T* (renovado su suscripción, el socio puede seguir operando con normalidad su primer bus, mientras que al seleccionar el bus en mora se) Tj
+T* (le solicita la reactivación.) Tj
+ET
+BT
+/F2 10.5 Tf
+12.0749999999999993 TL
+0.569 0.176 0.149 rg
+39.6850393700787407 623.6222834645668627 Td
+(5. HOJA DE RUTA SUGERIDA \(SIN AFECTAR PRODUCCIÓN ACTUAL\)) Tj
+ET
+0.57 0.18 0.15 RG
+39.6850393700787407 619.3703149606299121 m
+408.1889763779528266 619.3703149606299121 l
+S
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+45.354330708661422 606.614409448818833 Td
+(1. Paso 1: Poblado del Catálogo Maestro de Buses:) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+56.6929133858267775 595.2758267716535556 Td
+(Registrar formalmente en la tabla Bus los 19 discos \(del 01 al 19\) con sus placas y tipo de pertenencia.) Tj
+ET
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+45.354330708661422 585.9214960629921052 Td
+(2. Paso 2: Implementación de la Tabla de Asociación:) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+56.6929133858267775 574.5829133858267141 Td
+(Crear el modelo BusPropietario para asociar los 13 socios de 1 bus y el socio especial con sus 2 buses.) Tj
+ET
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+45.354330708661422 565.2285826771653774 Td
+(3. Paso 3: Selector Dinámico en Interfaz \(Navbar\):) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+56.6929133858267775 553.8899999999999864 Td
+(Diseñar un selector tipo dropdown en la cabecera cuando el socio logueado tiene más de 1 bus asignado.) Tj
+ET
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+45.354330708661422 544.5356692913385359 Td
+(4. Paso 4: Módulo de Suscripciones por Unidad:) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+56.6929133858267775 533.1970866141732586 Td
+(Diseñar la pantalla 'Mis Suscripciones' donde el socio visualiza sus buses activos, fechas de corte y métodos de pago.) Tj
+ET
+BT
+/F2 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+45.354330708661422 523.8427559055118081 Td
+(5. Paso 5: Consolidado Empresarial \(Dashboard Cía\):) Tj
+ET
+BT
+/F1 8.5 Tf
+9.7749999999999986 TL
+0.227 g
+56.6929133858267775 512.5041732283464171 Td
+(Crear la vista gerencial para monitorear el estado global de los 19 buses respetando la privacidad de cada socio.) Tj
+ET
+0.84 G
+39.6850393700787407 28.3464566929133888 m
+555.5949606299211609 28.3464566929133888 l
+S
+BT
+/F1 7.5 Tf
+8.625 TL
+0.51 g
+39.6850393700787407 17.0078740157480297 Td
+(RutaGo © 2026 | VilcabambaTuris Cía. Ltda. - Dictamen de Arquitectura y Negocio) Tj
+ET
+BT
+/F1 7.5 Tf
+8.625 TL
+0.51 g
+504.5713385826770718 17.0078740157480297 Td
+(Página 2 de 2) Tj
+ET
+endstream
+endobj
+1 0 obj
+<</Type /Pages
+/Kids [3 0 R 5 0 R ]
+/Count 2
+>>
+endobj
+7 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+8 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+9 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+10 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+11 0 obj
+<<
+/Type /Font
+/BaseFont /Courier
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+12 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+13 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+14 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+15 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Roman
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+16 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+17 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Italic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+18 0 obj
+<<
+/Type /Font
+/BaseFont /Times-BoldItalic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+19 0 obj
+<<
+/Type /Font
+/BaseFont /ZapfDingbats
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+20 0 obj
+<<
+/Type /Font
+/BaseFont /Symbol
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+2 0 obj
+<<
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Font <<
+/F1 7 0 R
+/F2 8 0 R
+/F3 9 0 R
+/F4 10 0 R
+/F5 11 0 R
+/F6 12 0 R
+/F7 13 0 R
+/F8 14 0 R
+/F9 15 0 R
+/F10 16 0 R
+/F11 17 0 R
+/F12 18 0 R
+/F13 19 0 R
+/F14 20 0 R
+>>
+/XObject <<
+>>
+>>
+endobj
+21 0 obj
+<<
+/Producer (jsPDF 4.2.1)
+/CreationDate (D:20260914205330-00'00')
+>>
+endobj
+22 0 obj
+<<
+/Type /Catalog
+/Pages 1 0 R
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
+>>
+endobj
+xref
+0 23
+0000000000 65535 f 
+0000015832 00000 n 
+0000017657 00000 n 
+0000000015 00000 n 
+0000000152 00000 n 
+0000011429 00000 n 
+0000011566 00000 n 
+0000015895 00000 n 
+0000016020 00000 n 
+0000016150 00000 n 
+0000016283 00000 n 
+0000016421 00000 n 
+0000016545 00000 n 
+0000016674 00000 n 
+0000016806 00000 n 
+0000016942 00000 n 
+0000017070 00000 n 
+0000017197 00000 n 
+0000017326 00000 n 
+0000017459 00000 n 
+0000017561 00000 n 
+0000017907 00000 n 
+0000017993 00000 n 
+trailer
+<<
+/Size 23
+/Root 22 0 R
+/Info 21 0 R
+/ID [ <6DF196203AA708B2BB534A66875FE69D> <6DF196203AA708B2BB534A66875FE69D> ]
+>>
+startxref
+18097
+%%EOF

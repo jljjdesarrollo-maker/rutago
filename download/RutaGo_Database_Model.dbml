@@ -1,0 +1,240 @@
+Table Ruta {
+  id text [pk]
+  nombre text [unique]
+  descripcion text
+  pasaPorVilcabamba boolean [default: true]
+  ramificaEnMalacatos boolean [default: false]
+  activo boolean [default: true]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
+
+  Note: 'Rutas de transporte: troncal y ramales'
+}
+
+Table Parada {
+  id text [pk]
+  nombre text [unique]
+  nombreCompleto text
+  esPrincipal boolean [default: true]
+  hub text
+  zona text [default: 'yellow']
+  ordenTroncal integer
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
+
+  Note: 'Todas las paradas: principales e intermedias'
+}
+
+Table Tarifa {
+  id text [pk]
+  rutaId text
+  parada text
+  direccion text
+  normal float [default: 0]
+  media float [default: 0]
+  esTemporal boolean [default: false]
+  prioridad integer [default: 1]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
+
+  Note: 'Precios por ruta, direccion y parada. rutaId NULL = troncal compartido'
+}
+
+Table RutaParada {
+  id text [pk]
+  rutaId text
+  paradaId text
+  direccion text
+  orden integer
+
+  Note: 'Paradas que pertenecen a cada ruta (M:N)'
+}
+
+Table BusVT {
+  id text [pk]
+  codigo text [unique]
+  nombre text
+  frecuencias text
+  activo boolean [default: true]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
+
+  Note: 'Buses / vehiculos de transporte'
+}
+
+Table Persona {
+  id text [pk]
+  nombre text
+  cedula text
+  telefono text
+  rol text
+  pin text [unique]
+  esActual boolean [default: false]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
+
+  Note: 'Conductores, ayudantes y administradores'
+}
+
+Table Frecuencia {
+  id text [pk]
+  vtCode text
+  nombre text
+  ruta text
+  hora text
+  direccion text
+  activo boolean [default: true]
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
+
+  Note: 'Horarios de salida asignados a cada bus'
+}
+
+Table VentaBoleto {
+  id text [pk]
+  fecha text
+  vtCode text
+  frecuenciaId text
+  ruta text
+  parada text
+  tipo text
+  tarifaOficial float
+  cobrado float
+  hora text
+  ayudanteId text
+  ayudanteNombre text
+  lat float
+  lng float
+  syncStatus text [default: 'pending']
+  serverId text
+  syncError text
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
+
+  Note: 'Registro de cada boleto vendido (servidor)'
+}
+
+Table DailyRecord {
+  id text [pk]
+  date text
+  km text
+  conductor text
+  ayudanteNombre text
+  vtCode text
+  production float [default: 0]
+  cajaComun float [default: 0]
+  sobrante float [default: 0]
+  tickets float [default: 0]
+  entregaAyudante float [default: 0]
+  entregaCompania float [default: 0]
+  totalGastos float [default: 0]
+  photoUrl text
+  createdAt datetime [default: `now()`]
+  updatedAt datetime [default: `now()`]
+
+  Note: 'Registro diario de produccion y gastos por bus'
+}
+
+Table Trip {
+  id text [pk]
+  recordId text
+  trip_order integer
+  routeFrom text
+  routeTo text
+  time text
+  income float [default: 0]
+  efectivoReal float [default: 0]
+  boletos float [default: 0]
+
+  Note: 'Viajes realizados en un DailyRecord'
+}
+
+Table Expense {
+  id text [pk]
+  recordId text
+  expense_order integer
+  description text
+  amount float [default: 0]
+
+  Note: 'Gastos registrados en un DailyRecord'
+}
+
+Table VentaLocal {
+  id text [pk]
+  fecha text
+  vtCode text
+  frecuenciaId text
+  frecuenciaNombre text
+  estadoId text
+  ruta text
+  parada text
+  tipo text
+  pasajeroTipo text
+  tarifaOficial float
+  cobrado float
+  hora text
+  createdAt text
+  ayudanteId text
+  ayudanteNombre text
+  lat float
+  lng float
+  syncStatus text [default: 'pending']
+  serverId text
+  syncError text
+
+  Note: 'Ventas offline - IndexedDB - Se sincronizan a VentaBoleto'
+}
+
+Table TarifaCache {
+  id text [pk]
+  vtCode text
+  tarifas text
+  updatedAt text
+
+  Note: 'Cache offline de tarifas desde servidor'
+}
+
+Table FrecuenciaCache {
+  id text [pk]
+  vtCode text
+  frecuencias text
+  updatedAt text
+
+  Note: 'Cache offline de frecuencias desde servidor'
+}
+
+Table EstadoFrecuencia {
+  estadoId text [pk]
+  frecuenciaId text
+  nombre text
+  ruta text
+  hora text
+  direccion text
+  estado text
+  ventasCount integer
+  totalRecaudado float
+  arqueoEfectivo float
+  arqueoDiferencia float
+  arqueoFecha text
+  vtCode text
+  fecha text
+  gpsLatStart float
+  gpsLngStart float
+  gpsLatEnd float
+  gpsLngEnd float
+
+  Note: 'Estado operativo de cada frecuencia por fecha - IndexedDB'
+}
+
+Ref: RutaParada.rutaId > Ruta.id
+Ref: RutaParada.paradaId > Parada.id
+Ref: Tarifa.rutaId > Ruta.id
+Ref: Frecuencia.vtCode > BusVT.codigo
+Ref: VentaBoleto.vtCode > BusVT.codigo
+Ref: VentaBoleto.frecuenciaId > Frecuencia.id
+Ref: VentaBoleto.ayudanteId > Persona.id
+Ref: Frecuencia.ruta > Ruta.nombre
+Ref: Trip.recordId > DailyRecord.id
+Ref: Expense.recordId > DailyRecord.id
+Ref: DailyRecord.vtCode > BusVT.codigo
+Ref: VentaLocal.estadoId > EstadoFrecuencia.estadoId

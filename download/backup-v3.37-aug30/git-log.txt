@@ -1,0 +1,15 @@
+f617c84 fix: autocompletado no llena precio, deja campo vacio para ingreso manual
+6b80703 v3.37-aug30-audio-print-ganador
+f9cd0a3 v3.36b: print-test como boleto ganador con audio simultaneo
+bbe23d0 v3.36-aug30-audio-ganador: reemplaza audio ganador con audio WhatsApp del usuario
+ff65826 feat: audio voz "Boleto ganador" al ganar viaje gratis
+b7e2682 style: reducir margen final de 6 a 3 lineas en ticket
+33f6cf7 8f9c67e5-31dd-4c51-bfc1-e7a54233865c
+95dc1be test: agregar indicador TEST-GANADOR-v1 en print-test
+fce1996 chore: trigger deploy
+29c2b8f test: pagina prueba imprime boleto gratis + buzzer ganador
+0fe2f02 feat: viaje gratis solo aplica para ventas de 1 pasajero
+3d7fa56 style: eliminar palabra 'Boleto' del recibo impreso
+4a08b50 chore: trigger redeploy
+71c9bd8 style: layout recibo - espacios y boleto tamaño normal\n\n- Linea vacia despues de destino\n- Linea vacia despues de precio\n- Boleto en tamaño normal (ya no doble altura)\n- Linea vacia despues de boleto\n- v3.32-aug30-ticket-layout
+585f4b9 fix: precio del ticket en 1 linea grande en vez de 3 lineas

@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model BusVT {
+  id          String  @id @default(cuid())
+  codigo      String  @unique
+  nombre      String
+  frecuencias Json    @default("[]")
+  activo      Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  frecBoletos Frecuencia[]
+  ventasBoleto VentaBoleto[]
+}
+
+model DailyRecord {
+  id             String   @id @default(cuid())
+  date           String
+  km             String?
+  kmInicial      String?
+  kmFinal        String?
+  conductor      String?
+  ayudanteNombre String?
+  vtCode         String?
+  production     Float    @default(0)
+  cajaComun      Float    @default(0)
+  sobrante       Float    @default(0)
+  tickets        Float    @default(0)
+  entregaAyudante  Float  @default(0)
+  entregaCompania  Float  @default(0)
+  totalGastos    Float    @default(0)
+  photoUrl       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  trips   Trip[]
+  expenses Expense[]
+
+  @@index([date, vtCode])
+}
+
+model Trip {
+  id                 String  @id @default(cuid())
+  recordId           String
+  order              Int
+  routeFrom          String
+  routeTo            String
+  time               String?
+  income             Float   @default(0)
+  efectivoReal       Float   @default(0)
+  boletos            Float   @default(0)
+  cajaComunPasajeros Int    @default(0)
+  cajaComunMonto     Float   @default(0)
+  tipo               String  @default("frecuencia") // "frecuencia" | "ingreso_especial" | "no_realizada"
+  motivo             String? // "mantenimiento" | "daño_unidad" | "clima" | "sin_pasajeros" | "problema_ruta" | "orden_superior" | "otro"
+  notaEspecial       String? // nota del ingreso especial
+
+  record DailyRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id          String  @id @default(cuid())
+  recordId    String
+  order       Int
+  description String
+  amount      Float   @default(0)
+
+  record DailyRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+}
+
+model Persona {
+  id        String   @id @default(cuid())
+  nombre    String
+  cedula    String?
+  telefono  String?
+  rol       String   @default("CONDUCTOR") // CONDUCTOR | AYUDANTE | ADMIN
+  pin       String   @unique
+  esActual  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── RutaGo: Módulo de Venta de Boletos Offline ───
+
+model Frecuencia {
+  id        String   @id @default(cuid())
+  vtCode    String
+  nombre    String
+  ruta      String
+  hora      String
+  direccion String   // "ida" | "vuelta"
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vt     BusVT       @relation(fields: [vtCode], references: [codigo])
+  ventas VentaBoleto[]
+}
+
+model VentaBoleto {
+  id              String   @id @default(cuid())
+  fecha           String   // Mantenido para retrocompatibilidad
+  fechaOperacion  String?  // Fecha contable del turno ("2026-09-08")
+  diaTurno        Int      @default(1) // 1 = Primer día del turno, 2 = Retorno tras pernocta
+  vtCode          String
+  frecuenciaId    String?
+  ruta            String
+  parada          String
+  tipo            String   // "ida" | "vuelta"
+  pasajeroTipo    String   @default("normal") // "normal" | "media"
+  tarifaOficial   Float
+  cobrado         Float
+  hora            String
+  ayudanteId      String
+  ayudanteNombre  String
+  lat             Float?
+  lng             Float?
+  syncStatus      String   @default("pending")
+  serverId        String?
+  syncError       String?
+  fechaEmision    DateTime @default(now()) // Timestamp exacto de emisión
+  syncedAt        DateTime? @default(now()) // Timestamp de recepción en servidor
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  frecuencia Frecuencia? @relation(fields: [frecuenciaId], references: [id])
+  vt         BusVT       @relation(fields: [vtCode], references: [codigo])
+
+  @@index([fechaOperacion, vtCode])
+  @@index([fecha, vtCode])
+}
+
+// ─── Módulo de Gastos y Pagos del Socio Propietario ───
+model OwnerExpense {
+  id              String   @id @default(cuid())
+  busId           String   @default("BUS-01")
+  expenseDate     String   // YYYY-MM-DD
+  category        String   // LLANTAS, ACEITES_FILTROS, MOTOR_CAJA_CORONA, FRENOS_RODAJE, ELECTRICO, PAGOS_COMPANIA, TRAMITES_PERMISOS, OTROS
+  description     String
+  provider        String?
+  totalAmount     Float    @default(0)
+  paidAmount      Float    @default(0)
+  pendingBalance  Float    @default(0)
+  paymentMethod   String   @default("EFECTIVO") // TRANSFERENCIA, EFECTIVO, CREDITO_PENDIENTE
+  comprobanteRef  String?
+  bankName        String?
+  receiptPhotoUrl String?
+  abonos          Json     @default("[]")
+  status          String   @default("PAGADO") // PAGADO | PENDIENTE
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([busId, expenseDate])
+  @@index([busId, status])
+}
+
+// ─── Módulo de Flota y Unidades Físicas (Fase 2) ───
+model Bus {
+  id                String   @id @default(cuid())
+  numeroDisco       String   @unique // "01", "10", "16", "18", etc.
+  placa             String   @unique // "TAA-5152"
+  marca             String   // "Hino AK"
+  modelo            String?  // "AK"
+  anio              Int?
+  capacidadAsientos Int      @default(45)
+  propietario       String   // "José Leonardo Jaya Jaramillo"
+  tipoOperacion     String   @default("TRONCAL_VT") // "TRONCAL_VT" | "ALIMENTADOR_P"
+  activo            Boolean  @default(true)
+  notas             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([numeroDisco])
+  @@index([tipoOperacion])
+}

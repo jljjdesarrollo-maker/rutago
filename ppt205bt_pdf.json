@@ -1,0 +1,36 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "html": "",
+    "httpStatus": 200,
+    "httpStatusText": "",
+    "metadata": {
+      "Author": "Infolin",
+      "CreationDate": "D:20210105124147-05'00'",
+      "Creator": "Microsoft® Word for Office 365",
+      "EncryptFilterName": null,
+      "IsAcroFormPresent": false,
+      "IsCollectionPresent": false,
+      "IsLinearized": false,
+      "IsSignaturesPresent": false,
+      "IsXFAPresent": false,
+      "Language": "en-US",
+      "ModDate": "D:20210105124147-05'00'",
+      "PDFFormatVersion": "1.7",
+      "Producer": "Microsoft® Word for Office 365"
+    },
+    "publishedTime": "Sun, 23 Jul 2023 22:10:24 GMT",
+    "title": "PPT205BT-EN.pdf",
+    "url": "https://3nstar.com/wp-content/uploads/2021/01/PPT205BT-EN.pdf",
+    "usage": {
+      "tokens": 0
+    }
+  },
+  "meta": {
+    "usage": {
+      "tokens": 0
+    }
+  },
+  "status": 200
+}

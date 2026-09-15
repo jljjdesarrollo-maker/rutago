@@ -1,0 +1,274 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 40px;
+    background: #f0f0f0;
+    font-family: 'Courier New', 'DejaVu Sans Mono', monospace;
+    gap: 60px;
+  }
+  .label {
+    font-family: 'DejaVu Sans', Arial, sans-serif;
+    font-size: 13px;
+    color: #666;
+    text-align: center;
+    margin-bottom: -40px;
+  }
+  .receipt-wrapper {
+    filter: drop-shadow(2px 4px 8px rgba(0,0,0,0.15));
+  }
+  .receipt {
+    width: 384px;  /* 48mm printable at ~203 DPI */
+    background: #fff;
+    padding: 16px 12px;
+    font-size: 13px;
+    color: #000;
+    line-height: 1.5;
+    position: relative;
+  }
+  .receipt::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: -10px;
+    height: 10px;
+    background: linear-gradient(135deg, #fff 33.33%, transparent 33.33%) 0 0,
+                linear-gradient(225deg, #fff 33.33%, transparent 33.33%) 0 0;
+    background-size: 12px 10px;
+  }
+  .receipt::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: -10px;
+    height: 10px;
+    background: linear-gradient(315deg, #fff 33.33%, transparent 33.33%) 0 0,
+                linear-gradient(45deg, #fff 33.33%, transparent 33.33%) 0 0;
+    background-size: 12px 10px;
+  }
+  .center { text-align: center; }
+  .bold { font-weight: bold; }
+  .big { font-size: 18px; font-weight: bold; letter-spacing: 3px; }
+  .subtitle { font-size: 10px; color: #555; }
+  .line { border-top: 1px dashed #000; margin: 6px 0; }
+  .line-double { border-top: 2px solid #000; margin: 6px 0; }
+  .line-thin { border-top: 1px solid #999; margin: 4px 0; }
+  .spacer { height: 6px; }
+  .spacer-sm { height: 3px; }
+  .row { display: flex; justify-content: space-between; }
+  .row-label { color: #555; }
+  .row-value { font-weight: bold; }
+  .amount { font-size: 22px; font-weight: bold; }
+  .ticket-num { font-size: 16px; font-weight: bold; letter-spacing: 1px; }
+  .promo-box {
+    margin-top: 6px;
+    padding: 8px 6px;
+    border: 2px solid #000;
+    text-align: center;
+  }
+  .promo-title {
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+  .promo-star { font-size: 9px; letter-spacing: 6px; margin: 2px 0; }
+  .promo-msg {
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 2px;
+  }
+  .promo-footer {
+    font-size: 9px;
+    color: #555;
+    margin-top: 4px;
+  }
+  .footer-text { font-size: 8px; color: #777; text-align: center; }
+  .tear-line {
+    border-top: 2px dashed #555;
+    margin: 8px 0;
+    position: relative;
+  }
+  .tear-line::before {
+    content: '✂';
+    position: absolute;
+    left: 50%;
+    top: -9px;
+    transform: translateX(-50%);
+    background: #fff;
+    padding: 0 4px;
+    font-size: 10px;
+  }
+  /* Second receipt - pasajero keeps */
+  .receipt-pasajero {
+    width: 384px;
+    background: #fff;
+    padding: 16px 12px;
+    font-size: 13px;
+    color: #000;
+    line-height: 1.5;
+    position: relative;
+  }
+  .mini { font-size: 9px; color: #777; }
+  .barcode-area {
+    text-align: center;
+    padding: 6px 0;
+  }
+  .barcode {
+    display: inline-block;
+    font-family: 'Libre Barcode 39', 'Code39Sans', cursive;
+    font-size: 28px;
+    letter-spacing: 2px;
+    color: #000;
+  }
+  .barcode-fallback {
+    font-family: 'Courier New', monospace;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 4px;
+    transform: scaleY(1.4);
+    display: inline-block;
+  }
+  /* Comparison: 3 receipt variants side by side */
+  .comparison {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .comparison .label {
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- RECIBO COMPLETO: Ayudante entrega TODO  -->
+<!-- ═══════════════════════════════════════ -->
+<div>
+  <div class="label">RECIBO COMPLETO - Se entrega integro al pasajero</div>
+  <div class="receipt-wrapper">
+    <div class="receipt">
+      <!-- Header -->
+      <div class="center">
+        <div class="big">RUTAGO</div>
+        <div class="subtitle">Transportes Vilcabambaturis Cia. Ltda.</div>
+        <div class="subtitle">RUC: 1790000000001</div>
+      </div>
+      <div class="line-double"></div>
+
+      <!-- Route info -->
+      <div class="row"><span class="row-label">VT:</span><span class="bold">Loja - Vilcabamba</span></div>
+      <div class="row"><span class="row-label">Dir:</span><span class="bold">IDA</span></div>
+      <div class="spacer-sm"></div>
+      <div class="row"><span class="row-label">Fecha:</span><span>14/08/2026</span></div>
+      <div class="row"><span class="row-label">Hora:</span><span>08:32</span></div>
+      <div class="row"><span class="row-label">Ayudante:</span><span>Carlos M.</span></div>
+
+      <div class="line"></div>
+
+      <!-- Trip details -->
+      <div class="row"><span class="row-label">Origen:</span><span class="bold">Terminal Loja</span></div>
+      <div class="row"><span class="row-label">Destino:</span><span class="bold">Vilcabamba</span></div>
+      <div class="row"><span class="row-label">Tipo:</span><span>ENTERO</span></div>
+      <div class="spacer-sm"></div>
+      <div class="row">
+        <span class="row-label">Tarifa:</span>
+        <span class="amount">$2.50</span>
+      </div>
+
+      <div class="line"></div>
+
+      <!-- Ticket number -->
+      <div class="center">
+        <div class="spacer-sm"></div>
+        <div class="ticket-num">Boleto N. 0047</div>
+        <div class="spacer-sm"></div>
+      </div>
+
+      <!-- Barcode area -->
+      <div class="barcode-area">
+        <div class="barcode-fallback">||||||| ||| ||| ||| |||| ||</div>
+        <div class="mini">0047-14082026-0832</div>
+      </div>
+
+      <div class="line"></div>
+
+      <!-- PROMO BOX -->
+      <div class="promo-box">
+        <div class="promo-title">CONSERVE SU BOLETO</div>
+        <div class="promo-star">* * *</div>
+        <div class="promo-msg">VIAJE GRATIS</div>
+        <div class="promo-star">* * *</div>
+        <div class="spacer-sm"></div>
+        <div class="promo-footer">Participe en el sorteo diario</div>
+        <div class="promo-footer">Verifique en: rutago.vercel.app/sorteo</div>
+      </div>
+
+      <div class="line-double"></div>
+
+      <!-- Footer -->
+      <div class="center">
+        <div class="footer-text">Gracias por viajar con nosotros</div>
+        <div class="footer-text">RutaGo - Su transporte confiable</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- RECIBO CORTO: Alternativa compacta (menos papel)    -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div>
+  <div class="label">RECIBO COMPACTO - Alternativa con menos papel</div>
+  <div class="receipt-wrapper">
+    <div class="receipt">
+      <div class="center">
+        <div class="big">RUTAGO</div>
+        <div class="subtitle">Vilcabambaturis</div>
+      </div>
+      <div class="line-double"></div>
+
+      <div class="row"><span class="bold">Loja > Vilcabamba</span><span class="bold">IDA</span></div>
+      <div class="row"><span class="row-label">Destino:</span><span class="bold">Vilcabamba</span></div>
+      <div class="row"><span>14/08/26 08:32</span><span class="bold">ENTERO</span></div>
+      <div class="spacer-sm"></div>
+      <div class="row">
+        <span class="row-label">Tarifa:</span>
+        <span class="amount">$2.50</span>
+      </div>
+
+      <div class="line"></div>
+
+      <div class="center">
+        <div class="ticket-num">N. 0047</div>
+      </div>
+      <div class="barcode-area">
+        <div class="barcode-fallback">||||||| ||| ||| ||| |||| ||</div>
+      </div>
+
+      <div class="line"></div>
+
+      <div class="promo-box">
+        <div class="promo-title">CONSERVE SU BOLETO</div>
+        <div class="promo-msg">VIAJE GRATIS</div>
+        <div class="promo-footer">Sorteo diario - rutago.vercel.app/sorteo</div>
+      </div>
+
+      <div class="line-double"></div>
+      <div class="center">
+        <div class="footer-text">Gracias por viajar con RutaGo</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
