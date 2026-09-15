@@ -140,7 +140,7 @@ model VentaBoleto {
 // ─── Módulo de Gastos y Pagos del Socio Propietario ───
 model OwnerExpense {
   id              String   @id @default(cuid())
-  busId           String   @default("BUS-04")
+  busId           String   @default("BUS-01")
   expenseDate     String   // YYYY-MM-DD
   category        String   // LLANTAS, ACEITES_FILTROS, MOTOR_CAJA_CORONA, FRENOS_RODAJE, ELECTRICO, PAGOS_COMPANIA, TRAMITES_PERMISOS, OTROS
   description     String
@@ -159,4 +159,24 @@ model OwnerExpense {
 
   @@index([busId, expenseDate])
   @@index([busId, status])
+}
+
+// ─── Módulo de Flota y Unidades Físicas (Fase 2) ───
+model Bus {
+  id                String   @id @default(cuid())
+  numeroDisco       String   @unique // "01", "10", "16", "18", etc.
+  placa             String   @unique // "TAA-5152"
+  marca             String   // "Hino AK"
+  modelo            String?  // "AK"
+  anio              Int?
+  capacidadAsientos Int      @default(45)
+  propietario       String   // "José Leonardo Jaya Jaramillo"
+  tipoOperacion     String   @default("TRONCAL_VT") // "TRONCAL_VT" | "ALIMENTADOR_P"
+  activo            Boolean  @default(true)
+  notas             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([numeroDisco])
+  @@index([tipoOperacion])
 }
