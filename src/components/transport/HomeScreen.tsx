@@ -777,7 +777,7 @@ export function HomeScreen({
                 </CardContent>
               </Card>
 
-              {/* Gestión de Flota y Unidades */}
+              {/* Gestión de Flota / Ficha de Mi Unidad */}
               <Card
                 onClick={onGoToFlota}
                 className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-blue-200 bg-white"
@@ -789,12 +789,18 @@ export function HomeScreen({
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <p className="font-bold text-sm text-[#3A3A3A]">Flota y Unidades (Buses)</p>
+                        <p className="font-bold text-sm text-[#3A3A3A]">
+                          {isSuperAdmin ? 'Catálogo de Flota (19 Buses)' : `Mi Autobús (${activeBus ? `Bus ${activeBus.numeroDisco}` : 'Bus 01'})`}
+                        </p>
                         <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 tracking-wide">
-                          19 Buses
+                          {isSuperAdmin ? '19 Buses' : (activeBus?.placa || 'Hino AK')}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500">Discos, placas Hino AK, circuito Troncal VT y Alimentadores P</p>
+                      <p className="text-xs text-gray-500">
+                        {isSuperAdmin
+                          ? 'Padrón de unidades físicas, placas y asignación de circuito'
+                          : 'Ficha técnica de tu unidad, placa, odómetro y notas de mantenimiento'}
+                      </p>
                     </div>
                   </div>
                   <ArrowRight className="w-4 h-4 text-gray-400" />

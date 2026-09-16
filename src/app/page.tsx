@@ -357,6 +357,7 @@ export default function Home() {
   if (view === 'flota_gestion') {
     return (
       <FlotaScreen
+        currentUser={user}
         onBack={() => setView('home')}
       />
     );

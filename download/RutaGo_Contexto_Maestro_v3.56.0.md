@@ -67,6 +67,18 @@
 ### 3.2. Módulo de Gastos con Optimistic UI y Tombstones (`77ffdcd`)
 - Eliminación de gastos en dos fases con reversión por error, tombstones locales para evitar re-sincronización de registros eliminados y endpoint masivo `DELETE /api/expenses/owner`.
 
+### 3.3. Bifurcación de Gestión de Flota por Rol: "Ficha de Mi Unidad" vs Catálogo Maestro
+- **Problema de Arquitectura Resuelto:** Se detectó el riesgo de que un socio individual pudiera editar o eliminar las unidades de sus 18 compañeros o modificar a conveniencia la asignación de circuito (`Troncal General VT` vs `Alimentador Especial P`), lo que alteraba los grupos simétricos del Benchmark y rompía el protocolo de privacidad gremial.
+- **Solución Implementada (Opción A):**
+  1. **Para el Socio Propietario (`0101`):**
+     - En `HomeScreen.tsx`, la tarjeta se titula dinámicamente: **"Mi Autobús (Bus 01)"** con su placa y ficha técnica.
+     - En `FlotaScreen.tsx`, el socio accede únicamente a la **Ficha Técnica de su Propia Unidad** (`Bus 01`).
+     - Puede actualizar placa, marca, modelo, año y notas mecánicas.
+     - **Campos Bloqueados / Solo Lectura:** El número de disco, la capacidad y el **Circuito Operativo Asignado** quedan bloqueados con candado y nota oficial ("Oficial Cooperativa"), garantizando que nadie manipule su circuito asignado para alterar su IPF en el Benchmark.
+     - Se eliminan de su vista los botones de creación y eliminación de buses.
+  2. **Para el Super Administrador SaaS (`9999`):**
+     - Mantiene el acceso total al **Catálogo de Flota (19 Buses)** para dar de alta unidades, definir circuitos y realizar soporte técnico.
+
 ---
 
 ## 4. Estado de Pendientes Técnicos y Futuras Fases

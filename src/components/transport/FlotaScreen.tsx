@@ -21,6 +21,9 @@ import {
   User,
   Hash,
   Award,
+  Lock,
+  Gauge,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,9 +43,11 @@ import {
   deleteBusFromApi,
   seedBenchmarkFleet,
   INITIAL_PILOT_BUS,
+  getActiveBusId,
 } from '@/lib/fleet-storage';
 
 interface FlotaScreenProps {
+  currentUser?: { id: string; nombre: string; rol: string } | null;
   onBack: () => void;
 }
 
@@ -59,13 +64,17 @@ const EMPTY_FORM: BusFormData = {
   notas: '',
 };
 
-export function FlotaScreen({ onBack }: FlotaScreenProps) {
+export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
+  // Detección estricta de Rol: SuperAdmin SaaS (9999) vs Socio Propietario (0101 / 2107)
+  const isSuperAdmin = currentUser?.rol === 'SUPERADMIN_SAAS' || currentUser?.id === 'saas-superadmin';
+  const activeBusId = getActiveBusId() || 'BUS-01';
+
   const [buses, setBuses] = useState<BusItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTipo, setFilterTipo] = useState<'TODOS' | 'TRONCAL_VT' | 'ALIMENTADOR_P'>('TODOS');
-  
+
   // Estado del formulario modal / bottom sheet
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -104,14 +113,28 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
     loadFleet();
   }, [loadFleet]);
 
-  // Filtrado reactivo en memoria
+  // Lista de buses accesible según rol
+  // Si es SOCIO: Se filtra EXCLUSIVAMENTE a su unidad propia activa para garantizar confidencialidad
+  const accessibleBuses = useMemo(() => {
+    if (isSuperAdmin) {
+      return buses;
+    }
+    // Para el socio, buscar su bus activo (por id o por numeroDisco)
+    const myBus = buses.find((b) => b.id === activeBusId || b.numeroDisco === activeBusId.replace('BUS-', ''))
+      || buses.find((b) => b.id === 'BUS-01')
+      || INITIAL_PILOT_BUS;
+
+    return myBus ? [myBus] : [];
+  }, [buses, isSuperAdmin, activeBusId]);
+
+  // Filtrado reactivo en memoria (búsqueda de texto)
   const filteredBuses = useMemo(() => {
-    return buses.filter((bus) => {
+    return accessibleBuses.filter((bus) => {
       // Filtro de tipo
       if (filterTipo !== 'TODOS' && bus.tipoOperacion !== filterTipo) {
         return false;
       }
-      // Filtro de texto
+      // Búsqueda por disco, placa, propietario o marca
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase().trim();
       return (
@@ -122,7 +145,7 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
         (bus.modelo && bus.modelo.toLowerCase().includes(q))
       );
     });
-  }, [buses, filterTipo, searchQuery]);
+  }, [accessibleBuses, filterTipo, searchQuery]);
 
   // Contadores analíticos
   const stats = useMemo(() => {
@@ -133,8 +156,16 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
     return { total, troncal, alimentador, activos };
   }, [buses]);
 
-  // Abrir formulario para crear nueva unidad
+  // Abrir formulario para crear nueva unidad (SOLO SuperAdmin)
   const handleOpenCreate = () => {
+    if (!isSuperAdmin) {
+      toast({
+        title: 'Acción Restringida',
+        description: 'Solo la administración de la cooperativa o soporte SaaS puede dar de alta nuevos buses.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setEditingId(null);
     setFormData({
       ...EMPTY_FORM,
@@ -143,7 +174,7 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
     setSheetOpen(true);
   };
 
-  // Abrir formulario para editar
+  // Abrir formulario para editar (SuperAdmin edita todo; Socio edita solo su unidad)
   const handleOpenEdit = (bus: BusItem) => {
     setEditingId(bus.id || `BUS-${bus.numeroDisco}`);
     setFormData({
@@ -171,6 +202,7 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
       });
       return;
     }
+
     if (!formData.placa.trim()) {
       toast({
         title: 'Falta la placa',
@@ -179,6 +211,7 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
       });
       return;
     }
+
     if (!formData.propietario.trim()) {
       toast({
         title: 'Falta el propietario',
@@ -192,6 +225,15 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
     const cleanDisco = formData.numeroDisco.trim().padStart(2, '0');
     const cleanPlaca = formData.placa.trim().toUpperCase();
 
+    // Si es socio, preservar el circuito original que dictaminó la cooperativa
+    let tipoFinal = formData.tipoOperacion;
+    if (!isSuperAdmin && editingId) {
+      const existing = buses.find((b) => b.id === editingId || b.numeroDisco === cleanDisco);
+      if (existing) {
+        tipoFinal = existing.tipoOperacion;
+      }
+    }
+
     const busPayload: BusItem = {
       id: editingId || `BUS-${cleanDisco}`,
       numeroDisco: cleanDisco,
@@ -201,81 +243,64 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
       anio: formData.anio ? Number(formData.anio) : undefined,
       capacidadAsientos: Number(formData.capacidadAsientos) || 45,
       propietario: formData.propietario.trim(),
-      tipoOperacion: formData.tipoOperacion,
+      tipoOperacion: tipoFinal,
       activo: formData.activo,
       notas: formData.notas?.trim() || undefined,
     };
 
     try {
-      // 1. Guardar de inmediato en local (Zero Latency)
-      saveBus(busPayload);
+      // 1. Guardado local inmediato (offline-first)
+      const updatedLocal = saveBus(busPayload);
+      setBuses(updatedLocal);
 
-      // Actualizar estado reactivo
-      setBuses((prev) => {
-        const idx = prev.findIndex(
-          (b) => b.id === busPayload.id || b.numeroDisco === busPayload.numeroDisco
-        );
-        if (idx >= 0) {
-          const updated = [...prev];
-          updated[idx] = busPayload;
-          return updated;
-        }
-        return [...prev, busPayload].sort((a, b) =>
-          a.numeroDisco.localeCompare(b.numeroDisco, undefined, { numeric: true })
-        );
-      });
-
-      // 2. Sincronizar en segundo plano con la API
+      // 2. Sincronización con backend si hay red
       if (typeof window !== 'undefined' && navigator.onLine) {
         if (editingId) {
-          updateBusInApi(editingId, busPayload).catch(() => {});
+          await updateBusInApi(busPayload);
         } else {
-          saveBusToApi(busPayload).catch(() => {});
+          await saveBusToApi(busPayload);
         }
       }
 
       toast({
-        title: editingId ? 'Unidad actualizada' : 'Unidad registrada',
-        description: `Disco ${cleanDisco} (${cleanPlaca}) guardado correctamente.`,
+        title: editingId ? 'Ficha actualizada' : 'Unidad registrada',
+        description: `Se guardaron correctamente los datos del Disco ${cleanDisco} (${cleanPlaca}).`,
       });
 
       setSheetOpen(false);
-      setEditingId(null);
-    } catch (err) {
-      console.error('Error guardando unidad:', err);
+    } catch {
       toast({
-        title: 'Error al guardar',
-        description: 'No se pudo guardar la unidad.',
-        variant: 'destructive',
+        title: 'Guardado local completado',
+        description: 'Los cambios se aplicaron en tu dispositivo y se sincronizarán al detectar conexión.',
       });
+      setSheetOpen(false);
     } finally {
       setSaving(false);
     }
   };
 
-  // Confirmar eliminación
+  // Eliminar unidad (SOLO SuperAdmin)
   const handleConfirmDelete = async () => {
     if (!busToDelete) return;
-    const id = busToDelete.id || `BUS-${busToDelete.numeroDisco}`;
-    const disco = busToDelete.numeroDisco;
-
-    // Protección para la unidad piloto 01
-    if (disco === '01') {
+    if (!isSuperAdmin) {
       toast({
-        title: 'Unidad protegida',
-        description: 'El Bus 01 es la unidad piloto del Socio Líder y no debe eliminarse.',
+        title: 'Operación denegada',
+        description: 'Los socios no tienen autorización para retirar buses de la cooperativa.',
         variant: 'destructive',
       });
       setBusToDelete(null);
       return;
     }
 
+    const disco = busToDelete.numeroDisco;
     try {
-      deleteBus(id);
-      setBuses((prev) => prev.filter((b) => b.id !== id && b.numeroDisco !== disco));
+      // 1. Eliminación local
+      const updatedLocal = deleteBus(busToDelete.id || `BUS-${disco}`);
+      setBuses(updatedLocal);
 
+      // 2. Eliminación remota
       if (typeof window !== 'undefined' && navigator.onLine) {
-        deleteBusFromApi(id).catch(() => {});
+        await deleteBusFromApi(busToDelete.id || `BUS-${disco}`);
       }
 
       toast({
@@ -293,7 +318,7 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
     }
   };
 
-  // Cargar Benchmark de 19 unidades de la Cooperativa
+  // Cargar Benchmark de 19 unidades de la Cooperativa (SuperAdmin)
   const handleLoadBenchmark = () => {
     const updated = seedBenchmarkFleet();
     setBuses(updated);
@@ -319,10 +344,12 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
             <div>
               <h1 className="text-lg font-black text-[#3A3A3A] leading-tight flex items-center gap-1.5">
                 <Bus className="w-5 h-5 text-[#912D26]" />
-                Gestión de Flota
+                {isSuperAdmin ? 'Gestión de Flota' : 'Ficha de Mi Unidad'}
               </h1>
               <p className="text-xs text-gray-500 font-medium">
-                Catálogo de unidades físicas y asignación de circuito
+                {isSuperAdmin
+                  ? 'Catálogo maestro de 19 unidades físicas y circuitos'
+                  : 'Ficha técnica, placas y especificaciones de tu vehículo'}
               </p>
             </div>
           </div>
@@ -332,210 +359,246 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
               onClick={loadFleet}
               disabled={syncing}
               className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors"
-              title="Refrescar flota"
+              title="Refrescar datos"
             >
               <RotateCw className={`w-4 h-4 ${syncing ? 'animate-spin text-[#912D26]' : ''}`} />
             </button>
-            <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-bold text-xs">
-              {stats.activos} / {stats.total} Activos
-            </Badge>
+            {isSuperAdmin ? (
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-bold text-xs">
+                {stats.activos} / {stats.total} Activos
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200 font-bold text-xs">
+                Socio Titular
+              </Badge>
+            )}
           </div>
         </div>
       </header>
 
       {/* ─── CONTENIDO PRINCIPAL ─── */}
       <main className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
-        {/* ─── BANNER POLÍTICA ZERO-LOCKING & CLARIDAD CONCEPTUAL ─── */}
-        <div className="bg-gradient-to-r from-[#912D26]/10 via-amber-50 to-emerald-50/70 border border-[#912D26]/20 rounded-2xl p-3.5 shadow-xs">
-          <div className="flex items-start gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#912D26] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div className="flex-1 text-xs space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-black text-[#912D26] uppercase tracking-wider text-[11px]">
-                  Directiva Operativa: Política Zero-Locking
-                </span>
-                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-full">
-                  Sin Bloqueos
-                </span>
+        {/* ─── BANNER EXPLICATIVO SEGÚN ROL ─── */}
+        {isSuperAdmin ? (
+          <div className="bg-gradient-to-r from-[#912D26]/10 via-amber-50 to-emerald-50/70 border border-[#912D26]/20 rounded-2xl p-3.5 shadow-xs">
+            <div className="flex items-start gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#912D26] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                <ShieldCheck className="w-4 h-4" />
               </div>
-              <p className="text-[#3A3A3A] leading-relaxed">
-                <strong>Unidad Física (Bus):</strong> Máquina que acumula odómetro, mantenimiento de aceite y diésel.{' '}
-                <strong>VT (Vuelta Turno):</strong> Itinerario diario de frecuencias que rotan libremente entre buses.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* ─── TARJETA DE RESUMEN RÁPIDO DE FLOTA ─── */}
-        <div className="grid grid-cols-3 gap-2.5">
-          <div className="bg-white rounded-2xl p-3 border border-gray-200 shadow-2xs flex flex-col items-center text-center">
-            <span className="text-2xl font-black text-[#3A3A3A]">{stats.total}</span>
-            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-tight">Total Flota</span>
-          </div>
-          <div className="bg-white rounded-2xl p-3 border border-gray-200 shadow-2xs flex flex-col items-center text-center">
-            <span className="text-2xl font-black text-emerald-700">{stats.troncal}</span>
-            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-tight">Troncal (VT)</span>
-          </div>
-          <div className="bg-white rounded-2xl p-3 border border-gray-200 shadow-2xs flex flex-col items-center text-center">
-            <span className="text-2xl font-black text-blue-700">{stats.alimentador}</span>
-            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-tight">Alimentador (P)</span>
-          </div>
-        </div>
-
-        {/* ─── FILTROS Y BUSCADOR (THUMB ZONE) ─── */}
-        <div className="space-y-2">
-          <div className="relative">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Buscar por disco (ej. 01, 16), placa o socio..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-9 h-11 rounded-xl bg-white border-gray-200 text-sm focus-visible:ring-[#912D26]"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Chips táctiles de categoría de operación */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-            <button
-              onClick={() => setFilterTipo('TODOS')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
-                filterTipo === 'TODOS'
-                  ? 'bg-gray-900 text-white shadow-xs'
-                  : 'bg-white text-gray-600 border border-gray-200'
-              }`}
-            >
-              Todos ({stats.total})
-            </button>
-            <button
-              onClick={() => setFilterTipo('TRONCAL_VT')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-colors ${
-                filterTipo === 'TRONCAL_VT'
-                  ? 'bg-emerald-700 text-white shadow-xs'
-                  : 'bg-white text-emerald-800 border border-emerald-200'
-              }`}
-            >
-              <Route className="w-3 h-3" />
-              Troncal VT ({stats.troncal})
-            </button>
-            <button
-              onClick={() => setFilterTipo('ALIMENTADOR_P')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-colors ${
-                filterTipo === 'ALIMENTADOR_P'
-                  ? 'bg-blue-700 text-white shadow-xs'
-                  : 'bg-white text-blue-800 border border-blue-200'
-              }`}
-            >
-              <Layers className="w-3 h-3" />
-              Alimentadores P ({stats.alimentador})
-            </button>
-          </div>
-        </div>
-
-        {/* ─── LISTA DE UNIDADES REGISTRADAS ─── */}
-        <div className="space-y-3">
-          {loading ? (
-            <div className="bg-white rounded-2xl p-8 text-center text-gray-400 font-medium border border-gray-200">
-              Cargando flota de autobuses...
-            </div>
-          ) : filteredBuses.length === 0 ? (
-            <div className="bg-white rounded-2xl p-8 text-center border border-gray-200 space-y-3">
-              <Bus className="w-10 h-10 text-gray-300 mx-auto" />
-              <div>
-                <p className="font-bold text-gray-700">No se encontraron unidades</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {searchQuery ? 'Prueba con otro término de búsqueda' : 'Registra tu primera unidad de flota'}
+              <div className="flex-1 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-[#912D26] uppercase tracking-wider text-[11px]">
+                    Directiva Operativa: Política Zero-Locking
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded-full">
+                    Sin Bloqueos
+                  </span>
+                </div>
+                <p className="text-gray-700 leading-relaxed text-[11px]">
+                  <strong>Unidad Física ≠ Vuelta Turno (VT):</strong> Un bus Hino AK puede operar cualquier VT del día. Cambiar el autobús no bloquea la frecuencia ni interrumpe el despacho en carretera.
                 </p>
               </div>
-              <Button
-                onClick={handleOpenCreate}
-                size="sm"
-                className="rounded-xl bg-[#912D26] hover:bg-[#7A2520] text-white"
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-3.5 shadow-xs">
+            <div className="flex items-start gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-blue-700 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <div className="flex-1 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-blue-900 uppercase tracking-wider text-[11px]">
+                    Privacidad y Control de tu Patrimonio
+                  </span>
+                  <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded-full">
+                    Tu Unidad Aislada
+                  </span>
+                </div>
+                <p className="text-blue-900/90 leading-relaxed text-[11px]">
+                  Como socio propietario, puedes mantener actualizados los datos de tu autobús (placa, modelo, notas mecánicas). La asignación de circuito general y los datos de otros 18 socios se mantienen protegidos bajo el protocolo de confidencialidad gremial.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── RESUMEN DE LA FLOTA (SOLO SUPERADMIN) ─── */}
+        {isSuperAdmin && (
+          <div className="grid grid-cols-3 gap-2.5">
+            <Card className="rounded-2xl border border-gray-200 bg-white shadow-xs">
+              <CardContent className="p-3 text-center">
+                <span className="text-[10px] uppercase font-bold text-gray-400 block">Total Flota</span>
+                <span className="text-xl font-black text-[#3A3A3A]">{stats.total}</span>
+                <span className="text-[10px] text-gray-500 block">Autobuses</span>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border border-emerald-200 bg-emerald-50/50 shadow-xs">
+              <CardContent className="p-3 text-center">
+                <span className="text-[10px] uppercase font-bold text-emerald-800 block">Troncal VT</span>
+                <span className="text-xl font-black text-emerald-900">{stats.troncal}</span>
+                <span className="text-[10px] text-emerald-700 block">45 Asientos</span>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border border-blue-200 bg-blue-50/50 shadow-xs">
+              <CardContent className="p-3 text-center">
+                <span className="text-[10px] uppercase font-bold text-blue-800 block">Alimentadores</span>
+                <span className="text-xl font-black text-blue-900">{stats.alimentador}</span>
+                <span className="text-[10px] text-blue-700 block">28 Asientos</span>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* ─── BUSCADOR Y FILTROS DE CIRCUITO (SOLO SUPERADMIN CON MÁS DE 1 BUS) ─── */}
+        {isSuperAdmin && (
+          <div className="space-y-2.5">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Buscar por disco (ej. 01), placa (TAA-5152) o socio..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-9 h-11 rounded-2xl bg-white border-gray-200 text-xs shadow-xs focus-visible:ring-[#912D26]"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 bg-gray-200/70 p-1 rounded-2xl text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setFilterTipo('TODOS')}
+                className={`flex-1 py-1.5 rounded-xl transition-all ${
+                  filterTipo === 'TODOS'
+                    ? 'bg-white text-[#912D26] shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
               >
-                <Plus className="w-4 h-4 mr-1.5" />
-                Registrar Unidad
-              </Button>
+                Todos ({stats.total})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterTipo('TRONCAL_VT')}
+                className={`flex-1 py-1.5 rounded-xl transition-all ${
+                  filterTipo === 'TRONCAL_VT'
+                    ? 'bg-white text-emerald-800 shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Troncal ({stats.troncal})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterTipo('ALIMENTADOR_P')}
+                className={`flex-1 py-1.5 rounded-xl transition-all ${
+                  filterTipo === 'ALIMENTADOR_P'
+                    ? 'bg-white text-blue-800 shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Alimentador ({stats.alimentador})
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ─── LISTADO DE AUTOBUSES / FICHA DE LA UNIDAD ─── */}
+        <div className="space-y-2.5">
+          {loading ? (
+            <div className="text-center py-12 text-gray-400 text-xs space-y-2">
+              <RotateCw className="w-6 h-6 animate-spin mx-auto text-[#912D26]" />
+              <p>Cargando información del autobús...</p>
+            </div>
+          ) : filteredBuses.length === 0 ? (
+            <div className="bg-white border border-gray-200 rounded-3xl p-8 text-center space-y-3 shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto text-gray-400">
+                <Bus className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="font-black text-sm text-gray-800">No se encontraron unidades</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {searchQuery ? 'Prueba con otro término de búsqueda.' : 'No hay autobuses configurados aún.'}
+                </p>
+              </div>
+              {isSuperAdmin && (
+                <Button
+                  onClick={handleLoadBenchmark}
+                  variant="outline"
+                  className="rounded-2xl text-xs font-bold gap-1.5"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  Cargar 19 Buses de Vilcabambaturis
+                </Button>
+              )}
             </div>
           ) : (
             filteredBuses.map((bus) => {
-              const isPilot = bus.numeroDisco === '01';
               const isTroncal = bus.tipoOperacion === 'TRONCAL_VT';
+              const isPilot = bus.numeroDisco === '01';
 
               return (
                 <Card
                   key={bus.id || bus.numeroDisco}
-                  className={`rounded-2xl border transition-shadow shadow-2xs overflow-hidden bg-white ${
+                  className={`rounded-2xl border transition-all overflow-hidden ${
                     isPilot
-                      ? 'border-amber-300 ring-1 ring-amber-300/60'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-blue-400/80 bg-white shadow-xs ring-2 ring-blue-400/20'
+                      : 'border-gray-200 bg-white shadow-xs hover:border-gray-300'
                   }`}
                 >
-                  <CardContent className="p-3.5 space-y-2.5">
-                    {/* Fila Superior: Disco, Placa y Tipo */}
+                  <CardContent className="p-4 space-y-3">
+                    {/* Fila Superior: Disco, Placa y Acciones */}
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        {/* Insignia de Disco */}
+                      <div className="flex items-center gap-2.5">
                         <div
-                          className={`w-12 h-12 rounded-xl font-black flex flex-col items-center justify-center shrink-0 shadow-2xs ${
-                            isPilot
-                              ? 'bg-amber-500 text-white'
-                              : isTroncal
-                              ? 'bg-[#912D26] text-white'
-                              : 'bg-blue-700 text-white'
+                          className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-black ${
+                            isTroncal
+                              ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                              : 'bg-blue-100 text-blue-900 border border-blue-200'
                           }`}
                         >
-                          <span className="text-[9px] uppercase tracking-tighter opacity-80 leading-none">Disco</span>
-                          <span className="text-lg leading-none font-black">{bus.numeroDisco}</span>
+                          <span className="text-[9px] uppercase tracking-wider font-bold opacity-75">Disco</span>
+                          <span className="text-base leading-none font-black">{bus.numeroDisco}</span>
                         </div>
 
-                        {/* Placa y Marca */}
                         <div>
                           <div className="flex items-center gap-1.5">
-                            {/* Placa Vehicular */}
-                            <span className="font-mono font-bold text-xs bg-gray-100 text-gray-800 border border-gray-300 px-2 py-0.5 rounded shadow-2xs tracking-wider">
+                            <span className="font-mono font-black text-sm text-gray-900 tracking-wider">
                               {bus.placa}
                             </span>
-
                             {isPilot && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-tight bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.5 rounded-md">
-                                <Award className="w-3 h-3 text-amber-600" />
-                                Socio Líder
-                              </span>
-                            )}
-
-                            {!bus.activo && (
-                              <span className="text-[10px] font-bold uppercase bg-red-100 text-red-700 px-1.5 py-0.5 rounded">
-                                En Taller
+                              <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 flex items-center gap-0.5">
+                                <Award className="w-3 h-3 text-blue-600" />
+                                {isSuperAdmin ? 'Piloto Líder' : 'Tu Unidad'}
                               </span>
                             )}
                           </div>
-
-                          <p className="text-xs font-bold text-[#3A3A3A] mt-0.5">
-                            {bus.marca} {bus.modelo ? `• ${bus.modelo}` : ''} {bus.anio ? `(${bus.anio})` : ''}
+                          <p className="text-xs text-gray-600 font-medium">
+                            {bus.marca} {bus.modelo || ''} {bus.anio ? `(${bus.anio})` : ''}
                           </p>
                         </div>
                       </div>
 
-                      {/* Botones de acción ergonómicos */}
+                      {/* Botón de edición adaptado por Rol */}
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           onClick={() => handleOpenEdit(bus)}
-                          className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 flex items-center justify-center transition-colors"
-                          title="Editar unidad"
+                          className="px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 flex items-center gap-1.5 text-xs font-bold transition-colors"
+                          title="Actualizar datos de la unidad"
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Editar Ficha</span>
                         </button>
-                        {!isPilot && (
+                        {isSuperAdmin && !isPilot && (
                           <button
                             onClick={() => setBusToDelete(bus)}
                             className="w-9 h-9 rounded-xl bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 flex items-center justify-center transition-colors"
@@ -548,15 +611,15 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
                     </div>
 
                     {/* Fila Media: Propietario y Capacidad */}
-                    <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-gray-100">
+                    <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-gray-100">
                       <div>
-                        <span className="text-[10px] uppercase font-bold text-gray-400 block">Propietario</span>
+                        <span className="text-[10px] uppercase font-bold text-gray-400 block">Socio Propietario</span>
                         <span className="font-semibold text-gray-800 truncate block">
                           {bus.propietario || 'No asignado'}
                         </span>
                       </div>
                       <div>
-                        <span className="text-[10px] uppercase font-bold text-gray-400 block">Capacidad</span>
+                        <span className="text-[10px] uppercase font-bold text-gray-400 block">Capacidad Homologada</span>
                         <span className="font-semibold text-gray-800 block">
                           {bus.capacidadAsientos} Asientos
                         </span>
@@ -564,29 +627,34 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
                     </div>
 
                     {/* Fila Inferior: Circuito Operativo Asignado */}
-                    <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-xs">
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs">
                       <div className="flex items-center gap-1.5">
                         {isTroncal ? (
                           <Badge className="bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 font-bold text-[11px] gap-1 py-0.5">
                             <Route className="w-3 h-3 text-emerald-600" />
-                            Rueda Troncal General (VT01 - VT15)
+                            Ruta General Troncal (45 Pax)
                           </Badge>
                         ) : (
                           <Badge className="bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100 font-bold text-[11px] gap-1 py-0.5">
                             <Layers className="w-3 h-3 text-blue-600" />
-                            Circuito Especial Alimentador (P1 - P3)
+                            Ruta Exclusiva Alimentador (28 Pax)
                           </Badge>
                         )}
+                        {!isSuperAdmin && (
+                          <span className="text-[10px] text-gray-400 flex items-center gap-0.5" title="Asignado por la Cooperativa">
+                            <Lock className="w-2.5 h-2.5" />
+                            Circuito Oficial
+                          </span>
+                        )}
                       </div>
-
-                      <span className="text-[11px] font-medium text-gray-400">
-                        {bus.activo ? 'En Servicio' : 'Inactivo'}
+                      <span className="text-[11px] font-medium text-gray-500">
+                        {bus.activo ? '● En Servicio' : '○ Taller / Reposo'}
                       </span>
                     </div>
 
                     {bus.notas && (
-                      <p className="text-[11px] text-gray-500 bg-gray-50 p-2 rounded-xl italic">
-                        {bus.notas}
+                      <p className="text-[11px] text-gray-600 bg-gray-50 p-2 rounded-xl italic border border-gray-100">
+                        <strong>Observaciones:</strong> {bus.notas}
                       </p>
                     )}
                   </CardContent>
@@ -596,8 +664,8 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
           )}
         </div>
 
-        {/* ─── BOTÓN SECUNDARIO: CARGAR BENCHMARK DE FLOTA ─── */}
-        {buses.length < 5 && (
+        {/* ─── BOTÓN SECUNDARIO: CARGAR BENCHMARK DE FLOTA (SOLO SUPERADMIN) ─── */}
+        {isSuperAdmin && buses.length < 5 && (
           <div className="pt-2">
             <button
               onClick={handleLoadBenchmark}
@@ -610,88 +678,123 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
         )}
       </main>
 
-      {/* ─── BARRA INFERIOR FIJA CON BOTÓN PRINCIPAL (THUMB ZONE) ─── */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur border-t border-gray-200 p-3 shadow-lg">
-        <div className="max-w-2xl mx-auto">
-          <Button
-            onClick={handleOpenCreate}
-            className="w-full h-12 rounded-2xl bg-[#912D26] hover:bg-[#7A2520] active:scale-[0.99] text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-transform"
-          >
-            <Plus className="w-5 h-5" />
-            Registrar Nueva Unidad de Flota
-          </Button>
+      {/* ─── BARRA INFERIOR FIJA CON BOTÓN PRINCIPAL (SOLO SUPERADMIN PARA ALTA DE BUSES) ─── */}
+      {isSuperAdmin && (
+        <div className="fixed bottom-0 left-0 right-0 z-20 bg-white/95 backdrop-blur border-t border-gray-200 p-3 shadow-lg">
+          <div className="max-w-2xl mx-auto">
+            <Button
+              onClick={handleOpenCreate}
+              className="w-full h-12 rounded-2xl bg-[#912D26] hover:bg-[#7A2520] active:scale-[0.99] text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-transform"
+            >
+              <Plus className="w-5 h-5" />
+              Registrar Nueva Unidad Física
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* ─── MODAL / BOTTOM SHEET DE REGISTRO & EDICIÓN (THUMB-FRIENDLY) ─── */}
+      {/* ─── MODAL / BOTTOM SHEET DE FORMULARIO DE EDICIÓN O CREACIÓN ─── */}
       {sheetOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-200">
-            {/* Cabecera del formulario */}
-            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between bg-[#F5F5F7]">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-2 duration-200">
+            {/* Cabecera del modal */}
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-[#F5F5F7]">
               <div>
-                <h2 className="text-base font-black text-[#3A3A3A] flex items-center gap-2">
-                  <Bus className="w-5 h-5 text-[#912D26]" />
-                  {editingId ? `Editar Unidad Disco ${formData.numeroDisco}` : 'Registrar Nueva Unidad de Flota'}
-                </h2>
-                <p className="text-xs text-gray-500">
-                  {editingId ? 'Actualiza los datos del autobús' : 'Ingresa los datos del vehículo físico'}
+                <h3 className="font-black text-sm text-gray-900 flex items-center gap-2">
+                  <Bus className="w-4 h-4 text-[#912D26]" />
+                  {editingId
+                    ? isSuperAdmin
+                      ? `Editar Bus Disco ${formData.numeroDisco}`
+                      : `Ficha Técnica: Bus ${formData.numeroDisco}`
+                    : 'Registrar Nueva Unidad'}
+                </h3>
+                <p className="text-[11px] text-gray-500">
+                  {editingId
+                    ? isSuperAdmin
+                      ? 'Actualiza los parámetros mecánicos y operativos'
+                      : 'Actualiza los datos técnicos de tu propio autobús'
+                    : 'Da de alta un autobús en el padrón de la cooperativa'}
                 </p>
               </div>
               <button
                 onClick={() => setSheetOpen(false)}
-                className="w-9 h-9 rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-gray-700 flex items-center justify-center"
+                className="w-8 h-8 rounded-full bg-gray-200/80 hover:bg-gray-300 text-gray-600 flex items-center justify-center transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Cuerpo del formulario scrollable */}
-            <div className="p-5 overflow-y-auto space-y-4">
-              {/* Selector de Circuito de Operación (Botones Grandes) */}
+            {/* Contenido del formulario con scroll */}
+            <div className="p-4 overflow-y-auto space-y-3.5 flex-1 text-xs">
+              {/* Asignación de Circuito Operativo (SUPERADMIN: Seleccionable | SOCIO: Solo Lectura Bloqueado) */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-gray-700 uppercase tracking-tight">
-                  Tipo de Circuito y Operación
-                </Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, tipoOperacion: 'TRONCAL_VT', capacidadAsientos: 45 }))}
-                    className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all ${
-                      formData.tipoOperacion === 'TRONCAL_VT'
-                        ? 'border-emerald-600 bg-emerald-50 text-emerald-950 ring-2 ring-emerald-500/20'
-                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full mb-1">
-                      <Route className="w-4 h-4 text-emerald-700" />
-                      {formData.tipoOperacion === 'TRONCAL_VT' && <Check className="w-4 h-4 text-emerald-700" />}
-                    </div>
-                    <span className="font-black text-xs">TRONCAL GENERAL (VT)</span>
-                    <span className="text-[10px] text-gray-500 leading-tight mt-0.5">
-                      Buses grandes (45 asientos) • Itinerario VT01 al VT15
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-gray-700">Circuito Operativo Asignado</Label>
+                  {!isSuperAdmin && (
+                    <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                      <Lock className="w-2.5 h-2.5" /> Oficial Cooperativa
                     </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, tipoOperacion: 'ALIMENTADOR_P', capacidadAsientos: 28 }))}
-                    className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all ${
-                      formData.tipoOperacion === 'ALIMENTADOR_P'
-                        ? 'border-blue-600 bg-blue-50 text-blue-950 ring-2 ring-blue-500/20'
-                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between w-full mb-1">
-                      <Layers className="w-4 h-4 text-blue-700" />
-                      {formData.tipoOperacion === 'ALIMENTADOR_P' && <Check className="w-4 h-4 text-blue-700" />}
-                    </div>
-                    <span className="font-black text-xs">ALIMENTADOR (P)</span>
-                    <span className="text-[10px] text-gray-500 leading-tight mt-0.5">
-                      Microbuses (25-30 asientos) • Circuitos especiales P1-P3
-                    </span>
-                  </button>
+                  )}
                 </div>
+
+                {isSuperAdmin ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, tipoOperacion: 'TRONCAL_VT', capacidadAsientos: 45 }))}
+                      className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                        formData.tipoOperacion === 'TRONCAL_VT'
+                          ? 'border-emerald-500 bg-emerald-50/80 shadow-xs ring-2 ring-emerald-500/20'
+                          : 'border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <Route className="w-4 h-4 text-emerald-700" />
+                        {formData.tipoOperacion === 'TRONCAL_VT' && <Check className="w-4 h-4 text-emerald-700" />}
+                      </div>
+                      <span className="font-bold text-xs text-gray-900 block">Ruta General</span>
+                      <span className="text-[10px] text-gray-500 block">Troncal VT (45 Pax)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, tipoOperacion: 'ALIMENTADOR_P', capacidadAsientos: 28 }))}
+                      className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                        formData.tipoOperacion === 'ALIMENTADOR_P'
+                          ? 'border-blue-500 bg-blue-50/80 shadow-xs ring-2 ring-blue-500/20'
+                          : 'border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <Layers className="w-4 h-4 text-blue-700" />
+                        {formData.tipoOperacion === 'ALIMENTADOR_P' && <Check className="w-4 h-4 text-blue-700" />}
+                      </div>
+                      <span className="font-bold text-xs text-gray-900 block">Ruta Exclusiva</span>
+                      <span className="text-[10px] text-gray-500 block">Alimentadores (28 Pax)</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-gray-100 rounded-2xl border border-gray-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {formData.tipoOperacion === 'TRONCAL_VT' ? (
+                        <Route className="w-4 h-4 text-emerald-700" />
+                      ) : (
+                        <Layers className="w-4 h-4 text-blue-700" />
+                      )}
+                      <div>
+                        <span className="font-bold text-xs text-gray-800 block">
+                          {formData.tipoOperacion === 'TRONCAL_VT'
+                            ? 'Ruta General (Troncal VT - 45 Pax)'
+                            : 'Ruta Exclusiva (Alimentador P - 28 Pax)'}
+                        </span>
+                        <span className="text-[10px] text-gray-500">
+                          Dictaminado por la cooperativa para el cálculo equitativo de IPF.
+                        </span>
+                      </div>
+                    </div>
+                    <Lock className="w-4 h-4 text-gray-400" />
+                  </div>
+                )}
               </div>
 
               {/* Número de Disco y Placa Vehicular */}
@@ -703,10 +806,14 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
                     maxLength={3}
                     placeholder="ej. 01, 16, 19"
                     value={formData.numeroDisco}
+                    disabled={!isSuperAdmin}
                     onChange={(e) => setFormData((prev) => ({ ...prev, numeroDisco: e.target.value.replace(/\D/g, '') }))}
-                    className="h-11 rounded-xl text-base font-black text-center"
+                    className={`h-11 rounded-xl text-base font-black text-center ${
+                      !isSuperAdmin ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
+                    }`}
                   />
                 </div>
+
                 <div className="space-y-1">
                   <Label className="text-xs font-bold text-gray-700">Placa Vehicular *</Label>
                   <Input
@@ -723,7 +830,6 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
               {/* Marca y Modelo */}
               <div className="space-y-1">
                 <Label className="text-xs font-bold text-gray-700">Marca del Chasis</Label>
-                {/* Chips rápidos de marca */}
                 <div className="flex items-center gap-1.5 mb-1.5 overflow-x-auto pb-0.5">
                   {['Hino AK', 'Hino FC', 'Mercedes-Benz', 'Volkswagen'].map((marcaChip) => (
                     <button
@@ -768,25 +874,30 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
                       min={10}
                       max={70}
                       value={formData.capacidadAsientos}
+                      disabled={!isSuperAdmin}
                       onChange={(e) => setFormData((prev) => ({ ...prev, capacidadAsientos: Number(e.target.value) }))}
-                      className="h-11 rounded-xl text-sm font-bold text-center"
+                      className={`h-11 rounded-xl text-sm font-bold text-center ${
+                        !isSuperAdmin ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
+                      }`}
                     />
-                    <div className="flex flex-col gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setFormData((prev) => ({ ...prev, capacidadAsientos: 45 }))}
-                        className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 hover:bg-gray-200"
-                      >
-                        45p
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFormData((prev) => ({ ...prev, capacidadAsientos: 28 }))}
-                        className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 hover:bg-gray-200"
-                      >
-                        28p
-                      </button>
-                    </div>
+                    {isSuperAdmin && (
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, capacidadAsientos: 45 }))}
+                          className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 hover:bg-gray-200"
+                        >
+                          45p
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, capacidadAsientos: 28 }))}
+                          className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 hover:bg-gray-200"
+                        >
+                          28p
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -806,15 +917,18 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
 
               {/* Propietario / Socio */}
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-gray-700">Socio Propietario *</Label>
+                <Label className="text-xs font-bold text-gray-700">Socio Titular *</Label>
                 <div className="relative">
                   <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                   <Input
                     type="text"
                     placeholder="ej. José Leonardo Jaya Jaramillo"
                     value={formData.propietario}
+                    disabled={!isSuperAdmin}
                     onChange={(e) => setFormData((prev) => ({ ...prev, propietario: e.target.value }))}
-                    className="pl-9 h-11 rounded-xl text-sm font-semibold"
+                    className={`pl-9 h-11 rounded-xl text-sm font-semibold ${
+                      !isSuperAdmin ? 'bg-gray-100 text-gray-600 cursor-not-allowed' : ''
+                    }`}
                   />
                 </div>
               </div>
@@ -835,10 +949,10 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
 
               {/* Notas u Observaciones */}
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-gray-700">Notas u Observaciones</Label>
+                <Label className="text-xs font-bold text-gray-700">Notas u Observaciones Mecánicas</Label>
                 <Input
                   type="text"
-                  placeholder="Detalles sobre recorridos, mantenimientos, etc."
+                  placeholder="Detalles sobre recorridos, mantenimientos, neumáticos, etc."
                   value={formData.notas}
                   onChange={(e) => setFormData((prev) => ({ ...prev, notas: e.target.value }))}
                   className="h-11 rounded-xl text-xs"
@@ -862,15 +976,15 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
                 onClick={handleSave}
                 className="flex-1 h-12 rounded-2xl bg-[#912D26] hover:bg-[#7A2520] text-white font-bold text-xs shadow-md"
               >
-                {saving ? 'Guardando...' : editingId ? 'Actualizar Unidad' : 'Registrar Unidad'}
+                {saving ? 'Guardando...' : editingId ? 'Actualizar Ficha' : 'Registrar Unidad'}
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── MODAL DE CONFIRMACIÓN DE ELIMINACIÓN ─── */}
-      {busToDelete && (
+      {/* ─── MODAL DE CONFIRMACIÓN DE ELIMINACIÓN (SOLO SUPERADMIN) ─── */}
+      {busToDelete && isSuperAdmin && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl animate-in zoom-in-95">
             <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
@@ -878,25 +992,27 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
             </div>
 
             <div className="text-center space-y-1">
-              <h3 className="font-black text-base text-gray-900">¿Eliminar Disco {busToDelete.numeroDisco}?</h3>
-              <p className="text-xs text-gray-500">
-                Se retirará la unidad <strong>{busToDelete.placa}</strong> ({busToDelete.propietario}) del catálogo de flota.
+              <h4 className="font-black text-base text-gray-900">¿Retirar Unidad de la Flota?</h4>
+              <p className="text-xs text-gray-600">
+                Se desvinculará el <strong>Disco {busToDelete.numeroDisco} ({busToDelete.placa})</strong>. Los registros históricos de vueltas anteriores se conservarán para auditoría.
               </p>
             </div>
 
             <div className="flex items-center gap-2 pt-2">
               <Button
+                type="button"
                 variant="outline"
                 onClick={() => setBusToDelete(null)}
-                className="flex-1 h-11 rounded-xl font-bold text-xs"
+                className="flex-1 rounded-2xl font-bold text-xs"
               >
                 Cancelar
               </Button>
               <Button
+                type="button"
                 onClick={handleConfirmDelete}
-                className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
+                className="flex-1 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
               >
-                Sí, Eliminar
+                Sí, Retirar Bus
               </Button>
             </div>
           </div>
@@ -905,3 +1021,5 @@ export function FlotaScreen({ onBack }: FlotaScreenProps) {
     </div>
   );
 }
+
+export default FlotaScreen;
