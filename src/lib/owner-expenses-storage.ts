@@ -2,6 +2,7 @@ import { OwnerExpense, PaymentAbono } from '../types/expenses';
 
 const STORAGE_KEY = 'rutago_owner_expenses_v1';
 const INITIALIZED_KEY = 'rutago_owner_expenses_initialized_flag';
+const DELETED_IDS_KEY = 'rutago_owner_expenses_deleted_ids_v1';
 
 export function getOwnerExpenses(busId = 'BUS-01'): OwnerExpense[] {
   if (typeof window === 'undefined') return [];
@@ -15,7 +16,8 @@ export function getOwnerExpenses(busId = 'BUS-01'): OwnerExpense[] {
     if (!raw) return [];
     const all: OwnerExpense[] = JSON.parse(raw);
     const busExpenses = all.filter((item) => item.busId === busId);
-    if (busExpenses.length === 0 && busId === 'BUS-01') {
+    const isInitialized = localStorage.getItem(INITIALIZED_KEY) === 'true';
+    if (busExpenses.length === 0 && busId === 'BUS-01' && !isInitialized) {
       seedSampleExpenses(busId);
       const reRead = localStorage.getItem(STORAGE_KEY);
       if (reRead) {
@@ -52,9 +54,40 @@ export function saveOwnerExpense(expense: OwnerExpense): OwnerExpense {
   }
 }
 
+export function getDeletedExpenseIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_IDS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function recordDeletedExpenseId(id: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const ids = getDeletedExpenseIds();
+    ids.add(id);
+    localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(Array.from(ids)));
+  } catch (err) {
+    console.warn('Error guardando tombstone de gasto eliminado:', err);
+  }
+}
+
+export function clearDeletedExpenseIds(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(DELETED_IDS_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function deleteOwnerExpense(id: string): boolean {
   if (typeof window === 'undefined') return false;
   try {
+    recordDeletedExpenseId(id);
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return false;
     const all: OwnerExpense[] = JSON.parse(raw);
@@ -135,6 +168,7 @@ export function clearAllOwnerExpenses(busId = 'BUS-01'): void {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const all: OwnerExpense[] = JSON.parse(raw);
+    all.filter((e) => e.busId === busId).forEach((e) => recordDeletedExpenseId(e.id));
     const filtered = all.filter((e) => e.busId !== busId);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
     localStorage.setItem(INITIALIZED_KEY, 'true');
@@ -153,6 +187,9 @@ export function removeSampleExpensesOnly(busId = 'BUS-01'): void {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const all: OwnerExpense[] = JSON.parse(raw);
+    all
+      .filter((e) => e.busId === busId && (e.id.startsWith('EXP-AUG-') || e.id.startsWith('EXP-SEP-')))
+      .forEach((e) => recordDeletedExpenseId(e.id));
     const filtered = all.filter(
       (e) => !(e.busId === busId && (e.id.startsWith('EXP-AUG-') || e.id.startsWith('EXP-SEP-')))
     );
@@ -318,10 +355,13 @@ export async function fetchOwnerExpensesFromApi(busId = 'BUS-01'): Promise<Owner
     if (json.success && Array.isArray(json.data)) {
       if (json.data.length > 0) {
         // 1. La base de datos central ya tiene gastos guardados
-        const parsed: OwnerExpense[] = json.data.map((item: any) => ({
-          ...item,
-          abonos: typeof item.abonos === 'string' ? JSON.parse(item.abonos || '[]') : (item.abonos || []),
-        }));
+        const deletedIds = getDeletedExpenseIds();
+        const parsed: OwnerExpense[] = json.data
+          .filter((item: any) => !deletedIds.has(item.id))
+          .map((item: any) => ({
+            ...item,
+            abonos: typeof item.abonos === 'string' ? JSON.parse(item.abonos || '[]') : (item.abonos || []),
+          }));
 
         if (typeof window !== 'undefined') {
           const raw = localStorage.getItem(STORAGE_KEY);
@@ -416,18 +456,44 @@ export async function registerAbonoToApi(
 }
 
 export async function deleteOwnerExpenseFromApi(id: string): Promise<boolean> {
-  // 1. Eliminar localmente
+  // Fase 1: Local y Tombstone de exclusión inmediata (Optimistic UI)
   deleteOwnerExpense(id);
 
-  // 2. Eliminar en API
+  // Fase 2: Envío asíncrono a API sin bloquear la interacción
   try {
     const res = await fetch(`/api/owner-expenses?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
     return res.ok;
   } catch (err) {
-    console.warn('Eliminación en nube falló:', err);
-    return true; // Localmente ya se borró
+    console.warn('Eliminación en nube diferida (local ya asegurado):', err);
+    return true;
+  }
+}
+
+export async function clearAllOwnerExpensesFromApi(busId = 'BUS-01'): Promise<boolean> {
+  clearAllOwnerExpenses(busId);
+  try {
+    const res = await fetch(`/api/owner-expenses?clearAll=true&busId=${encodeURIComponent(busId)}`, {
+      method: 'DELETE',
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Vaciado en nube diferido:', err);
+    return true;
+  }
+}
+
+export async function removeSampleExpensesFromApi(busId = 'BUS-01'): Promise<boolean> {
+  removeSampleExpensesOnly(busId);
+  try {
+    const res = await fetch(`/api/owner-expenses?sampleOnly=true&busId=${encodeURIComponent(busId)}`, {
+      method: 'DELETE',
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Purga de muestras en nube diferida:', err);
+    return true;
   }
 }
 

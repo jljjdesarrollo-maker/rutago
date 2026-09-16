@@ -272,20 +272,56 @@ export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     let id = searchParams.get('id');
+    const busId = searchParams.get('busId');
+    const clearAll = searchParams.get('clearAll');
+    const sampleOnly = searchParams.get('sampleOnly');
 
-    if (!id) {
+    if (!id && req.headers.get('content-type')?.includes('application/json')) {
       const body = await req.json().catch(() => ({}));
       id = body.id;
     }
 
+    // Caso A: Vaciar todos los gastos de un bus
+    if (clearAll === 'true' && busId) {
+      const deleted = await db.ownerExpense.deleteMany({
+        where: { busId },
+      });
+      return NextResponse.json({
+        success: true,
+        count: deleted.count,
+        message: `Todos los gastos del bus ${busId} han sido eliminados de la base de datos`,
+      });
+    }
+
+    // Caso B: Eliminar solo gastos de ejemplo (EXP-AUG- o EXP-SEP-)
+    if (sampleOnly === 'true' && busId) {
+      const deleted = await db.ownerExpense.deleteMany({
+        where: {
+          busId,
+          OR: [
+            { id: { startsWith: 'EXP-AUG-' } },
+            { id: { startsWith: 'EXP-SEP-' } },
+          ],
+        },
+      });
+      return NextResponse.json({
+        success: true,
+        count: deleted.count,
+        message: `Gastos de muestra del bus ${busId} eliminados de la base de datos`,
+      });
+    }
+
+    // Caso C: Eliminar por ID individual
     if (!id) {
       return NextResponse.json(
-        { success: false, error: 'ID es requerido para eliminar' },
+        { success: false, error: 'ID o parámetros de eliminación requeridos' },
         { status: 400 }
       );
     }
 
-    await db.ownerExpense.delete({ where: { id } });
+    await db.ownerExpense.delete({ where: { id } }).catch((err) => {
+      console.warn('Gasto ya eliminado o no encontrado en base de datos:', err.message);
+    });
 
     return NextResponse.json({
       success: true,

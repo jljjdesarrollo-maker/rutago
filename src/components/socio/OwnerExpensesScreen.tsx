@@ -50,6 +50,8 @@ import {
   saveOwnerExpenseToApi,
   registerAbonoToApi,
   deleteOwnerExpenseFromApi,
+  clearAllOwnerExpensesFromApi,
+  removeSampleExpensesFromApi,
   syncAllLocalExpensesToApi,
 } from '../../lib/owner-expenses-storage';
 import { getCurrentYearMonth, getTodayDateString } from '../../lib/date-helpers';
@@ -307,17 +309,33 @@ export default function OwnerExpensesScreen({
     );
   }, [allExpenses, busId]);
 
-  const handlePurgeSampleData = () => {
-    removeSampleExpensesOnly(busId);
-    loadData();
+  const handlePurgeSampleData = async () => {
+    // Fase 1: Optimistic UI
+    setAllExpenses((prev) =>
+      prev.filter((e) => !(e.busId === busId && (e.id.startsWith('EXP-AUG-') || e.id.startsWith('EXP-SEP-'))))
+    );
     showToast('🧹 Gastos de ejemplo eliminados. Lista limpia con tus registros.');
+
+    // Fase 2: Persistencia local y API en segundo plano
+    try {
+      await removeSampleExpensesFromApi(busId);
+    } catch (err) {
+      console.warn('Error purgando muestras:', err);
+    }
   };
 
-  const handleClearAll = () => {
-    if (window.confirm('¿Seguro que deseas vaciar todos los gastos registrados para este bus?')) {
-      clearAllOwnerExpenses(busId);
-      loadData();
-      showToast('🗑️ Todos los gastos han sido borrados.');
+  const handleClearAll = async () => {
+    if (!window.confirm('¿Seguro que deseas vaciar todos los gastos registrados para este bus?')) return;
+
+    // Fase 1: Optimistic UI
+    setAllExpenses([]);
+    showToast('🗑️ Todos los gastos han sido borrados.');
+
+    // Fase 2: Persistencia local y API
+    try {
+      await clearAllOwnerExpensesFromApi(busId);
+    } catch (err) {
+      console.warn('Error vaciando todos los gastos:', err);
     }
   };
 
@@ -467,12 +485,19 @@ export default function OwnerExpensesScreen({
     showToast(`✅ Abono de $${amount.toFixed(2)} registrado correctamente`);
   };
 
-  // Eliminar gasto
+  // Eliminar gasto por Fases (Fase 1: Optimistic UI sin bucle, Fase 2: Persistencia local y remota)
   const handleDelete = async (id: string) => {
-    if (window.confirm('¿Seguro que deseas eliminar este registro de gasto?')) {
+    if (!window.confirm('¿Seguro que deseas eliminar este registro de gasto?')) return;
+    
+    // Fase 1: Actualización optimista inmediata en el estado de React (cero parpadeo, cero bucles)
+    setAllExpenses((prev) => prev.filter((e) => e.id !== id));
+    showToast('🗑️ Registro eliminado');
+
+    // Fase 2: Ejecutar borrado definitivo en Storage y API en segundo plano
+    try {
       await deleteOwnerExpenseFromApi(id);
-      await loadData();
-      showToast('🗑️ Registro eliminado');
+    } catch (err) {
+      console.warn('Error borrando en API:', err);
     }
   };
 
