@@ -97,7 +97,8 @@ export function HomeScreen({
 
   const [backupLoading, setBackupLoading] = useState(false);
   const activeBusId = getActiveBusId() || 'BUS-01';
-  const currentYearMonth = getCurrentYearMonth();
+  const defaultYearMonth = getCurrentYearMonth();
+  const [displayYearMonth, setDisplayYearMonth] = useState<string>(defaultYearMonth);
 
   const [ownerSummary, setOwnerSummary] = useState<{
     routeIncome: number;
@@ -167,12 +168,10 @@ export function HomeScreen({
       })
       .catch(() => {});
 
-    // 3. Balance financiero en vivo para el mes dinámico
-    let totalIncome = currentYearMonth === '2026-08' ? 3915.25 : 0;
-
-    const updateSummary = (expenses: any[], income: number) => {
+    // 3. Balance financiero en vivo para el mes dinámico (o el mes más reciente con registros)
+    const calculateForMonth = (targetMonth: string, expenses: any[], income: number) => {
       const monthExpenses = expenses.filter(
-        e => e.expenseDate && e.expenseDate.startsWith(currentYearMonth)
+        e => e.expenseDate && e.expenseDate.startsWith(targetMonth)
       );
       const totalCost = monthExpenses.reduce((sum, e) => sum + (e.totalAmount || 0), 0);
       const debts = expenses
@@ -187,39 +186,59 @@ export function HomeScreen({
       });
     };
 
+    const processExpenses = (expenses: any[]) => {
+      // Determinar mes objetivo: si el mes actual no tiene gastos, buscar el mes más reciente con gastos
+      let targetMonth = defaultYearMonth;
+      const hasCurrent = expenses.some(e => e.expenseDate && e.expenseDate.startsWith(defaultYearMonth));
+      if (!hasCurrent && expenses.length > 0) {
+        const monthsWithData = Array.from(
+          new Set(expenses.map((e: any) => e.expenseDate?.substring(0, 7)).filter(Boolean))
+        ).sort().reverse();
+        if (monthsWithData.length > 0 && typeof monthsWithData[0] === 'string') {
+          targetMonth = monthsWithData[0];
+        }
+      }
+      setDisplayYearMonth(targetMonth);
+
+      let initialIncome = targetMonth === '2026-08' ? 3915.25 : 0;
+      calculateForMonth(targetMonth, expenses, initialIncome);
+
+      // Consultar ingresos reales del mes en la API de reportes
+      fetch(`/api/reports?type=mensual&month=${targetMonth}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(reportData => {
+          if (reportData && reportData.totals) {
+            const t = reportData.totals;
+            const ay = t.entregaAyudante || 0;
+            const cia = t.entregaCompania || 0;
+            const total = t.totalEntregado || (ay + cia);
+            if (total > 0 || targetMonth !== '2026-08') {
+              initialIncome = total;
+            }
+          }
+          calculateForMonth(targetMonth, expenses, initialIncome);
+        })
+        .catch(() => {});
+    };
+
     // Primero con la caché local de gastos
     try {
       const cached = getOwnerExpenses(activeBusId);
-      updateSummary(cached, totalIncome);
+      processExpenses(cached);
     } catch {
       /* ignore */
     }
 
-    // Luego consultar reportes del mes para ingresos reales de ruta
-    fetch(`/api/reports?type=mensual&month=${currentYearMonth}`)
-      .then(res => res.ok ? res.json() : null)
-      .then(reportData => {
-        if (reportData && reportData.totals) {
-          const t = reportData.totals;
-          const ay = t.entregaAyudante || 0;
-          const cia = t.entregaCompania || 0;
-          totalIncome = t.totalEntregado || (ay + cia) || (currentYearMonth === '2026-08' ? 3915.25 : 0);
-        }
-        // Consultar gastos en línea
-        return fetchOwnerExpensesFromApi(activeBusId);
-      })
+    // Luego sincronizar con API de gastos
+    fetchOwnerExpensesFromApi(activeBusId)
       .then(onlineExpenses => {
-        const listToUse = (onlineExpenses && onlineExpenses.length > 0) 
-          ? onlineExpenses 
+        const listToUse = (onlineExpenses && onlineExpenses.length > 0)
+          ? onlineExpenses
           : getOwnerExpenses(activeBusId);
-        updateSummary(listToUse, totalIncome);
+        processExpenses(listToUse);
       })
-      .catch(() => {
-        // En caso de fallo de red, mantener caché local
-        const cached = getOwnerExpenses(activeBusId);
-        updateSummary(cached, totalIncome);
-      });
-  }, [isSuperAdmin, activeBusId, currentYearMonth]);
+      .catch(() => {});
+  }, [isSuperAdmin, activeBusId, defaultYearMonth]);
 
   const handleAyudanteBoletosClick = () => {
     if (user.esActual === false) {
@@ -380,7 +399,7 @@ export function HomeScreen({
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wide">
-                    Balance de Ganancia Limpia • {formatMonthName(currentYearMonth)}
+                    Balance de Ganancia Limpia • {formatMonthName(displayYearMonth)}
                   </span>
                 </div>
                 <span className="text-[11px] text-emerald-300 font-bold flex items-center gap-1">

@@ -114,19 +114,45 @@ export default function OwnerExpensesScreen({
   const loadData = async () => {
     try {
       const list = await fetchOwnerExpensesFromApi(busId);
-      if (list && list.length > 0) {
-        setAllExpenses(list);
-      } else {
-        const local = getOwnerExpenses(busId);
-        if (local && local.length > 0) {
-          setAllExpenses(local);
+      const effectiveList = (list && list.length > 0) ? list : getOwnerExpenses(busId);
+      setAllExpenses(effectiveList);
+      setIsOnlineDb(true);
+
+      // Si el mes actualmente seleccionado no tiene gastos pero hay gastos en otros meses,
+      // posicionarse automáticamente en el mes más reciente con registros
+      if (effectiveList.length > 0) {
+        const hasExpensesInSelectedMonth = effectiveList.some((e) =>
+          e.expenseDate.startsWith(selectedYearMonth)
+        );
+        if (!hasExpensesInSelectedMonth) {
+          // Extraer meses con gastos ordenados de más reciente a más antiguo
+          const monthsWithData = Array.from(
+            new Set(effectiveList.map((e) => e.expenseDate.substring(0, 7)).filter(Boolean))
+          ).sort().reverse();
+
+          if (monthsWithData.length > 0) {
+            setSelectedYearMonth(monthsWithData[0]);
+          }
         }
       }
-      setIsOnlineDb(true);
     } catch {
       const list = getOwnerExpenses(busId);
       setAllExpenses(list);
       setIsOnlineDb(false);
+
+      if (list.length > 0) {
+        const hasExpensesInSelectedMonth = list.some((e) =>
+          e.expenseDate.startsWith(selectedYearMonth)
+        );
+        if (!hasExpensesInSelectedMonth) {
+          const monthsWithData = Array.from(
+            new Set(list.map((e) => e.expenseDate.substring(0, 7)).filter(Boolean))
+          ).sort().reverse();
+          if (monthsWithData.length > 0) {
+            setSelectedYearMonth(monthsWithData[0]);
+          }
+        }
+      }
     }
   };
 
@@ -556,32 +582,44 @@ export default function OwnerExpensesScreen({
             </button>
           </div>
 
-          {/* Accesos Rápidos de Meses Clave (Mes Actual y Meses con Movimiento) */}
-          <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-gray-100 flex-wrap">
+          {/* Accesos Rápidos de Meses Clave (Mes Actual y Todos los Meses con Movimiento) */}
+          <div className="flex items-center justify-center gap-1.5 mt-2 pt-2 border-t border-gray-100 flex-wrap">
             <button
               id="quick-current-month"
               onClick={() => setSelectedYearMonth(getCurrentYearMonth())}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition ${
                 selectedYearMonth === getCurrentYearMonth()
-                  ? 'bg-[#912D26] text-white font-bold shadow-sm'
+                  ? 'bg-[#912D26] text-white font-bold shadow-xs'
                   : 'bg-gray-100 text-[#3A3A3A] hover:bg-gray-200'
               }`}
             >
-              Mes Actual ({getMonthNameFormatted(getCurrentYearMonth())})
+              Mes Actual
             </button>
-            {getCurrentYearMonth() !== '2026-08' && (
-              <button
-                id="quick-august"
-                onClick={() => setSelectedYearMonth('2026-08')}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-                  selectedYearMonth === '2026-08'
-                    ? 'bg-[#912D26] text-white font-bold shadow-sm'
-                    : 'bg-gray-100 text-[#3A3A3A] hover:bg-gray-200'
-                }`}
-              >
-                Agosto 2026 (Auditado)
-              </button>
-            )}
+            {/* Generar botón táctil para cada mes que tenga registros */}
+            {availableMonths
+              .filter((m) => m !== getCurrentYearMonth())
+              .map((m) => {
+                const countInMonth = allExpenses.filter((e) => e.expenseDate.startsWith(m)).length;
+                return (
+                  <button
+                    key={m}
+                    id={`quick-month-${m}`}
+                    onClick={() => setSelectedYearMonth(m)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1 ${
+                      selectedYearMonth === m
+                        ? 'bg-[#912D26] text-white font-bold shadow-xs'
+                        : 'bg-gray-100 text-[#3A3A3A] hover:bg-gray-200'
+                    }`}
+                  >
+                    <span>{getMonthNameFormatted(m)}</span>
+                    {countInMonth > 0 && (
+                      <span className={`text-[10px] px-1 rounded-full ${selectedYearMonth === m ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                        {countInMonth}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
           </div>
         </div>
 

@@ -6,10 +6,24 @@ const INITIALIZED_KEY = 'rutago_owner_expenses_initialized_flag';
 export function getOwnerExpenses(busId = 'BUS-01'): OwnerExpense[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    let raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      // Auto-inicialización segura con los datos validados del socio
+      seedSampleExpenses(busId);
+      raw = localStorage.getItem(STORAGE_KEY);
+    }
     if (!raw) return [];
     const all: OwnerExpense[] = JSON.parse(raw);
-    return all.filter((item) => item.busId === busId);
+    const busExpenses = all.filter((item) => item.busId === busId);
+    if (busExpenses.length === 0) {
+      seedSampleExpenses(busId);
+      const reRead = localStorage.getItem(STORAGE_KEY);
+      if (reRead) {
+        const reAll: OwnerExpense[] = JSON.parse(reRead);
+        return reAll.filter((item) => item.busId === busId);
+      }
+    }
+    return busExpenses;
   } catch (err) {
     console.error('Error cargando gastos de socio:', err);
     return [];
