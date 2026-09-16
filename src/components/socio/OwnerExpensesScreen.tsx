@@ -122,12 +122,12 @@ export default function OwnerExpensesScreen({
       // posicionarse automáticamente en el mes más reciente con registros
       if (effectiveList.length > 0) {
         const hasExpensesInSelectedMonth = effectiveList.some((e) =>
-          e.expenseDate.startsWith(selectedYearMonth)
+          typeof e.expenseDate === 'string' && e.expenseDate.startsWith(selectedYearMonth)
         );
         if (!hasExpensesInSelectedMonth) {
           // Extraer meses con gastos ordenados de más reciente a más antiguo
           const monthsWithData = Array.from(
-            new Set(effectiveList.map((e) => e.expenseDate.substring(0, 7)).filter(Boolean))
+            new Set(effectiveList.map((e) => typeof e.expenseDate === 'string' && e.expenseDate.length >= 7 ? e.expenseDate.substring(0, 7) : '').filter(Boolean))
           ).sort().reverse();
 
           if (monthsWithData.length > 0) {
@@ -142,11 +142,11 @@ export default function OwnerExpensesScreen({
 
       if (list.length > 0) {
         const hasExpensesInSelectedMonth = list.some((e) =>
-          e.expenseDate.startsWith(selectedYearMonth)
+          typeof e.expenseDate === 'string' && e.expenseDate.startsWith(selectedYearMonth)
         );
         if (!hasExpensesInSelectedMonth) {
           const monthsWithData = Array.from(
-            new Set(list.map((e) => e.expenseDate.substring(0, 7)).filter(Boolean))
+            new Set(list.map((e) => typeof e.expenseDate === 'string' && e.expenseDate.length >= 7 ? e.expenseDate.substring(0, 7) : '').filter(Boolean))
           ).sort().reverse();
           if (monthsWithData.length > 0) {
             setSelectedYearMonth(monthsWithData[0]);
@@ -599,7 +599,7 @@ export default function OwnerExpensesScreen({
             {availableMonths
               .filter((m) => m !== getCurrentYearMonth())
               .map((m) => {
-                const countInMonth = allExpenses.filter((e) => e.expenseDate.startsWith(m)).length;
+                const countInMonth = allExpenses.filter((e) => typeof e.expenseDate === 'string' && e.expenseDate.startsWith(m)).length;
                 return (
                   <button
                     key={m}
@@ -914,7 +914,7 @@ export default function OwnerExpensesScreen({
             </button>
             {OWNER_EXPENSE_CATEGORIES.map((cat) => {
               const count = allExpenses.filter(
-                (e) => e.expenseDate.startsWith(selectedYearMonth) && e.category === cat.id
+                (e) => typeof e.expenseDate === 'string' && e.expenseDate.startsWith(selectedYearMonth) && e.category === cat.id
               ).length;
               if (count === 0 && filterCategory !== cat.id) return null;
               return (

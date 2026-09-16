@@ -15,7 +15,7 @@ export function getOwnerExpenses(busId = 'BUS-01'): OwnerExpense[] {
     if (!raw) return [];
     const all: OwnerExpense[] = JSON.parse(raw);
     const busExpenses = all.filter((item) => item.busId === busId);
-    if (busExpenses.length === 0) {
+    if (busExpenses.length === 0 && busId === 'BUS-01') {
       seedSampleExpenses(busId);
       const reRead = localStorage.getItem(STORAGE_KEY);
       if (reRead) {

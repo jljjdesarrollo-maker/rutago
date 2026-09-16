@@ -98,6 +98,7 @@ export function HomeScreen({
   const [backupLoading, setBackupLoading] = useState(false);
   const activeBusId = getActiveBusId() || 'BUS-01';
   const defaultYearMonth = getCurrentYearMonth();
+  const currentYearMonth = defaultYearMonth;
   const [displayYearMonth, setDisplayYearMonth] = useState<string>(defaultYearMonth);
 
   const [ownerSummary, setOwnerSummary] = useState<{
@@ -378,7 +379,7 @@ export function HomeScreen({
               </div>
               <a
                 href={`https://wa.me/593991234567?text=${encodeURIComponent(
-                  `Hola, reporto pago de licencia SaaS RutaGo para Unidad ${busNumero} (${saasSubscription.fechaProximoCorte || currentYearMonth})`
+                  `Hola, reporto pago de licencia SaaS RutaGo para Unidad ${busNumero} (${saasSubscription.fechaProximoCorte || displayYearMonth || currentYearMonth})`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
