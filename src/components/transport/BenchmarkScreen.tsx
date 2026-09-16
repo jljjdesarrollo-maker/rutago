@@ -38,6 +38,7 @@ import {
   type BusBenchmarkMetric,
 } from '@/types/benchmark';
 import { computeFleetBenchmark } from '@/lib/benchmark-metrics';
+import { BenchmarkChart } from './BenchmarkChart';
 
 interface BenchmarkScreenProps {
   onBack: () => void;
@@ -442,6 +443,14 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
             </div>
           </CardContent>
         </Card>
+
+        {/* ─── GRÁFICO ESTADÍSTICO INTUITIVO (IPF, PRODUCCIÓN Y VUELTAS) ─── */}
+        <BenchmarkChart
+          ranking={currentCircuitData.ranking}
+          ipfPromedioGrupo={currentCircuitData.ipfPromedioGrupo}
+          circuito={currentCircuitData.circuito}
+          tituloCircuito={currentCircuitData.titulo}
+        />
 
         {/* ─── SELECTOR SUB-PESTAÑA (UNIDADES vs TRIPULACIONES) ─── */}
         <div className="flex items-center justify-between border-b border-gray-200 pb-2">
