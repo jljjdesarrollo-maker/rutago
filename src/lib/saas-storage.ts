@@ -1,5 +1,5 @@
 import { Socio, SuscripcionSocio, SesionUsuario } from '@/types/saas';
-import { Bus } from '@/components/transport/types-boletos';
+import { BusItem } from '@/types/fleet';
 import { getAllBuses } from './fleet-storage';
 
 const SOCIOS_STORAGE_KEY = 'rutago_socios_list';
@@ -153,7 +153,7 @@ export function saveSuscripcion(sub: SuscripcionSocio): void {
   }
 }
 
-export function getBusesForSocio(socioId: string): Bus[] {
+export function getBusesForSocio(socioId: string): BusItem[] {
   const allBuses = getAllBuses();
   const socios = getSocios();
   const socio = socios.find(s => s.id === socioId);

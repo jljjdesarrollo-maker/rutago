@@ -31,6 +31,9 @@ import {
   Bus,
   Award,
   Wrench,
+  Sparkle,
+  Phone,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,6 +42,8 @@ import type { UserSession } from './types';
 import { getOwnerExpenses, fetchOwnerExpensesFromApi } from '@/lib/owner-expenses-storage';
 import { SuperAdminHomeScreen } from './SuperAdminHomeScreen';
 import { getAllBuses, getActiveBusId } from '@/lib/fleet-storage';
+import { getCurrentYearMonth, formatMonthName } from '@/lib/date-helpers';
+import { getSuscripciones } from '@/lib/saas-storage';
 
 interface HomeScreenProps {
   user: UserSession;
@@ -91,51 +96,130 @@ export function HomeScreen({
   );
 
   const [backupLoading, setBackupLoading] = useState(false);
+  const activeBusId = getActiveBusId() || 'BUS-01';
+  const currentYearMonth = getCurrentYearMonth();
+
   const [ownerSummary, setOwnerSummary] = useState<{
     routeIncome: number;
     busExpenses: number;
     netProfit: number;
     pendingDebts: number;
   }>({
-    routeIncome: 3915.25,
+    routeIncome: 0,
     busExpenses: 0,
-    netProfit: 3915.25,
+    netProfit: 0,
     pendingDebts: 0,
   });
+
+  // Tripulación activa del día (Conductor y Ayudante)
+  const [crewInfo, setCrewInfo] = useState<{
+    conductorNombre: string;
+    ayudanteNombre: string;
+  }>({
+    conductorNombre: 'No asignado',
+    ayudanteNombre: 'No asignado',
+  });
+
+  // Estado de suscripción SaaS del bus activo
+  const [saasSubscription, setSaasSubscription] = useState<{
+    estado: 'ACTIVA' | 'POR_VENCER' | 'VENCIDA' | 'GRACIA';
+    fechaProximoCorte: string;
+    montoMensual: number;
+  }>({
+    estado: 'ACTIVA',
+    fechaProximoCorte: '',
+    montoMensual: 20.0,
+  });
+
   const { toast } = useToast();
 
-  // Calcular balance financiero en vivo exclusivamente para el socio (cero consumo de recursos para SuperAdmin)
+  // Calcular balance financiero, tripulación y suscripción en vivo para el socio
   useEffect(() => {
     if (isSuperAdmin) return;
 
-    const updateSummaryFromList = (expenses: any[]) => {
-      const augExpenses = expenses.filter(e => e.expenseDate && e.expenseDate.startsWith('2026-08'));
-      const totalCost = augExpenses.reduce((sum, e) => sum + (e.totalAmount || 0), 0);
-      const debts = expenses.filter(e => e.pendingBalance > 0).reduce((sum, e) => sum + e.pendingBalance, 0);
-      const routeIncome = 3915.25; // Base auditada de entregas
+    // 1. Cargar suscripción del bus activo
+    try {
+      const subs = getSuscripciones();
+      const mySub = subs.find(s => s.busId === activeBusId);
+      if (mySub) {
+        setSaasSubscription({
+          estado: mySub.estado,
+          fechaProximoCorte: mySub.fechaProximoCorte,
+          montoMensual: mySub.montoMensual || 20.0,
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+
+    // 2. Cargar tripulación activa del día (/api/personas)
+    fetch('/api/personas')
+      .then(res => res.ok ? res.json() : [])
+      .then(personas => {
+        if (Array.isArray(personas)) {
+          const conductor = personas.find((p: any) => p.rol === 'CONDUCTOR' && p.esActual);
+          const ayudante = personas.find((p: any) => p.rol === 'AYUDANTE' && p.esActual);
+          setCrewInfo({
+            conductorNombre: conductor ? conductor.nombre : 'No asignado',
+            ayudanteNombre: ayudante ? ayudante.nombre : 'No asignado',
+          });
+        }
+      })
+      .catch(() => {});
+
+    // 3. Balance financiero en vivo para el mes dinámico
+    let totalIncome = currentYearMonth === '2026-08' ? 3915.25 : 0;
+
+    const updateSummary = (expenses: any[], income: number) => {
+      const monthExpenses = expenses.filter(
+        e => e.expenseDate && e.expenseDate.startsWith(currentYearMonth)
+      );
+      const totalCost = monthExpenses.reduce((sum, e) => sum + (e.totalAmount || 0), 0);
+      const debts = expenses
+        .filter(e => e.pendingBalance > 0)
+        .reduce((sum, e) => sum + e.pendingBalance, 0);
+
       setOwnerSummary({
-        routeIncome,
+        routeIncome: income,
         busExpenses: totalCost,
-        netProfit: routeIncome - totalCost,
+        netProfit: income - totalCost,
         pendingDebts: debts,
       });
     };
 
+    // Primero con la caché local de gastos
     try {
-      // 1. Lectura inmediata desde caché
-      const cached = getOwnerExpenses('BUS-01');
-      updateSummaryFromList(cached);
-
-      // 2. Consulta asíncrona a la base de datos central
-      fetchOwnerExpensesFromApi('BUS-01').then((online) => {
-        if (online && online.length > 0) {
-          updateSummaryFromList(online);
-        }
-      }).catch(() => {});
+      const cached = getOwnerExpenses(activeBusId);
+      updateSummary(cached, totalIncome);
     } catch {
       /* ignore */
     }
-  }, [isSuperAdmin]);
+
+    // Luego consultar reportes del mes para ingresos reales de ruta
+    fetch(`/api/reports?type=mensual&month=${currentYearMonth}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(reportData => {
+        if (reportData && reportData.totals) {
+          const t = reportData.totals;
+          const ay = t.entregaAyudante || 0;
+          const cia = t.entregaCompania || 0;
+          totalIncome = t.totalEntregado || (ay + cia) || (currentYearMonth === '2026-08' ? 3915.25 : 0);
+        }
+        // Consultar gastos en línea
+        return fetchOwnerExpensesFromApi(activeBusId);
+      })
+      .then(onlineExpenses => {
+        const listToUse = (onlineExpenses && onlineExpenses.length > 0) 
+          ? onlineExpenses 
+          : getOwnerExpenses(activeBusId);
+        updateSummary(listToUse, totalIncome);
+      })
+      .catch(() => {
+        // En caso de fallo de red, mantener caché local
+        const cached = getOwnerExpenses(activeBusId);
+        updateSummary(cached, totalIncome);
+      });
+  }, [isSuperAdmin, activeBusId, currentYearMonth]);
 
   const handleAyudanteBoletosClick = () => {
     if (user.esActual === false) {
@@ -245,34 +329,102 @@ export function HomeScreen({
 
         {/* Resumen Ejecutivo Financiero del Socio (Solo Administrador) */}
         {isAdmin && (
-          <div
-            onClick={onGoToSocioGastos}
-            className="cursor-pointer bg-gradient-to-br from-emerald-900 via-teal-950 to-slate-900 rounded-2xl p-3.5 text-white shadow-md border border-emerald-800/40 hover:scale-[1.01] transition active:scale-[0.99] mb-1"
-          >
-            <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wide">
-                  Balance de Ganancia Limpia • Agosto 2026
+          <div className="flex flex-col gap-2.5 mb-1">
+            {/* Tarjeta de Licencia SaaS */}
+            <div className="bg-slate-900 text-white rounded-2xl p-3 border border-slate-700 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <Sparkle className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-100">Licencia SaaS RutaGo</span>
+                    <span
+                      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                        saasSubscription.estado === 'ACTIVA'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : saasSubscription.estado === 'POR_VENCER'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                      }`}
+                    >
+                      {saasSubscription.estado}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Cuota: ${saasSubscription.montoMensual.toFixed(2)}/mes
+                    {saasSubscription.fechaProximoCorte && ` • Corte: ${saasSubscription.fechaProximoCorte}`}
+                  </p>
+                </div>
+              </div>
+              <a
+                href={`https://wa.me/593991234567?text=${encodeURIComponent(
+                  `Hola, reporto pago de licencia SaaS RutaGo para Unidad ${busNumero} (${saasSubscription.fechaProximoCorte || currentYearMonth})`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-xl transition shadow-xs"
+              >
+                <Phone className="w-3 h-3" />
+                <span>Pagar</span>
+                <ExternalLink className="w-2.5 h-2.5 opacity-80" />
+              </a>
+            </div>
+
+            {/* Resumen Financiero Dinámico */}
+            <div
+              onClick={onGoToSocioGastos}
+              className="cursor-pointer bg-gradient-to-br from-emerald-900 via-teal-950 to-slate-900 rounded-2xl p-3.5 text-white shadow-md border border-emerald-800/40 hover:scale-[1.01] transition active:scale-[0.99]"
+            >
+              <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wide">
+                    Balance de Ganancia Limpia • {formatMonthName(currentYearMonth)}
+                  </span>
+                </div>
+                <span className="text-[11px] text-emerald-300 font-bold flex items-center gap-1">
+                  Ver Módulo Socio <ArrowRight className="w-3 h-3" />
                 </span>
               </div>
-              <span className="text-[11px] text-emerald-300 font-bold flex items-center gap-1">
-                Ver Módulo Socio <ArrowRight className="w-3 h-3" />
-              </span>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-white/5 rounded-xl p-1.5 border border-white/10">
+                  <span className="text-[10px] text-emerald-200/80 uppercase font-semibold block">Ruta (Recaudado)</span>
+                  <span className="text-sm font-black text-white">${ownerSummary.routeIncome.toFixed(2)}</span>
+                </div>
+                <div className="bg-white/5 rounded-xl p-1.5 border border-white/10">
+                  <span className="text-[10px] text-rose-200/80 uppercase font-semibold block">Gastos del Bus</span>
+                  <span className="text-sm font-black text-rose-300">${ownerSummary.busExpenses.toFixed(2)}</span>
+                </div>
+                <div className="bg-emerald-500/20 rounded-xl p-1.5 border border-emerald-400/30">
+                  <span className="text-[10px] text-emerald-200 uppercase font-extrabold block">En Limpio</span>
+                  <span className="text-sm font-black text-emerald-300">${ownerSummary.netProfit.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-white/5 rounded-xl p-1.5 border border-white/10">
-                <span className="text-[10px] text-emerald-200/80 uppercase font-semibold block">Ruta (Recaudado)</span>
-                <span className="text-sm font-black text-white">${ownerSummary.routeIncome.toFixed(2)}</span>
+
+            {/* Tripulación del Día */}
+            <div
+              onClick={onGoToPersonal}
+              className="cursor-pointer bg-white rounded-2xl p-2.5 border border-gray-200 shadow-xs flex items-center justify-between hover:border-gray-300 transition"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#912D26]/10 text-[#912D26] flex items-center justify-center">
+                  <Users className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-[#3A3A3A]">Tripulación de Hoy</span>
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-gray-100 text-gray-700">
+                      Unidad {busNumero}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-500">
+                    <span className="font-semibold text-gray-700">Chofer:</span> {crewInfo.conductorNombre} • <span className="font-semibold text-gray-700">Ayudante:</span> {crewInfo.ayudanteNombre}
+                  </p>
+                </div>
               </div>
-              <div className="bg-white/5 rounded-xl p-1.5 border border-white/10">
-                <span className="text-[10px] text-rose-200/80 uppercase font-semibold block">Gastos del Bus</span>
-                <span className="text-sm font-black text-rose-300">${ownerSummary.busExpenses.toFixed(2)}</span>
-              </div>
-              <div className="bg-emerald-500/20 rounded-xl p-1.5 border border-emerald-400/30">
-                <span className="text-[10px] text-emerald-200 uppercase font-extrabold block">En Limpio</span>
-                <span className="text-sm font-black text-emerald-300">${ownerSummary.netProfit.toFixed(2)}</span>
-              </div>
+              <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
             </div>
           </div>
         )}
@@ -629,24 +781,26 @@ export function HomeScreen({
                 </CardContent>
               </Card>
 
-              {/* Configurar VT */}
-              <Card
-                onClick={onGoToVtConfig}
-                className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
-              >
-                <CardContent className="flex items-center justify-between p-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-700">
-                      <Settings className="w-5 h-5" />
+              {/* Configurar VT (Exclusivo SuperAdmin SaaS) */}
+              {isSuperAdmin && (
+                <Card
+                  onClick={onGoToVtConfig}
+                  className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
+                >
+                  <CardContent className="flex items-center justify-between p-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-700">
+                        <Settings className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm text-[#3A3A3A]">Rutas y Horarios (Configurar VT)</p>
+                        <p className="text-xs text-gray-500">Horarios y orden de frecuencias de cada vehículo tipo</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-bold text-sm text-[#3A3A3A]">Rutas y Horarios (Configurar VT)</p>
-                      <p className="text-xs text-gray-500">Horarios y orden de frecuencias de cada vehículo tipo</p>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                </CardContent>
-              </Card>
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Respaldo Seguro de la Base de Datos */}
               <Card className="rounded-2xl border border-gray-200 bg-white">
@@ -686,7 +840,7 @@ export function HomeScreen({
 
       {/* Footer */}
       <footer className="py-4 text-center text-xs text-[#3A3A3A]/40 font-medium">
-        RutaGo v3.49.0 • Control de Transporte
+        RutaGo v3.56.0 • Control de Transporte
       </footer>
     </div>
   );

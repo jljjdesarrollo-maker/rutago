@@ -52,6 +52,7 @@ import {
   deleteOwnerExpenseFromApi,
   syncAllLocalExpensesToApi,
 } from '../../lib/owner-expenses-storage';
+import { getCurrentYearMonth, getTodayDateString } from '../../lib/date-helpers';
 
 interface Props {
   initialBusId?: string;
@@ -68,8 +69,8 @@ export default function OwnerExpensesScreen({
   const [isOnlineDb, setIsOnlineDb] = useState<boolean>(true);
 
   // Mes contable activo para visualización (Formato YYYY-MM)
-  // Por defecto inicializamos en Agosto 2026 (mes con datos operativos auditados de $3915.25)
-  const [selectedYearMonth, setSelectedYearMonth] = useState<string>('2026-08');
+  // Inicialización dinámica según fecha real del sistema
+  const [selectedYearMonth, setSelectedYearMonth] = useState<string>(() => getCurrentYearMonth());
 
   // Modales
   const [isNewExpenseOpen, setIsNewExpenseOpen] = useState(false);
@@ -82,7 +83,7 @@ export default function OwnerExpensesScreen({
   const [searchTerm, setSearchTerm] = useState('');
 
   // Estados del Formulario de Nuevo Gasto ("Modo Rápido 1-2-3")
-  const [formDate, setFormDate] = useState<string>('2026-08-15');
+  const [formDate, setFormDate] = useState<string>(() => getTodayDateString());
   const [formCategory, setFormCategory] = useState<OwnerExpenseCategory>('ACEITES_FILTROS');
   const [formDescription, setFormDescription] = useState('');
   const [formProvider, setFormProvider] = useState('');
@@ -95,7 +96,7 @@ export default function OwnerExpensesScreen({
   const [formPhotoPreview, setFormPhotoPreview] = useState<string | null>(null);
 
   // Estados del Formulario de Abono
-  const [abonoDate, setAbonoDate] = useState<string>('2026-08-20');
+  const [abonoDate, setAbonoDate] = useState<string>(() => getTodayDateString());
   const [abonoAmount, setAbonoAmount] = useState<string>('');
   const [abonoMethod, setAbonoMethod] = useState<'TRANSFERENCIA' | 'EFECTIVO'>('TRANSFERENCIA');
   const [abonoRef, setAbonoRef] = useState('');
@@ -150,9 +151,9 @@ export default function OwnerExpensesScreen({
   // Lista de meses disponibles para navegación fácil
   const availableMonths = useMemo(() => {
     const months = new Set<string>();
-    // Siempre incluir Agosto y Septiembre 2026
-    months.add('2026-08');
-    months.add('2026-09');
+    // Siempre incluir el mes actual del sistema y los meses con registros
+    months.add(getCurrentYearMonth());
+    months.add('2026-08'); // Histórico auditado
     allExpenses.forEach((e) => {
       if (e.expenseDate && e.expenseDate.length >= 7) {
         months.add(e.expenseDate.substring(0, 7));
@@ -196,11 +197,11 @@ export default function OwnerExpensesScreen({
     totalEntregado: number;
     loading: boolean;
   }>({
-    production: 12334.75,
-    entregaAyudante: 2828.80,
-    entregaCompania: 1086.45,
-    totalEntregado: 3915.25,
-    loading: false,
+    production: 0,
+    entregaAyudante: 0,
+    entregaCompania: 0,
+    totalEntregado: 0,
+    loading: true,
   });
 
   // Consulta dinámica en tiempo real a la API de reportes
@@ -555,30 +556,32 @@ export default function OwnerExpensesScreen({
             </button>
           </div>
 
-          {/* Accesos Rápidos de Meses Clave (Agosto y Septiembre) */}
-          <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-gray-100">
+          {/* Accesos Rápidos de Meses Clave (Mes Actual y Meses con Movimiento) */}
+          <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-gray-100 flex-wrap">
             <button
-              id="quick-august"
-              onClick={() => setSelectedYearMonth('2026-08')}
+              id="quick-current-month"
+              onClick={() => setSelectedYearMonth(getCurrentYearMonth())}
               className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-                selectedYearMonth === '2026-08'
+                selectedYearMonth === getCurrentYearMonth()
                   ? 'bg-[#912D26] text-white font-bold shadow-sm'
                   : 'bg-gray-100 text-[#3A3A3A] hover:bg-gray-200'
               }`}
             >
-              Agosto 2026
+              Mes Actual ({getMonthNameFormatted(getCurrentYearMonth())})
             </button>
-            <button
-              id="quick-september"
-              onClick={() => setSelectedYearMonth('2026-09')}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-                selectedYearMonth === '2026-09'
-                  ? 'bg-[#912D26] text-white font-bold shadow-sm'
-                  : 'bg-gray-100 text-[#3A3A3A] hover:bg-gray-200'
-              }`}
-            >
-              Septiembre 2026 (Actual)
-            </button>
+            {getCurrentYearMonth() !== '2026-08' && (
+              <button
+                id="quick-august"
+                onClick={() => setSelectedYearMonth('2026-08')}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                  selectedYearMonth === '2026-08'
+                    ? 'bg-[#912D26] text-white font-bold shadow-sm'
+                    : 'bg-gray-100 text-[#3A3A3A] hover:bg-gray-200'
+                }`}
+              >
+                Agosto 2026 (Auditado)
+              </button>
+            )}
           </div>
         </div>
 

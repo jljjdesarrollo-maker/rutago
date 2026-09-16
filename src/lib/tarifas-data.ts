@@ -264,7 +264,6 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'Mal→Solan': { normal: 2.00, media: 1.00 },
   'Mal→Moyoc': { normal: 2.00, media: 1.00 },
   'Mal→Tumia': { normal: 2.50, media: 1.25 },
-  'Mal→Quina': { normal: 2.50, media: 1.25 },
   'Mal→Comun': { normal: 2.50, media: 1.25 },
   'Mal→Elvira': { normal: 3.00, media: 1.50 },
   // Intermedios La Elvira IDA (desde Vilcabamba hacia La Elvira)
@@ -274,7 +273,6 @@ const preciosIda: Record<string, { normal: number; media: number }> = {
   'Vilc→Solan': { normal: 1.50, media: 0.75 },
   'Vilc→Moyoc': { normal: 1.50, media: 0.75 },
   'Vilc→Tumia': { normal: 2.00, media: 1.00 },
-  'Vilc→Quina': { normal: 2.00, media: 1.00 },
   'Vilc→Comun': { normal: 2.20, media: 1.10 },
   'Vilc→Elvira': { normal: 2.40, media: 1.20 },
   // ═══ LOJA - YANGANA (pasa por Vilcabamba) ═══
