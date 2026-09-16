@@ -175,3 +175,19 @@
   * Rotación equitativa y comparador de rendimiento por franja horaria (auditoría para asambleas de socios).
   * Retenciones institucionales de Caja Común para administración y terminal.
   * Informes consolidados de auditoría para asambleas en PDF y Excel.
+
+### PENDIENTE #5: Depuración, Blindaje y Anti-Bucles en la Interfaz del Socio Propietario (v3.56.0)
+- **Aislamiento de Privacidad y Confidencialidad:**
+  * `FlotaScreen`: El socio solo debe gestionar la ficha técnica de **su unidad** (placa, tacómetro, disco), sin editar las unidades ajenas.
+  * Respaldo JSON: Exportación acotada a los registros y boletos del autobús del socio, protegiendo los datos contables de los otros 18 socios.
+  * `VTConfigScreen`: Ocultar la configuración de mallas y tolerancias para evitar alteraciones en los horarios oficiales de la cooperativa.
+- **Dinamización Financiera y Operativa:**
+  * Header financiero con mes dinámico en lugar de "Agosto 2026" hardcodeado.
+  * Transparencia de suscripción SaaS ($20/mes) con estado y enlace de envío de comprobantes a WhatsApp.
+  * Tarjeta de tripulación activa del día (chofer y ayudante en turno).
+- **Directiva Estricta Anti-Bucles (Zero-Loops Policy):**
+  * Prohibición absoluta de dependencias de arreglos u objetos no memoizados en `useEffect`.
+  * Usar exclusivamente valores primitivos (`busId`, `userId`, `mesStr`) en dependencias de hooks.
+  * No implementar intervalos de sondeo (`setInterval`) para balances o gastos sin condición explícita de término.
+  * Memoizar cálculos pesados con `useMemo` para evitar re-renderizados continuos en smartphones de baja gama.
+

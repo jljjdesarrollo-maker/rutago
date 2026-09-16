@@ -50,14 +50,30 @@
 
 ### 2.2. Socio Propietario de Autobús (`0101` / `2107`) — Rol Propietario de Unidad
 - **Identificador de Sesión:** Socio asignado a una o más unidades (ej. Unidad 01 del Socio Líder).
-- **Enfoque Operativo y Financiero del Negocio Particular:**
-  - **Header Dinámico:** Identificador de su unidad activa (ej. `UNIDAD 01`).
-  - **Balance de Ganancia Limpia:** Ingreso recaudado en ruta vs. Gastos del bus = Ganancia líquida neta.
-  - **Gastos y Mantenimiento del Bus:** Módulo completo de compras, diésel, repuestos y lubricadora (`OwnerExpensesScreen`).
-  - **Mantenimiento Preventivo por Tacómetro (`MantenimientoScreen`):** Alertas por odómetro de cambio de aceite (5,000 km), filtro de diésel (10,000 km), pastillas de freno (15,000 km), aceite de caja/corona (20,000 km) y alineación de neumáticos (25,000 km).
-  - **Carga Histórica de Cuadernos (`CargaHistoricaScreen`):** Digitalización de meses anteriores anotados en papel.
-  - **Historial de Liquidaciones del Bus (`HistoryScreen`).**
-  - **Auditoría de Boletos y Cumplimiento:** Revisión de turnos de su autobús.
+- **Matriz de Análisis Operativo & Financiero (v3.55.1):**
+  * **1. Lo que TIENE actualmente:**
+    - Header con balance financiero (ingresos de ruta vs. gastos).
+    - Módulo de Gastos del Socio (repuestos, diésel, compras, mecánicos en `OwnerExpensesScreen`).
+    - Alertas mecánicas por tacómetro en `MantenimientoScreen` (aceite, frenos, filtros).
+    - Historial de liquidaciones, Carga Histórica de cuadernos de papel y Auditoría de Boletos.
+    - Selector dinámico de unidad física (`BusSelector.tsx`).
+  * **2. Lo que DEBERÍA TENER (Mejoras y Propuesta de Valor):**
+    - **Header Financiero con Mes Dinámico:** Eliminar el mes hardcodeado ("Agosto 2026") para calcular dinámicamente el mes calendario en curso (ej. "Septiembre 2026").
+    - **Transparencia SaaS de su Bus:** Badge visible con el estado de su licencia ($20/mes) y fecha de vigencia, con botón rápido *"Reportar Comprobante por WhatsApp"*.
+    - **Tripulación Activa del Día:** Indicador visible en el Home de quién conduce y quién cobra hoy (ej. *"Chofer: Juan P. • Ayudante: Carlos M."*).
+    - **Semáforo Rápido de Mantenimiento en el Home:** Resumen visual sin necesidad de entrar a la pantalla de mantenimiento (ej. *"Aceite: OK • Frenos: Próximo a vencer"*).
+    - **Desglose de Efectivo Físico vs. Caja Común:** Saber cuánto dinero debe entregarle el ayudante en mano cada noche vs. lo retenido por la oficina.
+  * **3. Lo que NO DEBE TENER (Blindaje de Seguridad y Confidencialidad):**
+    - ❌ **NO modificar mallas horarias (`VTConfigScreen`):** El socio no debe poder alterar los horarios de salida ni los tiempos de bloqueo de frecuencias de la cooperativa.
+    - ❌ **NO editar flota ajena (`FlotaScreen`):** El socio solo debe ver/editar los datos técnicos de **su propio vehículo** (placa, odómetro, disco), nunca de los otros 18 buses.
+    - ❌ **NO descargar la base de datos completa de la cooperativa:** El botón de respaldo en la vista del socio debe limitar la exportación exclusivamente a **los registros de su unidad**, protegiendo la privacidad de los demás socios.
+    - ❌ **NO ver finanzas ni estados de cuenta SaaS de otros socios.**
+
+- **Directiva de Rendimiento: Cero Bucles y Cero Procesos en Bucle (Anti-Loop Policy):**
+  - **Prohibición de Polling Infinito:** No usar `setInterval` ni re-consultas cíclicas sin condición de término para balances o gastos.
+  - **Dependencias Primitivas en `useEffect`:** Los hooks deben depender de IDs primitivos (`busId`, `userId`, `mes`), nunca de objetos o arreglos inestables que provoquen re-renderizados continuos.
+  - **Cálculos Memoizados:** Balances y resúmenes financieros deben calcularse con `useMemo` sobre el estado local cargado una sola vez al montar o tras un cambio explícito de fecha/unidad.
+  - **Offline-First Reactivo:** La lectura de datos se realiza desde IndexedDB local al iniciar; las llamadas de red se sincronizan en segundo plano sin bloquear la UI ni regenerar estados en bucle.
 
 ---
 
@@ -101,6 +117,13 @@
     2. Comparador de rendimiento y rotación equitativa de franjas horarias para asambleas de socios.
     3. Retenciones institucionales de Caja Común para administración y terminal.
     4. Informes consolidados de asamblea en PDF y Excel.
+- **PENDIENTE #5: Depuración y Blindaje Integral de la Interfaz del Socio Propietario (v3.56.0):**
+  * **Aislamiento de Privacidad:** Limitar `FlotaScreen` a solo su unidad (o solo lectura), restringir el respaldo JSON a los datos de su propio autobús.
+  * **Protección de Mallas:** Ocultar `VTConfig` de la vista del socio para evitar alteraciones de horarios oficiales.
+  * **Dinamización Financiera:** Header con mes dinámico (`YYYY-MM`) y desglose de Efectivo en Mano vs. Caja Común de Oficina.
+  * **Transparencia SaaS:** Badge de vigencia de su suscripción de $20/mes con enlace directo a WhatsApp para comprobantes.
+  * **Tarjeta de Tripulación del Día:** Resumen del chofer y ayudante en turno activo.
+  * **Garantía Anti-Bucles:** Hooks con dependencias primitivas y memoización estricta.
 
 ---
 
@@ -115,5 +138,6 @@
    - **Cero Regresiones:** No refactorizar pantallas probadas en campo (`HomeScreenVT`, `ArqueoGeneralScreen`, `TicketScreen`).
    - **Offline-First Estricto:** Toda persistencia opera primero en `IndexedDB` y sincroniza en segundo plano.
    - **Arquitectura SaaS:** La adopción es voluntaria por socio ($20/mes). No asumir que el Super Admin es la gerencia de la cooperativa.
+   - **Garantía Anti-Bucles:** No programar `useEffect` con dependencias de objetos/arrays no memoizados ni disparar re-fetch infinito.
 4. **Siguiente Tarea en Agenda:**
-   - Revisar la lista de pendientes de la Sección 4 (Pendiente #1 Device Binding, Pendiente #3 Reasignación Contable con 1 toque en VentasReviewScreen, o Pendiente #4 Informes Cooperativos condicionados a adopción masiva).
+   - Implementar el **PENDIENTE #5** (Depuración y Blindaje de la Interfaz del Socio) o el **PENDIENTE #1** (Device Binding).
