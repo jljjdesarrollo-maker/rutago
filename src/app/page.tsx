@@ -367,6 +367,7 @@ export default function Home() {
     return (
       <BenchmarkScreen
         onBack={() => setView('home')}
+        currentUser={user}
       />
     );
   }

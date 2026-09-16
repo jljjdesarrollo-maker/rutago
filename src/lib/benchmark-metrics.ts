@@ -82,7 +82,6 @@ export function filterRecordsByPeriod(
       toDate = todayStr;
       periodoLabel = 'Hoy';
       break;
-
     case '7_DIAS': {
       const past7 = new Date(now);
       past7.setDate(past7.getDate() - 6);
@@ -91,26 +90,29 @@ export function filterRecordsByPeriod(
       periodoLabel = 'Últimos 7 Días';
       break;
     }
-
     case 'ESTE_MES': {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
       fromDate = formatYMD(firstDay);
       toDate = todayStr;
-      const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const monthNames = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      ];
       periodoLabel = `Este Mes (${monthNames[now.getMonth()]})`;
       break;
     }
-
     case 'MES_ANTERIOR': {
       const prevMonthFirst = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const prevMonthLast = new Date(now.getFullYear(), now.getMonth(), 0);
       fromDate = formatYMD(prevMonthFirst);
       toDate = formatYMD(prevMonthLast);
-      const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const monthNames = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      ];
       periodoLabel = `Mes Anterior (${monthNames[prevMonthFirst.getMonth()]})`;
       break;
     }
-
     case 'HISTORICO':
     default:
       fromDate = '2024-01-01';
@@ -146,7 +148,7 @@ export function calculateBusMetrics(
   bus: BusItem,
   busRecords: any[],
   grupoPromedioIPF: number = 0
-): BusBenchmarkMetric {
+): Omit<BusBenchmarkMetric, 'esUnidadPropia' | 'codigoAnonimo' | 'nombreDisplay' | 'placaDisplay' | 'propietarioDisplay' | 'datosPrivadosOcultos'> {
   const disco = bus.numeroDisco.padStart(2, '0');
   const esSocioLider = disco === '01';
 
@@ -158,7 +160,6 @@ export function calculateBusMetrics(
   let vueltasTotales = 0;
   let vueltasEfectivas = 0;
   let vueltasNoRealizadas = 0;
-
   const datesSet = new Set<string>();
   let ultimoRegistro: string | undefined;
 
@@ -271,7 +272,9 @@ export function computeFleetBenchmark(
   allRecords: any[],
   fleet: BusItem[],
   period: BenchmarkPeriod = 'ESTE_MES',
-  customRange?: { from: string; to: string }
+  customRange?: { from: string; to: string },
+  activeBusId: string = 'BUS-01',
+  isSuperAdminMode: boolean = false
 ): FleetBenchmarkSummary {
   const { filtered, fromDate, toDate, daysCount, periodoLabel } = filterRecordsByPeriod(
     allRecords,
@@ -303,7 +306,9 @@ export function computeFleetBenchmark(
     'Flota Principal de 45 Pasajeros • Circuito Loja - Vilcabamba y Troncales',
     45,
     troncalFleet,
-    recordsByBusId
+    recordsByBusId,
+    activeBusId,
+    isSuperAdminMode
   );
 
   // 4. Procesar Grupo Alimentadores (P1 - P3 • 28 Pax)
@@ -313,7 +318,9 @@ export function computeFleetBenchmark(
     'Microbuses de 28 Pasajeros • Cobertura Yangana, La Elvira y Quinara',
     28,
     alimentadorFleet,
-    recordsByBusId
+    recordsByBusId,
+    activeBusId,
+    isSuperAdminMode
   );
 
   return {
@@ -326,11 +333,14 @@ export function computeFleetBenchmark(
     troncal: troncalGroup,
     alimentadores: alimentadorGroup,
     fechaCalculo: new Date().toISOString(),
+    activeBusId,
+    isSuperAdminMode,
   };
 }
 
 /**
  * Calcula las métricas consolidadas de un grupo de circuito (Troncal o Alimentador)
+ * y anonimiza a los pares garantizando la privacidad de los socios.
  */
 function computeCircuitGroup(
   circuito: BenchmarkCircuitGroup,
@@ -338,7 +348,9 @@ function computeCircuitGroup(
   subtitulo: string,
   capacidadReferencia: number,
   groupFleet: BusItem[],
-  recordsByBusId: Map<string, any[]>
+  recordsByBusId: Map<string, any[]>,
+  activeBusId: string = 'BUS-01',
+  isSuperAdminMode: boolean = false
 ): CircuitGroupBenchmark {
   // Primer paso: calcular totales globales del grupo para deducir el promedio IPF
   let produccionConsolidada = 0;
@@ -391,19 +403,72 @@ function computeCircuitGroup(
   const divisorUnidades = unidadesConRegistros > 0 ? unidadesConRegistros : groupFleet.length || 1;
   const produccionPromedioPorUnidad = Math.round((produccionConsolidada / divisorUnidades) * 100) / 100;
 
-  // Segundo paso: calcular métricas individuales de cada bus comparadas con ipfPromedioGrupo
-  const ranking: BusBenchmarkMetric[] = rawBusData.map(({ bus, records }) =>
-    calculateBusMetrics(bus, records, ipfPromedioGrupo)
-  );
+  // Segundo paso: calcular métricas individuales básicas
+  const rawCalculated = rawBusData.map(({ bus, records }) => ({
+    bus,
+    metrics: calculateBusMetrics(bus, records, ipfPromedioGrupo),
+  }));
 
   // Ordenar el ranking: primero los que tienen producción por IPF descendente; luego los inactivos por número de disco
-  ranking.sort((a, b) => {
-    if (a.produccionTotal > 0 && b.produccionTotal > 0) {
-      return b.ipf - a.ipf;
+  rawCalculated.sort((a, b) => {
+    if (a.metrics.produccionTotal > 0 && b.metrics.produccionTotal > 0) {
+      return b.metrics.ipf - a.metrics.ipf;
     }
-    if (a.produccionTotal > 0) return -1;
-    if (b.produccionTotal > 0) return 1;
-    return a.numeroDisco.localeCompare(b.numeroDisco, undefined, { numeric: true });
+    if (a.metrics.produccionTotal > 0) return -1;
+    if (b.metrics.produccionTotal > 0) return 1;
+    return a.bus.numeroDisco.localeCompare(b.bus.numeroDisco, undefined, { numeric: true });
+  });
+
+  // Tercer paso: Aplicar Anonimización Simétrica y Protección de Privacidad
+  const cleanActiveId = activeBusId.toUpperCase().trim();
+  const cleanActiveDisco = activeBusId.replace(/^BUS-/i, '').padStart(2, '0');
+  const prefix = circuito === 'TRONCAL_VT' ? 'T' : 'A';
+  let peerCounter = 1;
+
+  const ranking: BusBenchmarkMetric[] = rawCalculated.map(({ bus, metrics }) => {
+    const isDiscoMatch = bus.numeroDisco.padStart(2, '0') === cleanActiveDisco;
+    const isIdMatch = bus.id.toUpperCase() === cleanActiveId || `BUS-${bus.numeroDisco}`.toUpperCase() === cleanActiveId;
+    const esUnidadPropia = isDiscoMatch || isIdMatch;
+
+    if (esUnidadPropia) {
+      return {
+        ...metrics,
+        esUnidadPropia: true,
+        codigoAnonimo: '',
+        nombreDisplay: `Bus ${bus.numeroDisco} (Tu Unidad)`,
+        placaDisplay: bus.placa,
+        propietarioDisplay: `${bus.propietario || 'Socio'} (Tú)`,
+        datosPrivadosOcultos: false,
+      };
+    }
+
+    // Asignación de código anónimo secuencial estable (#T-01, #T-02 o #A-01, #A-02)
+    const anonymousCode = `#${prefix}-${String(peerCounter).padStart(2, '0')}`;
+    peerCounter += 1;
+
+    if (isSuperAdminMode) {
+      // Modo Administrador / Auditoría Central: ve datos completos con anotación de código
+      return {
+        ...metrics,
+        esUnidadPropia: false,
+        codigoAnonimo: anonymousCode,
+        nombreDisplay: `Bus ${bus.numeroDisco} • ${bus.propietario}`,
+        placaDisplay: bus.placa,
+        propietarioDisplay: bus.propietario,
+        datosPrivadosOcultos: false,
+      };
+    }
+
+    // Modo Socio Propietario: Anonimato estricto para pares de la cooperativa
+    return {
+      ...metrics,
+      esUnidadPropia: false,
+      codigoAnonimo: anonymousCode,
+      nombreDisplay: circuito === 'TRONCAL_VT' ? `Unidad Troncal ${anonymousCode}` : `Alimentador ${anonymousCode}`,
+      placaDisplay: 'Privada',
+      propietarioDisplay: 'Socio de Cooperativa',
+      datosPrivadosOcultos: true, // Blindaje de libros de gastos y caja de terceros
+    };
   });
 
   return {

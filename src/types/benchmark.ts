@@ -18,6 +18,13 @@ export interface BusBenchmarkMetric {
   capacidadAsientos: number;
   tipoOperacion: TipoOperacionBus;
   esSocioLider: boolean;
+  // Atributos de Identidad y Anonimización (Fase 8)
+  esUnidadPropia: boolean; // True si es la unidad del socio autenticado
+  codigoAnonimo: string; // "#T-01", "#T-02", "#A-01"
+  nombreDisplay: string; // "Bus 01 (Tu Unidad)" vs "Unidad Troncal #T-02"
+  placaDisplay: string; // "TAA-5152" vs "Confidencial"
+  propietarioDisplay: string; // "José Leonardo Jaya Jaramillo (Tú)" vs "Socio Cooperativa"
+  datosPrivadosOcultos: boolean; // True si los libros de caja y gastos están blindados
   diasOperados: number;
   vueltasTotales: number;
   vueltasEfectivas: number; // Vueltas realizadas normalmente o especiales
@@ -63,4 +70,6 @@ export interface FleetBenchmarkSummary {
   troncal: CircuitGroupBenchmark;
   alimentadores: CircuitGroupBenchmark;
   fechaCalculo: string;
+  activeBusId: string;
+  isSuperAdminMode?: boolean;
 }

@@ -19,11 +19,17 @@ import {
   Gauge,
   DollarSign,
   FileSpreadsheet,
+  Shield,
+  ShieldCheck,
+  Lock,
+  Eye,
+  EyeOff,
+  Info,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { getAllBuses } from '@/lib/fleet-storage';
+import { getAllBuses, getActiveBusId, getActiveBus } from '@/lib/fleet-storage';
 import { type BusItem } from '@/types/fleet';
 import {
   type BenchmarkPeriod,
@@ -35,9 +41,11 @@ import { computeFleetBenchmark } from '@/lib/benchmark-metrics';
 
 interface BenchmarkScreenProps {
   onBack: () => void;
+  currentUser?: any;
+  activeBusId?: string;
 }
 
-export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
+export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkScreenProps) {
   const { toast } = useToast();
   const [fleet, setFleet] = useState<BusItem[]>([]);
   const [records, setRecords] = useState<any[]>([]);
@@ -50,7 +58,23 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
   const [expandedBusId, setExpandedBusId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'UNIDADES' | 'TRIPULACIONES'>('UNIDADES');
 
-  // Carga inicial de datos
+  // Identificación del usuario y bus activo para protocolo de privacidad
+  const isSuperAdmin = useMemo(() => {
+    const rol = String(currentUser?.rol || '').toUpperCase();
+    const id = String(currentUser?.id || '').toLowerCase();
+    const nombre = String(currentUser?.nombre || '').toLowerCase();
+    return rol === 'SUPERADMIN_SAAS' || id.includes('superadmin') || nombre.includes('superadmin');
+  }, [currentUser]);
+
+  // Permitir al SuperAdmin alternar entre vista anónima (como socio) y vista auditoría completa
+  const [adminAuditorMode, setAdminAuditorMode] = useState(false);
+
+  // Bus activo resuelto
+  const currentActiveBusId = useMemo(() => {
+    return activeBusId || getActiveBusId() || 'BUS-01';
+  }, [activeBusId]);
+
+  // Carga inicial de datos (Anti-Loop: se ejecuta estrictamente una vez al montar)
   const loadData = async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
     else setLoading(true);
@@ -68,7 +92,6 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
           const data = await res.json();
           if (Array.isArray(data)) {
             loadedRecords = data;
-            // Guardar en caché offline para uso sin conexión
             try {
               localStorage.setItem('rg_benchmark_records_cache', JSON.stringify(data));
             } catch { /* ignore */ }
@@ -113,10 +136,18 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
     loadData();
   }, []);
 
-  // Procesamiento reactivo del benchmark usando el motor matemático
+  // Procesamiento reactivo del benchmark usando el motor matemático (Memoizado y Cero Bucles)
   const summary: FleetBenchmarkSummary = useMemo(() => {
-    return computeFleetBenchmark(records, fleet, period);
-  }, [records, fleet, period]);
+    const isSuperAdminView = isSuperAdmin && adminAuditorMode;
+    return computeFleetBenchmark(
+      records,
+      fleet,
+      period,
+      undefined,
+      currentActiveBusId,
+      isSuperAdminView
+    );
+  }, [records, fleet, period, currentActiveBusId, isSuperAdmin, adminAuditorMode]);
 
   // Grupo activo según selección del usuario
   const currentCircuitData = circuitGroup === 'TRONCAL_VT' ? summary.troncal : summary.alimentadores;
@@ -136,7 +167,6 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
     >();
 
     for (const r of records) {
-      // Filtrar por período
       if (r.date < summary.fechaInicio || r.date > summary.fechaFin) continue;
 
       const prod = Number(r.production) || 0;
@@ -172,7 +202,7 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
     })).sort((a, b) => b.ipf - a.ipf);
   }, [records, summary.fechaInicio, summary.fechaFin]);
 
-  // Compartir resumen ejecutivo por WhatsApp
+  // Compartir resumen ejecutivo por WhatsApp con protección estricta de privacidad
   const handleShareWhatsApp = () => {
     const t = summary.troncal;
     const a = summary.alimentadores;
@@ -181,6 +211,7 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
       `📊 *RUTAGO - AUDITORÍA Y BENCHMARK DE FLOTA*`,
       `📅 *Período:* ${summary.periodoLabel} (${summary.fechaInicio} al ${summary.fechaFin})`,
       `📑 *Jornadas Auditadas:* ${summary.totalRegistrosAuditados}`,
+      `🛡️ *Protocolo de Privacidad:* Unidades pares anonimizadas (#T y #A)`,
       ``,
       `🚍 *1. CIRCUITO TRONCAL GENERAL (45 Pax)*`,
       `• Producción Consolidada: S/ ${t.produccionConsolidada.toFixed(2)}`,
@@ -195,7 +226,10 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
           const delta = b.comparativaMediaIPF.diferencia;
           const sign = delta > 0 ? `+S/ ${delta.toFixed(2)}` : `S/ ${delta.toFixed(2)}`;
           const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '🔹';
-          return `${medal} *Bus ${b.numeroDisco}* (${b.placa}): IPF S/ ${b.ipf.toFixed(2)} | Prod: S/ ${b.produccionTotal.toFixed(2)} (${b.vueltasEfectivas} vtas) [${sign}]`;
+          const label = b.esUnidadPropia
+            ? `⭐ Tu Unidad (Bus ${b.numeroDisco})`
+            : `${b.nombreDisplay}`;
+          return `${medal} *${label}*: IPF S/ ${b.ipf.toFixed(2)} | Prod: S/ ${b.produccionTotal.toFixed(2)} (${b.vueltasEfectivas} vtas) [${sign}]`;
         }),
       ``,
       `🚐 *2. ALIMENTADORES ESPECIALES P (28 Pax)*`,
@@ -203,9 +237,14 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
       `• *IPF Promedio: S/ ${a.ipfPromedioGrupo.toFixed(2)} por vuelta*`,
       ...a.ranking
         .filter((b) => b.produccionTotal > 0)
-        .map((b) => `🔹 *Bus ${b.numeroDisco}* (${b.placa}): IPF S/ ${b.ipf.toFixed(2)} | Prod: S/ ${b.produccionTotal.toFixed(2)} (${b.vueltasEfectivas} vtas)`),
+        .map((b) => {
+          const label = b.esUnidadPropia
+            ? `⭐ Tu Unidad (Bus ${b.numeroDisco})`
+            : `${b.nombreDisplay}`;
+          return `🔹 *${label}*: IPF S/ ${b.ipf.toFixed(2)} | Prod: S/ ${b.produccionTotal.toFixed(2)} (${b.vueltasEfectivas} vtas)`;
+        }),
       ``,
-      `_Reporte generado automáticamente por Sistema RutaGo v3.53.0_`,
+      `_Reporte emitido bajo estándar de confidencialidad gremial de RutaGo_`,
     ].join('\n');
 
     const encoded = encodeURIComponent(text);
@@ -233,11 +272,11 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
                   Benchmark de Flota
                 </h1>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                  IPF
+                  IPF Simétrico
                 </span>
               </div>
               <p className="text-[11px] text-gray-500 font-medium">
-                Auditoría simétrica por capacidad de unidad
+                Auditoría simétrica con anonimato de pares
               </p>
             </div>
           </div>
@@ -246,134 +285,137 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
             <button
               onClick={() => loadData(true)}
               disabled={refreshing}
-              id="btn-refresh-benchmark"
-              className="p-2 rounded-xl text-gray-600 hover:bg-gray-100 active:scale-95 transition-all"
-              title="Refrescar datos"
+              className="p-2 rounded-xl text-gray-600 hover:bg-gray-100 active:scale-95 transition-all disabled:opacity-50"
+              title="Actualizar datos"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-[#912D26]' : ''}`} />
             </button>
             <button
               onClick={handleShareWhatsApp}
-              id="btn-share-benchmark-whatsapp"
-              className="flex items-center gap-1.5 bg-[#25D366] hover:bg-[#20bd5a] text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs active:scale-95 transition-all"
+              className="p-2 rounded-xl text-emerald-600 hover:bg-emerald-50 active:scale-95 transition-all"
+              title="Compartir por WhatsApp"
             >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>WhatsApp</span>
+              <Share2 className="w-4 h-4" />
             </button>
           </div>
-        </div>
-
-        {/* ─── SELECTOR SIMÉTRICO OBLIGATORIO (Troncal vs Alimentador) ─── */}
-        <div className="max-w-xl mx-auto mt-2.5">
-          <div className="grid grid-cols-2 p-1 bg-gray-100 rounded-xl">
-            <button
-              type="button"
-              id="tab-group-troncal"
-              onClick={() => setCircuitGroup('TRONCAL_VT')}
-              className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                circuitGroup === 'TRONCAL_VT'
-                  ? 'bg-white text-[#912D26] shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Bus className="w-3.5 h-3.5" />
-              <span>Troncal VT (45 Pax)</span>
-            </button>
-
-            <button
-              type="button"
-              id="tab-group-alimentadores"
-              onClick={() => setCircuitGroup('ALIMENTADOR_P')}
-              className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                circuitGroup === 'ALIMENTADOR_P'
-                  ? 'bg-white text-[#912D26] shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Bus className="w-3.5 h-3.5" />
-              <span>Alimentadores P (28 Pax)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* ─── FILTRO RÁPIDO DE PERÍODOS (Thumb-Zone) ─── */}
-        <div className="max-w-xl mx-auto mt-2 overflow-x-auto no-scrollbar flex items-center gap-1.5 pb-1">
-          {(
-            [
-              { id: 'HOY', label: 'Hoy' },
-              { id: '7_DIAS', label: '7 Días' },
-              { id: 'ESTE_MES', label: 'Este Mes' },
-              { id: 'MES_ANTERIOR', label: 'Mes Ant.' },
-              { id: 'HISTORICO', label: 'Todo' },
-            ] as const
-          ).map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setPeriod(p.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                period === p.id
-                  ? 'bg-[#912D26] text-white shadow-xs'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
         </div>
       </header>
 
-      {/* ─── CONTENIDO PRINCIPAL ─── */}
-      <main className="flex-1 px-4 py-4 max-w-xl mx-auto w-full space-y-4 pb-20">
-        {/* Banner de Simetría Explicativo */}
-        <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-900">
-          <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-          <p className="text-[11px] leading-relaxed">
-            <strong className="font-semibold">Regla de Simetría Obligatoria:</strong> Los buses de 45 pasajeros (Troncal) no se comparan contra los microbuses de 28 pasajeros (Alimentadores P). El <strong>IPF (Ingreso Promedio por Frecuencia)</strong> evalúa la recaudación por vuelta efectiva en igualdad de condiciones.
-          </p>
+      {/* ─── CUERPO PRINCIPAL ─── */}
+      <main className="flex-1 px-4 py-3 max-w-xl mx-auto w-full space-y-3 pb-24">
+        {/* Banner de Protocolo de Privacidad Gremial */}
+        <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl flex items-start gap-2.5">
+          <ShieldCheck className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
+          <div className="flex-1 text-xs">
+            <div className="flex items-center justify-between">
+              <p className="font-bold text-blue-900">
+                Protocolo de Confidencialidad Activo
+              </p>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => setAdminAuditorMode(!adminAuditorMode)}
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-200/80 text-blue-900 hover:bg-blue-300 transition"
+                >
+                  {adminAuditorMode ? 'Modo Auditor (Visible)' : 'Modo Socio (Anónimo)'}
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-blue-800/90 mt-0.5 leading-relaxed">
+              Tu unidad autenticada (<strong>Bus {currentActiveBusId.replace('BUS-', '')}</strong>) muestra el 100% de sus datos contables. Los demás autobuses se presentan anónimos (<strong>#T</strong> y <strong>#A</strong>) protegiendo sus libros privados.
+            </p>
+          </div>
         </div>
 
-        {/* ─── TARJETA EJECUTIVA DE LA MEDIA DEL GRUPO ─── */}
-        <Card className="rounded-3xl border border-gray-200 bg-white shadow-xs overflow-hidden">
-          <div className="bg-gradient-to-r from-[#912D26] to-[#73231e] px-4 py-3 text-white flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-white/80">
-                Media General del Grupo
-              </p>
-              <h2 className="text-sm font-black tracking-tight">{currentCircuitData.titulo}</h2>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full">
-                {summary.periodoLabel}
+        {/* ─── FILTROS TEMPORALES (Pills) ─── */}
+        <div className="flex items-center justify-between gap-1 overflow-x-auto pb-1 no-scrollbar text-xs font-semibold">
+          {[
+            { id: 'HOY', label: 'Hoy' },
+            { id: '7_DIAS', label: '7 Días' },
+            { id: 'ESTE_MES', label: 'Este Mes' },
+            { id: 'MES_ANTERIOR', label: 'Mes Ant.' },
+            { id: 'HISTORICO', label: 'Histórico' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setPeriod(item.id as BenchmarkPeriod)}
+              className={`px-3 py-1.5 rounded-xl whitespace-nowrap transition-all ${
+                period === item.id
+                  ? 'bg-[#912D26] text-white shadow-xs'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ─── SELECTOR SIMÉTRICO DE CIRCUITO (FASE 4.1) ─── */}
+        <div className="grid grid-cols-2 gap-2 bg-gray-200/70 p-1 rounded-2xl">
+          <button
+            onClick={() => setCircuitGroup('TRONCAL_VT')}
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-bold text-xs transition-all ${
+              circuitGroup === 'TRONCAL_VT'
+                ? 'bg-white text-[#912D26] shadow-xs'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Bus className="w-4 h-4" />
+            <span>Troncal (45 Pax)</span>
+          </button>
+
+          <button
+            onClick={() => setCircuitGroup('ALIMENTADOR_P')}
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-bold text-xs transition-all ${
+              circuitGroup === 'ALIMENTADOR_P'
+                ? 'bg-white text-[#912D26] shadow-xs'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Gauge className="w-4 h-4" />
+            <span>Alimentador (28 Pax)</span>
+          </button>
+        </div>
+
+        {/* ─── RESUMEN DEL CIRCUITO SELECCIONADO ─── */}
+        <Card className="rounded-2xl border border-gray-200 bg-white shadow-xs overflow-hidden">
+          <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white p-3.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-gray-300">
+                  Media del Circuito
+                </span>
+                <h2 className="text-sm font-black">{currentCircuitData.titulo}</h2>
+              </div>
+              <span className="text-xs font-bold px-2 py-1 rounded-lg bg-white/10 text-white border border-white/10">
+                {currentCircuitData.unidadesConRegistros} de {currentCircuitData.totalUnidades} buses
               </span>
             </div>
+            <p className="text-[11px] text-gray-300 mt-1">{currentCircuitData.subtitulo}</p>
           </div>
 
-          <CardContent className="p-4 space-y-3">
-            <div className="grid grid-cols-2 gap-3 text-center">
-              {/* IPF PROMEDIO */}
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-100">
-                <p className="text-[10px] font-bold text-emerald-800 uppercase flex items-center justify-center gap-1">
-                  <Award className="w-3 h-3" />
-                  <span>IPF Promedio del Grupo</span>
-                </p>
-                <p className="text-2xl font-black text-emerald-700 mt-1">
-                  S/ {currentCircuitData.ipfPromedioGrupo.toFixed(2)}
-                </p>
-                <p className="text-[10px] text-emerald-600 mt-0.5">por vuelta operada</p>
+          <CardContent className="p-3.5 space-y-3">
+            {/* KPI Central: IPF Promedio del Circuito */}
+            <div className="flex items-center justify-between bg-emerald-50/70 p-3 rounded-xl border border-emerald-200/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-800">
+                  <DollarSign className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-emerald-900">
+                    IPF Promedio del Circuito
+                  </p>
+                  <p className="text-[10px] text-emerald-700">
+                    Ingreso por frecuencia efectiva
+                  </p>
+                </div>
               </div>
-
-              {/* PRODUCCIÓN CONSOLIDADA */}
-              <div className="p-3 rounded-2xl bg-gray-50 border border-gray-200">
-                <p className="text-[10px] font-bold text-gray-500 uppercase flex items-center justify-center gap-1">
-                  <DollarSign className="w-3 h-3" />
-                  <span>Producción del Grupo</span>
-                </p>
-                <p className="text-2xl font-black text-gray-800 mt-1">
-                  S/ {currentCircuitData.produccionConsolidada.toFixed(2)}
-                </p>
-                <p className="text-[10px] text-gray-500 mt-0.5">
-                  {currentCircuitData.vueltasConsolidadas} vueltas efectivas
-                </p>
+              <div className="text-right">
+                <span className="text-lg font-black text-emerald-900">
+                  S/ {currentCircuitData.ipfPromedioGrupo.toFixed(2)}
+                </span>
+                <span className="text-[10px] block text-emerald-700 font-medium">
+                  {currentCircuitData.vueltasConsolidadas} vueltas totales
+                </span>
               </div>
             </div>
 
@@ -442,47 +484,69 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
                 <Card
                   key={bus.busId}
                   className={`rounded-2xl border transition-all ${
-                    bus.esSocioLider
-                      ? 'border-blue-300 bg-blue-50/20'
+                    bus.esUnidadPropia
+                      ? 'border-blue-300 bg-gradient-to-br from-blue-50/60 via-white to-indigo-50/30 ring-2 ring-blue-300/80'
                       : 'border-gray-200 bg-white'
                   } shadow-xs overflow-hidden`}
                 >
                   <CardContent className="p-3.5 space-y-2.5">
-                    {/* Fila principal */}
+                    {/* Fila principal de la tarjeta */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
+                        {/* Avatar o Distintivo */}
                         <div
-                          className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm ${
-                            index === 0 && hasRecords
-                              ? 'bg-amber-100 text-amber-800 ring-2 ring-amber-400'
+                          className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs ${
+                            bus.esUnidadPropia
+                              ? 'bg-blue-600 text-white ring-2 ring-blue-400 shadow-xs'
+                              : index === 0 && hasRecords
+                              ? 'bg-amber-100 text-amber-800 ring-2 ring-amber-400 font-bold'
                               : hasRecords
                               ? 'bg-gray-100 text-gray-800'
                               : 'bg-gray-50 text-gray-400'
                           }`}
                         >
-                          {hasRecords && index === 0 ? '👑' : bus.numeroDisco}
+                          {bus.esUnidadPropia ? (
+                            <span>{bus.numeroDisco}</span>
+                          ) : hasRecords && index === 0 ? (
+                            '👑'
+                          ) : (
+                            <span className="font-mono text-[11px]">{bus.codigoAnonimo || bus.numeroDisco}</span>
+                          )}
                         </div>
+
                         <div>
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-extrabold text-sm text-gray-900">
-                              Bus {bus.numeroDisco}
+                              {bus.esUnidadPropia ? `Bus ${bus.numeroDisco}` : bus.nombreDisplay}
                             </span>
-                            <span className="text-[10px] text-gray-500 font-mono">
-                              {bus.placa}
-                            </span>
-                            {bus.esSocioLider && (
-                              <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">
-                                Socio Líder
+
+                            {/* Badge identificador del usuario propio */}
+                            {bus.esUnidadPropia && (
+                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800 flex items-center gap-0.5">
+                                ⭐ Tu Unidad (Socio)
                               </span>
                             )}
+
+                            {/* Badge para Socio Líder si aplica */}
+                            {bus.esSocioLider && !bus.esUnidadPropia && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-gray-100 text-gray-600">
+                                Troncal
+                              </span>
+                            )}
+
+                            {/* Placa: Real si es propia, Reservada si es par */}
+                            <span className="text-[10px] text-gray-500 font-mono bg-gray-100 px-1 py-0.5 rounded">
+                              {bus.placaDisplay}
+                            </span>
                           </div>
+
                           <p className="text-[11px] text-gray-500">
-                            {bus.marca} • {bus.capacidadAsientos} pasajeros
+                            {bus.marca} • {bus.capacidadAsientos} pasajeros • {bus.propietarioDisplay}
                           </p>
                         </div>
                       </div>
 
-                      {/* IPF y Delta */}
+                      {/* IPF y Delta vs Media */}
                       <div className="text-right">
                         <div className="flex items-baseline justify-end gap-1">
                           <span className="text-[10px] text-gray-400 font-bold">IPF</span>
@@ -579,7 +643,7 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
                           onClick={() => setExpandedBusId(isExpanded ? null : bus.busId)}
                           className="w-full text-[11px] font-semibold text-gray-500 hover:text-gray-800 flex items-center justify-center gap-1 pt-1"
                         >
-                          <span>{isExpanded ? 'Ocultar desglose contable' : 'Ver desglose contable'}</span>
+                          <span>{isExpanded ? 'Ocultar desglose' : 'Ver desglose'}</span>
                           {isExpanded ? (
                             <ChevronUp className="w-3.5 h-3.5" />
                           ) : (
@@ -588,41 +652,79 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
                         </button>
 
                         {isExpanded && (
-                          <div className="mt-2 pt-2 border-t border-gray-100 space-y-1.5 text-xs text-gray-600">
-                            <div className="flex justify-between">
-                              <span>Efectivo Ruta (Ayudante):</span>
-                              <strong className="text-gray-900">
-                                S/ {bus.efectivoTotal.toFixed(2)}
-                              </strong>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Caja Común (Oficinas):</span>
-                              <strong className="text-gray-900">
-                                S/ {bus.cajaComunTotal.toFixed(2)}
-                              </strong>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Gastos Operativos & Diésel:</span>
-                              <strong className="text-rose-600">
-                                S/ {bus.totalGastos.toFixed(2)}
-                              </strong>
-                            </div>
-                            <div className="flex justify-between border-t border-gray-100 pt-1 font-bold">
-                              <span>Utilidad Neta Líquida:</span>
-                              <strong className="text-emerald-700">
-                                S/ {bus.utilidadNeta.toFixed(2)}
-                              </strong>
-                            </div>
-                            {bus.kmTotales > 0 && (
-                              <div className="flex justify-between text-[11px] text-gray-500 pt-1">
-                                <span>Rendimiento por Km:</span>
-                                <span>S/ {bus.rendimientoPorKm.toFixed(2)} / km ({bus.kmTotales} km)</span>
+                          <div className="mt-2 pt-2 border-t border-gray-100 text-xs">
+                            {/* Caso A: Unidad Propia del Socio (o Modo Auditor) -> Transparencia 100% */}
+                            {!bus.datosPrivadosOcultos ? (
+                              <div className="space-y-1.5 text-gray-600 bg-blue-50/40 p-2.5 rounded-xl border border-blue-100">
+                                <div className="flex items-center gap-1.5 text-blue-950 font-bold mb-1">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                                  <span>Libro Contable de Tu Unidad</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Efectivo Ruta (Ayudante):</span>
+                                  <strong className="text-gray-900">
+                                    S/ {bus.efectivoTotal.toFixed(2)}
+                                  </strong>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Caja Común (Oficinas):</span>
+                                  <strong className="text-gray-900">
+                                    S/ {bus.cajaComunTotal.toFixed(2)}
+                                  </strong>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Gastos Operativos & Diésel:</span>
+                                  <strong className="text-rose-600">
+                                    S/ {bus.totalGastos.toFixed(2)}
+                                  </strong>
+                                </div>
+                                <div className="flex justify-between border-t border-blue-200/60 pt-1 font-bold">
+                                  <span>Utilidad Neta Líquida:</span>
+                                  <strong className="text-emerald-700">
+                                    S/ {bus.utilidadNeta.toFixed(2)}
+                                  </strong>
+                                </div>
+                                {bus.kmTotales > 0 && (
+                                  <div className="flex justify-between text-[11px] text-gray-500 pt-1">
+                                    <span>Rendimiento por Km:</span>
+                                    <span>S/ {bus.rendimientoPorKm.toFixed(2)} / km ({bus.kmTotales} km)</span>
+                                  </div>
+                                )}
+                                {bus.ultimoRegistro && (
+                                  <p className="text-[10px] text-gray-400 text-right pt-1">
+                                    Última jornada reportada: {bus.ultimoRegistro}
+                                  </p>
+                                )}
                               </div>
-                            )}
-                            {bus.ultimoRegistro && (
-                              <p className="text-[10px] text-gray-400 text-right pt-1">
-                                Última jornada reportada: {bus.ultimoRegistro}
-                              </p>
+                            ) : (
+                              /* Caso B: Unidad de un Par -> Anonimato y Blindaje de Libros */
+                              <div className="p-3 bg-gray-50 border border-gray-200/80 rounded-xl space-y-2 text-gray-600">
+                                <div className="flex items-center gap-1.5 font-bold text-gray-800">
+                                  <Lock className="w-3.5 h-3.5 text-gray-500" />
+                                  <span>Libros Contables Privados</span>
+                                </div>
+                                <p className="text-[11px] text-gray-500 leading-relaxed">
+                                  El desglose de efectivo en mano, retenciones de caja común y gastos privados de esta unidad pertenecen a su socio propietario y están protegidos por el protocolo de confidencialidad gremial.
+                                </p>
+                                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200/70 text-[11px]">
+                                  <div>
+                                    <span className="text-gray-400 block text-[9px] uppercase font-bold">
+                                      Rendimiento Operativo
+                                    </span>
+                                    <span className="font-bold text-gray-800">
+                                      S/ {bus.rendimientoPorKm.toFixed(2)} / km
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-400 block text-[9px] uppercase font-bold">
+                                      Eficiencia de Ruta
+                                    </span>
+                                    <span className="font-bold text-emerald-700">
+                                      {bus.vueltasEfectivas} vtas operadas
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             )}
                           </div>
                         )}
@@ -635,7 +737,7 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
           </div>
         )}
 
-        {/* ─── PESTAÑA 2: AUDITORÍA DE AYUDANTES (Sub-Fase 4.3) ─── */}
+        {/* ─── PESTAÑA 2: AUDITORÍA DE AYUDANTES ─── */}
         {activeTab === 'TRIPULACIONES' && (
           <div className="space-y-3">
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-900">
@@ -660,25 +762,28 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
                   className="rounded-2xl border border-gray-200 bg-white shadow-xs"
                 >
                   <CardContent className="p-3.5 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center font-black text-xs text-gray-700">
-                        {idx + 1}
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center font-bold text-xs text-gray-700">
+                        {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
                       </div>
                       <div>
-                        <p className="font-bold text-sm text-gray-900">{crew.nombre}</p>
-                        <p className="text-[11px] text-gray-500">
-                          {crew.dias} jornadas • {crew.vueltas} vueltas realizadas
+                        <p className="font-bold text-xs text-gray-900">{crew.nombre}</p>
+                        <p className="text-[10px] text-gray-500">
+                          {crew.dias} jornadas • {crew.vueltas} vueltas operadas
                         </p>
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <p className="text-xs font-bold text-emerald-700">
-                        S/ {crew.ipf.toFixed(2)} <span className="text-[9px] text-gray-400 font-normal">/ vta</span>
-                      </p>
-                      <p className="text-[11px] font-semibold text-gray-800 mt-0.5">
+                      <div className="flex items-baseline justify-end gap-1">
+                        <span className="text-[10px] text-gray-400 font-bold">IPF</span>
+                        <span className="text-sm font-black text-gray-900">
+                          S/ {crew.ipf.toFixed(2)}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-500">
                         Total: S/ {crew.produccion.toFixed(2)}
-                      </p>
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -690,4 +795,5 @@ export function BenchmarkScreen({ onBack }: BenchmarkScreenProps) {
     </div>
   );
 }
+
 export default BenchmarkScreen;
