@@ -145,7 +145,7 @@
      - Botón de emergencia **"Desvincular / Resetear Teléfono"** para liberar el usuario en caso de robo, descarga o avería del terminal en carretera y permitir la vinculación inmediata de un teléfono de reemplazo.
 
 ### PENDIENTE #2: Escalabilidad a Flota de 19 Autobuses (Multi-Bus)
-- **Documento Maestro Completo:** Consultar `download/RutaGo_Contexto_Maestro_v3.52.0.md` para todo el detalle histórico, arquitectónico y operativo.
+- **Documento Maestro Completo:** Consultar `download/RutaGo_Contexto_Maestro_v3.56.0.md` para todo el detalle histórico, arquitectónico y operativo.
 - **Diferenciación Conceptual Inmutable:**
   * **Unidad Física (Bus):** Máquina (`busId`, `numeroUnidad`, `placa`, odómetro/tacómetro, mantenimientos, capacidad).
   * **VT (Vuelta Turno):** Hoja de programación de frecuencias que rota entre los autobuses.
@@ -164,6 +164,7 @@
   * **FASE 10 (COMPLETADA - v3.55.0):** Depuración Integral de Interfaces por Rol (SuperAdmin `9999`, Socio `0101`, Tripulante `2107`).
     - **Identidad del Super Admin (PIN 9999):** Exclusivo de la **EMPRESA DESARROLLADORA DEL SOFTWARE (SaaS Vendor)**, no de la cooperativa. Su consola está dedicada 100% a la gestión comercial SaaS (cobranza mensual de $20/bus, MRR proyectado de $380/mes, estado de cuenta), padrón de clientes y consola de soporte técnico L2 (sanación de boletos huérfanos, respaldo de base de datos, administración de credenciales). No realiza emisión de boletos, ni registro de gastos individuales de bus, ni tareas operativas internas de la cooperativa.
     - **Identidad del Socio (PIN 0101 / 2107):** Dueño de autobús particular con su balance financiero personal, gastos del vehículo y alertas mecánicas por tacómetro (`MantenimientoScreen`).
+  * **FASE 11 (COMPLETADA - v3.56.0):** Gráfico Estadístico Interactivo de Flota con Anonimato de Pares (`BenchmarkChart.tsx` con Recharts) y Selector Dinámico de Métricas (IPF con semáforo vs media, Producción Bruta y Vueltas Efectivas vs Caídas). Totalmente memoizado y alineado con la política Zero-Loops.
 
 ### PENDIENTE #3: Reasignación Contable de Boletos Huérfanos
 - **Objetivo:** En la pantalla `VentasReviewScreen`, permitir al Administrador reasignar boletos huérfanos (`frecuenciaId == null`) a una frecuencia oficial existente con un toque para cuadre contable perfecto.
