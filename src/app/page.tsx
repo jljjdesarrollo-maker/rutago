@@ -169,6 +169,12 @@ export default function Home() {
   }, [view, currentEstado, vtSession, esUltimaFrecuencia]);
 
   const isAdmin = user?.rol === 'ADMIN';
+  const isSuperAdmin = Boolean(
+    user?.id === 'saas-superadmin' ||
+    user?.id === 'user-superadmin' ||
+    user?.nombre?.toLowerCase().includes('superadmin') ||
+    user?.rol === 'SUPERADMIN_SAAS'
+  );
 
   const fetchCount = useCallback(async () => {
     try {
@@ -178,7 +184,11 @@ export default function Home() {
     } catch { /* ignore */ }
   }, []);
 
-  useEffect(() => { if (user) fetchCount(); }, [fetchCount, user]);
+  useEffect(() => {
+    if (user && !isSuperAdmin) {
+      fetchCount();
+    }
+  }, [fetchCount, user, isSuperAdmin]);
 
   const handleLogin = (userData: UserSession) => {
     setUser(userData);

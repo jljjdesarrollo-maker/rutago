@@ -83,6 +83,13 @@ export function HomeScreen({
   onLogout,
   recordCount,
 }: HomeScreenProps) {
+  const isSuperAdmin = Boolean(
+    user.id === 'saas-superadmin' ||
+    user.id === 'user-superadmin' ||
+    user.nombre?.toLowerCase().includes('superadmin') ||
+    user.rol === 'SUPERADMIN_SAAS'
+  );
+
   const [backupLoading, setBackupLoading] = useState(false);
   const [ownerSummary, setOwnerSummary] = useState<{
     routeIncome: number;
@@ -97,8 +104,10 @@ export function HomeScreen({
   });
   const { toast } = useToast();
 
-  // Calcular balance financiero en vivo para el socio (con sincronización en línea)
+  // Calcular balance financiero en vivo exclusivamente para el socio (cero consumo de recursos para SuperAdmin)
   useEffect(() => {
+    if (isSuperAdmin) return;
+
     const updateSummaryFromList = (expenses: any[]) => {
       const augExpenses = expenses.filter(e => e.expenseDate && e.expenseDate.startsWith('2026-08'));
       const totalCost = augExpenses.reduce((sum, e) => sum + (e.totalAmount || 0), 0);
@@ -126,7 +135,7 @@ export function HomeScreen({
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [isSuperAdmin]);
 
   const handleAyudanteBoletosClick = () => {
     if (user.esActual === false) {
@@ -179,13 +188,6 @@ export function HomeScreen({
       setBackupLoading(false);
     }
   };
-
-  const isSuperAdmin = Boolean(
-    user.id === 'saas-superadmin' ||
-    user.id === 'user-superadmin' ||
-    user.nombre?.toLowerCase().includes('superadmin') ||
-    user.rol === 'SUPERADMIN_SAAS'
-  );
 
   if (isSuperAdmin) {
     return (

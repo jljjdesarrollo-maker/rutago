@@ -161,7 +161,17 @@
   * **FASE 7 (COMPLETADA - v3.54.4):** Delegación de Tripulación por Socio & Pool Laboral Compartido (Cédula Única sin duplicados de chofer al rotar).
   * **FASE 8 (PENDIENTE):** Promoción Opcional de Pasajes Gratis por Bus en VT & Benchmark Anónimo (Su Bus vs Unidad A, B).
   * **FASE 9 (COMPLETADA - v3.54.4):** Módulo de Mantenimientos Preventivos para el Chofer (`MantenimientoScreen`, alertas mecánicas por odómetro/km).
-  * **FASE 10 (EN EJECUCIÓN - v3.55.0):** Depuración Integral de Interfaces por Rol (SuperAdmin `9999`, Socio `0101`, Tripulante `2107`). El Super Admin ve exclusivamente herramientas corporativas/SaaS y cero gastos personales de bus ni emisión manual de boletos.
+  * **FASE 10 (COMPLETADA - v3.55.0):** Depuración Integral de Interfaces por Rol (SuperAdmin `9999`, Socio `0101`, Tripulante `2107`).
+    - **Identidad del Super Admin (PIN 9999):** Exclusivo de la **EMPRESA DESARROLLADORA DEL SOFTWARE (SaaS Vendor)**, no de la cooperativa. Su consola está dedicada 100% a la gestión comercial SaaS (cobranza mensual de $20/bus, MRR proyectado de $380/mes, estado de cuenta), padrón de clientes y consola de soporte técnico L2 (sanación de boletos huérfanos, respaldo de base de datos, administración de credenciales). No realiza emisión de boletos, ni registro de gastos individuales de bus, ni tareas operativas internas de la cooperativa.
+    - **Identidad del Socio (PIN 0101 / 2107):** Dueño de autobús particular con su balance financiero personal, gastos del vehículo y alertas mecánicas por tacómetro (`MantenimientoScreen`).
 
 ### PENDIENTE #3: Reasignación Contable de Boletos Huérfanos
 - **Objetivo:** En la pantalla `VentasReviewScreen`, permitir al Administrador reasignar boletos huérfanos (`frecuenciaId == null`) a una frecuencia oficial existente con un toque para cuadre contable perfecto.
+
+### PENDIENTE #4: Módulo Institucional de Gerencia de Cooperativa & Informes de Interés Común
+- **Contexto Operativo:** La adopción del software es voluntaria e independiente por socio ($20/mes por autobús).
+- **Alcance Futuro:** Una vez que la totalidad (o la gran mayoría) de los 19 socios de la Cooperativa Vilcabambaturis implementen activamente RutaGo, se habilitará un rol y panel exclusivo para la **Gerencia / Directiva de la Cooperativa**, con acceso a informes consolidados de interés común:
+  * Cumplimiento operativo global de frecuencias (vueltas realizadas vs caídas por bus ante la ANT/Municipio).
+  * Rotación equitativa y comparador de rendimiento por franja horaria (auditoría para asambleas de socios).
+  * Retenciones institucionales de Caja Común para administración y terminal.
+  * Informes consolidados de auditoría para asambleas en PDF y Excel.
