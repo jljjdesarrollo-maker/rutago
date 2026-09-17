@@ -127,7 +127,11 @@ log_step_end "bun install"
 
 log_step_start "bun run db:push"
 echo "[BUN] Setting up database..."
-bun run db:push
+if [ -n "${DATABASE_URL:-}" ]; then
+	bun run db:push
+else
+	echo "[BUN] DATABASE_URL not set, skipping db:push..."
+fi
 log_step_end "bun run db:push"
 
 log_step_start "Starting Next.js dev server"
