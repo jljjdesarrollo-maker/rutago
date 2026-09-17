@@ -257,8 +257,8 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     const promoConfig = loadPromoConfig(busId);
     let ganadorPosicion: number | null = null;
     if (promoConfig.activa) {
-      const min = promoConfig.rangoMin || 3;
-      const max = promoConfig.rangoMax || 30;
+      const min = Math.max(1, promoConfig.rangoMin != null ? Number(promoConfig.rangoMin) : 3);
+      const max = Math.max(min, promoConfig.rangoMax != null ? Number(promoConfig.rangoMax) : 30);
       ganadorPosicion = Math.floor(Math.random() * (max - min + 1)) + min;
     }
 

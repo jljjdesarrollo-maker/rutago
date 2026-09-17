@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   Bus,
   Plus,
+  Minus,
   Pencil,
   Trash2,
   Check,
@@ -86,6 +87,12 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
 
   // Modal de confirmación de eliminación
   const [busToDelete, setBusToDelete] = useState<BusItem | null>(null);
+
+  // Modal de Configuración Dedicada de Política de Viaje Gratis
+  const [promoModalBus, setPromoModalBus] = useState<BusItem | null>(null);
+  const [promoModalConfig, setPromoModalConfig] = useState<PromoViajeGratisConfig>(DEFAULT_PROMO_CONFIG);
+  const [promoMinInput, setPromoMinInput] = useState<string>('3');
+  const [promoMaxInput, setPromoMaxInput] = useState<string>('30');
 
   const { toast } = useToast();
 
@@ -226,6 +233,67 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
     });
   };
 
+  // Abrir modal de política de Viaje Gratis para un autobús
+  const handleOpenPromoModal = (bus: BusItem) => {
+    const bId = bus.id || `BUS-${bus.numeroDisco}`;
+    const cfg = bus.promoConfig || loadPromoConfig(bId);
+    setPromoModalBus(bus);
+    setPromoModalConfig({ ...cfg });
+    setPromoMinInput(String(cfg.rangoMin ?? 3));
+    setPromoMaxInput(String(cfg.rangoMax ?? 30));
+  };
+
+  // Guardar política desde modal dedicado
+  const handleSavePromoModal = () => {
+    if (!promoModalBus) return;
+    const bId = promoModalBus.id || `BUS-${promoModalBus.numeroDisco}`;
+    const parsedMin = parseInt(promoMinInput, 10);
+    const parsedMax = parseInt(promoMaxInput, 10);
+    const minVal = Math.max(1, isNaN(parsedMin) ? 1 : parsedMin);
+    const maxVal = Math.max(minVal, isNaN(parsedMax) ? 30 : parsedMax);
+
+    const finalConfig: PromoViajeGratisConfig = {
+      ...promoModalConfig,
+      rangoMin: minVal,
+      rangoMax: maxVal,
+      textoPublicidad: (promoModalConfig.textoPublicidad || '').trim() || 'Quieres RutaGo? 0997149000',
+    };
+
+    savePromoConfig(finalConfig, bId);
+    const updatedBus: BusItem = {
+      ...promoModalBus,
+      promoConfig: finalConfig,
+    };
+    const updatedLocal = saveBus(updatedBus);
+    setBuses(Array.isArray(updatedLocal) ? updatedLocal : getAllBuses());
+    toast({
+      title: 'Política de Viaje Gratis Guardada',
+      description: `Disco ${promoModalBus.numeroDisco}: Pasajeros ${minVal} al ${maxVal} • ${finalConfig.activa ? 'ACTIVO' : 'PAUSADO'}`,
+    });
+    setPromoModalBus(null);
+  };
+
+  const stepMin = (delta: number) => {
+    const current = parseInt(promoMinInput, 10) || 1;
+    const next = Math.max(1, current + delta);
+    setPromoMinInput(String(next));
+    setPromoModalConfig(prev => ({ ...prev, rangoMin: next }));
+  };
+
+  const stepMax = (delta: number) => {
+    const currentMin = parseInt(promoMinInput, 10) || 1;
+    const current = parseInt(promoMaxInput, 10) || 30;
+    const next = Math.max(currentMin, current + delta);
+    setPromoMaxInput(String(next));
+    setPromoModalConfig(prev => ({ ...prev, rangoMax: next }));
+  };
+
+  const applyPresetPromo = (min: number, max: number) => {
+    setPromoMinInput(String(min));
+    setPromoMaxInput(String(max));
+    setPromoModalConfig(prev => ({ ...prev, rangoMin: min, rangoMax: max }));
+  };
+
   // Guardar unidad (creación o actualización)
   const handleSave = async () => {
     if (!formData.numeroDisco.trim()) {
@@ -268,6 +336,19 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
       }
     }
 
+    const parsedMin = parseInt(String(formData.promoConfig?.rangoMin), 10);
+    const parsedMax = parseInt(String(formData.promoConfig?.rangoMax), 10);
+    const validMin = Math.max(1, isNaN(parsedMin) ? 3 : parsedMin);
+    const validMax = Math.max(validMin, isNaN(parsedMax) ? 30 : parsedMax);
+
+    const sanitizedPromo: PromoViajeGratisConfig = {
+      activa: formData.promoConfig?.activa ?? true,
+      rangoMin: validMin,
+      rangoMax: validMax,
+      textoPublicidad: (formData.promoConfig?.textoPublicidad ?? '').trim() || 'Quieres RutaGo? 0997149000',
+      sonidoGanador: formData.promoConfig?.sonidoGanador ?? true,
+    };
+
     const busPayload: BusItem = {
       id: editingId || `BUS-${cleanDisco}`,
       numeroDisco: cleanDisco,
@@ -280,11 +361,9 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
       tipoOperacion: tipoFinal,
       activo: formData.activo,
       notas: formData.notas?.trim() || undefined,
-      promoConfig: formData.promoConfig || DEFAULT_PROMO_CONFIG,
+      promoConfig: sanitizedPromo,
     };
-    if (formData.promoConfig) {
-      savePromoConfig(formData.promoConfig, `BUS-${cleanDisco}`);
-    }
+    savePromoConfig(sanitizedPromo, `BUS-${cleanDisco}`);
 
     try {
       // 1. Guardado local inmediato (offline-first)
@@ -690,7 +769,7 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
                       </span>
                     </div>
 
-                    {/* Bloque Promoción Viaje Gratis Desacoplada */}
+                    {/* Bloque Promoción Viaje Gratis Desacoplada y Configurable */}
                     {(() => {
                       const busPromo = bus.promoConfig || loadPromoConfig(bus.id || `BUS-${bus.numeroDisco}`);
                       return (
@@ -699,27 +778,40 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
                             ? 'bg-amber-50/70 border-amber-200 text-amber-900' 
                             : 'bg-gray-50 border-gray-100 text-gray-500'
                         }`}>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                          <div 
+                            onClick={() => handleOpenPromoModal(bus)}
+                            className="flex items-center gap-2 cursor-pointer flex-1 min-w-0"
+                            title="Toca para configurar la política de viaje gratis de este bus"
+                          >
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                               busPromo.activa ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-400'
                             }`}>
                               <Ticket className="w-3.5 h-3.5" />
                             </div>
-                            <div>
-                              <div className="flex items-center gap-1.5">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-bold text-[11px]">Boleto Premiado (Viaje Gratis)</span>
                                 <Badge className={busPromo.activa ? 'bg-amber-200 text-amber-900 text-[9px] py-0 px-1' : 'bg-gray-200 text-gray-600 text-[9px] py-0 px-1'}>
                                   {busPromo.activa ? 'ACTIVO' : 'PAUSADO'}
                                 </Badge>
                               </div>
-                              <span className="text-[10px] text-gray-500 block">
+                              <span className="text-[10px] text-gray-600 block truncate">
                                 {busPromo.activa 
                                   ? `Rango: pasajero ${busPromo.rangoMin} al ${busPromo.rangoMax} • Pie: "${busPromo.textoPublicidad || 'RutaGo'}"`
                                   : 'Promoción inactiva en este autobús'}
                               </span>
                             </div>
                           </div>
-                          <div onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPromoModal(bus)}
+                              className="px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 active:bg-amber-300 text-amber-900 font-bold text-[10px] flex items-center gap-1 transition-colors shadow-2xs"
+                              title="Ajustar política del sorteo (rango de pasajeros y pie de boleto)"
+                            >
+                              <SlidersHorizontal className="w-3 h-3" />
+                              <span>Ajustar</span>
+                            </button>
                             <Switch
                               checked={busPromo.activa}
                               onCheckedChange={(checked) => handleTogglePromo(bus, checked)}
@@ -1052,34 +1144,67 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
                         <Label className="text-[11px] font-bold text-amber-900">Pasajero Mínimo</Label>
                         <Input
                           type="number"
-                          min={3}
-                          max={15}
-                          value={formData.promoConfig?.rangoMin ?? 3}
-                          onChange={(e) => setFormData((prev) => ({
-                            ...prev,
-                            promoConfig: {
-                              ...(prev.promoConfig || DEFAULT_PROMO_CONFIG),
-                              rangoMin: Math.max(3, parseInt(e.target.value) || 3)
-                            }
-                          }))}
+                          min={1}
+                          value={formData.promoConfig?.rangoMin ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData((prev) => ({
+                              ...prev,
+                              promoConfig: {
+                                ...(prev.promoConfig || DEFAULT_PROMO_CONFIG),
+                                rangoMin: val === '' ? ('' as any) : parseInt(val, 10),
+                              }
+                            }));
+                          }}
+                          onBlur={() => {
+                            setFormData((prev) => {
+                              const cfg = prev.promoConfig || DEFAULT_PROMO_CONFIG;
+                              const parsed = parseInt(String(cfg.rangoMin), 10);
+                              return {
+                                ...prev,
+                                promoConfig: {
+                                  ...cfg,
+                                  rangoMin: Math.max(1, isNaN(parsed) ? 1 : parsed),
+                                }
+                              };
+                            });
+                          }}
                           className="h-10 rounded-xl text-xs font-bold text-center bg-white"
                         />
-                        <span className="text-[9px] text-gray-500 block text-center">Nunca los 2 primeros</span>
+                        <span className="text-[9px] text-gray-500 block text-center">
+                          {Number(formData.promoConfig?.rangoMin) <= 2 ? 'Desde inicio' : `Evita primeros ${Number(formData.promoConfig?.rangoMin) - 1}`}
+                        </span>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[11px] font-bold text-amber-900">Pasajero Máximo</Label>
                         <Input
                           type="number"
-                          min={10}
-                          max={50}
-                          value={formData.promoConfig?.rangoMax ?? 30}
-                          onChange={(e) => setFormData((prev) => ({
-                            ...prev,
-                            promoConfig: {
-                              ...(prev.promoConfig || DEFAULT_PROMO_CONFIG),
-                              rangoMax: Math.max(10, parseInt(e.target.value) || 30)
-                            }
-                          }))}
+                          min={1}
+                          value={formData.promoConfig?.rangoMax ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData((prev) => ({
+                              ...prev,
+                              promoConfig: {
+                                ...(prev.promoConfig || DEFAULT_PROMO_CONFIG),
+                                rangoMax: val === '' ? ('' as any) : parseInt(val, 10),
+                              }
+                            }));
+                          }}
+                          onBlur={() => {
+                            setFormData((prev) => {
+                              const cfg = prev.promoConfig || DEFAULT_PROMO_CONFIG;
+                              const minVal = parseInt(String(cfg.rangoMin), 10) || 1;
+                              const parsed = parseInt(String(cfg.rangoMax), 10);
+                              return {
+                                ...prev,
+                                promoConfig: {
+                                  ...cfg,
+                                  rangoMax: Math.max(minVal, isNaN(parsed) ? 30 : parsed),
+                                }
+                              };
+                            });
+                          }}
                           className="h-10 rounded-xl text-xs font-bold text-center bg-white"
                         />
                         <span className="text-[9px] text-gray-500 block text-center">Límite de sorteo</span>
@@ -1183,6 +1308,239 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
                 className="flex-1 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs"
               >
                 Sí, Retirar Bus
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ─── MODAL DE CONFIGURACIÓN DEDICADA DE POLÍTICA DE VIAJE GRATIS ─── */}
+      {promoModalBus && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-2 duration-200">
+            {/* Cabecera */}
+            <div className="p-4 border-b border-amber-200/80 flex items-center justify-between bg-gradient-to-r from-amber-50 to-amber-100/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                  <Ticket className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-amber-950 flex items-center gap-1.5">
+                    Boleto Premiado: Disco {promoModalBus.numeroDisco}
+                  </h3>
+                  <p className="text-[11px] text-amber-800/80">
+                    Define la política de sorteo aleatorio para tu autobús ({promoModalBus.placa})
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPromoModalBus(null)}
+                className="w-8 h-8 rounded-full bg-white/80 hover:bg-white text-gray-600 flex items-center justify-center transition-colors shadow-2xs"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Contenido con scroll */}
+            <div className="p-4 overflow-y-auto space-y-4 flex-1 text-xs">
+              {/* Switch Master de Activación */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-amber-50/70 border border-amber-200/70">
+                <div className="space-y-0.5">
+                  <span className="font-bold text-xs text-amber-950 block">Estado del Sorteo</span>
+                  <span className="text-[11px] text-amber-800/80 block">
+                    {promoModalConfig.activa
+                      ? 'Sorteo aleatorio ACTIVO al abrir cada frecuencia'
+                      : 'Sorteo PAUSADO temporalmente en esta unidad'}
+                  </span>
+                </div>
+                <Switch
+                  checked={promoModalConfig.activa}
+                  onCheckedChange={(checked) => setPromoModalConfig(prev => ({ ...prev, activa: checked }))}
+                />
+              </div>
+
+              {promoModalConfig.activa && (
+                <div className="space-y-4">
+                  {/* Selector de Rango Ergonómico sin bloqueos */}
+                  <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-bold text-gray-800">Rango de Pasajeros Participantes</Label>
+                      <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-lg">
+                        Pasajero {promoMinInput || '1'} al {promoMaxInput || '30'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Pasajero Mínimo */}
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-bold text-gray-700 block">Pasajero Mínimo</span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => stepMin(-1)}
+                            className="w-9 h-10 rounded-xl bg-white border border-gray-300 hover:bg-gray-100 active:scale-95 text-gray-700 font-black text-sm flex items-center justify-center transition-all shadow-2xs"
+                            title="Disminuir 1"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={promoMinInput}
+                            onChange={(e) => {
+                              setPromoMinInput(e.target.value);
+                              const parsed = parseInt(e.target.value, 10);
+                              if (!isNaN(parsed) && parsed >= 1) {
+                                setPromoModalConfig(prev => ({ ...prev, rangoMin: parsed }));
+                              }
+                            }}
+                            onBlur={() => {
+                              const parsed = parseInt(promoMinInput, 10);
+                              const safe = Math.max(1, isNaN(parsed) ? 1 : parsed);
+                              setPromoMinInput(String(safe));
+                              setPromoModalConfig(prev => ({ ...prev, rangoMin: safe }));
+                            }}
+                            className="h-10 rounded-xl text-center font-black text-sm bg-white border-gray-300 shadow-2xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => stepMin(1)}
+                            className="w-9 h-10 rounded-xl bg-white border border-gray-300 hover:bg-gray-100 active:scale-95 text-gray-700 font-black text-sm flex items-center justify-center transition-all shadow-2xs"
+                            title="Aumentar 1"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <span className="text-[10px] text-gray-500 block text-center">
+                          {parseInt(promoMinInput, 10) <= 2 ? 'Entran todos desde inicio' : `No premia primeros ${parseInt(promoMinInput, 10) - 1}`}
+                        </span>
+                      </div>
+
+                      {/* Pasajero Máximo */}
+                      <div className="space-y-1.5">
+                        <span className="text-[11px] font-bold text-gray-700 block">Pasajero Máximo</span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => stepMax(-5)}
+                            className="w-9 h-10 rounded-xl bg-white border border-gray-300 hover:bg-gray-100 active:scale-95 text-gray-700 font-black text-xs flex items-center justify-center transition-all shadow-2xs"
+                            title="Disminuir 5"
+                          >
+                            -5
+                          </button>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={promoMaxInput}
+                            onChange={(e) => {
+                              setPromoMaxInput(e.target.value);
+                              const parsed = parseInt(e.target.value, 10);
+                              if (!isNaN(parsed)) {
+                                setPromoModalConfig(prev => ({ ...prev, rangoMax: parsed }));
+                              }
+                            }}
+                            onBlur={() => {
+                              const minVal = parseInt(promoMinInput, 10) || 1;
+                              const parsed = parseInt(promoMaxInput, 10);
+                              const safe = Math.max(minVal, isNaN(parsed) ? 30 : parsed);
+                              setPromoMaxInput(String(safe));
+                              setPromoModalConfig(prev => ({ ...prev, rangoMax: safe }));
+                            }}
+                            className="h-10 rounded-xl text-center font-black text-sm bg-white border-gray-300 shadow-2xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => stepMax(5)}
+                            className="w-9 h-10 rounded-xl bg-white border border-gray-300 hover:bg-gray-100 active:scale-95 text-gray-700 font-black text-xs flex items-center justify-center transition-all shadow-2xs"
+                            title="Aumentar 5"
+                          >
+                            +5
+                          </button>
+                        </div>
+                        <span className="text-[10px] text-gray-500 block text-center">
+                          Límite del sorteo
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Chips de Políticas Rápidas */}
+                    <div className="pt-2 border-t border-gray-200">
+                      <span className="text-[10px] font-bold text-gray-500 block mb-1.5">
+                        Políticas Rápidas Recomendadas:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => applyPresetPromo(1, 20)}
+                          className="px-2.5 py-1 rounded-lg bg-white border border-gray-300 hover:border-amber-400 hover:bg-amber-50 text-[11px] font-semibold text-gray-700 transition-colors shadow-2xs"
+                        >
+                          1 al 20 (Ruta Corta)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyPresetPromo(3, 30)}
+                          className="px-2.5 py-1 rounded-lg bg-white border border-gray-300 hover:border-amber-400 hover:bg-amber-50 text-[11px] font-semibold text-gray-700 transition-colors shadow-2xs"
+                        >
+                          3 al 30 (Estándar)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => applyPresetPromo(5, promoModalBus.capacidadAsientos || 45)}
+                          className="px-2.5 py-1 rounded-lg bg-white border border-gray-300 hover:border-amber-400 hover:bg-amber-50 text-[11px] font-semibold text-gray-700 transition-colors shadow-2xs"
+                        >
+                          5 al {promoModalBus.capacidadAsientos || 45} (Bus Lleno)
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Texto de Publicidad en el Boleto */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-gray-800">
+                      Texto Publicitario en Pie de Boleto
+                    </Label>
+                    <Input
+                      type="text"
+                      placeholder="ej. Quieres RutaGo? 0997149000"
+                      value={promoModalConfig.textoPublicidad ?? ''}
+                      onChange={(e) => setPromoModalConfig(prev => ({ ...prev, textoPublicidad: e.target.value }))}
+                      className="h-10 rounded-xl text-xs bg-white border-gray-300"
+                    />
+                    <span className="text-[10px] text-gray-500 block">
+                      Se imprime en la parte inferior de los boletos emitidos por esta unidad.
+                    </span>
+                  </div>
+
+                  {/* Sonido de victoria */}
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-white border border-gray-200">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-bold text-gray-800 block">Bip Sonoro de Ganador</span>
+                      <span className="text-[10px] text-gray-500 block">Toca tono especial al emitir el boleto premiado</span>
+                    </div>
+                    <Switch
+                      checked={promoModalConfig.sonidoGanador ?? true}
+                      onCheckedChange={(checked) => setPromoModalConfig(prev => ({ ...prev, sonidoGanador: checked }))}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Barra Inferior del Modal */}
+            <div className="p-3 bg-gray-50 border-t border-gray-200 flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPromoModalBus(null)}
+                className="flex-1 h-11 rounded-xl text-xs font-bold"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSavePromoModal}
+                className="flex-1 h-11 rounded-xl bg-[#912D26] hover:bg-[#7A2520] active:scale-[0.99] text-white text-xs font-bold shadow-sm"
+              >
+                Guardar Política
               </Button>
             </div>
           </div>

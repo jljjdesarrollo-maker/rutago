@@ -267,9 +267,21 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
                       <Label className="text-xs font-medium text-[#3A3A3A]/60">Posición mínima</Label>
                       <Input
                         type="number"
-                        min={3}
-                        value={promoConfig.rangoMin}
-                        onChange={e => setPromoConfig(prev => ({ ...prev, rangoMin: parseInt(e.target.value) || 3 }))}
+                        min={1}
+                        value={promoConfig.rangoMin ?? ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setPromoConfig(prev => ({
+                            ...prev,
+                            rangoMin: val === '' ? ('' as any) : parseInt(val, 10),
+                          }));
+                        }}
+                        onBlur={() => {
+                          setPromoConfig(prev => {
+                            const parsed = parseInt(String(prev.rangoMin), 10);
+                            return { ...prev, rangoMin: Math.max(1, isNaN(parsed) ? 1 : parsed) };
+                          });
+                        }}
                         className="h-10 rounded-lg text-sm border-[#D6D6D6]"
                       />
                     </div>
@@ -277,9 +289,22 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
                       <Label className="text-xs font-medium text-[#3A3A3A]/60">Posición máxima</Label>
                       <Input
                         type="number"
-                        min={3}
-                        value={promoConfig.rangoMax}
-                        onChange={e => setPromoConfig(prev => ({ ...prev, rangoMax: parseInt(e.target.value) || 30 }))}
+                        min={1}
+                        value={promoConfig.rangoMax ?? ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setPromoConfig(prev => ({
+                            ...prev,
+                            rangoMax: val === '' ? ('' as any) : parseInt(val, 10),
+                          }));
+                        }}
+                        onBlur={() => {
+                          setPromoConfig(prev => {
+                            const minVal = parseInt(String(prev.rangoMin), 10) || 1;
+                            const parsed = parseInt(String(prev.rangoMax), 10);
+                            return { ...prev, rangoMax: Math.max(minVal, isNaN(parsed) ? 30 : parsed) };
+                          });
+                        }}
                         className="h-10 rounded-lg text-sm border-[#D6D6D6]"
                       />
                     </div>
@@ -309,7 +334,13 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
 
               {/* Guardar */}
               <Button
-                onClick={() => { savePromoConfig(promoConfig); toast({ title: 'Guardado', description: 'Configuración de Viaje Gratis actualizada' }); }}
+                onClick={() => {
+                  const minVal = Math.max(1, parseInt(String(promoConfig.rangoMin), 10) || 1);
+                  const maxVal = Math.max(minVal, parseInt(String(promoConfig.rangoMax), 10) || 30);
+                  const sanitized = { ...promoConfig, rangoMin: minVal, rangoMax: maxVal };
+                  savePromoConfig(sanitized);
+                  toast({ title: 'Guardado', description: `Configuración de Viaje Gratis actualizada (Pasajero ${minVal} al ${maxVal})` });
+                }}
                 className="w-full h-10 rounded-xl bg-[#912D26] hover:bg-[#7A2520] text-white text-sm font-semibold"
               >
                 <Save className="w-4 h-4 mr-1" />
