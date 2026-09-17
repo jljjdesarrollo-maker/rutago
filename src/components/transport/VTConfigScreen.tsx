@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { type PromoViajeGratisConfig, loadPromoConfig, savePromoConfig, DEFAULT_PROMO_CONFIG, type TiempoVentaConfig, loadTiempoVentaConfig, saveTiempoVentaConfig, DEFAULT_TIEMPO_VENTA_CONFIG } from './types-boletos';
 import { type ConfiguracionKilometrajeRutas, DEFAULT_CONFIG_KILOMETRAJE_RUTAS } from '@/types/rutas-km';
