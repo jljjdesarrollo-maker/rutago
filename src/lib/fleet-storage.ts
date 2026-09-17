@@ -203,8 +203,8 @@ export function getBusByDisco(discoOrId: string): BusItem | undefined {
 /**
  * Guarda o actualiza una unidad en el almacenamiento local.
  */
-export function saveBus(bus: BusItem): BusItem {
-  if (typeof window === 'undefined') return bus;
+export function saveBus(bus: BusItem): BusItem[] {
+  if (typeof window === 'undefined') return [bus];
   try {
     const buses = getAllBuses();
     const existingIndex = buses.findIndex(
@@ -216,26 +216,26 @@ export function saveBus(bus: BusItem): BusItem {
       buses.push({ ...bus, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(buses));
-    return bus;
+    return buses;
   } catch (err) {
     console.error('Error guardando unidad de flota:', err);
-    return bus;
+    return getAllBuses();
   }
 }
 
 /**
  * Elimina una unidad por su ID.
  */
-export function deleteBus(id: string): boolean {
-  if (typeof window === 'undefined') return false;
+export function deleteBus(id: string): BusItem[] {
+  if (typeof window === 'undefined') return [];
   try {
     const buses = getAllBuses();
     const filtered = buses.filter((b) => b.id !== id && b.numeroDisco !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-    return true;
+    return filtered;
   } catch (err) {
     console.error('Error eliminando unidad de flota:', err);
-    return false;
+    return getAllBuses();
   }
 }
 

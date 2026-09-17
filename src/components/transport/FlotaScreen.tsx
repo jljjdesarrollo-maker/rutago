@@ -119,11 +119,12 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
   // Lista de buses accesible según rol
   // Si es SOCIO: Se filtra EXCLUSIVAMENTE a su unidad propia activa para garantizar confidencialidad
   const accessibleBuses = useMemo(() => {
+    const safeList = Array.isArray(buses) ? buses : [];
     if (isSuperAdmin) {
-      return buses;
+      return safeList;
     }
     // Para el socio, buscar su bus activo (por id o por numeroDisco)
-    const myBus = buses.find((b) => b.id === activeBusId || b.numeroDisco === activeBusId.replace('BUS-', ''))
+    const myBus = safeList.find((b) => b.id === activeBusId || b.numeroDisco === activeBusId.replace('BUS-', ''))
       || buses.find((b) => b.id === 'BUS-01')
       || INITIAL_PILOT_BUS;
 
@@ -152,10 +153,11 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
 
   // Contadores analíticos
   const stats = useMemo(() => {
-    const total = buses.length;
-    const troncal = buses.filter((b) => b.tipoOperacion === 'TRONCAL_VT').length;
-    const alimentador = buses.filter((b) => b.tipoOperacion === 'ALIMENTADOR_P').length;
-    const activos = buses.filter((b) => b.activo).length;
+    const safeList = Array.isArray(buses) ? buses : [];
+    const total = safeList.length;
+    const troncal = safeList.filter((b) => b.tipoOperacion === 'TRONCAL_VT').length;
+    const alimentador = safeList.filter((b) => b.tipoOperacion === 'ALIMENTADOR_P').length;
+    const activos = safeList.filter((b) => b.activo).length;
     return { total, troncal, alimentador, activos };
   }, [buses]);
 
@@ -200,13 +202,16 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
   };
 
   // Toggle rápido de promoción en tarjeta
-  const handleTogglePromo = (bus: BusItem, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleTogglePromo = (bus: BusItem, e?: React.MouseEvent | boolean) => {
+    if (e && typeof e === 'object' && 'stopPropagation' in e) {
+      e.stopPropagation();
+    }
     const bId = bus.id || `BUS-${bus.numeroDisco}`;
     const currentPromo = bus.promoConfig || loadPromoConfig(bId);
+    const nextState = typeof e === 'boolean' ? e : !currentPromo.activa;
     const updatedPromo: PromoViajeGratisConfig = {
       ...currentPromo,
-      activa: !currentPromo.activa,
+      activa: nextState,
     };
     savePromoConfig(updatedPromo, bId);
     const updatedBus: BusItem = {
@@ -214,7 +219,7 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
       promoConfig: updatedPromo,
     };
     const updatedLocal = saveBus(updatedBus);
-    setBuses(updatedLocal);
+    setBuses(Array.isArray(updatedLocal) ? updatedLocal : getAllBuses());
     toast({
       title: updatedPromo.activa ? 'Promoción activada' : 'Promoción pausada',
       description: `Viaje Gratis en Disco ${bus.numeroDisco} ahora está ${updatedPromo.activa ? 'ACTIVO' : 'INACTIVO'}.`,
@@ -714,10 +719,12 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
                               </span>
                             </div>
                           </div>
-                          <Switch
-                            checked={busPromo.activa}
-                            onClick={(e) => handleTogglePromo(bus, e)}
-                          />
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <Switch
+                              checked={busPromo.activa}
+                              onCheckedChange={(checked) => handleTogglePromo(bus, checked)}
+                            />
+                          </div>
                         </div>
                       );
                     })()}
