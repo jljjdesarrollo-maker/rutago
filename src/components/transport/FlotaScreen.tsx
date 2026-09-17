@@ -797,7 +797,7 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
                               </div>
                               <span className="text-[10px] text-gray-600 block truncate">
                                 {busPromo.activa 
-                                  ? `Rango: pasajero ${busPromo.rangoMin} al ${busPromo.rangoMax} • Pie: "${busPromo.textoPublicidad || 'RutaGo'}"`
+                                  ? `Rango: pasajero ${busPromo.rangoMin} al ${busPromo.rangoMax} • Sorteo aleatorio activo`
                                   : 'Promoción inactiva en este autobús'}
                               </span>
                             </div>
@@ -1211,21 +1211,12 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
                       </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <Label className="text-[11px] font-bold text-amber-900">Texto Publicitario en Pie de Boleto</Label>
-                      <Input
-                        type="text"
-                        placeholder="ej. Quieres RutaGo? 0997149000"
-                        value={formData.promoConfig?.textoPublicidad ?? ''}
-                        onChange={(e) => setFormData((prev) => ({
-                          ...prev,
-                          promoConfig: {
-                            ...(prev.promoConfig || DEFAULT_PROMO_CONFIG),
-                            textoPublicidad: e.target.value
-                          }
-                        }))}
-                        className="h-10 rounded-xl text-xs bg-white"
-                      />
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-100/50 border border-amber-200/70 text-xs">
+                      <div className="space-y-0.5">
+                        <span className="text-[11px] font-bold text-amber-950 block">Pie de Boleto Oficial SaaS</span>
+                        <span className="text-[10px] text-amber-800/80 block">"Quieres RutaGo? 0997149000"</span>
+                      </div>
+                      <Badge className="bg-amber-200 text-amber-900 text-[9px] py-0 px-1.5 font-bold">Oficial SuperAdmin</Badge>
                     </div>
 
                     <div className="flex items-center justify-between p-2 rounded-xl bg-white/80 border border-amber-200/50">
@@ -1493,20 +1484,21 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
                     </div>
                   </div>
 
-                  {/* Texto de Publicidad en el Boleto */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-gray-800">
-                      Texto Publicitario en Pie de Boleto
-                    </Label>
-                    <Input
-                      type="text"
-                      placeholder="ej. Quieres RutaGo? 0997149000"
-                      value={promoModalConfig.textoPublicidad ?? ''}
-                      onChange={(e) => setPromoModalConfig(prev => ({ ...prev, textoPublicidad: e.target.value }))}
-                      className="h-10 rounded-xl text-xs bg-white border-gray-300"
-                    />
-                    <span className="text-[10px] text-gray-500 block">
-                      Se imprime en la parte inferior de los boletos emitidos por esta unidad.
+                  {/* Pie de Boleto Oficial SaaS (Inmutable / SuperAdmin) */}
+                  <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200/80 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-bold text-amber-950">
+                        Pie de Boleto Premiado (Canal Oficial SaaS)
+                      </Label>
+                      <Badge className="bg-amber-200 text-amber-900 text-[9px] py-0 px-1.5 font-bold">
+                        SuperAdmin
+                      </Badge>
+                    </div>
+                    <div className="p-2 rounded-xl bg-white border border-amber-200 text-[11px] font-bold text-amber-900">
+                      "Quieres RutaGo? 0997149000"
+                    </div>
+                    <span className="text-[10px] text-amber-800/80 block">
+                      Mensaje de contacto institucional para soporte y ventas de suscripción mensual a nuevas unidades.
                     </span>
                   </div>
 

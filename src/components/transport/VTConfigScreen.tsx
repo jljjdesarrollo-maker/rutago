@@ -310,15 +310,26 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
                     </div>
                   </div>
 
-                  {/* Texto publicidad */}
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-[#3A3A3A]/60">Texto publicidad (en boleto)</Label>
+                  {/* Texto publicidad SaaS Oficial */}
+                  <div className="space-y-1.5 p-3 rounded-xl bg-amber-50/70 border border-amber-200">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-bold text-amber-950">
+                        Texto Publicitario Oficial SaaS (Pie de Boleto Premiado)
+                      </Label>
+                      <Badge className="bg-amber-200 text-amber-900 text-[10px] py-0 px-2 font-bold">
+                        Exclusivo SuperAdmin
+                      </Badge>
+                    </div>
                     <Textarea
                       value={promoConfig.textoPublicidad}
                       onChange={e => setPromoConfig(prev => ({ ...prev, textoPublicidad: e.target.value }))}
-                      className="rounded-lg text-sm border-[#D6D6D6] min-h-[60px]"
+                      className="rounded-lg text-sm border-amber-300 bg-white min-h-[55px]"
                       rows={2}
+                      placeholder="ej. Quieres RutaGo? 0997149000"
                     />
+                    <span className="text-[10px] text-amber-800/80 block">
+                      Canal de venta viral de suscripciones ($20/mes): este texto se imprime obligatoriamente al pie de los boletos ganadores en todas las unidades.
+                    </span>
                   </div>
 
                   {/* Sonido ganador */}

@@ -71,17 +71,36 @@ export function getBusPromoStorageKey(busIdOrDisco?: string): string {
 export function loadPromoConfig(busIdOrDisco?: string): PromoViajeGratisConfig {
   if (typeof window === 'undefined') return { ...DEFAULT_PROMO_CONFIG };
   try {
-    // 1. Si se especifica unidad, buscar configuración exclusiva del vehículo
+    // Texto publicitario oficial SaaS definido centralmente por SuperAdmin
+    let globalTexto = DEFAULT_PROMO_CONFIG.textoPublicidad;
+    const globalRaw = localStorage.getItem(PROMO_CONFIG_KEY);
+    if (globalRaw) {
+      try {
+        const parsedGlobal = JSON.parse(globalRaw);
+        if (parsedGlobal.textoPublicidad && typeof parsedGlobal.textoPublicidad === 'string') {
+          globalTexto = parsedGlobal.textoPublicidad;
+        }
+      } catch { /* ignore */ }
+    }
+
+    // 1. Si se especifica unidad, buscar mecánica operativa exclusiva del vehículo
     if (busIdOrDisco) {
       const busKey = getBusPromoStorageKey(busIdOrDisco);
       const busRaw = localStorage.getItem(busKey);
       if (busRaw) {
-        return { ...DEFAULT_PROMO_CONFIG, ...JSON.parse(busRaw) };
+        const busCfg = JSON.parse(busRaw);
+        return {
+          ...DEFAULT_PROMO_CONFIG,
+          ...busCfg,
+          // El texto publicitario siempre está blindado y centralizado por SuperAdmin
+          textoPublicidad: globalTexto,
+        };
       }
     }
-    // 2. Fallback a configuración general o por defecto
-    const raw = localStorage.getItem(PROMO_CONFIG_KEY);
-    if (raw) return { ...DEFAULT_PROMO_CONFIG, ...JSON.parse(raw) };
+    // 2. Fallback a configuración general
+    if (globalRaw) {
+      return { ...DEFAULT_PROMO_CONFIG, ...JSON.parse(globalRaw), textoPublicidad: globalTexto };
+    }
   } catch { /* ignore */ }
   return { ...DEFAULT_PROMO_CONFIG };
 }

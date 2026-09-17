@@ -1,7 +1,7 @@
 # Reglas y Directivas de Proyecto: RutaGo
 
 ## 1. Identidad y Propósito del Proyecto
-- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.55.0-roles-depuracion` (base previa: `v3.54.4-saas-core`)
+- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.57.0-promo-centralizada` (base previa: `v3.54.4-saas-core`)
 - **Repositorio Oficial:** `https://github.com/jljjdesarrollo-maker/rutago`
 - **Stack Técnico:** Next.js (App Router), React 19, TypeScript, Tailwind CSS, Prisma ORM, PostgreSQL, IndexedDB (Offline-First), Radix UI, ESC/POS & JSPDF.
 - **Entorno de Despliegue:** Vercel (CI/CD conectado a GitHub rama `main`) y uso directo en smartphones.
@@ -166,6 +166,9 @@
     - **Identidad del Socio (PIN 0101 / 2107):** Dueño de autobús particular con su balance financiero personal, gastos del vehículo y alertas mecánicas por tacómetro (`MantenimientoScreen`).
   * **FASE 11 (COMPLETADA - v3.56.0):** Gráfico Estadístico Interactivo de Flota con Anonimato de Pares (`BenchmarkChart.tsx` con Recharts) y Selector Dinámico de Métricas (IPF con semáforo vs media, Producción Bruta y Vueltas Efectivas vs Caídas). Totalmente memoizado y alineado con la política Zero-Loops.
   * **FASE 12 (COMPLETADA - v3.56.0):** Bifurcación de Gestión de Flota por Rol ("Ficha de Mi Unidad" para el Socio vs Catálogo Maestro de 19 Buses para SuperAdmin SaaS). Aislamiento de privacidad de unidades ajenas y blindaje de circuito oficial contra manipulación en Benchmark.
+  * **FASE 13 (COMPLETADA - v3.57.0):** Boleto Premiado (Viaje Gratis) Desacoplado por Unidad y Pie Publicitario Centralizado SaaS.
+    - **Mecánica Operativa Personalizable por Socio:** Cada socio puede activar/pausar la rifa en su unidad y ajustar libremente su política de rangos de pasajeros (ej. 1 al 20, 3 al 30, 5 al 45) mediante controles táctiles y chips rápidos en la Ficha de Unidad (`FlotaScreen`). Se eliminó el bloqueo forzado de los valores 3 y 30.
+    - **Blindaje del Pie de Boleto (Canal Viral de Adquisición SaaS):** El texto publicitario al pie del boleto premiado (`"Quieres RutaGo? 0997149000"`) está centralizado y bajo control exclusivo del **SuperAdmin SaaS (`9999`)** en `VTConfigScreen`. Se eliminó el campo de edición libre al socio para proteger el canal de ventas y suscripción mensual ($20/mes), acelerar la impresión térmica en 58 mm y garantizar la seriedad institucional.
 
 ### PENDIENTE #3: Reasignación Contable de Boletos Huérfanos
 - **Objetivo:** En la pantalla `VentasReviewScreen`, permitir al Administrador reasignar boletos huérfanos (`frecuenciaId == null`) a una frecuencia oficial existente con un toque para cuadre contable perfecto.

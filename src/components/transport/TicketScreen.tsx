@@ -259,7 +259,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           boletoNum: contadorVentasFrecuencia + 1,
           esViajeGratis: esGanador,
           tarifaOriginal: esGanador ? tarifaAuto || cobradoNum : undefined,
-          textoPublicidad: promoConfig.textoPublicidad,
+          textoPublicidad: promoConfig.textoPublicidad || 'Quieres RutaGo? 0997149000',
         });
         await printTicket(device, bytes);
       } catch (e) {
