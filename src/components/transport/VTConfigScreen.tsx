@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Plus, Trash2, ChevronDown, ChevronUp, Settings, Gift, Clock } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, ChevronDown, ChevronUp, Settings, Gift, Clock, Gauge, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,8 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { type PromoViajeGratisConfig, loadPromoConfig, savePromoConfig, DEFAULT_PROMO_CONFIG, type TiempoVentaConfig, loadTiempoVentaConfig, saveTiempoVentaConfig, DEFAULT_TIEMPO_VENTA_CONFIG } from './types-boletos';
+import { type ConfiguracionKilometrajeRutas, DEFAULT_CONFIG_KILOMETRAJE_RUTAS } from '@/types/rutas-km';
+import { getLocalRutasKmConfig, saveLocalRutasKmConfig, syncRutasKmConfig } from '@/lib/rutas-km-storage';
 
 interface VTItem {
   id: string;
@@ -38,6 +40,64 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
   // Tiempos límites de venta por frecuencia
   const [tiempoConfig, setTiempoConfig] = useState<TiempoVentaConfig>(DEFAULT_TIEMPO_VENTA_CONFIG);
   useEffect(() => { setTiempoConfig(loadTiempoVentaConfig()); }, []);
+
+  // Calibración de Kilometraje por Ruta (Fase A - v3.58.0)
+  const [rutasKmConfig, setRutasKmConfig] = useState<ConfiguracionKilometrajeRutas>(DEFAULT_CONFIG_KILOMETRAJE_RUTAS);
+  const [savingRutasKm, setSavingRutasKm] = useState(false);
+
+  useEffect(() => {
+    setRutasKmConfig(getLocalRutasKmConfig());
+    syncRutasKmConfig().then(cfg => {
+      if (cfg) setRutasKmConfig(cfg);
+    });
+  }, []);
+
+  const handleUpdateTramoKm = (id: string, distanciaKm: number) => {
+    setRutasKmConfig(prev => ({
+      ...prev,
+      tramos: prev.tramos.map(t => t.id === id ? { ...t, distanciaKm, updatedAt: new Date().toISOString() } : t)
+    }));
+  };
+
+  const handleCopiarIdaARetorno = (origen: string, destino: string) => {
+    setRutasKmConfig(prev => {
+      const ida = prev.tramos.find(t => t.origen === origen && t.destino === destino && t.sentido === 'IDA');
+      if (!ida) return prev;
+      return {
+        ...prev,
+        tramos: prev.tramos.map(t => {
+          if (t.origen === destino && t.destino === origen && t.sentido === 'RETORNO') {
+            return { ...t, distanciaKm: ida.distanciaKm, updatedAt: new Date().toISOString() };
+          }
+          return t;
+        })
+      };
+    });
+    toast({ title: 'Copiado', description: `Retorno igualado a ${destino} ➔ ${origen}` });
+  };
+
+  const handleSaveRutasKm = async () => {
+    setSavingRutasKm(true);
+    try {
+      saveLocalRutasKmConfig(rutasKmConfig);
+      await fetch('/api/config/rutas-km', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rutasKmConfig),
+      });
+      toast({ title: 'Configuración Guardada', description: 'Calibración de kilometraje replicada a la flota con éxito' });
+    } catch {
+      toast({ title: 'Guardado Local', description: 'Guardado en dispositivo (se sincronizará al conectar)' });
+    } finally {
+      setSavingRutasKm(false);
+    }
+  };
+
+  const handleRestablecerRutasKm = () => {
+    setRutasKmConfig(DEFAULT_CONFIG_KILOMETRAJE_RUTAS);
+    saveLocalRutasKmConfig(DEFAULT_CONFIG_KILOMETRAJE_RUTAS);
+    toast({ title: 'Restablecido', description: 'Valores oficiales de fábrica restablecidos' });
+  };
 
   useEffect(() => {
     // Seed + fetch VTs (seed runs here to ensure data is current)
@@ -450,6 +510,145 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
               <Save className="w-4 h-4 mr-1" />
               GUARDAR TIEMPOS DE VIAJE
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* ─── FASE A: Calibración Oficial de Kilometraje por Ruta (Base Odómetro) ─── */}
+        <Card className="rounded-2xl border border-[#D6D6D6] bg-white overflow-hidden">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-700 text-white flex items-center justify-center shrink-0">
+                <Gauge className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-[#3A3A3A] text-sm">CALIBRACIÓN OFICIAL DE KILOMETRAJE</p>
+                <p className="text-xs text-[#3A3A3A]/60">Base para validación semafórica de odómetro y mantenimientos</p>
+              </div>
+              <span className="text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full shrink-0">
+                SuperAdmin
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {[
+                { label: 'Loja ↔ Vilcabamba', idaId: 'LOJA_VILCA_IDA', retId: 'VILCA_LOJA_RET', origen: 'Loja', destino: 'Vilcabamba' },
+                { label: 'Loja ↔ El Tambo', idaId: 'LOJA_TAMBO_IDA', retId: 'TAMBO_LOJA_RET', origen: 'Loja', destino: 'El Tambo' },
+                { label: 'Loja ↔ Yangana', idaId: 'LOJA_YANG_IDA', retId: 'YANG_LOJA_RET', origen: 'Loja', destino: 'Yangana' },
+                { label: 'Loja ↔ La Elvira', idaId: 'LOJA_ELVIRA_IDA', retId: 'ELVIRA_LOJA_RET', origen: 'Loja', destino: 'La Elvira' },
+                { label: 'Loja ↔ Zahuayco', idaId: 'LOJA_ZAHU_IDA', retId: 'ZAHU_LOJA_RET', origen: 'Loja', destino: 'Zahuayco' },
+              ].map(group => {
+                const tramoIda = rutasKmConfig.tramos.find(t => t.id === group.idaId);
+                const tramoRet = rutasKmConfig.tramos.find(t => t.id === group.retId);
+                return (
+                  <div key={group.idaId} className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-800">{group.label}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopiarIdaARetorno(group.origen, group.destino)}
+                        className="text-[10px] font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 active:scale-95 transition-all"
+                      >
+                        = Copiar Ida a Retorno
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-medium text-gray-600 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span> [Ida] {group.origen} ➔ {group.destino}
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            step="0.1"
+                            value={tramoIda?.distanciaKm ?? 0}
+                            onChange={e => handleUpdateTramoKm(group.idaId, parseFloat(e.target.value) || 0)}
+                            className="h-9 rounded-lg text-xs font-bold text-gray-800 bg-white pr-7 border-gray-300"
+                          />
+                          <span className="absolute right-2 top-2 text-[10px] text-gray-400 font-bold">km</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-medium text-gray-600 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> [Retorno] {group.destino} ➔ {group.origen}
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            step="0.1"
+                            value={tramoRet?.distanciaKm ?? 0}
+                            onChange={e => handleUpdateTramoKm(group.retId, parseFloat(e.target.value) || 0)}
+                            className="h-9 rounded-lg text-xs font-bold text-gray-800 bg-white pr-7 border-gray-300"
+                          />
+                          <span className="absolute right-2 top-2 text-[10px] text-gray-400 font-bold">km</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Parámetros Globales de Tolerancia y Anti-Outlier */}
+            <div className="bg-blue-50/50 rounded-xl p-3 border border-blue-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-blue-900">Parámetros Globales de Tolerancia</span>
+                <span className="text-[10px] text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full font-medium">Anti-Error de Dedo</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-medium text-gray-700">Margen Elástico Superior</Label>
+                  <div className="flex items-center gap-1">
+                    {[15, 20, 25, 30].map(pct => (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => setRutasKmConfig(prev => ({ ...prev, toleranciaDefectoPorciento: pct }))}
+                        className={`text-[10px] font-bold px-1.5 py-1 rounded flex-1 transition-all ${
+                          rutasKmConfig.toleranciaDefectoPorciento === pct
+                            ? 'bg-blue-700 text-white'
+                            : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        +{pct}%
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-[10px] text-gray-500">Umbral verde antes de advertencia</span>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-medium text-gray-700">Tope Máximo Jornada (km)</Label>
+                  <Input
+                    type="number"
+                    value={rutasKmConfig.maxSaltoDiarioKm}
+                    onChange={e => setRutasKmConfig(prev => ({ ...prev, maxSaltoDiarioKm: parseInt(e.target.value) || 600 }))}
+                    className="h-8 rounded-lg text-xs font-bold bg-white border-gray-300"
+                  />
+                  <span className="text-[10px] text-gray-500">Candado rojo bloqueante (default: 600)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Botones de acción */}
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleRestablecerRutasKm}
+                className="h-10 rounded-xl text-xs font-bold border-gray-300 text-gray-600 hover:bg-gray-100 flex-1"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1 text-gray-500" />
+                Fábrica
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveRutasKm}
+                disabled={savingRutasKm}
+                className="h-10 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold px-4 flex-[2] shadow-sm active:scale-95"
+              >
+                <Save className="w-4 h-4 mr-1.5" />
+                {savingRutasKm ? 'Guardando...' : 'GUARDAR Y REPLICAR FLOTA'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </main>

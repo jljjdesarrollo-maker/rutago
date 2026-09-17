@@ -16,8 +16,15 @@ import { type BusItem } from '../types/fleet';
 import {
   ChevronLeft, DollarSign, Camera, X, Save, Loader2,
   CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles, Pencil, XCircle, Gauge,
-  CalendarDays, Bus
+  CalendarDays, Bus, Zap, Info
 } from 'lucide-react';
+import { getLocalRutasKmConfig, syncRutasKmConfig } from '@/lib/rutas-km-storage';
+import {
+  validarLecturaOdometro,
+  calcularKmTeoricoJornada,
+  type ResultadoValidacionOdometro,
+  MOTIVOS_DESFASE_ODOMETRO
+} from '@/lib/odometer-validator';
 
 interface Props {
   session: VTSession;
@@ -123,6 +130,16 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const [kmFinal, setKmFinal] = useState('');
   const [kmInicialOrigen, setKmInicialOrigen] = useState<string | null>(null);
   const [buscandoKmPrevio, setBuscandoKmPrevio] = useState(false);
+  const [motivoDesfaseKm, setMotivoDesfaseKm] = useState<string>('');
+  const [rutasKmConfig, setRutasKmConfig] = useState(getLocalRutasKmConfig());
+
+  useEffect(() => {
+    setRutasKmConfig(getLocalRutasKmConfig());
+    syncRutasKmConfig().then(cfg => {
+      if (cfg) setRutasKmConfig(cfg);
+    });
+  }, []);
+
   const [gastos, setGastos] = useState<GastoItem[]>(GASTOS_DEFAULT);
   const [tickets, setTickets] = useState('');
   const [sobrante, setSobrante] = useState('');
@@ -253,6 +270,21 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     if (isNaN(ini)) return null;
     return Math.round((fin - ini) * 10) / 10;
   }, [kmInicial, kmFinal]);
+
+  // Validación Semafórica de Odómetro (Fase B - v3.58.0)
+  const validacionOdometro: ResultadoValidacionOdometro = useMemo(() => {
+    return validarLecturaOdometro(kmInicial, kmFinal, frecuencias, rutasKmConfig);
+  }, [kmInicial, kmFinal, frecuencias, rutasKmConfig]);
+
+  // Función para proyectar automáticamente el teórico
+  const handleProyectarTeorico = () => {
+    const ini = parseFloat(kmInicial.replace(/,/g, '')) || 0;
+    const teorico = validacionOdometro.kmTeorico;
+    if (teorico > 0) {
+      const estimado = Math.round(ini + teorico);
+      setKmFinal(estimado.toString());
+    }
+  };
 
   // Precarga inteligente del último tacómetro registrado POR UNIDAD FÍSICA
   // Regla de Oro: El odómetro pertenece a la máquina física (Bus), NO al cuaderno VT ni a la ruta.
@@ -449,10 +481,12 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
 
   const handleSaveOffline = () => {
     const errs: string[] = [];
-    if (!kmFinal.trim()) errs.push('Tacómetro final (llegada) es obligatorio');
-    if (kmRecorridos !== null && kmRecorridos < 0) {
-      errs.push(`El tacómetro final (${kmFinal}) no puede ser menor al tacómetro inicial (${kmInicial})`);
+    if (!kmFinal.trim()) {
+      errs.push('Tacómetro final (llegada) es obligatorio');
+    } else if (validacionOdometro.esBloqueante) {
+      errs.push(validacionOdometro.mensaje);
     }
+
     if (!fotoPreview) errs.push('Foto del cuaderno es obligatoria');
     if (frecuencias.length === 0) errs.push('No hay frecuencias cerradas');
     // Gastos pueden ser $0 si no hubo (ej. unidad parada)
@@ -505,6 +539,10 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         cajaComun: totalCajaComunMonto,
         sobrante: sobrante || '0',
         photoUrl: fotoPreview,
+        odometroEstado: validacionOdometro.estado,
+        odometroKmTeorico: validacionOdometro.kmTeorico,
+        odometroDesfaseKm: validacionOdometro.desfaseKm,
+        odometroMotivoDesfase: motivoDesfaseKm || undefined,
       };
 
       // Guardar odómetro dedicado de la unidad física (Fase 3.2)
@@ -1000,41 +1038,114 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
             </div>
           </div>
 
-          {/* Recorrido Calculado de la Jornada */}
+          {/* Recorrido Calculado de la Jornada con Semáforo v3.58.0 */}
           {kmRecorridos !== null ? (
-            kmRecorridos >= 0 ? (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-emerald-900">
-                    Recorrido de la Jornada: {kmRecorridos.toLocaleString()} km
-                  </p>
-                  <p className="text-[10px] text-emerald-700">
-                    Cálculo automático: ({kmFinal} - {kmInicial}) para costo de diésel y S/ por km
-                  </p>
+            <div className="space-y-2">
+              {/* Badge Semafórico */}
+              {validacionOdometro.estado === 'VERDE' && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <p className="text-xs font-bold text-emerald-900">
+                        Odómetro Válido: {kmRecorridos.toLocaleString()} km
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-emerald-700 mt-0.5">
+                      {validacionOdometro.mensaje}
+                    </p>
+                  </div>
+                  <span className="text-xs font-black text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg shrink-0">
+                    {kmRecorridos} km
+                  </span>
                 </div>
-                <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-lg shrink-0">
-                  {kmRecorridos} km
-                </span>
-              </div>
-            ) : (
-              <div className="p-3 rounded-xl bg-red-50 border border-red-200 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
-                <div>
-                  <p className="text-xs font-bold text-red-900">
-                    Tacómetro final menor al inicial
-                  </p>
-                  <p className="text-[10px] text-red-700">
-                    La llegada ({kmFinal}) no puede ser menor a la salida ({kmInicial}).
-                  </p>
+              )}
+
+              {validacionOdometro.estado === 'AMBAR' && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-1.5">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs font-bold text-amber-900">
+                          Desfase Detectado: {kmRecorridos} km (Teórico: ~{validacionOdometro.kmTeorico} km)
+                        </p>
+                        <p className="text-[11px] text-amber-800 mt-0.5">
+                          {validacionOdometro.mensaje}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-lg shrink-0">
+                      {validacionOdometro.desfaseKm > 0 ? `+${validacionOdometro.desfaseKm}` : validacionOdometro.desfaseKm} km
+                    </span>
+                  </div>
+
+                  {/* Selector de Justificación (Zero-Locking) */}
+                  <div className="bg-white/80 rounded-lg p-2 border border-amber-200 space-y-1.5">
+                    <label className="text-[11px] font-bold text-amber-900 flex items-center justify-between">
+                      <span>Motivo del desfase (Obligatorio para guardar)</span>
+                      {motivoDesfaseKm && (
+                        <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-0.5">
+                          <CheckCircle2 className="w-3 h-3" /> Justificado
+                        </span>
+                      )}
+                    </label>
+                    <select
+                      value={motivoDesfaseKm}
+                      onChange={e => setMotivoDesfaseKm(e.target.value)}
+                      className="w-full h-9 text-xs rounded-md border border-amber-300 bg-white font-medium text-gray-800 px-2"
+                    >
+                      <option value="">-- Seleccione una justificación --</option>
+                      {MOTIVOS_DESFASE_ODOMETRO.map(m => (
+                        <option key={m.id} value={m.label}>{m.label}</option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-amber-700">
+                      Zero-Locking: Puedes continuar el arqueo seleccionando la razón del desfase.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )
+              )}
+
+              {validacionOdometro.estado === 'ROJO' && (
+                <div className="p-3 rounded-xl bg-red-50 border-2 border-red-300 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-black text-red-900 uppercase">
+                        Bloqueo de Odómetro — Error Crítico
+                      </p>
+                      <p className="text-[11px] text-red-800 font-medium mt-0.5">
+                        {validacionOdometro.mensaje}
+                      </p>
+                    </div>
+                  </div>
+                  {validacionOdometro.kmTeorico > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleProyectarTeorico}
+                      className="w-full py-1.5 px-3 bg-red-100 hover:bg-red-200 border border-red-300 rounded-lg text-xs font-bold text-red-800 flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                    >
+                      <Zap className="w-3.5 h-3.5 text-red-600" />
+                      Proyectar llegada teórica (~{Math.round((parseFloat(kmInicial) || 0) + validacionOdometro.kmTeorico)} km)
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           ) : kmFinal.trim() ? (
-            <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-600">
-              <span className="font-semibold text-[#3A3A3A]">Odómetro registrado: {kmFinal} km</span>
-              <p className="text-[10px] text-gray-400 mt-0.5">
-                Utilizado para el control de mantenimientos preventivos del vehículo.
-              </p>
+            <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-600 flex items-center justify-between">
+              <div>
+                <span className="font-semibold text-[#3A3A3A]">Odómetro registrado: {kmFinal} km</span>
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  Sin tacómetro inicial de salida. Se utilizará para el odómetro acumulado.
+                </p>
+              </div>
+              {validacionOdometro.kmTeorico > 0 && (
+                <span className="text-[10px] text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  Teórico: ~{validacionOdometro.kmTeorico} km
+                </span>
+              )}
             </div>
           ) : null}
 

@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { getAllBuses, getActiveBusId } from '@/lib/fleet-storage';
+import { getAllBuses, getActiveBusId, getLatestBusOdometer } from '@/lib/fleet-storage';
 
 interface MantenimientoItem {
   id: string;
@@ -50,6 +50,18 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   const [kmActual, setKmActual] = useState<number>(() => {
     if (typeof window === 'undefined') return 187420;
     const busId = getActiveBusId();
+    const busesList = getAllBuses();
+    const current = busesList.find(b => b.id === busId);
+    const disco = current?.numeroDisco || '01';
+    
+    // 1. Prioridad: Odómetro auditado oficial de la flota (Fase D - v3.58.0)
+    const audited = getLatestBusOdometer(disco);
+    if (audited && audited.kmFinal) {
+      const num = parseInt(audited.kmFinal, 10);
+      if (!isNaN(num) && num > 0) return num;
+    }
+
+    // 2. Fallback: LocalStorage directo
     const savedKm = localStorage.getItem(`rg_last_km_${busId}`);
     if (savedKm) {
       const num = parseInt(savedKm, 10);
@@ -149,9 +161,14 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                   Tacómetro Actual del Bus
                 </span>
               </div>
-              <span className="text-[10px] font-black px-2 py-0.5 rounded bg-white/10 text-amber-300">
-                Lectura Tablero
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" /> Auditado Flota
+                </span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded bg-white/10 text-amber-300">
+                  Lectura Tablero
+                </span>
+              </div>
             </div>
 
             <div className="flex items-baseline gap-2 mb-3">

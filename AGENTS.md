@@ -1,7 +1,7 @@
 # Reglas y Directivas de Proyecto: RutaGo
 
 ## 1. Identidad y Propósito del Proyecto
-- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.57.0-promo-centralizada` (base previa: `v3.54.4-saas-core`)
+- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.58.0-calibracion-odometro` (base previa: `v3.57.0-promo-centralizada`)
 - **Repositorio Oficial:** `https://github.com/jljjdesarrollo-maker/rutago`
 - **Stack Técnico:** Next.js (App Router), React 19, TypeScript, Tailwind CSS, Prisma ORM, PostgreSQL, IndexedDB (Offline-First), Radix UI, ESC/POS & JSPDF.
 - **Entorno de Despliegue:** Vercel (CI/CD conectado a GitHub rama `main`) y uso directo en smartphones.
@@ -45,15 +45,22 @@
 - **Reasignación de Frecuencias:** La reasignación de vueltas debe respetar el filtro estricto por terminal de origen (`routeFrom`), ordenado cronológicamente por hora, permitiendo sustituir una frecuencia programada por la realmente ejecutada en carretera sin romper la estructura contable.
 - **Reporte Diario y Cierre Táctico (FASE 1):** Valida la ecuación contable inmutable Producción = Efectivo Ruta + Caja Común. Dispone de semáforo de cuadre (Δ = Entregas - Saldo Neto), indicadores operativos (S/ por Km, % Diésel sobre Producción), listado táctico de vueltas y bloque de firmas de responsabilidad legal en PDF (Conductor, Ayudante, Recaudador/Auditor).
 
-- **Tacómetro Odómetro vs. Kilómetros Recorridos (Doble Propósito):**
+- **Tacómetro Odómetro vs. Kilómetros Recorridos (Doble Propósito & Validación Semafórica v3.58.0):**
   - El campo odómetro del tablero del autobús cumple un doble propósito: control de mantenimientos preventivos y cálculo de rendimiento operativo.
   - En el Arqueo General (`ArqueoGeneralScreen`), el sistema precarga de forma inteligente el **Tacómetro Inicial (Salida)** a partir del último registro disponible en el historial del vehículo (editable libremente como fallback ante días sin actividad o desfases).
   - El ayudante digita el **Tacómetro Final (Llegada)** que observa en el tablero.
   - El sistema calcula en tiempo real: `Km Recorridos = Tacómetro Final - Tacómetro Inicial`.
+  - **Calibración Oficial por Ruta (Fase A - SuperAdmin 9999):** Tabla de distancias oficiales por sentido (Ida y Retorno) en `VTConfigScreen.tsx` para Loja ↔ Vilcabamba (42km), El Tambo (52.5km), Yangana (67km), La Elvira (78km), Zahuayco (91km), con margen elástico (+25%) y tope diario bloqueante (600 km).
+  - **Validación Semafórica & Zero-Locking (Fase B & C):**
+    - **VERDE:** Recorrido dentro del margen elástico. Sin justificación.
+    - **ÁMBAR:** Desfase detectado. Se permite guardar inmediatamente (Zero-Locking) seleccionando un motivo legítimo (desvío vial, auxilio mecánico, taller, etc.).
+    - **ROJO:** Error crítico bloqueante (`kmFinal < kmInicial` o salto `> 600 km`). Botón de auxilio para proyectar llegada teórica en un solo toque.
+  - **Mantenimiento Auditado (Fase D):** `MantenimientoScreen.tsx` consulta la fuente oficial auditada `getLatestBusOdometer(numeroDisco)`.
   - **Estructura en Base de Datos (`DailyRecord`):**
     - `km`: Almacena la distancia recorrida real de la jornada para reportes de costo de diésel y $S/ por Km$.
     - `kmFinal`: Almacena el valor acumulado del tablero para control de mantenimientos preventivos (cambios de aceite, neumáticos, filtros).
     - `kmInicial`: Almacena la lectura de salida.
+    - `odometroEstado`, `odometroKmTeorico`, `odometroDesfaseKm`, `odometroMotivoDesfase`: Metadatos de auditoría semafórica.
   - **Principio de No Bloqueo:** Si el ayudante desconoce el odómetro inicial, puede dejarlo vacío; el sistema almacena el tacómetro final para mantenimiento y no bloquea el cuadre de caja.
 - **Reportes Periódicos Ejecutivos (FASE 2):**
   - **Alcance Operativo:** Consolida y audita la producción en períodos agrupados: `Semanal` (Lunes a Domingo), `Mensual`, `Rango Libre` y `Por Ayudante`.
