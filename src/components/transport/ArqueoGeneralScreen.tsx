@@ -1096,8 +1096,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                       className="w-full h-9 text-xs rounded-md border border-amber-300 bg-white font-medium text-gray-800 px-2"
                     >
                       <option value="">-- Seleccione una justificación --</option>
-                      {MOTIVOS_DESFASE_ODOMETRO.map(m => (
-                        <option key={m.id} value={m.label}>{m.label}</option>
+                      {MOTIVOS_DESFASE_ODOMETRO.map((motivo, idx) => (
+                        <option key={idx} value={motivo}>{motivo}</option>
                       ))}
                     </select>
                     <p className="text-[10px] text-amber-700">
