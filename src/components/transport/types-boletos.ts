@@ -60,18 +60,41 @@ export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
 // localStorage key
 export const PROMO_CONFIG_KEY = 'rg_promo_config';
 
-// Load/save helpers
-export function loadPromoConfig(): PromoViajeGratisConfig {
+// Helper para clave de almacenamiento por unidad física
+export function getBusPromoStorageKey(busIdOrDisco?: string): string {
+  if (!busIdOrDisco) return PROMO_CONFIG_KEY;
+  const cleanDisco = busIdOrDisco.replace(/^BUS-/, '').padStart(2, '0');
+  return "rg_promo_config_bus_" + cleanDisco;
+}
+
+// Load/save helpers con soporte de desacoplamiento por Unidad / Autobús
+export function loadPromoConfig(busIdOrDisco?: string): PromoViajeGratisConfig {
+  if (typeof window === 'undefined') return { ...DEFAULT_PROMO_CONFIG };
   try {
+    // 1. Si se especifica unidad, buscar configuración exclusiva del vehículo
+    if (busIdOrDisco) {
+      const busKey = getBusPromoStorageKey(busIdOrDisco);
+      const busRaw = localStorage.getItem(busKey);
+      if (busRaw) {
+        return { ...DEFAULT_PROMO_CONFIG, ...JSON.parse(busRaw) };
+      }
+    }
+    // 2. Fallback a configuración general o por defecto
     const raw = localStorage.getItem(PROMO_CONFIG_KEY);
     if (raw) return { ...DEFAULT_PROMO_CONFIG, ...JSON.parse(raw) };
   } catch { /* ignore */ }
   return { ...DEFAULT_PROMO_CONFIG };
 }
 
-export function savePromoConfig(config: PromoViajeGratisConfig): void {
+export function savePromoConfig(config: PromoViajeGratisConfig, busIdOrDisco?: string): void {
+  if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(PROMO_CONFIG_KEY, JSON.stringify(config));
+    const key = busIdOrDisco ? getBusPromoStorageKey(busIdOrDisco) : PROMO_CONFIG_KEY;
+    localStorage.setItem(key, JSON.stringify(config));
+    // Emitir evento para reactividad sin re-renders infinitos
+    window.dispatchEvent(new CustomEvent('rutago:promo_config_updated', {
+      detail: { busId: busIdOrDisco, config }
+    }));
   } catch (e) { console.error('Error saving promo config:', e); }
 }
 

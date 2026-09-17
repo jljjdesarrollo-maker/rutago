@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { type VTSession, type FrecuenciaEstado, type FrecuenciaData, loadPromoConfig } from './types-boletos';
+import { getActiveBusId } from '@/lib/fleet-storage';
 import { getVentasByFrecuencia, countVentasPendientes, syncVentasSilencioso, deleteVentasByEstadoId } from '@/lib/indexeddb';
 import { matchRuta } from '@/lib/tarifas-data';
 import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck, AlertTriangle, Wrench, Droplets, UserX, Ban, FileText, Truck, CheckCircle, Sparkles } from 'lucide-react';
@@ -252,7 +253,8 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     const gps = await getGPSPosition();
 
     // Generate random winner position for Viaje Gratis
-    const promoConfig = loadPromoConfig();
+    const busId = getActiveBusId();
+    const promoConfig = loadPromoConfig(busId);
     let ganadorPosicion: number | null = null;
     if (promoConfig.activa) {
       const min = promoConfig.rangoMin || 3;

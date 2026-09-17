@@ -24,6 +24,7 @@ import {
   Lock,
   Gauge,
   Calendar,
+  Ticket,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +34,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { BusItem, BusFormData, TipoOperacionBus } from '@/types/fleet';
+import { type PromoViajeGratisConfig, loadPromoConfig, savePromoConfig, DEFAULT_PROMO_CONFIG } from './types-boletos';
 import {
   getAllBuses,
   saveBus,
@@ -62,6 +64,7 @@ const EMPTY_FORM: BusFormData = {
   tipoOperacion: 'TRONCAL_VT',
   activo: true,
   notas: '',
+  promoConfig: { ...DEFAULT_PROMO_CONFIG },
 };
 
 export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
@@ -170,13 +173,16 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
     setFormData({
       ...EMPTY_FORM,
       anio: new Date().getFullYear(),
+      promoConfig: { ...DEFAULT_PROMO_CONFIG },
     });
     setSheetOpen(true);
   };
 
   // Abrir formulario para editar (SuperAdmin edita todo; Socio edita solo su unidad)
   const handleOpenEdit = (bus: BusItem) => {
-    setEditingId(bus.id || `BUS-${bus.numeroDisco}`);
+    const bId = bus.id || `BUS-${bus.numeroDisco}`;
+    const busPromo = bus.promoConfig || loadPromoConfig(bId);
+    setEditingId(bId);
     setFormData({
       numeroDisco: bus.numeroDisco,
       placa: bus.placa,
@@ -188,8 +194,31 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
       tipoOperacion: bus.tipoOperacion,
       activo: bus.activo !== false,
       notas: bus.notas || '',
+      promoConfig: busPromo,
     });
     setSheetOpen(true);
+  };
+
+  // Toggle rápido de promoción en tarjeta
+  const handleTogglePromo = (bus: BusItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const bId = bus.id || `BUS-${bus.numeroDisco}`;
+    const currentPromo = bus.promoConfig || loadPromoConfig(bId);
+    const updatedPromo: PromoViajeGratisConfig = {
+      ...currentPromo,
+      activa: !currentPromo.activa,
+    };
+    savePromoConfig(updatedPromo, bId);
+    const updatedBus: BusItem = {
+      ...bus,
+      promoConfig: updatedPromo,
+    };
+    const updatedLocal = saveBus(updatedBus);
+    setBuses(updatedLocal);
+    toast({
+      title: updatedPromo.activa ? 'Promoción activada' : 'Promoción pausada',
+      description: `Viaje Gratis en Disco ${bus.numeroDisco} ahora está ${updatedPromo.activa ? 'ACTIVO' : 'INACTIVO'}.`,
+    });
   };
 
   // Guardar unidad (creación o actualización)
@@ -246,7 +275,11 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
       tipoOperacion: tipoFinal,
       activo: formData.activo,
       notas: formData.notas?.trim() || undefined,
+      promoConfig: formData.promoConfig || DEFAULT_PROMO_CONFIG,
     };
+    if (formData.promoConfig) {
+      savePromoConfig(formData.promoConfig, `BUS-${cleanDisco}`);
+    }
 
     try {
       // 1. Guardado local inmediato (offline-first)
@@ -652,6 +685,43 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
                       </span>
                     </div>
 
+                    {/* Bloque Promoción Viaje Gratis Desacoplada */}
+                    {(() => {
+                      const busPromo = bus.promoConfig || loadPromoConfig(bus.id || `BUS-${bus.numeroDisco}`);
+                      return (
+                        <div className={`p-2.5 rounded-xl border flex items-center justify-between text-xs transition-colors ${
+                          busPromo.activa 
+                            ? 'bg-amber-50/70 border-amber-200 text-amber-900' 
+                            : 'bg-gray-50 border-gray-100 text-gray-500'
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                              busPromo.activa ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-400'
+                            }`}>
+                              <Ticket className="w-3.5 h-3.5" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-[11px]">Boleto Premiado (Viaje Gratis)</span>
+                                <Badge className={busPromo.activa ? 'bg-amber-200 text-amber-900 text-[9px] py-0 px-1' : 'bg-gray-200 text-gray-600 text-[9px] py-0 px-1'}>
+                                  {busPromo.activa ? 'ACTIVO' : 'PAUSADO'}
+                                </Badge>
+                              </div>
+                              <span className="text-[10px] text-gray-500 block">
+                                {busPromo.activa 
+                                  ? `Rango: pasajero ${busPromo.rangoMin} al ${busPromo.rangoMax} • Pie: "${busPromo.textoPublicidad || 'RutaGo'}"`
+                                  : 'Promoción inactiva en este autobús'}
+                              </span>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={busPromo.activa}
+                            onClick={(e) => handleTogglePromo(bus, e)}
+                          />
+                        </div>
+                      );
+                    })()}
+
                     {bus.notas && (
                       <p className="text-[11px] text-gray-600 bg-gray-50 p-2 rounded-xl italic border border-gray-100">
                         <strong>Observaciones:</strong> {bus.notas}
@@ -945,6 +1015,99 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
                   checked={formData.activo}
                   onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, activo: checked }))}
                 />
+              </div>
+
+              {/* ─── CONFIGURACIÓN DE PROMOCIÓN VIAJE GRATIS DESACOPLADA ─── */}
+              <div className="p-3.5 rounded-2xl bg-amber-50/60 border border-amber-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+                      <Ticket className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-xs text-amber-950 block">Promoción Pasajero Ganador (Viaje Gratis)</span>
+                      <span className="text-[10px] text-amber-800/80 block">Exclusivo para la venta de boletos de esta unidad</span>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={formData.promoConfig?.activa ?? true}
+                    onCheckedChange={(checked) => setFormData((prev) => ({
+                      ...prev,
+                      promoConfig: { ...(prev.promoConfig || DEFAULT_PROMO_CONFIG), activa: checked }
+                    }))}
+                  />
+                </div>
+
+                {(formData.promoConfig?.activa ?? true) && (
+                  <div className="space-y-2.5 pt-2 border-t border-amber-200/60">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-bold text-amber-900">Pasajero Mínimo</Label>
+                        <Input
+                          type="number"
+                          min={3}
+                          max={15}
+                          value={formData.promoConfig?.rangoMin ?? 3}
+                          onChange={(e) => setFormData((prev) => ({
+                            ...prev,
+                            promoConfig: {
+                              ...(prev.promoConfig || DEFAULT_PROMO_CONFIG),
+                              rangoMin: Math.max(3, parseInt(e.target.value) || 3)
+                            }
+                          }))}
+                          className="h-10 rounded-xl text-xs font-bold text-center bg-white"
+                        />
+                        <span className="text-[9px] text-gray-500 block text-center">Nunca los 2 primeros</span>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[11px] font-bold text-amber-900">Pasajero Máximo</Label>
+                        <Input
+                          type="number"
+                          min={10}
+                          max={50}
+                          value={formData.promoConfig?.rangoMax ?? 30}
+                          onChange={(e) => setFormData((prev) => ({
+                            ...prev,
+                            promoConfig: {
+                              ...(prev.promoConfig || DEFAULT_PROMO_CONFIG),
+                              rangoMax: Math.max(10, parseInt(e.target.value) || 30)
+                            }
+                          }))}
+                          className="h-10 rounded-xl text-xs font-bold text-center bg-white"
+                        />
+                        <span className="text-[9px] text-gray-500 block text-center">Límite de sorteo</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-bold text-amber-900">Texto Publicitario en Pie de Boleto</Label>
+                      <Input
+                        type="text"
+                        placeholder="ej. Quieres RutaGo? 0997149000"
+                        value={formData.promoConfig?.textoPublicidad ?? ''}
+                        onChange={(e) => setFormData((prev) => ({
+                          ...prev,
+                          promoConfig: {
+                            ...(prev.promoConfig || DEFAULT_PROMO_CONFIG),
+                            textoPublicidad: e.target.value
+                          }
+                        }))}
+                        className="h-10 rounded-xl text-xs bg-white"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/80 border border-amber-200/50">
+                      <span className="text-[11px] font-medium text-amber-900">Bip Sonoro Especial para Pasajero Ganador</span>
+                      <Switch
+                        checked={formData.promoConfig?.sonidoGanador ?? true}
+                        onCheckedChange={(checked) => setFormData((prev) => ({
+                          ...prev,
+                          promoConfig: { ...(prev.promoConfig || DEFAULT_PROMO_CONFIG), sonidoGanador: checked }
+                        }))}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Notas u Observaciones */}

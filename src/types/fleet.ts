@@ -1,3 +1,5 @@
+import { PromoViajeGratisConfig } from '../components/transport/types-boletos';
+
 export type TipoOperacionBus = 'TRONCAL_VT' | 'ALIMENTADOR_P';
 
 export interface BusItem {
@@ -12,6 +14,7 @@ export interface BusItem {
   tipoOperacion: TipoOperacionBus; // TRONCAL_VT (VT01-VT15) vs ALIMENTADOR_P (P1-P3)
   activo: boolean;
   notas?: string;
+  promoConfig?: PromoViajeGratisConfig; // Configuración desacoplada de Viaje Gratis por Unidad
   createdAt?: string;
   updatedAt?: string;
 }
@@ -27,4 +30,5 @@ export interface BusFormData {
   tipoOperacion: TipoOperacionBus;
   activo: boolean;
   notas?: string;
+  promoConfig?: PromoViajeGratisConfig;
 }

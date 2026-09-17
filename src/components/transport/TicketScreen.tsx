@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { type FrecuenciaEstado, type VTSession, loadPromoConfig, calcularEstadoTiempoVenta, type EstadoTiempoVenta } from './types-boletos';
 import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta, type TipoPasajero,
          getZonaParada, isParadaPrincipal, ZONA_COLORS, type ZonaColor, PARADA_ZONA } from '@/lib/tarifas-data';
+import { getActiveBusId } from '@/lib/fleet-storage';
 import { saveVenta } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
 import { Check, User, UserRound, Printer, Bluetooth, Clock, AlertTriangle, ArrowRight } from 'lucide-react';
@@ -186,7 +187,8 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     submitLockRef.current = true;
     try {
     // ─── Viaje Gratis: check if this passenger is the winner ───
-    const promoConfig = loadPromoConfig();
+    const busId = getActiveBusId();
+    const promoConfig = loadPromoConfig(busId);
     // Optimistic increment to prevent double viaje gratis
     const nuevaPosicion = contadorVentasFrecuencia + 1;
     const esGanador = cantidad === 1 && promoConfig.activa && ganadorPosicion != null && nuevaPosicion === ganadorPosicion;
