@@ -38,6 +38,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { ChoferMantenimientoWidget } from './ChoferMantenimientoWidget';
 import type { UserSession } from './types';
 import { getOwnerExpenses, fetchOwnerExpensesFromApi } from '@/lib/owner-expenses-storage';
 import { SuperAdminHomeScreen } from './SuperAdminHomeScreen';
@@ -454,6 +455,10 @@ export function HomeScreen({
       <main className="flex-1 px-5 pb-8 flex flex-col gap-4">
 
         {/* ─── PILAR 1: DÍA A DÍA (OPERACIÓN Y CAJA DE HOY) ─── */}
+        {/* Widget Operativo Rápido para el Chofer (Fase 3 - Mantenimiento Semafórico) */}
+        {onGoToMantenimiento && (
+          <ChoferMantenimientoWidget onVerMas={isAdmin ? onGoToMantenimiento : undefined} />
+        )}
         <div>
           <div className="flex items-center justify-between mb-2">
             <p className="text-[11px] font-black text-[#3A3A3A]/50 uppercase tracking-wider flex items-center gap-1.5">
