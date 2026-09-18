@@ -124,6 +124,8 @@
 - `d61a34f` — *feat(mantenimiento): integración de SuperAdminMantenimientoTab en VTConfigScreen v3.58.0*
 - `47488a1` — *docs(maestro): actualizar Contexto Maestro con Fase 1 de Mantenimiento Hino AK completada*
 - `e79a234` — *feat(mantenimiento): Fase 2 activacion y personalizacion de unidad para Socio Propietario (PIN 2107 / Bus 01) v3.58.0*
+- `bec7028` — *feat(mantenimiento): Fase 3 ChoferMantenimientoWidget vista rapida con checklist semaforico y modal en cabina v3.58.0*
+- `24ec41d` — *feat(mantenimiento): integrar ChoferMantenimientoWidget en pantalla operativa HomeScreen v3.58.0*
 
 
 ---
@@ -149,6 +151,10 @@
      - Registro de cambio con captura de odómetro real, costo en dólares ($ USD) y taller/mecánico responsable.
      - Filtros de estado rápido: "Todos", "Urgentes / Vencidos" y "Vista Chofer".
      - Integración con el odómetro auditado oficial de la cooperativa.
-3. **Fase 3: Vista Operativa Rápida para el Chofer / Ayudante — [ESTADO: PRÓXIMO A EJECUTAR]**
-   - Tarjeta en pantalla principal de la unidad con indicador semafórico (Verde / Amarillo / Rojo) basado en el odómetro validado del día.
-   - Modal táctil rápido para registrar "Mantenimiento Realizado", actualizar odómetro y reportar observaciones.
+3. **Fase 3: Vista Operativa Rápida para el Chofer / Ayudante — [ESTADO: COMPLETADO]**
+   - Implementado `src/components/transport/ChoferMantenimientoWidget.tsx` e integrado de forma destacada en el Pilar 1 de `HomeScreen.tsx`:
+     - **Checklist Semafórico Táctil en Cabina:** Lista de tareas delegadas por el socio con baliza luminosa de estado (Verde = Al Día, Amarillo = Próximo a vencer en ≤ 800 km, Rojo pulsante = ¡VENCIDO / Urgente!).
+     - **Micro-barra de Progreso:** Porcentaje de desgaste visual en tiempo real en función del odómetro auditado de la jornada.
+     - **Modal Táctil Ergonómico de Asentamiento:** El chofer pulsa `[ Realizado ]` en cualquier mantenimiento en carretera y puede asentar la lectura del tacómetro/velocímetro y el nombre del taller o lubricadora en menos de 5 segundos.
+     - **Sincronización Inmediata:** Se actualiza automáticamente el registro patrimonial del Socio Propietario en `localStorage` y se recalculan los semáforos de la unidad sin recargar la página.
+     - **Navegación Fluida:** Acceso directo a la ficha integral del Socio mediante el botón `Ver ficha completa del Socio`.
