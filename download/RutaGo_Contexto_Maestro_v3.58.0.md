@@ -119,6 +119,11 @@
 
 
 - CI Test — *chore(ci): prueba de verificacion de despliegue automatico en Vercel*
+- `18ed459` — *feat(mantenimiento): biblioteca y catalogo maestro institucional de 19 mantenimientos Hino AK v3.58.0*
+- `086e9c6` — *feat(mantenimiento): SuperAdminMantenimientoTab interfaz oficial para catálogo Hino AK v3.58.0*
+- `d61a34f` — *feat(mantenimiento): integración de SuperAdminMantenimientoTab en VTConfigScreen v3.58.0*
+- `47488a1` — *docs(maestro): actualizar Contexto Maestro con Fase 1 de Mantenimiento Hino AK completada*
+- `e79a234` — *feat(mantenimiento): Fase 2 activacion y personalizacion de unidad para Socio Propietario (PIN 2107 / Bus 01) v3.58.0*
 
 
 ---
@@ -135,9 +140,15 @@
    - Biblioteca central con los 19 ítems de mantenimiento preventivo Hino AK con especificaciones ecuatorianas (caneca 15W-40, filtros C1314, trampa de agua SF1307, valvulina 80W-90 / 85W-140 GL-4/GL-5, bandas 4515, secador WABCO, etc.).
    - Panel de control en `VTConfigScreen.tsx` integrado con `SuperAdminMantenimientoTab.tsx` y `src/lib/mantenimiento-catalogo.ts`.
    - Modos: edición en línea de kilometrajes oficiales, modal de especificaciones mecánicas detalladas, switches de activación institucional y pre-asignación a chofer, y botón de restablecimiento a valores de fábrica.
-2. **Fase 2: Activación y Personalización del Socio Propietario (PIN 2107 / Bus 01) — [ESTADO: SIGUIENTE TAREA]**
-   - Enriquecer `MantenimientoScreen.tsx` para que el Socio importe desde la biblioteca institucional solo los ítems que desea activar para su bus.
-   - Configuración de intervalos a medida (ej. cambiar de 5,000 km a 4,500 km), registro de fecha y odómetro del último cambio, costos de repuestos/mano de obra, y toggle para delegar la tarea al chofer.
-3. **Fase 3: Vista Operativa Rápida para el Chofer / Ayudante — [ESTADO: PENDIENTE]**
+2. **Fase 2: Activación y Personalización del Socio Propietario (PIN 2107 / Bus 01) — [ESTADO: COMPLETADO]**
+   - `MantenimientoScreen.tsx` completamente renovado y adaptado a la soberanía del Socio Propietario:
+     - Modal integrado con la Biblioteca Institucional Hino AK (19 mantenimientos) con filtros por categoría y búsqueda instantánea.
+     - Botón ergonómico de importación/activación directa a la unidad ("Activar" / "Ya Asignado").
+     - Ajuste en línea del intervalo en km específico de la unidad (ej. bajar cambio de aceite de 5,000 km a 4,500 km por severidad de ruta).
+     - Switch de delegación al Chofer: permite al socio decidir qué mantenimientos expone en la cabina operativa.
+     - Registro de cambio con captura de odómetro real, costo en dólares ($ USD) y taller/mecánico responsable.
+     - Filtros de estado rápido: "Todos", "Urgentes / Vencidos" y "Vista Chofer".
+     - Integración con el odómetro auditado oficial de la cooperativa.
+3. **Fase 3: Vista Operativa Rápida para el Chofer / Ayudante — [ESTADO: PRÓXIMO A EJECUTAR]**
    - Tarjeta en pantalla principal de la unidad con indicador semafórico (Verde / Amarillo / Rojo) basado en el odómetro validado del día.
    - Modal táctil rápido para registrar "Mantenimiento Realizado", actualizar odómetro y reportar observaciones.
