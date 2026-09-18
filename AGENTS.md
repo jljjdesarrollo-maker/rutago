@@ -166,7 +166,10 @@
   * **FASE 5 (COMPLETADA - v3.54.0):** Cuentas Independientes (2 PINs: SuperAdmin `9999` vs Socio Bus 01 `0101`) & Nomenclatura Operativa Oficial (Ruta General 45 Pax vs Ruta Exclusiva 28 Pax) en `src/types/saas.ts`, `src/lib/saas-storage.ts` y `BenchmarkScreen.tsx`.
   * **FASE 6 (COMPLETADA - v3.54.4):** Módulo Comercial de Suscripciones SaaS (`SaaSAdminScreen`, cobros mensuales de $20/mes por bus, MRR cooperativo proyectado de $380/mes, estado de cuenta de los 19 socios).
   * **FASE 7 (COMPLETADA - v3.54.4):** Delegación de Tripulación por Socio & Pool Laboral Compartido (Cédula Única sin duplicados de chofer al rotar).
-  * **FASE 8 (PENDIENTE):** Promoción Opcional de Pasajes Gratis por Bus en VT & Benchmark Anónimo (Su Bus vs Unidad A, B).
+  * **FASE 8 (COMPLETADA - v3.56.0 / v3.57.0):** Promoción Opcional de Pasajes Gratis por Bus en VT & Benchmark Anónimo (Su Bus vs Unidad A, B).
+    - Desacople de Boleto Premiado configurable por socio en Ficha de Unidad (`FlotaScreen.tsx`).
+    - Alerta auditiva, visual y ticket térmico ESC/POS con banner de viaje gratis en `TicketScreen.tsx`.
+    - Anonimización estricta de pares cooperativos (`#T-01`, `#T-02`, `#A-01`) en `benchmark-metrics.ts` y `BenchmarkScreen.tsx`.
   * **FASE 9 (COMPLETADA - v3.54.4):** Módulo de Mantenimientos Preventivos para el Chofer (`MantenimientoScreen`, alertas mecánicas por odómetro/km).
   * **FASE 10 (COMPLETADA - v3.55.0):** Depuración Integral de Interfaces por Rol (SuperAdmin `9999`, Socio `0101`, Tripulante `2107`).
     - **Identidad del Super Admin (PIN 9999):** Exclusivo de la **EMPRESA DESARROLLADORA DEL SOFTWARE (SaaS Vendor)**, no de la cooperativa. Su consola está dedicada 100% a la gestión comercial SaaS (cobranza mensual de $20/bus, MRR proyectado de $380/mes, estado de cuenta), padrón de clientes y consola de soporte técnico L2 (sanación de boletos huérfanos, respaldo de base de datos, administración de credenciales). No realiza emisión de boletos, ni registro de gastos individuales de bus, ni tareas operativas internas de la cooperativa.

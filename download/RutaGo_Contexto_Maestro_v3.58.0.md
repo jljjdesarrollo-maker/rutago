@@ -105,7 +105,7 @@
 | ID Pendiente | Módulo / Requisito | Estado | Prioridad | Detalle Técnico |
 | :--- | :--- | :---: | :---: | :--- |
 | **PENDIENTE CRÍTICO #1** | **Vinculación de Dispositivo Físico (Device Binding)** | **PRÓXIMO A EJECUTAR** | **MÁXIMA (Urgente)** | Generación de UUID `deviceId` inmutable en hardware local; asociación en BD a `Persona` (rol `AYUDANTE`); bloqueo de sesión concurrente en `/api/auth`; botón Admin "Desvincular / Resetear Teléfono" en `PersonalScreen`. |
-| **PENDIENTE #2 (Fase 8)** | Promoción de Pasajes Gratis & Benchmark Anónimo | Pendiente | Media | Activar sorteo de pasajes gratis por bus en VT y visualización anónima de rendimiento entre unidades pares en `BenchmarkScreen`. |
+| **PENDIENTE #2 (Fase 8)** | **Promoción de Pasajes Gratis & Benchmark Anónimo** | **COMPLETADO (v3.56.0 / v3.57.0)** | Resuelto | Desacople de Boleto Premiado por unidad en `FlotaScreen`, alerta sonora y ticket ESC/POS en `TicketScreen`, pie publicitario blindado en `VTConfigScreen`, y anonimato estricto de pares (`#T-01`, `#A-01`) en `BenchmarkScreen` y `BenchmarkChart`. |
 | **PENDIENTE #3** | Reasignación Contable de Boletos Huérfanos | **COMPLETADO (v3.50.4)** | Resuelto | `frecuencia-helper.ts`, persistencia física de frecuencias en PostgreSQL, botón ergonómico `[ Asignar Vuelta ]` en `VentasReviewScreen`. |
 | **PENDIENTE #4** | Módulo Institucional de Gerencia de Cooperativa | Futuro | Estratégica | Panel consolidado de directiva para auditoría de los 19 autobuses una vez completada la adopción global. |
 
