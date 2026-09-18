@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { type PromoViajeGratisConfig, loadPromoConfig, savePromoConfig, DEFAULT_PROMO_CONFIG, type TiempoVentaConfig, loadTiempoVentaConfig, saveTiempoVentaConfig, DEFAULT_TIEMPO_VENTA_CONFIG } from './types-boletos';
 import { type ConfiguracionKilometrajeRutas, DEFAULT_CONFIG_KILOMETRAJE_RUTAS } from '@/types/rutas-km';
 import { getLocalRutasKmConfig, saveLocalRutasKmConfig, syncRutasKmConfig } from '@/lib/rutas-km-storage';
+import { SuperAdminMantenimientoTab } from './SuperAdminMantenimientoTab';
 
 interface VTItem {
   id: string;
@@ -652,6 +653,9 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
             </div>
           </CardContent>
         </Card>
+
+        {/* ─── FASE 1: Catálogo Maestro Institucional Hino AK (SuperAdmin 9999) ─── */}
+        <SuperAdminMantenimientoTab />
       </main>
     </div>
   );
