@@ -119,3 +119,25 @@
 
 
 - CI Test — *chore(ci): prueba de verificacion de despliegue automatico en Vercel*
+
+
+---
+
+## 8. Arquitectura y Hoja de Ruta de Mantenimiento Preventivo Hino AK (3 Niveles)
+
+### Aclaración de Cuentas y Roles Oficiales:
+- **PIN 9999:** SuperAdmin SaaS / Cooperativa (Gestión de Biblioteca Maestra Institucional, tramos de kilometraje, publicidad y control global).
+- **PIN 2107 / 0101:** Socio Propietario del **Bus 01** (Soberanía patrimonial sobre la unidad, selección y activación de tareas de su bus, umbrales personalizados, costos reales de repuestos y asignación de tareas a su tripulación).
+- **Tripulación (Chofer / Ayudante):** Personal operativo en ruta. Vista de ejecución rápida con checklist tipo semáforo de las tareas asignadas por el socio.
+
+### Fases de Implementación:
+1. **Fase 1: Catálogo Maestro Institucional Hino AK (SuperAdmin 9999) — [ESTADO: COMPLETADO]**
+   - Biblioteca central con los 19 ítems de mantenimiento preventivo Hino AK con especificaciones ecuatorianas (caneca 15W-40, filtros C1314, trampa de agua SF1307, valvulina 80W-90 / 85W-140 GL-4/GL-5, bandas 4515, secador WABCO, etc.).
+   - Panel de control en `VTConfigScreen.tsx` integrado con `SuperAdminMantenimientoTab.tsx` y `src/lib/mantenimiento-catalogo.ts`.
+   - Modos: edición en línea de kilometrajes oficiales, modal de especificaciones mecánicas detalladas, switches de activación institucional y pre-asignación a chofer, y botón de restablecimiento a valores de fábrica.
+2. **Fase 2: Activación y Personalización del Socio Propietario (PIN 2107 / Bus 01) — [ESTADO: SIGUIENTE TAREA]**
+   - Enriquecer `MantenimientoScreen.tsx` para que el Socio importe desde la biblioteca institucional solo los ítems que desea activar para su bus.
+   - Configuración de intervalos a medida (ej. cambiar de 5,000 km a 4,500 km), registro de fecha y odómetro del último cambio, costos de repuestos/mano de obra, y toggle para delegar la tarea al chofer.
+3. **Fase 3: Vista Operativa Rápida para el Chofer / Ayudante — [ESTADO: PENDIENTE]**
+   - Tarjeta en pantalla principal de la unidad con indicador semafórico (Verde / Amarillo / Rojo) basado en el odómetro validado del día.
+   - Modal táctil rápido para registrar "Mantenimiento Realizado", actualizar odómetro y reportar observaciones.
