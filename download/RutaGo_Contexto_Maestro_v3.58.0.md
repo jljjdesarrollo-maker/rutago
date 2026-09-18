@@ -88,3 +88,32 @@
 - `src/components/transport/VTConfigScreen.tsx`: UI de calibración oficial para SuperAdmin.
 - `src/components/transport/ArqueoGeneralScreen.tsx`: UI de validación semafórica y captura con Zero-Locking para Ayudante.
 - `src/components/transport/MantenimientoScreen.tsx`: Lectura de odómetro auditado para alertas mecánicas.
+
+---
+
+## 5. Estabilidad de Entorno y Servidor de Desarrollo (Corrección v3.58.0)
+- **Problema Detectado:** Al ejecutarse el entorno local o de desarrollo en contenedores sin una base de datos PostgreSQL remota vinculada de inmediato (`DATABASE_URL` no declarada), el comando de inicio `bun run db:push` en `.zscripts/dev.sh` y `package.json` abortaba con error Prisma `P1012`, impidiendo que el servidor Next.js iniciara en el puerto 3000.
+- **Blindaje Implementado:**
+  - Se modificó `.zscripts/dev.sh` para verificar condicionalmente `if [ -n "${DATABASE_URL:-}" ]; then bun run db:push; else echo "[BUN] DATABASE_URL not set, skipping db:push..."; fi`.
+  - Se actualizó el script `"db:push"` en `package.json` con la misma protección defensiva.
+  - El servidor de desarrollo Next.js 16 con Turbopack arranca limpiamente en el puerto 3000 con estado HTTP 200 OK.
+
+---
+
+## 6. Matriz de Estado de Pendientes y Hoja de Ruta Inmediata
+
+| ID Pendiente | Módulo / Requisito | Estado | Prioridad | Detalle Técnico |
+| :--- | :--- | :---: | :---: | :--- |
+| **PENDIENTE CRÍTICO #1** | **Vinculación de Dispositivo Físico (Device Binding)** | **PRÓXIMO A EJECUTAR** | **MÁXIMA (Urgente)** | Generación de UUID `deviceId` inmutable en hardware local; asociación en BD a `Persona` (rol `AYUDANTE`); bloqueo de sesión concurrente en `/api/auth`; botón Admin "Desvincular / Resetear Teléfono" en `PersonalScreen`. |
+| **PENDIENTE #2 (Fase 8)** | Promoción de Pasajes Gratis & Benchmark Anónimo | Pendiente | Media | Activar sorteo de pasajes gratis por bus en VT y visualización anónima de rendimiento entre unidades pares en `BenchmarkScreen`. |
+| **PENDIENTE #3** | Reasignación Contable de Boletos Huérfanos | **COMPLETADO (v3.50.4)** | Resuelto | `frecuencia-helper.ts`, persistencia física de frecuencias en PostgreSQL, botón ergonómico `[ Asignar Vuelta ]` en `VentasReviewScreen`. |
+| **PENDIENTE #4** | Módulo Institucional de Gerencia de Cooperativa | Futuro | Estratégica | Panel consolidado de directiva para auditoría de los 19 autobuses una vez completada la adopción global. |
+
+---
+
+## 7. Registro de Commits Recientes en Repositorio Oficial (`main`)
+- `d42cdea` — *fix(scripts): proteger db:push y dev.sh ante ausencia de DATABASE_URL*
+- `4ec5ce2` — *feat(error): agregar global-error boundary para compilacion limpia en Next.js 16*
+- `c678f70` — *fix(odometro): corregir render de opciones de justificacion en selector de desfase*
+- `1c125df` — *feat(odometro): calibracion de kilometraje oficial y validacion semaforica v3.58.0*
+
