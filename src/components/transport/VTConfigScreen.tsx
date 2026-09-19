@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Plus, Trash2, ChevronDown, ChevronUp, Settings, Gift, Clock, Gauge, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Bus, Ticket, Wrench, ShieldAlert, Save, Plus, Trash2, ChevronDown, ChevronUp, Settings, Gift, Clock, Gauge, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +34,8 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
   const [expandedVt, setExpandedVt] = useState<string | null>(null);
   const [editFrecuencias, setEditFrecuencias] = useState<Record<string, Array<{ routeFrom: string; routeTo: string; time: string }>>>({});
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<'TURNOS' | 'DESPACHO' | 'KILOMETRAJE' | 'MANTENIMIENTO'>('TURNOS');
+  const [searchVt, setSearchVt] = useState('');
 
   // Viaje Gratis promo config
   const [promoConfig, setPromoConfig] = useState<PromoViajeGratisConfig>(DEFAULT_PROMO_CONFIG);
@@ -191,8 +193,84 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto pb-8 px-4 py-4 space-y-3">
-        {vts.length === 0 && (
+      
+      {/* ─── NAVEGACIÓN MODULAR POR PESTAÑAS (SUPERADMIN CONSOLE) ─── */}
+      <div className="sticky top-[57px] z-10 bg-white border-b border-[#D6D6D6] px-4 py-2 shadow-xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+          <button
+            type="button"
+            onClick={() => setActiveTab('TURNOS')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black transition-all shrink-0 ${
+              activeTab === 'TURNOS'
+                ? 'bg-[#912D26] text-white shadow-sm'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <Bus className="w-3.5 h-3.5" />
+            <span>1. Turnos y VTs ({vts.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('DESPACHO')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black transition-all shrink-0 ${
+              activeTab === 'DESPACHO'
+                ? 'bg-[#912D26] text-white shadow-sm'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>2. Despacho y Viaje Gratis</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('KILOMETRAJE')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black transition-all shrink-0 ${
+              activeTab === 'KILOMETRAJE'
+                ? 'bg-blue-700 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <Gauge className="w-3.5 h-3.5" />
+            <span>3. Kilometraje y Tolerancias</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('MANTENIMIENTO')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black transition-all shrink-0 ${
+              activeTab === 'MANTENIMIENTO'
+                ? 'bg-amber-500 text-slate-950 shadow-sm'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <Wrench className="w-3.5 h-3.5" />
+            <span>4. Taller Hino AK (19)</span>
+          </button>
+        </div>
+      </div>
+
+      <main className="flex-1 overflow-y-auto pb-8 px-4 py-4 space-y-4">
+        
+        {/* ─── PESTAÑA 1: TURNOS Y FRECUENCIAS DE VEHÍCULOS TIPO (VT) ─── */}
+        {activeTab === 'TURNOS' && (
+          <div className="space-y-3">
+            <div className="bg-white rounded-2xl p-3 border border-[#D6D6D6] flex items-center justify-between shadow-xs">
+              <div>
+                <p className="text-xs font-black text-slate-800 uppercase tracking-tight">
+                  Matriz Operativa de Turnos Rotativos
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  Configura los horarios e itinerarios de salida de cada vehículo tipo
+                </p>
+              </div>
+              <Badge className="bg-[#912D26] text-white text-[10px] font-bold">
+                {vts.length} VTs en Cooperativa
+              </Badge>
+            </div>
+
+            {vts.length === 0 && (
           <div className="text-center py-12 text-[#3A3A3A]/50">
             <p className="text-sm">No hay VTs configurados</p>
             <p className="text-xs mt-1">Ejecuta el seed de VTs primero</p>
@@ -299,7 +377,111 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
             </Card>
           );
         })}
-        {/* ─── VIAJE GRATIS Config ─── */}
+        
+          </div>
+        )}
+
+        {/* ─── PESTAÑA 2: REGLAS DE DESPACHO Y PROMOCIÓN COMERCIAL VIAJE GRATIS ─── */}
+        {activeTab === 'DESPACHO' && (
+          <div className="space-y-4">
+            {/* Tiempos de Viaje y Bloqueo */}
+            {/* ─── Control de Tiempos Límites de Venta por Frecuencia ─── */}
+        <Card className="border border-[#D6D6D6] shadow-sm rounded-2xl">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center gap-2 text-[#912D26]">
+              <Clock className="w-5 h-5" />
+              <h2 className="text-base font-bold text-[#3A3A3A]">Tiempos Límites de Venta por Frecuencia</h2>
+            </div>
+            <p className="text-xs text-[#3A3A3A]/70 leading-relaxed">
+              Desactiva automáticamente nuevas ventas al cumplirse el tiempo prudente de viaje para evitar mezclar boletos entre vueltas consecutivas. Cinco minutos antes del cierre se muestra una advertencia al ayudante. Las demás funciones (arqueo, consulta) permanecen siempre activas.
+            </p>
+
+            {/* Troncal Loja - Vilcabamba */}
+            <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-800">Ruta Loja ↔ Vilcabamba</span>
+                <span className="text-[10px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Troncal Corta</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-[#3A3A3A]/70">Minutos Advertencia</Label>
+                  <Input
+                    type="number"
+                    min={30}
+                    max={180}
+                    value={tiempoConfig.tiempoAlertaCorta}
+                    onChange={e => setTiempoConfig(prev => ({ ...prev, tiempoAlertaCorta: parseInt(e.target.value) || 85 }))}
+                    className="h-10 rounded-lg text-sm border-[#D6D6D6]"
+                  />
+                  <span className="text-[10px] text-gray-400">Por defecto: 85 min</span>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-[#3A3A3A]/70">Minutos Bloqueo Venta</Label>
+                  <Input
+                    type="number"
+                    min={35}
+                    max={200}
+                    value={tiempoConfig.tiempoLimiteCorta}
+                    onChange={e => setTiempoConfig(prev => ({ ...prev, tiempoLimiteCorta: parseInt(e.target.value) || 90 }))}
+                    className="h-10 rounded-lg text-sm border-[#D6D6D6]"
+                  />
+                  <span className="text-[10px] text-gray-400">Por defecto: 90 min</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Rutas Extendidas */}
+            <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-800">Rutas Extendidas (Yangana, El Tambo, Zahuayco, La Elvira)</span>
+                <span className="text-[10px] font-semibold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">Larga Distancia</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-[#3A3A3A]/70">Minutos Advertencia</Label>
+                  <Input
+                    type="number"
+                    min={60}
+                    max={240}
+                    value={tiempoConfig.tiempoAlertaExtendida}
+                    onChange={e => setTiempoConfig(prev => ({ ...prev, tiempoAlertaExtendida: parseInt(e.target.value) || 135 }))}
+                    className="h-10 rounded-lg text-sm border-[#D6D6D6]"
+                  />
+                  <span className="text-[10px] text-gray-400">Por defecto: 135 min</span>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-[#3A3A3A]/70">Minutos Bloqueo Venta</Label>
+                  <Input
+                    type="number"
+                    min={65}
+                    max={260}
+                    value={tiempoConfig.tiempoLimiteExtendida}
+                    onChange={e => setTiempoConfig(prev => ({ ...prev, tiempoLimiteExtendida: parseInt(e.target.value) || 140 }))}
+                    className="h-10 rounded-lg text-sm border-[#D6D6D6]"
+                  />
+                  <span className="text-[10px] text-gray-400">Por defecto: 140 min</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Guardar Tiempos */}
+            <Button
+              onClick={() => {
+                saveTiempoVentaConfig(tiempoConfig);
+                toast({ title: 'Guardado', description: 'Tiempos de viaje por frecuencia actualizados correctamente' });
+              }}
+              className="w-full h-10 rounded-xl bg-[#912D26] hover:bg-[#7A2520] text-white text-sm font-semibold"
+            >
+              <Save className="w-4 h-4 mr-1" />
+              GUARDAR TIEMPOS DE VIAJE
+            </Button>
+          </CardContent>
+        </Card>
+
+        
+
+            {/* Viaje Gratis y Ticket Térmico */}
+            {/* ─── VIAJE GRATIS Config ─── */}
         <Card className="rounded-2xl border border-[#D6D6D6] bg-white overflow-hidden">
           <CardContent className="p-0">
             <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-[#912D26]/5 to-transparent">
@@ -422,100 +604,14 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
             </div>
           </CardContent>
         </Card>
-        {/* ─── Control de Tiempos Límites de Venta por Frecuencia ─── */}
-        <Card className="border border-[#D6D6D6] shadow-sm rounded-2xl">
-          <CardContent className="p-4 space-y-4">
-            <div className="flex items-center gap-2 text-[#912D26]">
-              <Clock className="w-5 h-5" />
-              <h2 className="text-base font-bold text-[#3A3A3A]">Tiempos Límites de Venta por Frecuencia</h2>
-            </div>
-            <p className="text-xs text-[#3A3A3A]/70 leading-relaxed">
-              Desactiva automáticamente nuevas ventas al cumplirse el tiempo prudente de viaje para evitar mezclar boletos entre vueltas consecutivas. Cinco minutos antes del cierre se muestra una advertencia al ayudante. Las demás funciones (arqueo, consulta) permanecen siempre activas.
-            </p>
+        
+          </div>
+        )}
 
-            {/* Troncal Loja - Vilcabamba */}
-            <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-800">Ruta Loja ↔ Vilcabamba</span>
-                <span className="text-[10px] font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Troncal Corta</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-[#3A3A3A]/70">Minutos Advertencia</Label>
-                  <Input
-                    type="number"
-                    min={30}
-                    max={180}
-                    value={tiempoConfig.tiempoAlertaCorta}
-                    onChange={e => setTiempoConfig(prev => ({ ...prev, tiempoAlertaCorta: parseInt(e.target.value) || 85 }))}
-                    className="h-10 rounded-lg text-sm border-[#D6D6D6]"
-                  />
-                  <span className="text-[10px] text-gray-400">Por defecto: 85 min</span>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-[#3A3A3A]/70">Minutos Bloqueo Venta</Label>
-                  <Input
-                    type="number"
-                    min={35}
-                    max={200}
-                    value={tiempoConfig.tiempoLimiteCorta}
-                    onChange={e => setTiempoConfig(prev => ({ ...prev, tiempoLimiteCorta: parseInt(e.target.value) || 90 }))}
-                    className="h-10 rounded-lg text-sm border-[#D6D6D6]"
-                  />
-                  <span className="text-[10px] text-gray-400">Por defecto: 90 min</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Rutas Extendidas */}
-            <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-800">Rutas Extendidas (Yangana, El Tambo, Zahuayco, La Elvira)</span>
-                <span className="text-[10px] font-semibold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">Larga Distancia</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-[#3A3A3A]/70">Minutos Advertencia</Label>
-                  <Input
-                    type="number"
-                    min={60}
-                    max={240}
-                    value={tiempoConfig.tiempoAlertaExtendida}
-                    onChange={e => setTiempoConfig(prev => ({ ...prev, tiempoAlertaExtendida: parseInt(e.target.value) || 135 }))}
-                    className="h-10 rounded-lg text-sm border-[#D6D6D6]"
-                  />
-                  <span className="text-[10px] text-gray-400">Por defecto: 135 min</span>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-[#3A3A3A]/70">Minutos Bloqueo Venta</Label>
-                  <Input
-                    type="number"
-                    min={65}
-                    max={260}
-                    value={tiempoConfig.tiempoLimiteExtendida}
-                    onChange={e => setTiempoConfig(prev => ({ ...prev, tiempoLimiteExtendida: parseInt(e.target.value) || 140 }))}
-                    className="h-10 rounded-lg text-sm border-[#D6D6D6]"
-                  />
-                  <span className="text-[10px] text-gray-400">Por defecto: 140 min</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Guardar Tiempos */}
-            <Button
-              onClick={() => {
-                saveTiempoVentaConfig(tiempoConfig);
-                toast({ title: 'Guardado', description: 'Tiempos de viaje por frecuencia actualizados correctamente' });
-              }}
-              className="w-full h-10 rounded-xl bg-[#912D26] hover:bg-[#7A2520] text-white text-sm font-semibold"
-            >
-              <Save className="w-4 h-4 mr-1" />
-              GUARDAR TIEMPOS DE VIAJE
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* ─── FASE A: Calibración Oficial de Kilometraje por Ruta (Base Odómetro) ─── */}
+        {/* ─── PESTAÑA 3: CALIBRACIÓN OFICIAL DE KILOMETRAJE Y TOLERANCIAS ─── */}
+        {activeTab === 'KILOMETRAJE' && (
+          <div className="space-y-4">
+            {/* ─── FASE A: Calibración Oficial de Kilometraje por Ruta (Base Odómetro) ─── */}
         <Card className="rounded-2xl border border-[#D6D6D6] bg-white overflow-hidden">
           <CardContent className="p-4 space-y-4">
             <div className="flex items-center gap-3">
@@ -655,7 +751,16 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
         </Card>
 
         {/* ─── FASE 1: Catálogo Maestro Institucional Hino AK (SuperAdmin 9999) ─── */}
-        <SuperAdminMantenimientoTab />
+        
+          </div>
+        )}
+
+        {/* ─── PESTAÑA 4: BIBLIOTECA MAESTRA DE MANTENIMIENTO HINO AK (19 ÍTEMS) ─── */}
+        {activeTab === 'MANTENIMIENTO' && (
+          <div className="space-y-4">
+            <SuperAdminMantenimientoTab />
+          </div>
+        )}
       </main>
     </div>
   );
