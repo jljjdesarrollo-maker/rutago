@@ -1,12 +1,12 @@
 # RutaGo — Documento Maestro de Contexto Técnico
-> Versión: **v3.58.1** | Fecha: 2026-09-18 | Autor: Arquitecto de Software & Antigravity AI
+> Versión: **v3.58.2** | Fecha: 2026-09-18 | Autor: Arquitecto de Software & Antigravity AI
 > Estado: Producción Estable / Mantenimiento Preventivo Hino AK (Fases 1, 2 y 3 Completadas) & Calibración Oficial de Kilometraje Aprobada
 
 ---
 
 ## 1. Visión General, Identidad y Propósito del Proyecto
 - **Nombre del Proyecto:** RutaGo (Control de transporte interparroquial y venta de boletos)
-- **Versión Activa:** `v3.58.1` (Mantenimiento Preventivo Hino AK en 3 Niveles: SuperAdmin, Socio Propietario y Chofer + Calibración Oficial de Kilometraje)
+- **Versión Activa:** `v3.58.2` (Mantenimiento Preventivo Hino AK en 3 Niveles: SuperAdmin, Socio Propietario y Chofer + Calibración Oficial de Kilometraje)
 - **Repositorio Oficial:** `https://github.com/jljjdesarrollo-maker/rutago`
 - **Branch de Despliegue:** `main` (Conectado con CI/CD automático en Vercel)
 - **Operador de Transporte:** Cooperativa Vilcabambaturis Cía. Ltda. (Loja, Ecuador)
@@ -72,7 +72,28 @@ Este archivo y el historial del chat contienen el 100% del contexto para retomar
 
 ---
 
+
+---
+
+## 3.3. Reestructuración Modular de la Consola SuperAdmin (`VTConfigScreen.tsx`) — [v3.58.2]
+Para resolver la sobrecarga cognitiva y el scroll vertical masivo, la consola institucional de configuración del SuperAdmin (`PIN 9999`) fue reestructurada en **4 pestañas ergonómicas especializadas**:
+1. **Pestaña 1: 🚍 Turnos y VTs (`TURNOS`):**
+   - Gestión integral de la matriz operativa de turnos rotativos (`VT01`, `VT02`, etc.).
+   - Acordeones independientes de frecuencias (horarios de salida, orígenes, destinos).
+   - Altas, bajas y edición de vueltas por vehículo tipo con guardado exclusivo por turno.
+2. **Pestaña 2: ⏱️ Despacho y Viaje Gratis (`DESPACHO`):**
+   - **Tiempos de Viaje y Bloqueo:** Minutos de advertencia y corte de venta en boletería diferenciados entre Troncal (Loja ↔ Vilcabamba: 85 min / 90 min) y Rutas Extendidas (Yangana, Tambo, Elvira, Zahuayco: 135 min / 140 min).
+   - **Promoción Viaje Gratis:** Switch de activación de campaña comercial, configuración de rango aleatorio de posición premiada y pie de ticket térmico.
+3. **Pestaña 3: 🛣️ Kilometraje y Tolerancias (`KILOMETRAJE`):**
+   - Calibración de tramos viales oficiales con desacoplamiento por sentido (`[Ida]` y `[Retorno]`) y botón ergonómico `= Copiar`.
+   - Bloque de **Parámetros Globales de Tolerancia y Anti-Outlier**: selectores de margen elástico superior (`+15%`, `+20%`, `+25%`, `+30%`) y tope máximo diario de kilometraje (600 km).
+   - Botón `Guardar y Replicar Flota` y botón de restablecimiento a valores de fábrica.
+4. **Pestaña 4: 🔧 Taller Hino AK (`MANTENIMIENTO`):**
+   - Módulo `SuperAdminMantenimientoTab.tsx` con la biblioteca maestra de los 19 ítems de mantenimiento preventivo Hino AK para toda la cooperativa.
+   - Enfoque actual de revisión para aplicar correcciones específicas requeridas por la cooperativa.
+
 ## 4. Registro Histórico de Commits Recientes (`main`)
+- `54b3ab2` — *refactor(superadmin): modularizar consola VTConfigScreen en 4 pestañas especializadas (VTs, Despacho, Km, Mantenimiento) v3.58.2*
 - `bf63cec` — *chore(release): consolidar entrega v3.58.1 con Mantenimiento Preventivo Hino AK (Fases 1, 2 y 3 completadas)*
 - `8212dd6` — *docs(maestro): registrar Fase 3 de Mantenimiento Preventivo (Vista Chofer / Cabina) como COMPLETADO*
 - `24ec41d` — *feat(mantenimiento): integrar ChoferMantenimientoWidget en pantalla operativa HomeScreen v3.58.0*
