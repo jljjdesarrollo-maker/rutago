@@ -206,3 +206,30 @@
   * No implementar intervalos de sondeo (`setInterval`) para balances o gastos sin condición explícita de término.
   * Memoizar cálculos pesados con `useMemo` para evitar re-renderizados continuos en smartphones de baja gama.
 
+### PENDIENTE #6: Calibración Oficial del Catálogo Maestro de Mantenimiento Hino AK (v3.58.4)
+- **Contexto Operativo:** Homologación oficial del plan de mantenimiento para la flota de autobuses Hino AK (Ruta Loja – Vilcabamba – Yangana).
+- **Flujo Operativo del Chofer (`ChoferMantenimientoWidget.tsx`):**
+  * Botón destacado de **Registro Rápido de Lubricadora (Combo)** en la cabecera del widget: Asentamiento simultáneo con 1 toque.
+  * **Regla 4 + 2:** 
+    - 4 Ítems pre-marcados (incluidos por defecto): Aceite de Motor, Filtro de Aceite, Filtro Trampa de Agua, Filtro de Combustible Secundario.
+    - 2 Ítems desmarcados (opcionales): Filtro de Aire Secundario (Pequeño / Seguridad) y Filtro de Aire Primario (Grande / Admisión).
+  * Captura de Odómetro/Tacómetro actual, valor de factura ($), número de factura y lubricadora.
+  * Integración automática con los gastos patrimoniales del socio propietario (`saveOwnerExpense`).
+- **Bloque 1: MOTOR (9 Ítems Oficiales Calibrados y Cerrados):**
+  1. `MNT-ACEITE-MOT`: **Aceite de Motor (Fluido)** - 5,000 km (~30 días) - 3.5 a 4 gal Mobil Delvac 15W-40.
+  2. `MNT-FILT-ACEITE`: **Filtro de Aceite de Motor** - 5,000 km (~30 días) - Flujo pleno (C1314 / C5002).
+  3. `MNT-FILT-TRAMPA`: **Filtro Trampa de Agua (Separador Diésel)** - 5,000 km (~30 días) - Cartucho trampa primario con vaso de purga (SF1307).
+  4. `MNT-FILT-DIESEL-SEC`: **Filtro de Combustible Secundario (Diésel Fino)** - 5,000 km (~30 días) - Retención fina de micras (EF1802).
+  5. `MNT-VALVULAS-TOBERAS`: **Calibración de Válvulas y Toberas** - 50,000 km (~180 días / 6 meses) - Balancines en frío y toberas Denso.
+  6. `MNT-BANDAS-MOTOR`: **Bandas del Motor** - 100,000 km (365 días / 1 año) - Juego completo ventilador, alternador y bomba de agua.
+  7. `MNT-TERMOSTATO-MOT`: **Termostato del Motor** - 100,000 km (365 días / 1 año) - Válvula termostática 82°C / 88°C.
+  8. `MNT-RADIADOR-COOLANT`: **Lavado de Radiador y Cambio de Refrigerante** - 100,000 km (365 días / 1 año) - Sondeo/lavado químico y Coolant 50/50 Heavy Duty.
+  9. `MNT-CHAPAS-MOTOR`: **Metales de Motor (Biela y Bancada)** - 800,000 km - Preventivo pre-overhaul (Taiho/Daido estándar).
+  *(Nota: Se integraron formalmente los 2 filtros de combustible al motor. Filtros de aire asignados a SISTEMA_AIRE).*
+- **Próximos Bloques en Proceso de Calibración:**
+  * Bloque 2: TRANSMISIÓN (Kit de Embrague 80,000 km, Valvulina Caja GL-4 150,000 km, Valvulina Corona GL-5 150,000 km, etc.).
+  * Bloque 3: ADMISIÓN Y COMBUSTIBLE (Soplado 2,500 km, Filtro Secundario 20,000 km, Filtro Primario 40,000 km, Trampa 5,000 km, Diésel Secundario 5,000 km).
+  * Bloque 4: RODAJE Y SUSPENSIÓN (Rotación llantas, Engrase chasis 5,000 km, Engrase bocinas/rulimanes, Muelles y maestra).
+  * Bloque 5: FRENOS Y SISTEMA NEUMÁTICO (Bandas de freno, Secador de aire WABCO, Compresor 900,000 km).
+
+
