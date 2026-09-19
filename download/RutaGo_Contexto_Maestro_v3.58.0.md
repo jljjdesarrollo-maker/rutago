@@ -1,160 +1,95 @@
 # RutaGo — Documento Maestro de Contexto Técnico
-> Versión: **v3.58.0** | Fecha: 2026-09-17 | Autor: Arquitecto de Software & Antigravity AI
-> Estado: Producción Estable / Calibración Oficial de Kilometraje & Validación Semafórica de Odómetro Aprobada
+> Versión: **v3.58.1** | Fecha: 2026-09-18 | Autor: Arquitecto de Software & Antigravity AI
+> Estado: Producción Estable / Mantenimiento Preventivo Hino AK (Fases 1, 2 y 3 Completadas) & Calibración Oficial de Kilometraje Aprobada
 
 ---
 
 ## 1. Visión General, Identidad y Propósito del Proyecto
 - **Nombre del Proyecto:** RutaGo (Control de transporte interparroquial y venta de boletos)
-- **Versión Activa:** `v3.58.0` (Calibración Oficial de Kilometraje por Ruta & Validación Semafórica de Odómetro con Zero-Locking)
+- **Versión Activa:** `v3.58.1` (Mantenimiento Preventivo Hino AK en 3 Niveles: SuperAdmin, Socio Propietario y Chofer + Calibración Oficial de Kilometraje)
 - **Repositorio Oficial:** `https://github.com/jljjdesarrollo-maker/rutago`
+- **Branch de Despliegue:** `main` (Conectado con CI/CD automático en Vercel)
 - **Operador de Transporte:** Cooperativa Vilcabambaturis Cía. Ltda. (Loja, Ecuador)
-- **Flota Objetivo:** 19 Autobuses (Hino AK - 45 pax Troncal General VT y 28 pax Alimentador Exclusivo P)
+- **Flota Objetivo:** 19 Autobuses (Chasis Hino AK - 45 pax Troncal General VT y 28 pax Alimentador Exclusivo P)
 - **Stack Técnico:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS, Prisma ORM, IndexedDB (Offline-First), Radix UI, Recharts, Lucide React, ESC/POS & JSPDF.
-- **Entorno de Despliegue:** Vercel (CI/CD conectado a GitHub) y uso en smartphones por tripulantes y socios.
+- **Entorno de Despliegue:** Vercel (Producción), navegadores móviles para choferes y socios, impresoras térmicas Bluetooth 58mm.
 
 ---
 
-## 2. Novedades de la Versión v3.58.0: Sistema de Calibración de Kilometraje y Validación Semafórica de Odómetro
-
-### 2.1. Problema de Negocio Resuelto
-1. **Discrepancias en Odómetros de Jornada:** En la operación interparroquial, errores de digitación en el tacómetro (ej. saltos de miles de km o números menores a la salida) distorsionaban el cálculo de S/ por km, consumo de diésel y la programación de mantenimientos preventivos.
-2. **Asimetría de Distancias por Sentido:** Las rutas de ida y retorno en Loja tienen kilometrajes distintos por sentidos viales en terminales, ingresos a gasolineras autorizadas o paradas en Malacatos.
-3. **Restricción Zero-Locking en Carretera:** Un arqueo en carretera sin conectividad no puede bloquearse rígidamente por un desvío o auxilio mecánico legítimo. Se requería un sistema elástico que valide semafóricamente y permita justificar desfases.
-
----
-
-## 3. Arquitectura del Módulo implementado (Fases A, B, C y D)
-
-### 3.1. Fase A: Consola SuperAdmin de Calibración Oficial (`VTConfigScreen.tsx`)
-- **Acceso:** SuperAdmin (`9999`) en la pantalla de configuración técnica de VT.
-- **Catálogo Oficial por Sentido (Ida y Retorno Independientes):**
-  - Loja ↔ Vilcabamba: 42.0 km (Ida) / 42.0 km (Retorno)
-  - Loja ↔ El Tambo: 52.5 km (Ida) / 52.5 km (Retorno)
-  - Loja ↔ Yangana: 67.0 km (Ida) / 67.0 km (Retorno)
-  - Loja ↔ La Elvira: 78.0 km (Ida) / 78.0 km (Retorno)
-  - Loja ↔ Zahuayco: 91.0 km (Ida) / 91.0 km (Retorno)
-- **Herramientas de Agilidad:**
-  - Botón rápido `= Copiar Ida a Retorno` para sincronizar pares en un toque.
-  - Botón `Restablecer a Fábrica`.
-- **Tolerancias Globales Anti-Outlier:**
-  - Margen elástico superior configurable: +15%, +20%, +25%, +30% (default: +25%).
-  - Límite de salto diario bloqueante: 600 km (tope físico para jornada en circuito interparroquial).
-- **Persistencia Híbrida:**
-  - Endpoint REST: `GET /api/config/rutas-km` y `PUT /api/config/rutas-km`.
-  - Caché Local / IndexedDB: `rutas_km_config` en `src/lib/rutas-km-storage.ts` con respaldo offline permanente.
-
-### 3.2. Fase B: Motor Matemático de Validación Semafórica (`src/lib/odometer-validator.ts`)
-- **Normalización Fonética de Rutas:** Resuelve automáticamente variaciones escritas (ej. `"Vilca"`, `"Vilcabamba"`, `"Yangana"`, `"El Tambo"`, `"Terminal Loja"`).
-- **Cálculo de Distancia Teórica Jornada:** Suma las distancias oficiales de cada frecuencia realizada durante el día.
-- **Lógica de los 3 Estados Semafóricos:**
-  1. **VERDE (Válido):** 
-     - Desfase dentro del umbral elástico (-10% a +25% de lo teórico).
-     - Estado conforme; no exige ninguna justificación al ayudante.
-  2. **ÁMBAR (Advertencia Elástica - Zero-Locking):**
-     - Desfase superior al umbral elástico pero inferior al límite máximo diario.
-     - Permite guardar el arqueo inmediatamente si el ayudante selecciona un motivo justificado del catálogo:
-       - `Desvío vial o derrumbe en vía`
-       - `Frecuencia o turno no registrado en sistema`
-       - `Viaje al taller mecánico / cambio de llantas`
-       - `Recorrido administrativo o abastecimiento de diésel`
-       - `Otro motivo extraordinario`
-  3. **ROJO (Bloqueo por Error Crítico):**
-     - Tacómetro final menor al tacómetro inicial (`kmFinal < kmInicial`).
-     - Salto absurdo o error de dedo (`> maxSaltoDiarioKm`, ej. +1,000 km en un día).
-     - Ofrece un botón de auxilio: `Proyectar llegada teórica (~X km)` para corregir en un solo toque si hubo error tipográfico.
-
-### 3.3. Fase C: Experiencia de Usuario en Arqueo General (`ArqueoGeneralScreen.tsx`)
-- Indicador visual reactivo en tiempo real bajo los inputs de tacómetro inicial y final.
-- Feedback semafórico con micro-animaciones (badge verde, alerta ámbar con selector de motivos, card roja bloqueante).
-- Inclusión de los datos de auditoría de odómetro en el reporte final:
-  - `odometroEstado` (`VERDE` | `AMBAR` | `ROJO`)
-  - `odometroKmTeorico` (km calculados)
-  - `odometroDesfaseKm` (diferencia real vs teórica)
-  - `odometroMotivoDesfase` (motivo seleccionado en caso de ámbar)
-
-### 3.4. Fase D: Integración con Mantenimiento Preventivo (`MantenimientoScreen.tsx`)
-- Vinculación directa con la fuente oficial auditada `getLatestBusOdometer(numeroDisco)`.
-- Indicador visual de odómetro `"Auditado Flota"` en la tarjeta del tablero.
-- Consistencia garantizada en las alertas de cambio de aceite, filtros, frenos y neumáticos.
+## 2. Guía de Reanudación y Auditoría desde otra PC (Para el Usuario)
+Este archivo y el historial del chat contienen el 100% del contexto para retomar el proyecto en cualquier momento sin pérdida de información:
+1. **GitHub Sincronizado:** Todo el código fuente está commiteado y pusheado a la rama `main` de `jljjdesarrollo-maker/rutago`.
+2. **GitHub Token Activo:** El token de acceso personal vigente es `[CONFIGURADO_EN_ENV_Y_HELPER]`.
+3. **Versión Consolidada:** `v3.58.1` en `package.json`.
+4. **Objetivo de la Próxima Sesión:** Revisar las 3 fases de Mantenimiento Preventivo Hino AK implementadas, realizar ajustes o correcciones si el usuario lo solicita en base a pruebas prácticas, y continuar con la siguiente prioridad: **Vinculación de Dispositivo Físico (Device Binding)**.
 
 ---
 
-## 4. Estructura de Archivos Nuevos y Modificados en v3.58.0
-- `src/types/rutas-km.ts`: Interfaces de tramos, configuraciones y tolerancias.
-- `src/lib/rutas-km-storage.ts`: Gestión de almacenamiento offline y sincronización con API.
-- `src/lib/odometer-validator.ts`: Algoritmo de validación semafórica y normalización de tramos.
-- `src/app/api/config/rutas-km/route.ts`: API endpoint para configuración de distancias y tolerancias.
-- `src/components/transport/VTConfigScreen.tsx`: UI de calibración oficial para SuperAdmin.
-- `src/components/transport/ArqueoGeneralScreen.tsx`: UI de validación semafórica y captura con Zero-Locking para Ayudante.
-- `src/components/transport/MantenimientoScreen.tsx`: Lectura de odómetro auditado para alertas mecánicas.
+## 3. Arquitectura Integral del Mantenimiento Preventivo Hino AK (3 Fases Completadas)
+
+### 3.1. Roles y Credenciales Oficiales en el Sistema
+- **PIN 9999 (SuperAdmin SaaS / Cooperativa):**
+  - Administra la **Biblioteca Central Institucional Hino AK** para toda la cooperativa.
+  - Define los intervalos recomendados de fábrica para Loja (ej. cambio de aceite cada 5,000 km, filtro de diésel cada 5,000 km, zapatas cada 15,000 km, etc.).
+  - Configura las especificaciones de repuestos y lubricantes ecuatorianos (caneca 15W-40, filtros C1314, trampa de agua SF1307, valvulina 80W-90, secador WABCO).
+  - Define cuáles tareas vienen pre-delegadas al chofer por defecto.
+- **PIN 2107 / 0101 (Socio Propietario - Bus 01):**
+  - Ejerce la **Soberanía Patrimonial** de su unidad (Bus 01).
+  - Accede a la pantalla de Mantenimiento y pulsa `[ + Agregar desde Catálogo Hino AK ]` para importar y activar en su unidad las tareas de la biblioteca central.
+  - Ajusta el kilometraje de intervalo a la severidad de su ruta (ej. si su bus va a Yangana por caminos de polvo, puede acortar el cambio de aceite de 5,000 a 4,500 km).
+  - Con el switch ergonómico `Chofer`, decide con exactitud cuáles mantenimientos delega a la tripulación en carretera y cuáles mantiene de gestión privada.
+  - Asienta cambios de servicio ingresando kilometraje exacto del odómetro, costo real en dólares ($ USD) y taller/mecánico responsable.
+- **Tripulación (Chofer / Ayudante):**
+  - Visualizan en la pantalla de inicio (`HomeScreen.tsx`) el **Widget Semafórico de Cabina**.
+  - Solo ven las tareas que el socio marcó con el switch `Chofer`.
+  - Reciben alerta visual luminosa: Verde (Al Día), Amarillo (Próximo ≤ 800 km), Rojo (¡Vencido / Urgente con cálculo de km excedidos!).
+  - Botón táctil `[ Realizado ]` para asentar servicios en carretera en 5 segundos (ingresan tacómetro y taller).
 
 ---
 
-## 5. Estabilidad de Entorno y Servidor de Desarrollo (Corrección v3.58.0)
-- **Problema Detectado:** Al ejecutarse el entorno local o de desarrollo en contenedores sin una base de datos PostgreSQL remota vinculada de inmediato (`DATABASE_URL` no declarada), el comando de inicio `bun run db:push` en `.zscripts/dev.sh` y `package.json` abortaba con error Prisma `P1012`, impidiendo que el servidor Next.js iniciara en el puerto 3000.
-- **Blindaje Implementado:**
-  - Se modificó `.zscripts/dev.sh` para verificar condicionalmente `if [ -n "${DATABASE_URL:-}" ]; then bun run db:push; else echo "[BUN] DATABASE_URL not set, skipping db:push..."; fi`.
-  - Se actualizó el script `"db:push"` en `package.json` con la misma protección defensiva.
-  - El servidor de desarrollo Next.js 16 con Turbopack arranca limpiamente en el puerto 3000 con estado HTTP 200 OK.
+### 3.2. Detalle de las 3 Fases Completadas
+
+#### Fase 1: Catálogo Maestro Institucional Hino AK (SuperAdmin 9999) — [COMPLETADO]
+- **Archivos Clave:**
+  - `src/lib/mantenimiento-catalogo.ts`: 19 mantenimientos oficiales categorizados (Motor, Transmisión, Frenos, Suspensión, Aire, Rodaje, Combustible) con repuestos específicos del mercado ecuatoriano.
+  - `src/components/transport/SuperAdminMantenimientoTab.tsx`: Consola institucional de gestión con búsqueda en tiempo real, filtros por categoría, edición en línea de kilometrajes oficiales, modal de especificación técnica, switches institucionales y botón `Restablecer a Fábrica`.
+  - `src/components/transport/VTConfigScreen.tsx`: Pestaña dedicada `Mantenimiento AK` integrada en la configuración de la cooperativa.
+
+#### Fase 2: Activación y Personalización del Socio Propietario (PIN 2107 / Bus 01) — [COMPLETADO]
+- **Archivo Clave:**
+  - `src/components/transport/MantenimientoScreen.tsx`: Rediseñado y adaptado para la soberanía del socio.
+  - Modal deslizante para explorar e importar ítems del catálogo institucional.
+  - Edición en línea del intervalo en km por unidad.
+  - Switch de delegación al chofer por ítem.
+  - Registro de servicio con captura de odómetro, costo ($ USD) y taller mecánico.
+  - Filtros táctiles rápidos: `Todos`, `Urgentes / Vencidos` y `Vista Chofer`.
+  - Vinculación con odómetro auditado de la jornada.
+
+#### Fase 3: Vista Operativa Rápida para el Chofer / Ayudante — [COMPLETADO]
+- **Archivos Clave:**
+  - `src/components/transport/ChoferMantenimientoWidget.tsx`: Widget táctil de cabina con semáforos en tiempo real, micro-barras de progreso, alertas de kilometraje restante/excedido y modal táctil rápido de 5 segundos para asentar servicios en carretera.
+  - `src/components/transport/HomeScreen.tsx`: Widget embebido en la cabecera del Pilar 1 (Día a Día • Ruta y Caja de Hoy) para acceso inmediato del chofer y la tripulación, con enlace de auditoría directa para el socio.
 
 ---
 
-## 6. Matriz de Estado de Pendientes y Hoja de Ruta Inmediata
-
-| ID Pendiente | Módulo / Requisito | Estado | Prioridad | Detalle Técnico |
-| :--- | :--- | :---: | :---: | :--- |
-| **PENDIENTE CRÍTICO #1** | **Vinculación de Dispositivo Físico (Device Binding)** | **PRÓXIMO A EJECUTAR** | **MÁXIMA (Urgente)** | Generación de UUID `deviceId` inmutable en hardware local; asociación en BD a `Persona` (rol `AYUDANTE`); bloqueo de sesión concurrente en `/api/auth`; botón Admin "Desvincular / Resetear Teléfono" en `PersonalScreen`. |
-| **PENDIENTE #2 (Fase 8)** | **Promoción de Pasajes Gratis & Benchmark Anónimo** | **COMPLETADO (v3.56.0 / v3.57.0)** | Resuelto | Desacople de Boleto Premiado por unidad en `FlotaScreen`, alerta sonora y ticket ESC/POS en `TicketScreen`, pie publicitario blindado en `VTConfigScreen`, y anonimato estricto de pares (`#T-01`, `#A-01`) en `BenchmarkScreen` y `BenchmarkChart`. |
-| **PENDIENTE #3** | Reasignación Contable de Boletos Huérfanos | **COMPLETADO (v3.50.4)** | Resuelto | `frecuencia-helper.ts`, persistencia física de frecuencias en PostgreSQL, botón ergonómico `[ Asignar Vuelta ]` en `VentasReviewScreen`. |
-| **PENDIENTE #4** | Módulo Institucional de Gerencia de Cooperativa | Futuro | Estratégica | Panel consolidado de directiva para auditoría de los 19 autobuses una vez completada la adopción global. |
-
----
-
-## 7. Registro de Commits Recientes en Repositorio Oficial (`main`)
-- `d42cdea` — *fix(scripts): proteger db:push y dev.sh ante ausencia de DATABASE_URL*
-- `4ec5ce2` — *feat(error): agregar global-error boundary para compilacion limpia en Next.js 16*
-- `c678f70` — *fix(odometro): corregir render de opciones de justificacion en selector de desfase*
+## 4. Registro Histórico de Commits Recientes (`main`)
+- `bf63cec` — *chore(release): consolidar entrega v3.58.1 con Mantenimiento Preventivo Hino AK (Fases 1, 2 y 3 completadas)*
+- `8212dd6` — *docs(maestro): registrar Fase 3 de Mantenimiento Preventivo (Vista Chofer / Cabina) como COMPLETADO*
+- `24ec41d` — *feat(mantenimiento): integrar ChoferMantenimientoWidget en pantalla operativa HomeScreen v3.58.0*
+- `bec7028` — *feat(mantenimiento): Fase 3 ChoferMantenimientoWidget vista rapida con checklist semaforico y modal en cabina v3.58.0*
+- `9cff20d` — *docs(maestro): registrar Fase 2 de Mantenimiento Socio Propietario (Bus 01) como COMPLETADO*
+- `e79a234` — *feat(mantenimiento): Fase 2 activacion y personalizacion de unidad para Socio Propietario (PIN 2107 / Bus 01) v3.58.0*
+- `47488a1` — *docs(maestro): actualizar Contexto Maestro con Fase 1 de Mantenimiento Hino AK completada*
+- `d61a34f` — *feat(mantenimiento): integración de SuperAdminMantenimientoTab en VTConfigScreen v3.58.0*
+- `086e9c6` — *feat(mantenimiento): SuperAdminMantenimientoTab interfaz oficial para catálogo Hino AK v3.58.0*
+- `18ed459` — *feat(mantenimiento): biblioteca y catalogo maestro institucional de 19 mantenimientos Hino AK v3.58.0*
 - `1c125df` — *feat(odometro): calibracion de kilometraje oficial y validacion semaforica v3.58.0*
 
-
-- CI Test — *chore(ci): prueba de verificacion de despliegue automatico en Vercel*
-- `18ed459` — *feat(mantenimiento): biblioteca y catalogo maestro institucional de 19 mantenimientos Hino AK v3.58.0*
-- `086e9c6` — *feat(mantenimiento): SuperAdminMantenimientoTab interfaz oficial para catálogo Hino AK v3.58.0*
-- `d61a34f` — *feat(mantenimiento): integración de SuperAdminMantenimientoTab en VTConfigScreen v3.58.0*
-- `47488a1` — *docs(maestro): actualizar Contexto Maestro con Fase 1 de Mantenimiento Hino AK completada*
-- `e79a234` — *feat(mantenimiento): Fase 2 activacion y personalizacion de unidad para Socio Propietario (PIN 2107 / Bus 01) v3.58.0*
-- `bec7028` — *feat(mantenimiento): Fase 3 ChoferMantenimientoWidget vista rapida con checklist semaforico y modal en cabina v3.58.0*
-- `24ec41d` — *feat(mantenimiento): integrar ChoferMantenimientoWidget en pantalla operativa HomeScreen v3.58.0*
-
-
 ---
 
-## 8. Arquitectura y Hoja de Ruta de Mantenimiento Preventivo Hino AK (3 Niveles)
-
-### Aclaración de Cuentas y Roles Oficiales:
-- **PIN 9999:** SuperAdmin SaaS / Cooperativa (Gestión de Biblioteca Maestra Institucional, tramos de kilometraje, publicidad y control global).
-- **PIN 2107 / 0101:** Socio Propietario del **Bus 01** (Soberanía patrimonial sobre la unidad, selección y activación de tareas de su bus, umbrales personalizados, costos reales de repuestos y asignación de tareas a su tripulación).
-- **Tripulación (Chofer / Ayudante):** Personal operativo en ruta. Vista de ejecución rápida con checklist tipo semáforo de las tareas asignadas por el socio.
-
-### Fases de Implementación:
-1. **Fase 1: Catálogo Maestro Institucional Hino AK (SuperAdmin 9999) — [ESTADO: COMPLETADO]**
-   - Biblioteca central con los 19 ítems de mantenimiento preventivo Hino AK con especificaciones ecuatorianas (caneca 15W-40, filtros C1314, trampa de agua SF1307, valvulina 80W-90 / 85W-140 GL-4/GL-5, bandas 4515, secador WABCO, etc.).
-   - Panel de control en `VTConfigScreen.tsx` integrado con `SuperAdminMantenimientoTab.tsx` y `src/lib/mantenimiento-catalogo.ts`.
-   - Modos: edición en línea de kilometrajes oficiales, modal de especificaciones mecánicas detalladas, switches de activación institucional y pre-asignación a chofer, y botón de restablecimiento a valores de fábrica.
-2. **Fase 2: Activación y Personalización del Socio Propietario (PIN 2107 / Bus 01) — [ESTADO: COMPLETADO]**
-   - `MantenimientoScreen.tsx` completamente renovado y adaptado a la soberanía del Socio Propietario:
-     - Modal integrado con la Biblioteca Institucional Hino AK (19 mantenimientos) con filtros por categoría y búsqueda instantánea.
-     - Botón ergonómico de importación/activación directa a la unidad ("Activar" / "Ya Asignado").
-     - Ajuste en línea del intervalo en km específico de la unidad (ej. bajar cambio de aceite de 5,000 km a 4,500 km por severidad de ruta).
-     - Switch de delegación al Chofer: permite al socio decidir qué mantenimientos expone en la cabina operativa.
-     - Registro de cambio con captura de odómetro real, costo en dólares ($ USD) y taller/mecánico responsable.
-     - Filtros de estado rápido: "Todos", "Urgentes / Vencidos" y "Vista Chofer".
-     - Integración con el odómetro auditado oficial de la cooperativa.
-3. **Fase 3: Vista Operativa Rápida para el Chofer / Ayudante — [ESTADO: COMPLETADO]**
-   - Implementado `src/components/transport/ChoferMantenimientoWidget.tsx` e integrado de forma destacada en el Pilar 1 de `HomeScreen.tsx`:
-     - **Checklist Semafórico Táctil en Cabina:** Lista de tareas delegadas por el socio con baliza luminosa de estado (Verde = Al Día, Amarillo = Próximo a vencer en ≤ 800 km, Rojo pulsante = ¡VENCIDO / Urgente!).
-     - **Micro-barra de Progreso:** Porcentaje de desgaste visual en tiempo real en función del odómetro auditado de la jornada.
-     - **Modal Táctil Ergonómico de Asentamiento:** El chofer pulsa `[ Realizado ]` en cualquier mantenimiento en carretera y puede asentar la lectura del tacómetro/velocímetro y el nombre del taller o lubricadora en menos de 5 segundos.
-     - **Sincronización Inmediata:** Se actualiza automáticamente el registro patrimonial del Socio Propietario en `localStorage` y se recalculan los semáforos de la unidad sin recargar la página.
-     - **Navegación Fluida:** Acceso directo a la ficha integral del Socio mediante el botón `Ver ficha completa del Socio`.
+## 5. Matriz de Prioridades y Siguientes Pasos
+| Prioridad | Tarea / Módulo | Estado | Descripción |
+| :--- | :--- | :---: | :--- |
+| **Próxima Sesión (P1)** | **Auditoría y Corrección de las 3 Fases** | **LISTO PARA REVISIÓN** | El usuario probará desde su otra PC el flujo completo: SuperAdmin (9999), Socio (2107) y Chofer/Cabina para afinar detalles si es necesario. |
+| **P2 (Urgente)** | **Vinculación de Dispositivo Físico (Device Binding)** | **PENDIENTE** | Generación de `deviceId` inmutable en hardware local; asociación en BD a `Persona` (rol `AYUDANTE`); bloqueo de sesiones concurrentes en `/api/auth`; botón Admin "Desvincular / Resetear Teléfono" en `PersonalScreen`. |
+| **P3** | **Exportación Contable y Reportes de Mantenimiento** | Futuro | Reporte PDF de historial mecánico con costos acumulados por unidad para asambleas de socios. |
