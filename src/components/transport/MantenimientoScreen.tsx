@@ -142,11 +142,52 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
 
   // Filtro de la vista principal del socio
   const [filtroVista, setFiltroVista] = useState<'TODOS' | 'VENCIDOS' | 'CHOFER'>('TODOS');
+  const [filtroCategoria, setFiltroCategoria] = useState<string>('TODAS');
 
   const saveItems = (updated: MantenimientoBusItem[]) => {
     setItems(updated);
     if (typeof window !== 'undefined') {
       localStorage.setItem(`rg_mantenimientos_v2_${activeBusId}`, JSON.stringify(updated));
+    }
+  };
+
+  const handleSincronizarBloqueMotor = () => {
+    const catalogo = getCatalogoMaestroGlobal();
+    const motorItemsCatalogo = catalogo.filter(c => c.categoria === 'MOTOR');
+    const codigosExistentes = new Set(items.map(it => it.codigo));
+    const nuevos: MantenimientoBusItem[] = [];
+
+    motorItemsCatalogo.forEach(c => {
+      if (!codigosExistentes.has(c.codigo)) {
+        nuevos.push({
+          id: `mbus-${c.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: Math.max(0, kmActual - Math.floor(c.intervaloKmOficial * 0.3)),
+          fechaUltimo: new Date().toISOString().split('T')[0],
+          costoEstimado: c.codigo === 'MNT-ACEITE-MOT' ? 120 : c.codigo.includes('FILT') ? 35 : 80,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: c.asignadoChoferPorDefecto,
+          activo: true,
+        });
+      }
+    });
+
+    if (nuevos.length > 0) {
+      const actualizados = [...items, ...nuevos];
+      saveItems(actualizados);
+      toast({
+        title: 'Bloque de Motor Sincronizado',
+        description: `Se activaron los ${nuevos.length} ítems oficiales de Motor en tu unidad.`,
+      });
+    } else {
+      toast({
+        title: 'Motor Completo',
+        description: 'Todos los 9 ítems oficiales de Motor ya están activos en este autobús.',
+      });
     }
   };
 
@@ -249,14 +290,15 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   // Cálculo de semáforos y filtrado
   const itemsFiltrados = useMemo(() => {
     return items.filter(it => {
+      if (filtroCategoria !== 'TODAS' && it.categoria !== filtroCategoria) return false;
       if (filtroVista === 'CHOFER') return it.asignadoChofer;
       if (filtroVista === 'VENCIDOS') {
         const kmRecorridos = kmActual - it.ultimoKm;
-        return kmActual - it.ultimoKm >= it.intervaloKm;
+        return kmRecorridos >= it.intervaloKm;
       }
       return true;
     });
-  }, [items, kmActual, filtroVista]);
+  }, [items, kmActual, filtroVista, filtroCategoria]);
 
   const totalVencidos = useMemo(() => {
     return items.filter(it => kmActual - it.ultimoKm >= it.intervaloKm).length;
@@ -410,11 +452,74 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             size="sm"
             variant="ghost"
             onClick={() => setIsCatalogoModalOpen(true)}
-            className="h-8 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-200/60 flex items-center gap-1"
+            className="h-8 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-200/60 flex items-center gap-1 shrink-0"
           >
-            <Plus className="w-3.5 h-3.5" /> Agregar Tarea
+            <Plus className="w-3.5 h-3.5" /> Biblioteca Hino
           </Button>
         </div>
+
+        {/* Chips de Categorías Técnicas */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+          {[
+            { id: 'TODAS', label: 'Todas las Áreas' },
+            { id: 'MOTOR', label: '🛢️ Motor' },
+            { id: 'TRANSMISION', label: '⚙️ Transmisión' },
+            { id: 'FRENOS', label: '🛑 Frenos' },
+            { id: 'SUSPENSION', label: '🔩 Suspensión' },
+            { id: 'SISTEMA_AIRE', label: '💨 Admisión / Aire' },
+            { id: 'RODAJE', label: '🔄 Rodaje / Llantas' },
+          ].map(cat => {
+            const count = cat.id === 'TODAS'
+              ? items.length
+              : items.filter(i => i.categoria === cat.id).length;
+            const isSelected = filtroCategoria === cat.id;
+
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setFiltroCategoria(cat.id)}
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span>{cat.label}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600 font-extrabold'}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Banner Exclusivo: Bloque 1 - MOTOR */}
+        {filtroCategoria === 'MOTOR' && (
+          <div className="bg-blue-50/90 border border-blue-200 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-xs text-blue-950">🛢️ Bloque 1: MOTOR (Homologación Hino AK)</span>
+                <Badge className="bg-blue-200 text-blue-900 text-[10px] font-black border-0">
+                  9 Ítems Oficiales
+                </Badge>
+              </div>
+              <p className="text-[11px] text-blue-800/80 mt-0.5">
+                Aceite, Filtros (Aceite, Trampa, Diésel Fino), Calibración Válvulas, Bandas, Termostato, Radiador y Metales.
+              </p>
+            </div>
+            {items.filter(i => i.categoria === 'MOTOR').length < 9 && (
+              <Button
+                size="sm"
+                onClick={handleSincronizarBloqueMotor}
+                className="h-8 px-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-black text-xs shrink-0 self-start sm:self-center shadow-xs"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Cargar los 9 de Motor
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Lista de Mantenimientos Asignados */}
         <div className="flex flex-col gap-3">
