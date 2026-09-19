@@ -32,8 +32,8 @@
 - **Bloque 5: FRENOS Y NEUMÁTICO** (Bandas freno 35,000 km, Secador de aire 40,000 km, Compresor 900,000 km).
 
 ## 4. Registro de Commits por Fases (v3.58.4)
-- `b006174`: `chore(base): sincronizar estructura base de proyecto v3.58.0`
-- `73757d7`: `docs(maestro): FASE 1 - actualizar directivas y contexto maestro v3.58.4 con homologacion de Motor Hino AK`
-- `2b485f4`: `feat(mantenimiento): FASE 2 - calibracion oficial de Bloque 1 Motor Hino AK con 9 items`
-- `6b3f9cb`: `feat(ui): FASE 3 - integracion de filtros tecnicos y sincronizacion de Bloque Motor en MantenimientoScreen y combo 4+2 en ChoferWidget`
+- `9879011`: `docs(maestro): FASE 1 - actualizar directivas y contexto maestro v3.58.4 con homologacion de Motor Hino AK`
+- `52d858e`: `feat(mantenimiento): FASE 2 - calibracion oficial de Bloque 1 Motor Hino AK con 9 items en catalogo maestro`
+- `3e09112`: `feat(ui): FASE 3 - integracion de filtros tecnicos en MantenimientoScreen y combo lubricadora 4+2 en ChoferWidget`
+- `391e492`: `chore(release): bump a v3.58.4 con homologacion oficial de Bloque Motor Hino AK`
 
