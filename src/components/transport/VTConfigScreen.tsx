@@ -195,58 +195,62 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
 
       
       {/* ─── NAVEGACIÓN MODULAR POR PESTAÑAS (SUPERADMIN CONSOLE) ─── */}
-      <div className="sticky top-[57px] z-10 bg-white border-b border-[#D6D6D6] px-4 py-2 shadow-xs">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+      <div className="sticky top-[57px] z-10 bg-white border-b border-[#D6D6D6] px-4 py-2.5 shadow-xs">
+        <div className="grid grid-cols-2 gap-2">
+          {/* Fila 1 - Columna 1 */}
           <button
             type="button"
             onClick={() => setActiveTab('TURNOS')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black transition-all shrink-0 ${
+            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all w-full text-center ${
               activeTab === 'TURNOS'
-                ? 'bg-[#912D26] text-white shadow-sm'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-[#912D26] text-white shadow-sm ring-2 ring-[#912D26]/20'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200/60'
             }`}
           >
-            <Bus className="w-3.5 h-3.5" />
-            <span>1. Turnos y VTs ({vts.length})</span>
+            <Bus className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">1. Turnos y VTs ({vts.length})</span>
           </button>
 
+          {/* Fila 1 - Columna 2 */}
           <button
             type="button"
             onClick={() => setActiveTab('DESPACHO')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black transition-all shrink-0 ${
+            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all w-full text-center ${
               activeTab === 'DESPACHO'
-                ? 'bg-[#912D26] text-white shadow-sm'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-[#912D26] text-white shadow-sm ring-2 ring-[#912D26]/20'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200/60'
             }`}
           >
-            <Clock className="w-3.5 h-3.5" />
-            <span>2. Despacho y Viaje Gratis</span>
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">2. Despacho y Premio</span>
           </button>
 
+          {/* Fila 2 - Columna 1 */}
           <button
             type="button"
             onClick={() => setActiveTab('KILOMETRAJE')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black transition-all shrink-0 ${
+            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all w-full text-center ${
               activeTab === 'KILOMETRAJE'
-                ? 'bg-blue-700 text-white shadow-sm'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-blue-700 text-white shadow-sm ring-2 ring-blue-700/20'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200/60'
             }`}
           >
-            <Gauge className="w-3.5 h-3.5" />
-            <span>3. Kilometraje y Tolerancias</span>
+            <Gauge className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">3. Kilometraje y Km</span>
           </button>
 
+          {/* Fila 2 - Columna 2 */}
           <button
             type="button"
             onClick={() => setActiveTab('MANTENIMIENTO')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black transition-all shrink-0 ${
+            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all w-full text-center ${
               activeTab === 'MANTENIMIENTO'
-                ? 'bg-amber-500 text-slate-950 shadow-sm'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-amber-500 text-slate-950 shadow-sm ring-2 ring-amber-500/20'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200/60'
             }`}
           >
-            <Wrench className="w-3.5 h-3.5" />
-            <span>4. Taller Hino AK (19)</span>
+            <Wrench className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">4. Taller Hino AK (19)</span>
           </button>
         </div>
       </div>
