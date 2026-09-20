@@ -223,20 +223,6 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
     observacionesMecanica: 'Filtro cilíndrico grande exterior de admisión. Reemplazo preventivo a los 40,000 km o ante saturación.',
   },
   {
-    id: 'hino-09b',
-    codigo: 'MNT-LAVADO-INTERCOOLER',
-    nombre: 'Lavado de Intercooler',
-    categoria: 'SISTEMA_AIRE',
-    intervaloKmOficial: 100000,
-    intervaloDiasAprox: 540,
-    especificacionLubricanteRepuesto: 'Desmontaje y lavado químico interno/externo del radiador intercooler',
-    codigoRepuestoReferencia: 'Radiador Intercooler Hino AK',
-    asignadoChoferPorDefecto: false,
-    activoBiblioteca: true,
-    prioridad: 'ALTA',
-    observacionesMecanica: 'Desmontaje del radiador de aire para desengrasado químico interior (eliminar vapores de aceite) y limpieza de panal exterior.',
-  },
-  {
     id: 'hino-10',
     codigo: 'MNT-ENGRASE-BOCINAS',
     nombre: 'Engrase de Rulimanes y Bocinas de Rueda',
@@ -281,16 +267,16 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
   {
     id: 'hino-13',
     codigo: 'MNT-RADIADOR-COOLANT',
-    nombre: 'Lavado de Radiador y Cambio de Refrigerante',
+    nombre: 'Lavado de Radiador, Intercooler y Refrigerante',
     categoria: 'MOTOR',
     intervaloKmOficial: 100000,
     intervaloDiasAprox: 365,
-    especificacionLubricanteRepuesto: 'Sondeo/lavado de radiador + 4 galones Coolant Heavy Duty 50/50',
+    especificacionLubricanteRepuesto: 'Lavado químico de circuito (flushing) + lavado de intercooler + 4 galones Coolant Heavy Duty 50/50',
     codigoRepuestoReferencia: 'Coolant 50/50 Larga Vida + Servicio Radiador',
     asignadoChoferPorDefecto: false,
     activoBiblioteca: true,
     prioridad: 'ALTA',
-    observacionesMecanica: 'Drenar circuito, sondeo químico de panal y recambio de refrigerante 50/50.',
+    observacionesMecanica: 'Mantenimiento preventivo anual: drenaje y lavado químico interno del circuito, lavado de intercooler para eliminar grasa del turbo, lavado exterior de colmenas y carga de 4 galones de Coolant Heavy Duty 50/50. El baqueteado solo aplica como correctivo si hay obstrucción severa por sarro.',
   },
   {
     id: 'hino-14',
@@ -408,7 +394,7 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
   },
 ];
 
-const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v3_58_6';
+const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v3_58_7';
 
 export function getCatalogoMaestroGlobal(): MantenimientoCatalogoItem[] {
   if (typeof window === 'undefined') return CATALOGO_MAESTRO_HINO_AK;

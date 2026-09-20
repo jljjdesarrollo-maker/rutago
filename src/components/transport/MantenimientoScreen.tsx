@@ -158,6 +158,18 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     const codigosExistentes = new Set(items.map(it => it.codigo));
     const nuevos: MantenimientoBusItem[] = [];
 
+    // Actualizar nombre y detalle de MNT-RADIADOR-COOLANT si ya existía
+    const itemsActualizados = items.map(it => {
+      if (it.codigo === 'MNT-RADIADOR-COOLANT') {
+        return {
+          ...it,
+          nombre: 'Lavado de Radiador, Intercooler y Refrigerante',
+          repuestoDetalle: 'Lavado químico de circuito (flushing) + lavado de intercooler + 4 galones Coolant Heavy Duty 50/50',
+        };
+      }
+      return it;
+    });
+
     motorItemsCatalogo.forEach(c => {
       if (!codigosExistentes.has(c.codigo)) {
         nuevos.push({
@@ -169,7 +181,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
           intervaloKm: c.intervaloKmOficial,
           ultimoKm: Math.max(0, kmActual - Math.floor(c.intervaloKmOficial * 0.3)),
           fechaUltimo: new Date().toISOString().split('T')[0],
-          costoEstimado: c.codigo === 'MNT-ACEITE-MOT' ? 120 : c.codigo.includes('FILT') ? 35 : 80,
+          costoEstimado: c.codigo === 'MNT-ACEITE-MOT' ? 120 : c.codigo === 'MNT-RADIADOR-COOLANT' ? 130 : c.codigo.includes('FILT') ? 35 : 80,
           repuestoDetalle: c.especificacionLubricanteRepuesto,
           asignadoChofer: c.asignadoChoferPorDefecto,
           activo: true,
@@ -177,12 +189,13 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
       }
     });
 
-    if (nuevos.length > 0) {
-      const actualizados = [...items, ...nuevos];
+    const huboCambios = nuevos.length > 0 || itemsActualizados.some((it, idx) => it !== items[idx]);
+    if (huboCambios) {
+      const actualizados = [...itemsActualizados, ...nuevos];
       saveItems(actualizados);
       toast({
         title: 'Bloque de Motor Sincronizado',
-        description: `Se activaron los ${nuevos.length} ítems oficiales de Motor en tu unidad.`,
+        description: `Se activaron los ítems oficiales de Motor (incluye Radiador, Intercooler y Coolant) en tu unidad.`,
       });
     } else {
       toast({
@@ -251,7 +264,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     const aireItemsCatalogo = catalogo.filter(c => c.categoria === 'SISTEMA_AIRE');
     const nuevos: MantenimientoBusItem[] = [];
 
-    // Migrar ítems con nombres/intervalos legados o reclasificar secador/compresor a Frenos
+    // Migrar ítems con nombres/intervalos legados o reclasificar secador/compresor a Frenos, y filtrar Intercooler (fusionado en Motor)
     const actualizadosExistentes = items.map(it => {
       if (it.codigo === 'MNT-SOPLADO-AIRE') {
         return { ...it, nombre: 'Soplado Filtro Aire', intervaloKm: 5000 };
@@ -266,7 +279,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
         return { ...it, categoria: 'FRENOS' as const };
       }
       return it;
-    });
+    }).filter(it => it.codigo !== 'MNT-LAVADO-INTERCOOLER');
 
     const codigosActualizados = new Set(actualizadosExistentes.map(it => it.codigo));
 
@@ -281,7 +294,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
           intervaloKm: c.intervaloKmOficial,
           ultimoKm: Math.max(0, kmActual - Math.floor(c.intervaloKmOficial * 0.2)),
           fechaUltimo: new Date().toISOString().split('T')[0],
-          costoEstimado: c.codigo === 'MNT-FILT-AIRE-GRANDE' ? 65 : c.codigo === 'MNT-FILT-AIRE-SEC' ? 35 : c.codigo === 'MNT-LAVADO-INTERCOOLER' ? 45 : 15,
+          costoEstimado: c.codigo === 'MNT-FILT-AIRE-GRANDE' ? 65 : c.codigo === 'MNT-FILT-AIRE-SEC' ? 35 : 15,
           repuestoDetalle: c.especificacionLubricanteRepuesto,
           asignadoChofer: c.asignadoChoferPorDefecto,
           activo: true,
@@ -295,12 +308,12 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     if (nuevos.length > 0) {
       toast({
         title: 'Bloque Admisión y Aire Sincronizado',
-        description: `Se activaron los ${nuevos.length} ítems oficiales de Aire (incluye Lavado Malla Pasillo) en tu unidad.`,
+        description: `Se activaron los ${nuevos.length} ítems oficiales de Aire (Soplado, Malla Pasillo, Mangueras y Filtros) en tu unidad.`,
       });
     } else {
       toast({
         title: 'Admisión y Aire Homologado',
-        description: 'Los 6 ítems oficiales de Admisión y Aire ya están activos y homologados.',
+        description: 'Los 5 ítems oficiales de Admisión y Aire ya están activos y homologados.',
       });
     }
   };
@@ -641,7 +654,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                 </Badge>
               </div>
               <p className="text-[11px] text-blue-800/80 mt-0.5">
-                Aceite, Filtros (Aceite, Trampa, Diésel Fino), Calibración Válvulas, Bandas, Termostato, Radiador y Metales.
+                Aceite, Filtros (Aceite, Trampa, Diésel Fino), Calibración Válvulas, Bandas, Termostato, Radiador/Intercooler/Coolant y Metales.
               </p>
             </div>
             {items.filter(i => i.categoria === 'MOTOR').length < 9 && (
@@ -691,14 +704,14 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
               <div className="flex items-center gap-2">
                 <span className="font-black text-xs text-sky-950">💨 Bloque 3: ADMISIÓN Y AIRE (Homologación Hino AK)</span>
                 <Badge className="bg-sky-200 text-sky-900 text-[10px] font-black border-0">
-                  6 Ítems Oficiales
+                  5 Ítems Oficiales
                 </Badge>
               </div>
               <p className="text-[11px] text-sky-800/80 mt-0.5">
-                Soplado Filtro (5k), Lavado Malla Pasillo (5k), Ajuste Mangueras (10k), Filtro Pequeño (20k), Filtro Grande (40k) y Lavado Intercooler (100k).
+                Soplado Filtro (5k), Lavado Malla Pasillo (5k), Ajuste Mangueras (10k), Filtro Pequeño (20k) y Filtro Grande (40k).
               </p>
             </div>
-            {items.filter(i => i.categoria === 'SISTEMA_AIRE').length < 6 && (
+            {items.filter(i => i.categoria === 'SISTEMA_AIRE').length < 5 && (
               <Button
                 size="sm"
                 onClick={handleSincronizarBloqueAire}
