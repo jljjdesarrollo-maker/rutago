@@ -209,7 +209,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       key: 'filtroAireSecundario' as const,
       codigo: 'MNT-FILT-AIRE-SEC',
       icono: '💨',
-      nombre: 'Filtro de Aire Secundario (Pequeño / Seguridad)',
+      nombre: 'Filtro Aire Pequeño',
       detalle: 'Cartucho interior de seguridad (~20,000 km / cada 4 cambios)',
       esFiltroAire: true,
     },
@@ -217,7 +217,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       key: 'filtroAirePrimario' as const,
       codigo: 'MNT-FILT-AIRE-GRANDE',
       icono: '💨',
-      nombre: 'Filtro de Aire Primario (Grande / Admisión)',
+      nombre: 'Filtro Aire Grande',
       detalle: 'Cartucho exterior cilíndrico principal (~40,000 km / cada 8 cambios)',
       esFiltroAire: true,
     },
@@ -291,7 +291,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           catalogoId: catItem?.id,
           codigo: ci.codigo,
           nombre: ci.nombre,
-          categoria: (catItem?.categoria as any) || (ci.esFiltroAire ? 'MOTOR' : 'SISTEMA_COMBUSTIBLE'),
+          categoria: (catItem?.categoria as any) || (ci.esFiltroAire ? 'SISTEMA_AIRE' : 'SISTEMA_COMBUSTIBLE'),
           intervaloKm:
             catItem?.intervaloKmOficial ||
             (ci.key === 'filtroAirePrimario' ? 40000 : ci.key === 'filtroAireSecundario' ? 20000 : 5000),

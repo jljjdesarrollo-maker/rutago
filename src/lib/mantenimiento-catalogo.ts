@@ -99,21 +99,49 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
   {
     id: 'hino-06',
     codigo: 'MNT-SOPLADO-AIRE',
-    nombre: 'Soplado y Limpieza de Filtro de Aire Pequeño',
+    nombre: 'Soplado Filtro Aire',
     categoria: 'SISTEMA_AIRE',
-    intervaloKmOficial: 2500,
-    intervaloDiasAprox: 15,
-    especificacionLubricanteRepuesto: 'Limpieza con aire a contrapresión (máx 30 PSI)',
+    intervaloKmOficial: 5000,
+    intervaloDiasAprox: 30,
+    especificacionLubricanteRepuesto: 'Limpieza con pistola de aire seco a contrapresión (máx 30 PSI) de adentro hacia afuera',
     codigoRepuestoReferencia: 'Servicio Taller / Compresor',
     asignadoChoferPorDefecto: true,
     activoBiblioteca: true,
     prioridad: 'MEDIA',
-    observacionesMecanica: 'Soplar de adentro hacia afuera por caminos con polvo en sectores Vilcabamba/Yangana.',
+    observacionesMecanica: 'Sopleteado de adentro hacia afuera. Se realiza habitualmente con el cambio de aceite de motor en lubricadora (5,000 km) o tras turno de polvo en La Elvira.',
+  },
+  {
+    id: 'hino-06c',
+    codigo: 'MNT-LAVADO-MALLA-PASILLO',
+    nombre: 'Lavado Malla Aire Pasillo',
+    categoria: 'SISTEMA_AIRE',
+    intervaloKmOficial: 5000,
+    intervaloDiasAprox: 30,
+    especificacionLubricanteRepuesto: 'Lavado con agua y detergente de malla de recirculación del techo en pasillo',
+    codigoRepuestoReferencia: 'Malla Techo Pasillo Bus',
+    asignadoChoferPorDefecto: true,
+    activoBiblioteca: true,
+    prioridad: 'MEDIA',
+    observacionesMecanica: 'Retirar malla del techo del pasillo del bus, lavar en balde con agua y detergente, secar a la sombra y colocar.',
+  },
+  {
+    id: 'hino-06d',
+    codigo: 'MNT-MANGUERAS-ADMISION',
+    nombre: 'Ajuste Mangueras Admisión',
+    categoria: 'SISTEMA_AIRE',
+    intervaloKmOficial: 10000,
+    intervaloDiasAprox: 60,
+    especificacionLubricanteRepuesto: 'Reapriete de abrazaderas tipo t-bolt en ductos de admisión, turbo e intercooler',
+    codigoRepuestoReferencia: 'Abrazaderas T-Bolt Hino AK',
+    asignadoChoferPorDefecto: false,
+    activoBiblioteca: true,
+    prioridad: 'MEDIA',
+    observacionesMecanica: 'Ajustar abrazaderas y chequear ductos de turbo e intercooler para evitar pérdidas de presión y fuerza en subidas.',
   },
   {
     id: 'hino-06b',
     codigo: 'MNT-FILT-AIRE-SEC',
-    nombre: 'Filtro de Aire Secundario (Pequeño / Seguridad)',
+    nombre: 'Filtro Aire Pequeño',
     categoria: 'SISTEMA_AIRE',
     intervaloKmOficial: 20000,
     intervaloDiasAprox: 120,
@@ -122,7 +150,7 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
     asignadoChoferPorDefecto: false,
     activoBiblioteca: true,
     prioridad: 'ALTA',
-    observacionesMecanica: 'Reemplazo preventivo cada 4 cambios de aceite (~20,000 km). Prohibido lavar con agua.',
+    observacionesMecanica: 'Elemento interior de seguridad que protege el turbo. Reemplazo preventivo cada 4 cambios de aceite (~20,000 km). Prohibido lavar con agua.',
   },
   {
     id: 'hino-07',
@@ -183,16 +211,30 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
   {
     id: 'hino-09',
     codigo: 'MNT-FILT-AIRE-GRANDE',
-    nombre: 'Filtro de Aire Grande (Admisión Principal)',
+    nombre: 'Filtro Aire Grande',
     categoria: 'SISTEMA_AIRE',
     intervaloKmOficial: 40000,
     intervaloDiasAprox: 240,
-    especificacionLubricanteRepuesto: 'Filtro de aire principal de flujo cilíndrico para Hino AK',
+    especificacionLubricanteRepuesto: 'Cartucho cilíndrico exterior principal de admisión para Hino AK',
     codigoRepuestoReferencia: 'FA1188 / 17801-3380',
     asignadoChoferPorDefecto: false,
     activoBiblioteca: true,
+    prioridad: 'CRITICA',
+    observacionesMecanica: 'Filtro cilíndrico grande exterior de admisión. Reemplazo preventivo a los 40,000 km o ante saturación.',
+  },
+  {
+    id: 'hino-09b',
+    codigo: 'MNT-LAVADO-INTERCOOLER',
+    nombre: 'Lavado de Intercooler',
+    categoria: 'SISTEMA_AIRE',
+    intervaloKmOficial: 100000,
+    intervaloDiasAprox: 540,
+    especificacionLubricanteRepuesto: 'Desmontaje y lavado químico interno/externo del radiador intercooler',
+    codigoRepuestoReferencia: 'Radiador Intercooler Hino AK',
+    asignadoChoferPorDefecto: false,
+    activoBiblioteca: true,
     prioridad: 'ALTA',
-    observacionesMecanica: 'Alerta preventiva recomendada a los 38,000 km. Reemplazar ante saturación.',
+    observacionesMecanica: 'Desmontaje del radiador de aire para desengrasado químico interior (eliminar vapores de aceite) y limpieza de panal exterior.',
   },
   {
     id: 'hino-10',
@@ -226,7 +268,7 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
     id: 'hino-12',
     codigo: 'MNT-SECADOR-AIRE',
     nombre: 'Cartucho Secador de Aire de Frenos',
-    categoria: 'SISTEMA_AIRE',
+    categoria: 'FRENOS',
     intervaloKmOficial: 40000,
     intervaloDiasAprox: 240,
     especificacionLubricanteRepuesto: 'Filtro desecante WABCO / Bendix con rosca para sistema neumático',
@@ -354,7 +396,7 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
     id: 'hino-19',
     codigo: 'MNT-COMPRESOR-AIRE',
     nombre: 'Compresor de Aire de Frenos',
-    categoria: 'SISTEMA_AIRE',
+    categoria: 'FRENOS',
     intervaloKmOficial: 900000,
     intervaloDiasAprox: 2000,
     especificacionLubricanteRepuesto: 'Kit de reparación mayor (anillos, pistón, culata y válvulas de lengüeta)',
@@ -366,7 +408,7 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
   },
 ];
 
-const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v3';
+const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v3_58_6';
 
 export function getCatalogoMaestroGlobal(): MantenimientoCatalogoItem[] {
   if (typeof window === 'undefined') return CATALOGO_MAESTRO_HINO_AK;
@@ -378,7 +420,42 @@ export function getCatalogoMaestroGlobal(): MantenimientoCatalogoItem[] {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      // Sincronización inteligente: asegurar que nuevos ítems oficiales de fábrica estén presentes
+      const codigosMap = new Set(parsed.map((p: MantenimientoCatalogoItem) => p.codigo));
+      let modificado = false;
+      const actualizados = parsed.map((item: MantenimientoCatalogoItem) => {
+        const oficial = CATALOGO_MAESTRO_HINO_AK.find(c => c.codigo === item.codigo);
+        if (oficial) {
+          if (
+            item.intervaloKmOficial !== oficial.intervaloKmOficial ||
+            item.categoria !== oficial.categoria ||
+            item.nombre !== oficial.nombre
+          ) {
+            modificado = true;
+            return {
+              ...item,
+              nombre: oficial.nombre,
+              categoria: oficial.categoria,
+              intervaloKmOficial: oficial.intervaloKmOficial,
+              intervaloDiasAprox: oficial.intervaloDiasAprox,
+              observacionesMecanica: oficial.observacionesMecanica,
+            };
+          }
+        }
+        return item;
+      });
+
+      CATALOGO_MAESTRO_HINO_AK.forEach(oficial => {
+        if (!codigosMap.has(oficial.codigo)) {
+          actualizados.push(oficial);
+          modificado = true;
+        }
+      });
+
+      if (modificado) {
+        localStorage.setItem(STORAGE_KEY_CATALOGO, JSON.stringify(actualizados));
+      }
+      return actualizados;
     }
   } catch (err) {
     console.error('Error al leer catalogo maestro de mantenimiento:', err);

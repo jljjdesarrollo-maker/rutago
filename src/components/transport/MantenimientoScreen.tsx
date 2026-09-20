@@ -246,6 +246,65 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     }
   };
 
+  const handleSincronizarBloqueAire = () => {
+    const catalogo = getCatalogoMaestroGlobal();
+    const aireItemsCatalogo = catalogo.filter(c => c.categoria === 'SISTEMA_AIRE');
+    const nuevos: MantenimientoBusItem[] = [];
+
+    // Migrar ítems con nombres/intervalos legados o reclasificar secador/compresor a Frenos
+    const actualizadosExistentes = items.map(it => {
+      if (it.codigo === 'MNT-SOPLADO-AIRE') {
+        return { ...it, nombre: 'Soplado Filtro Aire', intervaloKm: 5000 };
+      }
+      if (it.codigo === 'MNT-FILT-AIRE-SEC') {
+        return { ...it, nombre: 'Filtro Aire Pequeño', intervaloKm: 20000 };
+      }
+      if (it.codigo === 'MNT-FILT-AIRE-GRANDE') {
+        return { ...it, nombre: 'Filtro Aire Grande', intervaloKm: 40000 };
+      }
+      if (it.codigo === 'MNT-SECADOR-AIRE' || it.codigo === 'MNT-COMPRESOR-AIRE') {
+        return { ...it, categoria: 'FRENOS' as const };
+      }
+      return it;
+    });
+
+    const codigosActualizados = new Set(actualizadosExistentes.map(it => it.codigo));
+
+    aireItemsCatalogo.forEach(c => {
+      if (!codigosActualizados.has(c.codigo)) {
+        nuevos.push({
+          id: `mbus-${c.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: Math.max(0, kmActual - Math.floor(c.intervaloKmOficial * 0.2)),
+          fechaUltimo: new Date().toISOString().split('T')[0],
+          costoEstimado: c.codigo === 'MNT-FILT-AIRE-GRANDE' ? 65 : c.codigo === 'MNT-FILT-AIRE-SEC' ? 35 : c.codigo === 'MNT-LAVADO-INTERCOOLER' ? 45 : 15,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: c.asignadoChoferPorDefecto,
+          activo: true,
+        });
+      }
+    });
+
+    const resultadoFinal = [...actualizadosExistentes, ...nuevos];
+    saveItems(resultadoFinal);
+
+    if (nuevos.length > 0) {
+      toast({
+        title: 'Bloque Admisión y Aire Sincronizado',
+        description: `Se activaron los ${nuevos.length} ítems oficiales de Aire (incluye Lavado Malla Pasillo) en tu unidad.`,
+      });
+    } else {
+      toast({
+        title: 'Admisión y Aire Homologado',
+        description: 'Los 6 ítems oficiales de Admisión y Aire ya están activos y homologados.',
+      });
+    }
+  };
+
   const handleUpdateKmActual = (nuevoKmStr: string) => {
     const num = parseInt(nuevoKmStr, 10);
     if (!isNaN(num) && num > 0) {
@@ -620,6 +679,33 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
               >
                 <RotateCcw className="w-3.5 h-3.5 mr-1" />
                 Homologar Transmisión
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Banner Exclusivo: Bloque 3 - ADMISIÓN Y AIRE */}
+        {filtroCategoria === 'SISTEMA_AIRE' && (
+          <div className="bg-sky-50/90 border border-sky-200 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-xs text-sky-950">💨 Bloque 3: ADMISIÓN Y AIRE (Homologación Hino AK)</span>
+                <Badge className="bg-sky-200 text-sky-900 text-[10px] font-black border-0">
+                  6 Ítems Oficiales
+                </Badge>
+              </div>
+              <p className="text-[11px] text-sky-800/80 mt-0.5">
+                Soplado Filtro (5k), Lavado Malla Pasillo (5k), Ajuste Mangueras (10k), Filtro Pequeño (20k), Filtro Grande (40k) y Lavado Intercooler (100k).
+              </p>
+            </div>
+            {items.filter(i => i.categoria === 'SISTEMA_AIRE').length < 6 && (
+              <Button
+                size="sm"
+                onClick={handleSincronizarBloqueAire}
+                className="h-8 px-3 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-black text-xs shrink-0 self-start sm:self-center shadow-xs"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Homologar Admisión y Aire
               </Button>
             )}
           </div>
