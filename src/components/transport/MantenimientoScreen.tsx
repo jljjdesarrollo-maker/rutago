@@ -436,6 +436,89 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     });
   };
 
+  const handleSincronizarBloqueFrenos = () => {
+    const catalogo = getCatalogoMaestroGlobal();
+    const frenosItemsCatalogo = catalogo.filter(c => c.categoria === 'FRENOS');
+    const nuevos: MantenimientoBusItem[] = [];
+
+    // Localizar odómetro previo de bandas si existía
+    const bandaPrevia = items.find(
+      it => it.codigo === 'MNT-BANDAS-FRENO' || it.codigo === 'MNT-ZAPATAS-POST' || it.codigo === 'MNT-ZAPATAS-DEL'
+    );
+
+    // Filtrar ítems legados/en reserva (Secador, Compresor, Intercooler) y migrar legados
+    const actualizadosExistentes = items.map(it => {
+      if (it.codigo === 'MNT-BANDAS-FRENO') {
+        return {
+          ...it,
+          codigo: 'MNT-ZAPATAS-POST',
+          nombre: 'Zapatas y Tambores Posteriores',
+          categoria: 'FRENOS' as const,
+          intervaloKm: 8000,
+          repuestoDetalle: 'Visita al maestro de frenos: remachado de zapatas traseras (compuesto pesado) y rebaje de ceja en tambores',
+        };
+      }
+      if (it.codigo === 'MNT-RACHES-FRENO') {
+        return {
+          ...it,
+          intervaloKm: 800,
+          asignadoChofer: true,
+          repuestoDetalle: 'Ajuste manual de tuercas en matracas/raches con llave para mantener pedal alto y sensible',
+        };
+      }
+      if (it.codigo === 'MNT-ZAPATAS-POST') {
+        return {
+          ...it,
+          intervaloKm: 8000,
+          repuestoDetalle: 'Visita al maestro de frenos: remachado de zapatas traseras (compuesto pesado) y rebaje de ceja en tambores',
+        };
+      }
+      if (it.codigo === 'MNT-ZAPATAS-DEL') {
+        return {
+          ...it,
+          intervaloKm: 11000,
+          repuestoDetalle: 'Visita al maestro de frenos: remachado de zapatas delanteras y rebaje de ceja en tambores delanteros',
+        };
+      }
+      return it;
+    }).filter(it => it.codigo !== 'MNT-SECADOR-AIRE' && it.codigo !== 'MNT-COMPRESOR-AIRE' && it.codigo !== 'MNT-LAVADO-INTERCOOLER');
+
+    const codigosActualizados = new Set(actualizadosExistentes.map(it => it.codigo));
+
+    frenosItemsCatalogo.forEach(c => {
+      if (!codigosActualizados.has(c.codigo)) {
+        const ultimoKmCalculado = (c.codigo === 'MNT-ZAPATAS-DEL' && bandaPrevia)
+          ? bandaPrevia.ultimoKm
+          : (c.codigo === 'MNT-RACHES-FRENO')
+          ? Math.max(0, kmActual - 400)
+          : Math.max(0, kmActual - Math.floor(c.intervaloKmOficial * 0.2));
+
+        nuevos.push({
+          id: `mbus-${c.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: ultimoKmCalculado,
+          fechaUltimo: bandaPrevia?.fechaUltimo || new Date().toISOString().split('T')[0],
+          costoEstimado: c.codigo === 'MNT-RACHES-FRENO' ? 0 : c.codigo === 'MNT-ZAPATAS-POST' ? 140 : 120,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: c.asignadoChoferPorDefecto,
+          activo: true,
+        });
+      }
+    });
+
+    const resultadoFinal = [...actualizadosExistentes, ...nuevos];
+    saveItems(resultadoFinal);
+
+    toast({
+      title: '🛑 Bloque Frenos Homologado',
+      description: `Los 3 ítems oficiales de Frenos (Raches 800 km Chofer, Zapatas Post 8k y Zapatas Del 11k) quedaron calibrados.`,
+    });
+  };
+
   const handleGuardarCombo4Ruedas = () => {
     const odoNum = parseInt(comboRuedasKm, 10);
     const km = !isNaN(odoNum) && odoNum > 0 ? odoNum : kmActual;
@@ -993,6 +1076,33 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                 Homologar Rodaje
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Banner Exclusivo: Bloque 5 - FRENOS */}
+        {filtroCategoria === 'FRENOS' && (
+          <div className="bg-rose-50/90 border border-rose-200 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-xs text-rose-950">🛑 Bloque 5: FRENOS (Homologación Hino AK)</span>
+                <Badge className="bg-rose-200 text-rose-900 text-[10px] font-black border-0">
+                  3 Ítems Oficiales
+                </Badge>
+              </div>
+              <p className="text-[11px] text-rose-800/80 mt-0.5">
+                Calibración Raches (800 km - Chofer), Zapatas Posteriores (8,000 km) y Zapatas Delanteras (11,000 km).
+              </p>
+            </div>
+            {items.filter(i => i.categoria === 'FRENOS').length < 3 && (
+              <Button
+                size="sm"
+                onClick={handleSincronizarBloqueFrenos}
+                className="h-8 px-3 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-black text-xs shrink-0 self-start sm:self-center shadow-xs cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Homologar Frenos
+              </Button>
+            )}
           </div>
         )}
 

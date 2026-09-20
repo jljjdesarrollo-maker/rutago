@@ -251,32 +251,46 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
     observacionesMecanica: '1.5 kg de grasa de alta temperatura + 2 retenes delanteros (1 por rueda). Desmontaje rápido (1.5 horas).',
   },
   {
-    id: 'hino-11',
-    codigo: 'MNT-BANDAS-FRENO',
-    nombre: 'Revisión y Cambio de Bandas de Freno',
+    id: 'hino-raches',
+    codigo: 'MNT-RACHES-FRENO',
+    nombre: 'Calibración de Raches de Freno',
     categoria: 'FRENOS',
-    intervaloKmOficial: 35000,
-    intervaloDiasAprox: 210,
-    especificacionLubricanteRepuesto: 'Juegos de bandas de freno remachadas (compuesto pesado Dorado, Azul o Negro)',
-    codigoRepuestoReferencia: 'Bandas 4515 / Tambor Hino AK',
-    asignadoChoferPorDefecto: false,
+    intervaloKmOficial: 800,
+    intervaloDiasAprox: 5,
+    especificacionLubricanteRepuesto: 'Ajuste manual de tuercas en matracas/raches con llave para mantener pedal alto y sensible',
+    codigoRepuestoReferencia: 'Calibración Raches (Chicharras)',
+    asignadoChoferPorDefecto: true,
     activoBiblioteca: true,
-    prioridad: 'CRITICA',
-    observacionesMecanica: 'Rectificar tambores si presentan estrías o recalentamiento por bajadas de montaña.',
+    prioridad: 'ALTA',
+    observacionesMecanica: 'Ajuste manual rápido del chofer cada 4-5 días (~800 km) para compensar el desgaste de zapatas y evitar que el pedal se vaya al fondo en bajadas.',
   },
   {
-    id: 'hino-12',
-    codigo: 'MNT-SECADOR-AIRE',
-    nombre: 'Cartucho Secador de Aire de Frenos',
+    id: 'hino-zapatas-post',
+    codigo: 'MNT-ZAPATAS-POST',
+    nombre: 'Zapatas y Tambores Posteriores',
     categoria: 'FRENOS',
-    intervaloKmOficial: 40000,
-    intervaloDiasAprox: 240,
-    especificacionLubricanteRepuesto: 'Filtro desecante WABCO / Bendix con rosca para sistema neumático',
-    codigoRepuestoReferencia: 'WABCO 4324102227 / Bendix',
+    intervaloKmOficial: 8000,
+    intervaloDiasAprox: 50,
+    especificacionLubricanteRepuesto: 'Visita al maestro de frenos: remachado de zapatas traseras (compuesto pesado) y rebaje de ceja en tambores',
+    codigoRepuestoReferencia: 'Zapatas Posteriores + Torno Tambores',
     asignadoChoferPorDefecto: false,
     activoBiblioteca: true,
     prioridad: 'CRITICA',
-    observacionesMecanica: 'Evita condensación de agua en tanques de aire y congelamiento de válvulas de frenado.',
+    observacionesMecanica: 'Visita al maestro de frenos cada 7 a 8 semanas (~8,000 km). Soportan el 70% del peso del bus y calor de fricción en bajadas Loja - Vilcabamba.',
+  },
+  {
+    id: 'hino-zapatas-del',
+    codigo: 'MNT-ZAPATAS-DEL',
+    nombre: 'Zapatas y Tambores Delanteros',
+    categoria: 'FRENOS',
+    intervaloKmOficial: 11000,
+    intervaloDiasAprox: 75,
+    especificacionLubricanteRepuesto: 'Visita al maestro de frenos: remachado de zapatas delanteras y rebaje de ceja en tambores delanteros',
+    codigoRepuestoReferencia: 'Zapatas Delanteras + Torno Tambores',
+    asignadoChoferPorDefecto: false,
+    activoBiblioteca: true,
+    prioridad: 'CRITICA',
+    observacionesMecanica: 'Visita al maestro de frenos cada 10 a 11 semanas (~11,000 km, 40% más de vida que traseras). Desgaste menor al eje posterior.',
   },
   {
     id: 'hino-13',
@@ -392,23 +406,9 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
     prioridad: 'CRITICA',
     observacionesMecanica: 'Cambio preventivo antes de overhaul para evitar desgaste o giro de cigüeñal.',
   },
-  {
-    id: 'hino-19',
-    codigo: 'MNT-COMPRESOR-AIRE',
-    nombre: 'Compresor de Aire de Frenos',
-    categoria: 'FRENOS',
-    intervaloKmOficial: 900000,
-    intervaloDiasAprox: 2000,
-    especificacionLubricanteRepuesto: 'Kit de reparación mayor (anillos, pistón, culata y válvulas de lengüeta)',
-    codigoRepuestoReferencia: 'Kit Overhaul Compresor Hino / WABCO',
-    asignadoChoferPorDefecto: false,
-    activoBiblioteca: true,
-    prioridad: 'CRITICA',
-    observacionesMecanica: 'Garantiza presión neumática constante en tanques de freno.',
-  },
 ];
 
-const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v3_58_8';
+const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v3_58_9';
 
 export function getCatalogoMaestroGlobal(): MantenimientoCatalogoItem[] {
   if (typeof window === 'undefined') return CATALOGO_MAESTRO_HINO_AK;
@@ -420,10 +420,14 @@ export function getCatalogoMaestroGlobal(): MantenimientoCatalogoItem[] {
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
+      // Filtrar ítems legados o retirados a reserva para análisis futuro
+      const codigosExcluidos = new Set(['MNT-SECADOR-AIRE', 'MNT-COMPRESOR-AIRE', 'MNT-BANDAS-FRENO', 'MNT-LAVADO-INTERCOOLER']);
+      let listaBase = parsed.filter((p: MantenimientoCatalogoItem) => !codigosExcluidos.has(p.codigo));
+      let modificado = listaBase.length !== parsed.length;
+
       // Sincronización inteligente: asegurar que nuevos ítems oficiales de fábrica estén presentes
-      const codigosMap = new Set(parsed.map((p: MantenimientoCatalogoItem) => p.codigo));
-      let modificado = false;
-      const actualizados = parsed.map((item: MantenimientoCatalogoItem) => {
+      const codigosMap = new Set(listaBase.map((p: MantenimientoCatalogoItem) => p.codigo));
+      const actualizados = listaBase.map((item: MantenimientoCatalogoItem) => {
         const oficial = CATALOGO_MAESTRO_HINO_AK.find(c => c.codigo === item.codigo);
         if (oficial) {
           if (
