@@ -206,7 +206,7 @@
   * No implementar intervalos de sondeo (`setInterval`) para balances o gastos sin condición explícita de término.
   * Memoizar cálculos pesados con `useMemo` para evitar re-renderizados continuos en smartphones de baja gama.
 
-### PENDIENTE #6: Calibración Oficial del Catálogo Maestro de Mantenimiento Hino AK (v3.58.4)
+### PENDIENTE #6: Calibración Oficial del Catálogo Maestro de Mantenimiento Hino AK (v3.58.5)
 - **Contexto Operativo:** Homologación oficial del plan de mantenimiento para la flota de autobuses Hino AK (Ruta Loja – Vilcabamba – Yangana).
 - **Flujo Operativo del Chofer (`ChoferMantenimientoWidget.tsx`):**
   * Botón destacado de **Registro Rápido de Lubricadora (Combo)** en la cabecera del widget: Asentamiento simultáneo con 1 toque.
@@ -227,7 +227,12 @@
   9. `MNT-CHAPAS-MOTOR`: **Metales de Motor (Biela y Bancada)** - 800,000 km - Preventivo pre-overhaul (Taiho/Daido estándar).
   *(Nota: Se integraron formalmente los 2 filtros de combustible al motor. Filtros de aire asignados a SISTEMA_AIRE).*
 - **Próximos Bloques en Proceso de Calibración:**
-  * Bloque 2: TRANSMISIÓN (Kit de Embrague 80,000 km, Valvulina Caja GL-4 150,000 km, Valvulina Corona GL-5 150,000 km, etc.).
+- **Bloque 2: TRANSMISIÓN (5 Ítems Oficiales Calibrados y Cerrados - COMPLETADO v3.58.5):**
+  1. `MNT-ACEITE-CAJA`: **Aceite de Caja** - 30,000 km (~180 días) - SAE 80W-90 / 85W-140 API GL-4 (protección sincronizadores bronce).
+  2. `MNT-ACEITE-CORONA`: **Aceite de Corona** - 30,000 km (~180 días) - API GL-5 SAE 85W-140 hipoidal alta carga.
+  3. `MNT-KIT-EMBRAGUE`: **Kit de Embrague** - 100,000 km (~540 días) - Disco 350mm, prensa y rulimán de empuje.
+  4. `MNT-MNT-CAJA`: **Mantenimiento de Caja** - 150,000 km (~800 días) - Bajada mayor, palillos/retenes/sincronizadores. **Efecto Cascada:** activa reseteo de Aceite de Caja (30k) y Kit de Embrague (100k).
+  5. `MNT-MNT-CORONA`: **Mantenimiento de Corona** - 150,000 km (~800 días) - Desarme mayor de diferencial, piñón/corona/planetarios. **Efecto Cascada:** activa reseteo de Aceite de Corona (30k).
   * Bloque 3: ADMISIÓN Y COMBUSTIBLE (Soplado 2,500 km, Filtro Secundario 20,000 km, Filtro Primario 40,000 km, Trampa 5,000 km, Diésel Secundario 5,000 km).
   * Bloque 4: RODAJE Y SUSPENSIÓN (Rotación llantas, Engrase chasis 5,000 km, Engrase bocinas/rulimanes, Muelles y maestra).
   * Bloque 5: FRENOS Y SISTEMA NEUMÁTICO (Bandas de freno, Secador de aire WABCO, Compresor 900,000 km).

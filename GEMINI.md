@@ -1,11 +1,11 @@
-# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.4)
+# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.5)
 
 ## Contexto Esencial
 - **Proyecto:** RutaGo (Control de transporte, boletaje, arqueos y mantenimiento para autobuses interprovinciales/cantonales).
 - **Flota Modelo:** Hino AK (Ruta Loja – Vilcabamba – Yangana – Malacatos).
 - **Rol Activo:** Calibración Oficial del Plan de Mantenimiento Preventivo Hino AK.
 
-## Mantenimiento Preventivo Hino AK (v3.58.4)
+## Mantenimiento Preventivo Hino AK (v3.58.5)
 ### 1. Interfaz del Chofer (`ChoferMantenimientoWidget.tsx`)
 - **Registro Rápido de Lubricadora (Combo):** Botón táctil en la cabecera del widget.
 - **Regla 4 + 2:**
@@ -25,15 +25,21 @@
 9. `MNT-CHAPAS-MOTOR`: **Metales de Motor (Biela y Bancada)** - 800,000 km - Preventivo pre-overhaul (Taiho/Daido estándar).
 *(Nota: Filtros de combustible integrados directamente al motor. Filtros de aire asignados a SISTEMA_AIRE).*
 
+#### Bloque 2: TRANSMISIÓN (5 Ítems Oficiales - COMPLETADO v3.58.5)
+1. `MNT-ACEITE-CAJA`: **Aceite de Caja** - 30,000 km (~180 días) - SAE 80W-90 / 85W-140 API GL-4 (protección sincronizadores bronce).
+2. `MNT-ACEITE-CORONA`: **Aceite de Corona** - 30,000 km (~180 días) - API GL-5 SAE 85W-140 hipoidal alta carga.
+3. `MNT-KIT-EMBRAGUE`: **Kit de Embrague** - 100,000 km (~540 días) - Disco 350mm, prensa y rulimán de empuje.
+4. `MNT-MNT-CAJA`: **Mantenimiento de Caja** - 150,000 km (~800 días) - Bajada mayor, palillos/retenes/sincronizadores. **Efecto Cascada:** activa reseteo de Aceite de Caja (30k) y Kit de Embrague (100k).
+5. `MNT-MNT-CORONA`: **Mantenimiento de Corona** - 150,000 km (~800 días) - Desarme mayor de diferencial, piñón/corona/planetarios. **Efecto Cascada:** activa reseteo de Aceite de Corona (30k).
+
 ### 3. Próximos Bloques a Calibrar:
-- **Bloque 2: TRANSMISIÓN** (Kit de Embrague 80,000 km, Valvulina Caja GL-4 150,000 km, Valvulina Corona GL-5 150,000 km).
 - **Bloque 3: ADMISIÓN Y COMBUSTIBLE / AIRE** (Soplado 2,500 km, Filtro Aire Secundario 20,000 km, Filtro Aire Primario 40,000 km).
 - **Bloque 4: RODAJE Y SUSPENSIÓN** (Rotación 12,000 km, Engrase chasis 5,000 km, Engrase bocinas 45,000 km, Muelles y maestra 50,000 km).
 - **Bloque 5: FRENOS Y NEUMÁTICO** (Bandas freno 35,000 km, Secador de aire 40,000 km, Compresor 900,000 km).
 
-## 4. Registro de Commits por Fases (v3.58.4)
-- `9879011`: `docs(maestro): FASE 1 - actualizar directivas y contexto maestro v3.58.4 con homologacion de Motor Hino AK`
+## 4. Registro de Commits por Fases (v3.58.5)
+- `9879011`: `docs(maestro): FASE 1 - actualizar directivas y contexto maestro v3.58.5 con homologacion de Motor Hino AK`
 - `52d858e`: `feat(mantenimiento): FASE 2 - calibracion oficial de Bloque 1 Motor Hino AK con 9 items en catalogo maestro`
 - `3e09112`: `feat(ui): FASE 3 - integracion de filtros tecnicos en MantenimientoScreen y combo lubricadora 4+2 en ChoferWidget`
-- `391e492`: `chore(release): bump a v3.58.4 con homologacion oficial de Bloque Motor Hino AK`
+- `391e492`: `chore(release): bump a v3.58.5 con homologacion oficial de Bloque Motor Hino AK`
 
