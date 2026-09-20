@@ -34,6 +34,7 @@ import { getAllBuses, getActiveBusId, getLatestBusOdometer } from '@/lib/fleet-s
 import {
   type MantenimientoCatalogoItem,
   getCatalogoMaestroGlobal,
+  EFECTO_CASCADA_TRANSMISION,
 } from '@/lib/mantenimiento-catalogo';
 
 export interface MantenimientoBusItem {
@@ -191,6 +192,60 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     }
   };
 
+  const handleSincronizarBloqueTransmision = () => {
+    const catalogo = getCatalogoMaestroGlobal();
+    const transmisionItemsCatalogo = catalogo.filter(c => c.categoria === 'TRANSMISION');
+    const codigosExistentes = new Set(items.map(it => it.codigo));
+    const nuevos: MantenimientoBusItem[] = [];
+
+    // Migrar ítems con códigos legados si existen
+    const actualizadosExistentes = items.map(it => {
+      if (it.codigo === 'MNT-VALVULINA-CAJA' || it.nombre.toLowerCase().includes('valvulina de caja')) {
+        return { ...it, codigo: 'MNT-ACEITE-CAJA', nombre: 'Aceite de Caja', intervaloKm: 30000 };
+      }
+      if (it.codigo === 'MNT-VALVULINA-CORONA' || it.nombre.toLowerCase().includes('valvulina de diferencial')) {
+        return { ...it, codigo: 'MNT-ACEITE-CORONA', nombre: 'Aceite de Corona', intervaloKm: 30000 };
+      }
+      return it;
+    });
+
+    const codigosActualizados = new Set(actualizadosExistentes.map(it => it.codigo));
+
+    transmisionItemsCatalogo.forEach(c => {
+      if (!codigosActualizados.has(c.codigo)) {
+        nuevos.push({
+          id: `mbus-${c.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: Math.max(0, kmActual - Math.floor(c.intervaloKmOficial * 0.2)),
+          fechaUltimo: new Date().toISOString().split('T')[0],
+          costoEstimado: c.codigo === 'MNT-KIT-EMBRAGUE' ? 450 : c.codigo.includes('MNT-MNT') ? 600 : 90,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: c.asignadoChoferPorDefecto,
+          activo: true,
+        });
+      }
+    });
+
+    const resultadoFinal = [...actualizadosExistentes, ...nuevos];
+    saveItems(resultadoFinal);
+
+    if (nuevos.length > 0) {
+      toast({
+        title: 'Bloque Transmisión Sincronizado',
+        description: `Se activaron los ${nuevos.length} ítems oficiales de Transmisión en tu unidad.`,
+      });
+    } else {
+      toast({
+        title: 'Transmisión Homologada',
+        description: 'Los 5 ítems oficiales de Transmisión ya están activos y homologados.',
+      });
+    }
+  };
+
   const handleUpdateKmActual = (nuevoKmStr: string) => {
     const num = parseInt(nuevoKmStr, 10);
     if (!isNaN(num) && num > 0) {
@@ -213,22 +268,44 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     const today = new Date().toISOString().split('T')[0];
     const costoNum = parseFloat(costoRegistro) || editingItem.costoEstimado || 0;
 
-    const updated = items.map(it =>
-      it.id === editingItem.id
-        ? {
-            ...it,
-            ultimoKm: km,
-            fechaUltimo: today,
-            costoEstimado: costoNum,
-            tallerMecanico: tallerRegistro.trim() || it.tallerMecanico,
-          }
-        : it
-    );
-    saveItems(updated);
-    toast({
-      title: 'Mantenimiento Registrado',
-      description: `${editingItem.nombre} asentado en ${km.toLocaleString()} km`,
+    // Detectar si el ítem tiene efecto cascada
+    const cascadaCodigos = editingItem.codigo ? EFECTO_CASCADA_TRANSMISION[editingItem.codigo] : undefined;
+    const itemsCascadaAfectados: string[] = [];
+
+    const updated = items.map(it => {
+      if (it.id === editingItem.id) {
+        return {
+          ...it,
+          ultimoKm: km,
+          fechaUltimo: today,
+          costoEstimado: costoNum,
+          tallerMecanico: tallerRegistro.trim() || it.tallerMecanico,
+        };
+      }
+      // Efecto cascada: si coincide con los códigos secundarios
+      if (cascadaCodigos && it.codigo && cascadaCodigos.includes(it.codigo)) {
+        itemsCascadaAfectados.push(it.nombre);
+        return {
+          ...it,
+          ultimoKm: km,
+          fechaUltimo: today,
+        };
+      }
+      return it;
     });
+
+    saveItems(updated);
+    if (itemsCascadaAfectados.length > 0) {
+      toast({
+        title: 'Mantenimiento Mayor Registrado',
+        description: `${editingItem.nombre} asentado en ${km.toLocaleString()} km. Efecto cascada reseteó: ${itemsCascadaAfectados.join(', ')}.`,
+      });
+    } else {
+      toast({
+        title: 'Mantenimiento Registrado',
+        description: `${editingItem.nombre} asentado en ${km.toLocaleString()} km`,
+      });
+    }
     setEditingItem(null);
   };
 
@@ -521,6 +598,33 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
           </div>
         )}
 
+        {/* Banner Exclusivo: Bloque 2 - TRANSMISIÓN */}
+        {filtroCategoria === 'TRANSMISION' && (
+          <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-xs text-emerald-950">⚙️ Bloque 2: TRANSMISIÓN (Homologación Hino AK)</span>
+                <Badge className="bg-emerald-200 text-emerald-900 text-[10px] font-black border-0">
+                  5 Ítems Oficiales
+                </Badge>
+              </div>
+              <p className="text-[11px] text-emerald-800/80 mt-0.5">
+                Aceite Caja (30k GL-4), Aceite Corona (30k GL-5), Kit Embrague (100k) y Overhaul con Efecto Cascada (150k).
+              </p>
+            </div>
+            {items.filter(i => i.categoria === 'TRANSMISION').length < 5 && (
+              <Button
+                size="sm"
+                onClick={handleSincronizarBloqueTransmision}
+                className="h-8 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs shrink-0 self-start sm:self-center shadow-xs"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Homologar Transmisión
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Lista de Mantenimientos Asignados */}
         <div className="flex flex-col gap-3">
           {itemsFiltrados.length === 0 ? (
@@ -707,6 +811,15 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             <div>
               <h3 className="font-black text-base text-gray-900 mb-0.5">Registrar Servicio Mecánico</h3>
               <p className="text-xs text-gray-500">{editingItem.nombre}</p>
+              {editingItem.codigo && EFECTO_CASCADA_TRANSMISION[editingItem.codigo] && (
+                <div className="mt-2 p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs flex items-start gap-2">
+                  <span className="text-base leading-none">⚙️</span>
+                  <div>
+                    <strong className="font-extrabold block">Efecto Cascada Automático:</strong>
+                    Este mantenimiento mayor reiniciará automáticamente los contadores de los componentes asociados en esta unidad.
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
