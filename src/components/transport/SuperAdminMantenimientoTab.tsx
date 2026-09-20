@@ -155,7 +155,11 @@ export function SuperAdminMantenimientoTab() {
 
   // Filtrado memoizado
   const itemsFiltrados = catalogo.filter(item => {
-    const matchCat = filtroCategoria === 'TODAS' || item.categoria === filtroCategoria;
+    const matchCat =
+      filtroCategoria === 'TODAS' ||
+      item.categoria === filtroCategoria ||
+      (filtroCategoria === 'RODAJE' && (item.categoria === 'RODAJE' || (item.categoria as string) === 'SUSPENSION')) ||
+      (filtroCategoria === 'MOTOR' && (item.categoria === 'MOTOR' || (item.categoria as string) === 'SISTEMA_COMBUSTIBLE'));
     const matchBusqueda =
       !busqueda ||
       item.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -242,22 +246,42 @@ export function SuperAdminMantenimientoTab() {
             </Button>
           </div>
 
-          {/* Chips de filtro de categoría */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
-            {['TODAS', 'MOTOR', 'TRANSMISION', 'FRENOS', 'SUSPENSION', 'SISTEMA_AIRE', 'RODAJE', 'SISTEMA_COMBUSTIBLE'].map(cat => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setFiltroCategoria(cat)}
-                className={`px-2.5 py-1 rounded-lg font-bold text-[11px] whitespace-nowrap transition-all ${
-                  filtroCategoria === cat
-                    ? 'bg-gray-800 text-white shadow-xs'
-                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                {cat === 'TODAS' ? 'Todas las Categorías' : cat.replace('_', ' ')}
-              </button>
-            ))}
+          {/* Selector de Categorías Ergonómico: 2 Columnas x 3 Filas (Auto-extensible) */}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {[
+              { id: 'TODAS', label: 'Todas las Categorías', icon: '📋', count: catalogo.length },
+              { id: 'MOTOR', label: '1. Motor', icon: '⚙️', count: catalogo.filter(i => i.categoria === 'MOTOR' || (i.categoria as string) === 'SISTEMA_COMBUSTIBLE').length },
+              { id: 'TRANSMISION', label: '2. Transmisión', icon: '🔄', count: catalogo.filter(i => i.categoria === 'TRANSMISION').length },
+              { id: 'SISTEMA_AIRE', label: '3. Admisión y Aire', icon: '💨', count: catalogo.filter(i => i.categoria === 'SISTEMA_AIRE').length },
+              { id: 'RODAJE', label: '4. Rodaje y Suspensión', icon: '🛞', count: catalogo.filter(i => i.categoria === 'RODAJE' || (i.categoria as string) === 'SUSPENSION').length },
+              { id: 'FRENOS', label: '5. Frenos y Neumático', icon: '🛑', count: catalogo.filter(i => i.categoria === 'FRENOS').length },
+            ].map(cat => {
+              const isActive = filtroCategoria === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setFiltroCategoria(cat.id)}
+                  className={`flex items-center justify-between p-2.5 rounded-xl font-bold text-xs transition-all border text-left cursor-pointer ${
+                    isActive
+                      ? 'bg-gray-900 text-white border-gray-900 shadow-sm'
+                      : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="text-sm shrink-0">{cat.icon}</span>
+                    <span className="truncate">{cat.label}</span>
+                  </div>
+                  <span
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {cat.count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -295,8 +319,18 @@ export function SuperAdminMantenimientoTab() {
                       >
                         {item.prioridad}
                       </span>
-                      <span className="text-[9px] font-semibold bg-gray-200/70 text-gray-600 px-1.5 py-0.5 rounded">
-                        {item.categoria.replace('_', ' ')}
+                      <span className="text-[9px] font-semibold bg-gray-200/70 text-gray-700 px-1.5 py-0.5 rounded">
+                        {item.categoria === 'SISTEMA_AIRE'
+                          ? '3. ADMISIÓN Y AIRE'
+                          : item.categoria === 'RODAJE'
+                          ? '4. RODAJE Y SUSPENSIÓN'
+                          : item.categoria === 'MOTOR'
+                          ? '1. MOTOR'
+                          : item.categoria === 'TRANSMISION'
+                          ? '2. TRANSMISIÓN'
+                          : item.categoria === 'FRENOS'
+                          ? '5. FRENOS'
+                          : item.categoria.replace('_', ' ')}
                       </span>
                     </div>
 
@@ -411,8 +445,18 @@ export function SuperAdminMantenimientoTab() {
                   {editingModalItem.codigo}
                 </p>
               </div>
-              <Badge className="bg-gray-100 text-gray-800 text-[10px]">
-                {editingModalItem.categoria}
+              <Badge className="bg-gray-100 text-gray-800 text-[10px] font-bold">
+                {editingModalItem.categoria === 'SISTEMA_AIRE'
+                  ? '3. ADMISIÓN Y AIRE'
+                  : editingModalItem.categoria === 'RODAJE'
+                  ? '4. RODAJE Y SUSPENSIÓN'
+                  : editingModalItem.categoria === 'MOTOR'
+                  ? '1. MOTOR'
+                  : editingModalItem.categoria === 'TRANSMISION'
+                  ? '2. TRANSMISIÓN'
+                  : editingModalItem.categoria === 'FRENOS'
+                  ? '5. FRENOS'
+                  : editingModalItem.categoria.replace('_', ' ')}
               </Badge>
             </div>
 
@@ -571,15 +615,13 @@ export function SuperAdminMantenimientoTab() {
                   <select
                     value={nuevoItem.categoria}
                     onChange={e => setNuevoItem({ ...nuevoItem, categoria: e.target.value as any })}
-                    className="h-9 w-full text-xs rounded-lg border border-gray-300 mt-1 px-2 bg-white"
+                    className="h-9 w-full text-xs rounded-lg border border-gray-300 mt-1 px-2 bg-white font-medium"
                   >
-                    <option value="MOTOR">MOTOR</option>
-                    <option value="TRANSMISION">TRANSMISIÓN</option>
-                    <option value="FRENOS">FRENOS</option>
-                    <option value="SUSPENSION">SUSPENSIÓN</option>
-                    <option value="SISTEMA_AIRE">SISTEMA DE AIRE</option>
-                    <option value="RODAJE">RODAJE / LLANTAS</option>
-                    <option value="SISTEMA_COMBUSTIBLE">COMBUSTIBLE</option>
+                    <option value="MOTOR">1. MOTOR</option>
+                    <option value="TRANSMISION">2. TRANSMISIÓN</option>
+                    <option value="SISTEMA_AIRE">3. ADMISIÓN Y AIRE</option>
+                    <option value="RODAJE">4. RODAJE Y SUSPENSIÓN</option>
+                    <option value="FRENOS">5. FRENOS Y NEUMÁTICO</option>
                   </select>
                 </div>
                 <div>
