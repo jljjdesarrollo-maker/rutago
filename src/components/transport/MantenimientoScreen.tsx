@@ -22,6 +22,7 @@ import {
   Search,
   Filter,
   Sliders,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,6 +32,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { getAllBuses, getActiveBusId, getLatestBusOdometer } from '@/lib/fleet-storage';
+import { saveOwnerExpense } from '@/lib/owner-expenses-storage';
 import {
   type MantenimientoCatalogoItem,
   getCatalogoMaestroGlobal,
@@ -140,6 +142,14 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   const [isCatalogoModalOpen, setIsCatalogoModalOpen] = useState(false);
   const [catalogoBusqueda, setCatalogoBusqueda] = useState('');
   const [catalogoFiltroCat, setCatalogoFiltroCat] = useState('TODAS');
+
+  // Modal Combo 4 Ruedas (Rodaje y Suspensión)
+  const [isComboRuedasModalOpen, setIsComboRuedasModalOpen] = useState(false);
+  const [comboRuedasKm, setComboRuedasKm] = useState<string>('');
+  const [comboRuedasCosto, setComboRuedasCosto] = useState<string>('');
+  const [comboRuedasFactura, setComboRuedasFactura] = useState<string>('');
+  const [comboRuedasTaller, setComboRuedasTaller] = useState<string>('');
+  const [comboRuedasMetodo, setComboRuedasMetodo] = useState<'EFECTIVO' | 'TRANSFERENCIA'>('EFECTIVO');
 
   // Filtro de la vista principal del socio
   const [filtroVista, setFiltroVista] = useState<'TODOS' | 'VENCIDOS' | 'CHOFER'>('TODOS');
@@ -318,6 +328,220 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     }
   };
 
+  const handleSincronizarBloqueRodaje = () => {
+    const catalogo = getCatalogoMaestroGlobal();
+    const rodajeItemsCatalogo = catalogo.filter(c => c.categoria === 'RODAJE');
+    const nuevos: MantenimientoBusItem[] = [];
+
+    // Localizar odómetro previo de bocinas si existía para mantener continuidad histórica
+    const bocinaPrevia = items.find(
+      it => it.codigo === 'MNT-ENGRASE-BOCINAS' || it.codigo === 'MNT-BOCINAS-POST' || it.codigo === 'MNT-BOCINAS-DEL'
+    );
+
+    // Migrar ítems con nombres/intervalos legados de Suspensión y Rodaje
+    const actualizadosExistentes = items.map(it => {
+      // 1. Engrase de chasis a 1,500 km
+      if (it.codigo === 'MNT-ENGRASE-CHASIS') {
+        return {
+          ...it,
+          nombre: 'Engrase de Chasis',
+          categoria: 'RODAJE' as const,
+          intervaloKm: 1500,
+          repuestoDetalle: 'Grasa EP2 para crucetas, muñones, candados y terminales (manual en cooperativa cada 3-4 días o en rampa a los 5,000 km)',
+          asignadoChofer: true,
+        };
+      }
+      // 2. Rotación a Alineación y Chequeo Llantas 15,000 km
+      if (it.codigo === 'MNT-ROTACION-LLANTAS' || it.codigo === 'MNT-ALINEACION-LLANTAS') {
+        return {
+          ...it,
+          codigo: 'MNT-ALINEACION-LLANTAS',
+          nombre: 'Alineación y Chequeo Llantas',
+          categoria: 'RODAJE' as const,
+          intervaloKm: 15000,
+          repuestoDetalle: 'Alineación, balanceo e inspección de desgaste en hombros por curvas de montaña (Loja–Vilcabamba)',
+        };
+      }
+      // 3. Bocinas anteriores: si tenía MNT-ENGRASE-BOCINAS o MNT-BOCINAS-POST, calibrar a Posteriores (50k)
+      if (it.codigo === 'MNT-ENGRASE-BOCINAS' || it.codigo === 'MNT-BOCINAS-POST') {
+        return {
+          ...it,
+          codigo: 'MNT-BOCINAS-POST',
+          nombre: 'Engrase Bocinas Posteriores',
+          categoria: 'RODAJE' as const,
+          intervaloKm: 50000,
+          repuestoDetalle: '3.5 kg de grasa de alta temperatura + 4 retenes posteriores (2 por rueda). Soporta el 70% del peso del bus y calor de tambores.',
+        };
+      }
+      // 4. Bocinas Delanteras a 60k
+      if (it.codigo === 'MNT-BOCINAS-DEL') {
+        return {
+          ...it,
+          nombre: 'Engrase Bocinas Delanteras',
+          categoria: 'RODAJE' as const,
+          intervaloKm: 60000,
+          repuestoDetalle: '1.5 kg de grasa de alta temperatura + 2 retenes delanteros (1 por rueda). Desmontaje rápido (1.5 horas).',
+        };
+      }
+      // 5. Muelles y bujes a 50k
+      if (it.codigo === 'MNT-MUELLES-MAESTRA' || it.codigo === 'MNT-MUELLES-BUJES') {
+        return {
+          ...it,
+          codigo: 'MNT-MUELLES-BUJES',
+          nombre: 'Revisión de Muelles y Bujes',
+          categoria: 'RODAJE' as const,
+          intervaloKm: 50000,
+          repuestoDetalle: 'Inspección de hojas, cambio de bujes para no romper la hoja maestra, chequeo de perno de centro y apriete de abrazaderas en U.',
+        };
+      }
+      // Si era de suspensión antigua, asegurar que quede en RODAJE
+      if (it.categoria === 'SUSPENSION') {
+        return { ...it, categoria: 'RODAJE' as const };
+      }
+      return it;
+    });
+
+    const codigosActualizados = new Set(actualizadosExistentes.map(it => it.codigo));
+
+    // Agregar los ítems oficiales que falten
+    rodajeItemsCatalogo.forEach(c => {
+      if (!codigosActualizados.has(c.codigo)) {
+        const ultimoKmCalculado = (c.codigo === 'MNT-BOCINAS-DEL' && bocinaPrevia)
+          ? bocinaPrevia.ultimoKm
+          : Math.max(0, kmActual - Math.floor(c.intervaloKmOficial * 0.2));
+
+        nuevos.push({
+          id: `mbus-${c.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: ultimoKmCalculado,
+          fechaUltimo: bocinaPrevia?.fechaUltimo || new Date().toISOString().split('T')[0],
+          costoEstimado: c.codigo.includes('BOCINAS') ? 140 : c.codigo === 'MNT-ENGRASE-CHASIS' ? 12 : c.codigo === 'MNT-ALINEACION-LLANTAS' ? 35 : 180,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: c.asignadoChoferPorDefecto,
+          activo: true,
+        });
+      }
+    });
+
+    const resultadoFinal = [...actualizadosExistentes, ...nuevos];
+    saveItems(resultadoFinal);
+
+    toast({
+      title: '🔄 Bloque Rodaje y Suspensión Homologado',
+      description: `Los 5 ítems oficiales (Engrase Chasis 1.5k, Alineación 15k, Bocinas Post 50k, Bocinas Del 60k, Muelles/Bujes 50k) quedaron calibrados.`,
+    });
+  };
+
+  const handleGuardarCombo4Ruedas = () => {
+    const odoNum = parseInt(comboRuedasKm, 10);
+    const km = !isNaN(odoNum) && odoNum > 0 ? odoNum : kmActual;
+    const today = new Date().toISOString().split('T')[0];
+    const costoTotal = parseFloat(comboRuedasCosto) || 0;
+    const tallerStr = comboRuedasTaller.trim() || 'Taller de Ruedas / Rulimanes';
+    const facturaRef = comboRuedasFactura.trim();
+
+    let encontradasDel = false;
+    let encontradasPost = false;
+
+    let listaActualizada = items.map(it => {
+      if (it.codigo === 'MNT-BOCINAS-DEL') {
+        encontradasDel = true;
+        return {
+          ...it,
+          ultimoKm: km,
+          fechaUltimo: today,
+          tallerMecanico: tallerStr,
+          costoEstimado: costoTotal > 0 ? Math.round(costoTotal * 0.4) : it.costoEstimado,
+        };
+      }
+      if (it.codigo === 'MNT-BOCINAS-POST' || it.codigo === 'MNT-ENGRASE-BOCINAS') {
+        encontradasPost = true;
+        return {
+          ...it,
+          codigo: 'MNT-BOCINAS-POST',
+          nombre: 'Engrase Bocinas Posteriores',
+          categoria: 'RODAJE' as const,
+          intervaloKm: 50000,
+          ultimoKm: km,
+          fechaUltimo: today,
+          tallerMecanico: tallerStr,
+          costoEstimado: costoTotal > 0 ? Math.round(costoTotal * 0.6) : it.costoEstimado,
+        };
+      }
+      return it;
+    });
+
+    if (!encontradasDel) {
+      listaActualizada.push({
+        id: `mbus-bocinas-del-${Date.now()}`,
+        codigo: 'MNT-BOCINAS-DEL',
+        nombre: 'Engrase Bocinas Delanteras',
+        categoria: 'RODAJE',
+        intervaloKm: 60000,
+        ultimoKm: km,
+        fechaUltimo: today,
+        tallerMecanico: tallerStr,
+        costoEstimado: costoTotal > 0 ? Math.round(costoTotal * 0.4) : 90,
+        repuestoDetalle: '1.5 kg de grasa de alta temperatura + 2 retenes delanteros (1 por rueda). Desmontaje rápido (1.5 horas).',
+        asignadoChofer: false,
+        activo: true,
+      });
+    }
+
+    if (!encontradasPost) {
+      listaActualizada.push({
+        id: `mbus-bocinas-post-${Date.now()}`,
+        codigo: 'MNT-BOCINAS-POST',
+        nombre: 'Engrase Bocinas Posteriores',
+        categoria: 'RODAJE',
+        intervaloKm: 50000,
+        ultimoKm: km,
+        fechaUltimo: today,
+        tallerMecanico: tallerStr,
+        costoEstimado: costoTotal > 0 ? Math.round(costoTotal * 0.6) : 130,
+        repuestoDetalle: '3.5 kg de grasa de alta temperatura + 4 retenes posteriores (2 por rueda). Soporta el 70% del peso del bus y calor de tambores.',
+        asignadoChofer: false,
+        activo: true,
+      });
+    }
+
+    saveItems(listaActualizada);
+
+    // Guardar en contabilidad de gastos del socio si se especificó monto
+    if (costoTotal > 0) {
+      try {
+        saveOwnerExpense({
+          id: `EXP-COMBO-4RUEDAS-${Date.now()}`,
+          busId: activeBusId,
+          expenseDate: today,
+          createdAt: new Date().toISOString(),
+          category: 'FRENOS_RODAJE',
+          description: `Engrase Integral Combo 4 Ruedas (Bocinas Delanteras 60k + Posteriores 50k)`,
+          provider: tallerStr,
+          totalAmount: costoTotal,
+          paidAmount: costoTotal,
+          pendingBalance: 0,
+          paymentMethod: comboRuedasMetodo,
+          comprobanteRef: facturaRef ? `Fac/Nota: ${facturaRef}` : undefined,
+          status: 'PAGADO',
+        });
+      } catch (err) {
+        console.error('Error al registrar gasto contable de Combo 4 Ruedas:', err);
+      }
+    }
+
+    toast({
+      title: '⚡ Combo 4 Ruedas Asentado con Éxito',
+      description: `Bocinas Delanteras (60,000 km) y Posteriores (50,000 km) reseteadas a ${km.toLocaleString()} km.${costoTotal > 0 ? ` Gasto de $${costoTotal.toFixed(2)} registrado en contabilidad.` : ''}`,
+    });
+
+    setIsComboRuedasModalOpen(false);
+  };
+
   const handleUpdateKmActual = (nuevoKmStr: string) => {
     const num = parseInt(nuevoKmStr, 10);
     if (!isNaN(num) && num > 0) {
@@ -439,7 +663,13 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   // Cálculo de semáforos y filtrado
   const itemsFiltrados = useMemo(() => {
     return items.filter(it => {
-      if (filtroCategoria !== 'TODAS' && it.categoria !== filtroCategoria) return false;
+      if (filtroCategoria !== 'TODAS') {
+        if (filtroCategoria === 'RODAJE') {
+          if (it.categoria !== 'RODAJE' && it.categoria !== 'SUSPENSION') return false;
+        } else if (it.categoria !== filtroCategoria) {
+          return false;
+        }
+      }
       if (filtroVista === 'CHOFER') return it.asignadoChofer;
       if (filtroVista === 'VENCIDOS') {
         const kmRecorridos = kmActual - it.ultimoKm;
@@ -614,12 +844,13 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             { id: 'MOTOR', label: '🛢️ Motor' },
             { id: 'TRANSMISION', label: '⚙️ Transmisión' },
             { id: 'FRENOS', label: '🛑 Frenos' },
-            { id: 'SUSPENSION', label: '🔩 Suspensión' },
             { id: 'SISTEMA_AIRE', label: '💨 Admisión / Aire' },
-            { id: 'RODAJE', label: '🔄 Rodaje / Llantas' },
+            { id: 'RODAJE', label: '🔄 Rodaje y Suspensión' },
           ].map(cat => {
             const count = cat.id === 'TODAS'
               ? items.length
+              : cat.id === 'RODAJE'
+              ? items.filter(i => i.categoria === 'RODAJE' || i.categoria === 'SUSPENSION').length
               : items.filter(i => i.categoria === cat.id).length;
             const isSelected = filtroCategoria === cat.id;
 
@@ -715,12 +946,53 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
               <Button
                 size="sm"
                 onClick={handleSincronizarBloqueAire}
-                className="h-8 px-3 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-black text-xs shrink-0 self-start sm:self-center shadow-xs"
+                className="h-8 px-3 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-black text-xs shrink-0 self-start sm:self-center shadow-xs cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5 mr-1" />
                 Homologar Admisión y Aire
               </Button>
             )}
+          </div>
+        )}
+
+        {/* Banner Exclusivo: Bloque 4 - RODAJE Y SUSPENSIÓN */}
+        {filtroCategoria === 'RODAJE' && (
+          <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-xs text-amber-950">🔄 Bloque 4: RODAJE Y SUSPENSIÓN (Homologación Hino AK)</span>
+                <Badge className="bg-amber-200 text-amber-900 text-[10px] font-black border-0">
+                  5 Ítems Oficiales
+                </Badge>
+              </div>
+              <p className="text-[11px] text-amber-800/80 mt-0.5">
+                Engrase Chasis (1.5k), Alineación Llantas (15k), Bocinas Post (50k), Bocinas Del (60k) y Muelles/Bujes (50k).
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+              <Button
+                size="sm"
+                onClick={() => {
+                  setComboRuedasKm(kmActual.toString());
+                  setComboRuedasCosto('');
+                  setComboRuedasFactura('');
+                  setComboRuedasTaller('');
+                  setIsComboRuedasModalOpen(true);
+                }}
+                className="h-8 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Combo 4 Ruedas
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSincronizarBloqueRodaje}
+                className="h-8 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-xs flex items-center gap-1 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                Homologar Rodaje
+              </Button>
+            </div>
           </div>
         )}
 
@@ -1106,6 +1378,162 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                 className="rounded-xl text-xs font-bold"
               >
                 Cerrar Biblioteca
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Ergonómico: Combo 4 Ruedas */}
+      {isComboRuedasModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-900">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Combo 4 Ruedas (Delanteras + Posteriores)
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Servicio integral de engrase de bocinas y rodamientos en taller.
+                  </p>
+                </div>
+              </div>
+              <Badge className="bg-amber-100 text-amber-900 text-[11px] font-black border-0">
+                Hino AK
+              </Badge>
+            </div>
+
+            <div className="space-y-3.5 flex-1 overflow-y-auto pr-1">
+              {/* Resumen de las ruedas que se resetearán */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-amber-950">Bocinas Delanteras</span>
+                    <Badge className="bg-amber-200/70 text-amber-900 text-[9px] font-black border-0">2 Ruedas</Badge>
+                  </div>
+                  <p className="text-xs font-black text-amber-900 mt-1">60,000 km</p>
+                  <p className="text-[10px] text-amber-700/90 leading-tight mt-0.5">
+                    1.5 kg grasa alta temp + 2 retenes. Desmontaje rápido (1.5h).
+                  </p>
+                </div>
+                <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-2xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-amber-950">Bocinas Posteriores</span>
+                    <Badge className="bg-amber-200/70 text-amber-900 text-[9px] font-black border-0">2 Ruedas</Badge>
+                  </div>
+                  <p className="text-xs font-black text-amber-900 mt-1">50,000 km</p>
+                  <p className="text-[10px] text-amber-700/90 leading-tight mt-0.5">
+                    3.5 kg grasa alta temp + 4 retenes (70% peso bus y calor tambores).
+                  </p>
+                </div>
+              </div>
+
+              {/* Formulario rápido */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Odómetro del Servicio (Km)
+                  </Label>
+                  <Input
+                    type="number"
+                    value={comboRuedasKm}
+                    onChange={e => setComboRuedasKm(e.target.value)}
+                    placeholder={kmActual.toString()}
+                    className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300 font-bold"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Costo Total Factura / Taller ($)
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={comboRuedasCosto}
+                    onChange={e => setComboRuedasCosto(e.target.value)}
+                    placeholder="ej. 220.00"
+                    className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300 font-bold text-emerald-800"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Taller Mecánico / Lugar
+                  </Label>
+                  <Input
+                    value={comboRuedasTaller}
+                    onChange={e => setComboRuedasTaller(e.target.value)}
+                    placeholder="ej. Taller Rodamientos Don Fausto - Loja"
+                    className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Nº Factura / Nota Venta
+                  </Label>
+                  <Input
+                    value={comboRuedasFactura}
+                    onChange={e => setComboRuedasFactura(e.target.value)}
+                    placeholder="ej. 001-002-8491"
+                    className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Método de Pago
+                </Label>
+                <div className="flex gap-2">
+                  {(['EFECTIVO', 'TRANSFERENCIA'] as const).map(metodo => (
+                    <button
+                      key={metodo}
+                      type="button"
+                      onClick={() => setComboRuedasMetodo(metodo)}
+                      className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all border ${
+                        comboRuedasMetodo === metodo
+                          ? 'bg-slate-900 text-white border-slate-900'
+                          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {metodo === 'EFECTIVO' ? '💵 Efectivo' : '🏦 Transferencia Bancaria'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-600 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  Impacto Automático:
+                </div>
+                <p>• Resetea <strong>Bocinas Delanteras</strong> con 60,000 km de vida útil oficial.</p>
+                <p>• Resetea <strong>Bocinas Posteriores</strong> con 50,000 km de vida útil oficial.</p>
+                <p>• Guarda el desembolso en <strong>Frenos y Rodaje</strong> de la contabilidad del socio.</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setIsComboRuedasModalOpen(false)}
+                className="flex-1 h-10 rounded-xl text-xs font-bold text-gray-600 cursor-pointer"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleGuardarCombo4Ruedas}
+                className="flex-1 h-10 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4" />
+                Asentar Combo 4 Ruedas
               </Button>
             </div>
           </div>

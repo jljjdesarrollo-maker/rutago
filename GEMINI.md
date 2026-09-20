@@ -1,11 +1,11 @@
-# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.7)
+# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.8)
 
 ## Contexto Esencial
 - **Proyecto:** RutaGo (Control de transporte, boletaje, arqueos y mantenimiento para autobuses interprovinciales/cantonales).
 - **Flota Modelo:** Hino AK (Ruta Loja – Vilcabamba – Yangana – Malacatos – La Elvira).
 - **Rol Activo:** Calibración Oficial del Plan de Mantenimiento Preventivo Hino AK.
 
-## Mantenimiento Preventivo Hino AK (v3.58.7)
+## Mantenimiento Preventivo Hino AK (v3.58.8)
 
 ### 1. Interfaz del Chofer (`ChoferMantenimientoWidget.tsx`)
 - **Registro Rápido de Lubricadora (Combo):** Botón táctil en la cabecera del widget.
@@ -42,11 +42,18 @@
 4. `MNT-FILT-AIRE-SEC`: **Filtro Aire Pequeño** - 20,000 km (~120 días / cada 4 cambios de aceite) - Cartucho interior cilíndrico de seguridad para proteger el turbo.
 5. `MNT-FILT-AIRE-PRI`: **Filtro Aire Grande** - 40,000 km (~240 días / cada 8 cambios de aceite) - Cartucho cilíndrico exterior principal de admisión (FA1188 / 17801-3380).
 
-*(Nota: Cartucho secador y compresor quedan reubicados en el Bloque 5: FRENOS Y NEUMÁTICO).*
+#### Bloque 4: RODAJE Y SUSPENSIÓN (5 Ítems Oficiales Calibrados y Aprobados - v3.58.8)
+*Alineación y engrase especializado para topografía de montaña Loja - Vilcabamba. Modal Combo 4 Ruedas con integración contable automática.*
+1. `MNT-ENGRASE-CHASIS`: **Engrase de Chasis** - 1,500 km (~10 a 12 días) - Grasa EP2 para crucetas, muñones, candados y terminales (manual en cooperativa cada 3-4 días o en rampa a los 5,000 km).
+2. `MNT-ALINEACION-LLANTAS`: **Alineación y Chequeo Llantas** - 15,000 km (~90 días / 3 meses) - Alineación, balanceo e inspección de desgaste en hombros por curvas de montaña (Loja–Vilcabamba).
+3. `MNT-BOCINAS-POST`: **Engrase Bocinas Posteriores** - 50,000 km (~300 días) - 3.5 kg de grasa de alta temperatura + 4 retenes posteriores (2 por rueda). Soporta el 70% del peso del bus y calor de tambores en bajadas.
+4. `MNT-BOCINAS-DEL`: **Engrase Bocinas Delanteras** - 60,000 km (~360 días) - 1.5 kg de grasa de alta temperatura + 2 retenes delanteros (1 por rueda). Desmontaje rápido (1.5 horas).
+5. `MNT-MUELLES-BUJES`: **Revisión de Muelles y Bujes** - 50,000 km (~300 días / ~10 meses) - Inspección de hojas, cambio de bujes para no romper la hoja maestra, chequeo de perno de centro y apriete de abrazaderas en U.
 
-### 3. Próximos Bloques a Calibrar:
-- **Bloque 4: RODAJE Y SUSPENSIÓN** (Rotación llantas 12,000 km, Engrase chasis 5,000 km, Engrase bocinas 45,000 km, Muelles y maestra 50,000 km).
+- **Modal [Combo 4 Ruedas]:** Permite asentar en un solo paso el servicio de las 4 ruedas cuando se realiza simultáneamente en taller. Resetea Delanteras (60k) y Posteriores (50k), y si se ingresa costo, lo registra automáticamente en la contabilidad del socio bajo la categoría `FRENOS_RODAJE`.
+
+### 3. Próximo y Último Bloque a Calibrar:
 - **Bloque 5: FRENOS Y NEUMÁTICO** (Bandas freno 35,000 km, Secador de aire 40,000 km, Compresor 900,000 km).
 
 ## 4. Registro de Versiones y Contexto
-- Documento maestro completo respaldado en: `/download/RutaGo_Contexto_Maestro_v3.58.7.md`.
+- Documento maestro completo respaldado en: `/download/RutaGo_Contexto_Maestro_v3.58.8.md`.
