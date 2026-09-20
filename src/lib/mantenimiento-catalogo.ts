@@ -17,7 +17,13 @@ export interface MantenimientoCatalogoItem {
   activoBiblioteca: boolean;
   prioridad: 'ALTA' | 'MEDIA' | 'CRITICA';
   observacionesMecanica?: string;
+  efectoCascadaCodigos?: string[];
 }
+
+export const EFECTO_CASCADA_TRANSMISION: Record<string, string[]> = {
+  'MNT-MNT-CAJA': ['MNT-ACEITE-CAJA', 'MNT-VALVULINA-CAJA', 'MNT-KIT-EMBRAGUE'],
+  'MNT-MNT-CORONA': ['MNT-ACEITE-CORONA', 'MNT-VALVULINA-CORONA'],
+};
 
 export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
   {
@@ -261,11 +267,11 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
   {
     id: 'hino-15',
     codigo: 'MNT-KIT-EMBRAGUE',
-    nombre: 'Kit de Embrague Completo',
+    nombre: 'Kit de Embrague',
     categoria: 'TRANSMISION',
-    intervaloKmOficial: 80000,
-    intervaloDiasAprox: 365,
-    especificacionLubricanteRepuesto: 'Disco de embrague, plato opresor, palillos y rulimán de empuje',
+    intervaloKmOficial: 100000,
+    intervaloDiasAprox: 540,
+    especificacionLubricanteRepuesto: 'Disco de embrague 350mm, plato opresor/prensa y rulimán de empuje',
     codigoRepuestoReferencia: 'Kit Valeo / Exedy Hino AK 350mm',
     asignadoChoferPorDefecto: false,
     activoBiblioteca: true,
@@ -274,31 +280,61 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
   },
   {
     id: 'hino-16',
-    codigo: 'MNT-VALVULINA-CAJA',
-    nombre: 'Valvulina de Caja de Cambios',
+    codigo: 'MNT-ACEITE-CAJA',
+    nombre: 'Aceite de Caja',
     categoria: 'TRANSMISION',
-    intervaloKmOficial: 150000,
-    intervaloDiasAprox: 540,
+    intervaloKmOficial: 30000,
+    intervaloDiasAprox: 180,
     especificacionLubricanteRepuesto: 'Aceite para engranajes manuales SAE 80W-90 o 85W-140 API GL-4',
     codigoRepuestoReferencia: 'Mobilube HD 80W-90 / 85W-140 GL-4',
     asignadoChoferPorDefecto: false,
     activoBiblioteca: true,
     prioridad: 'ALTA',
-    observacionesMecanica: 'Usar estrictamente GL-4 para no corroer sincronizadores de bronce de la caja.',
+    observacionesMecanica: 'Protección sincronizadores bronce. Usar estrictamente API GL-4.',
   },
   {
     id: 'hino-17',
-    codigo: 'MNT-VALVULINA-CORONA',
-    nombre: 'Valvulina de Diferencial (Transmisión Posterior)',
+    codigo: 'MNT-ACEITE-CORONA',
+    nombre: 'Aceite de Corona',
     categoria: 'TRANSMISION',
-    intervaloKmOficial: 150000,
-    intervaloDiasAprox: 540,
+    intervaloKmOficial: 30000,
+    intervaloDiasAprox: 180,
     especificacionLubricanteRepuesto: 'Aceite hipoidal para diferencial posterior API GL-5 SAE 85W-140',
     codigoRepuestoReferencia: 'Mobil Delvac Synthetic Gear / GL-5 85W-140',
     asignadoChoferPorDefecto: false,
     activoBiblioteca: true,
     prioridad: 'ALTA',
     observacionesMecanica: 'Diferencial posterior de piñón y corona hipoide. Capacidad aprox 2.5 a 3 galones.',
+  },
+  {
+    id: 'hino-20',
+    codigo: 'MNT-MNT-CAJA',
+    nombre: 'Mantenimiento de Caja',
+    categoria: 'TRANSMISION',
+    intervaloKmOficial: 150000,
+    intervaloDiasAprox: 800,
+    especificacionLubricanteRepuesto: 'Bajada mayor de caja, recambio de palillos, retenes y sincronizadores',
+    codigoRepuestoReferencia: 'Kit Overhaul Caja de Cambios Hino AK',
+    asignadoChoferPorDefecto: false,
+    activoBiblioteca: true,
+    prioridad: 'CRITICA',
+    observacionesMecanica: 'Bajada mayor. Efecto Cascada: activa reseteo de Aceite de Caja (30k) y Kit de Embrague (100k).',
+    efectoCascadaCodigos: ['MNT-ACEITE-CAJA', 'MNT-KIT-EMBRAGUE'],
+  },
+  {
+    id: 'hino-21',
+    codigo: 'MNT-MNT-CORONA',
+    nombre: 'Mantenimiento de Corona',
+    categoria: 'TRANSMISION',
+    intervaloKmOficial: 150000,
+    intervaloDiasAprox: 800,
+    especificacionLubricanteRepuesto: 'Desarme mayor de diferencial, calibración piñón/corona, planetarios y satélites',
+    codigoRepuestoReferencia: 'Kit Rodamientos y Retenes Corona Hino AK',
+    asignadoChoferPorDefecto: false,
+    activoBiblioteca: true,
+    prioridad: 'CRITICA',
+    observacionesMecanica: 'Desarme mayor de diferencial. Efecto Cascada: activa reseteo de Aceite de Corona (30k).',
+    efectoCascadaCodigos: ['MNT-ACEITE-CORONA'],
   },
   {
     id: 'hino-18',
@@ -330,7 +366,7 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
   },
 ];
 
-const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v2';
+const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v3';
 
 export function getCatalogoMaestroGlobal(): MantenimientoCatalogoItem[] {
   if (typeof window === 'undefined') return CATALOGO_MAESTRO_HINO_AK;
