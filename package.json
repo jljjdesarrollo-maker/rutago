@@ -1,10 +1,10 @@
 {
   "name": "rutago",
-  "version": "3.58.4",
+  "version": "3.58.5",
   "private": true,
   "description": "RutaGo - Control de transporte y venta de boletos",
   "scripts": {
-    "dev": "next dev -p 3000 2>&1 | tee dev.log",
+    "dev": "next dev -p 3000 -H 0.0.0.0",
     "build": "prisma generate && (if [ -n \"$DATABASE_URL\" ]; then npx prisma db push --accept-data-loss --skip-generate; fi) && next build",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
