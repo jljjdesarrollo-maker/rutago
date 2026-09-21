@@ -20,6 +20,14 @@ import {
 } from 'lucide-react';
 import { getLocalRutasKmConfig, syncRutasKmConfig } from '@/lib/rutas-km-storage';
 import {
+  getParadasAyudantePendientesArqueo,
+  markParadasComoDescontadas,
+  getDeficitArrastradoVT,
+  saveDeficitArrastradoVT,
+  clearDeficitArrastradoVT,
+  type DeficitArrastradoVT,
+} from '@/lib/paradas-vt-storage';
+import {
   validarLecturaOdometro,
   calcularKmTeoricoJornada,
   type ResultadoValidacionOdometro,
@@ -149,6 +157,41 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const [saved, setSaved] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [guardadoOffline, setGuardadoOffline] = useState(false);
+
+  // Sub-fase 3.2: Paradas de Taller cubiertas por Ayudante y Arrastre de Déficit de VT
+  const [paradasTallerCargadas, setParadasTallerCargadas] = useState<string[]>([]);
+  const [deficitPrevio, setDeficitPrevio] = useState<DeficitArrastradoVT | null>(null);
+  const [deficitIncluidoEnGastos, setDeficitIncluidoEnGastos] = useState(false);
+
+  // Sub-fase 3.2: Carga automática de paradas pagadas por el ayudante y arrastre de déficit de VT
+  useEffect(() => {
+    const fechaTrabajo = workDate(session);
+    // 1. Paradas de taller que el ayudante pagó en ruta hoy
+    const paradas = getParadasAyudantePendientesArqueo(currentBus.id, fechaTrabajo);
+    if (paradas.length > 0) {
+      setGastos(prev => {
+        const next = [...prev];
+        paradas.forEach(p => {
+          const desc = 'Taller: ' + p.taller + ' (' + p.estacionNombre + ')';
+          const yaExiste = next.some(g => g.description.toLowerCase().includes(p.taller.toLowerCase()));
+          if (!yaExiste) {
+            next.push({
+              description: desc,
+              amount: p.costoTotal.toString(),
+            });
+          }
+        });
+        return next;
+      });
+      setParadasTallerCargadas(paradas.map(p => p.id));
+    }
+
+    // 2. Saldo de déficit arrastrado de una jornada / VT anterior
+    const def = getDeficitArrastradoVT(currentBus.id);
+    if (def && def.amount > 0) {
+      setDeficitPrevio(def);
+    }
+  }, [currentBus.id, session]);
 
   // Inline edit caja común
   const [editingCajaComun, setEditingCajaComun] = useState<string | null>(null);
@@ -553,6 +596,25 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       // Guardar odómetro dedicado de la unidad física (Fase 3.2)
       saveBusOdometer(currentBus.numeroDisco, kmFinal.trim(), fechaTrabajo);
 
+      // Sub-fase 3.2: Tratamiento financiero de Déficit Operativo o Cancelación de Saldo Arrastrado
+      if (entregaAyudante < 0) {
+        saveDeficitArrastradoVT(
+          currentBus.id,
+          Math.abs(entregaAyudante),
+          fechaTrabajo,
+          'Déficit por parada de taller / gastos en VT ' + (session.vtCode || '')
+        );
+      } else {
+        if (deficitPrevio) {
+          clearDeficitArrastradoVT(currentBus.id);
+        }
+      }
+
+      // Marcar paradas de taller del ayudante como formalmente procesadas en el arqueo
+      if (paradasTallerCargadas.length > 0) {
+        markParadasComoDescontadas(paradasTallerCargadas);
+      }
+
       const isOnline = navigator.onLine;
 
       if (isOnline) {
@@ -696,10 +758,21 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                   Entrega Ayudante
                   {totalCajaComunMonto === 0 && ticketsNum > 0 && <span className="text-xs text-amber-600 ml-1">(sin caja común)</span>}
                 </span>
-                <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  ${entregaAyudante.toFixed(2)}
+                <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-600' : 'text-amber-600'}`}>
+                  {entregaAyudante >= 0 ? '$' + entregaAyudante.toFixed(2) : '$0.00 (Efectivo en mano)'}
                 </span>
               </div>
+              {entregaAyudante < 0 && (
+                <div className="flex justify-between text-xs text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200">
+                  <span className="font-bold flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                    Déficit arrastrado a prox. VT:
+                  </span>
+                  <span className="font-black">
+                    {'-$' + Math.abs(entregaAyudante).toFixed(2)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Entrega Compañía</span>
                 <span className={`font-bold ${entregaCompania >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -1183,6 +1256,38 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
 
         {/* 3. GASTOS */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+          {/* Sub-fase 3.2: Banner de Déficit Arrastrado de VT Anterior */}
+          {deficitPrevio && (
+            <div className="mb-3 p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between gap-2">
+              <div>
+                <span className="text-xs font-black text-amber-900 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                  {'Déficit Arrastrado de VT Anterior: $' + deficitPrevio.amount.toFixed(2)}
+                </span>
+                <p className="text-[10px] text-amber-700 mt-0.5">
+                  {'Origen: ' + deficitPrevio.fechaOrigen + ' — ' + deficitPrevio.descripcion}
+                </p>
+              </div>
+              {!deficitIncluidoEnGastos ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const desc = 'Arrastre Déficit (' + deficitPrevio.fechaOrigen + ')';
+                    setGastos(prev => [...prev, { description: desc, amount: deficitPrevio.amount.toString() }]);
+                    setDeficitIncluidoEnGastos(true);
+                  }}
+                  className="text-[10px] bg-amber-600 hover:bg-amber-700 text-white font-black px-2.5 py-1.5 rounded-lg shrink-0 cursor-pointer shadow-xs"
+                >
+                  + Aplicar en Gastos
+                </button>
+              ) : (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md">
+                  ✓ Aplicado
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-red-600 text-sm uppercase">Gastos</h3>
             <button onClick={addGasto} className="text-xs text-[#912D26] font-bold flex items-center gap-1">
@@ -1307,10 +1412,26 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
               Entrega Ayudante
               {totalCajaComunMonto === 0 && ticketsNum > 0 && <span className="text-[10px] text-amber-400 ml-1">(sin caja común)</span>}
             </span>
-            <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              ${entregaAyudante.toFixed(2)}
+            <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-400' : 'text-amber-400'}`}>
+              {entregaAyudante >= 0 ? '$' + entregaAyudante.toFixed(2) : '$0.00 (Déficit)'}
             </span>
           </div>
+          {entregaAyudante < 0 && (
+            <div className="bg-amber-950/70 border border-amber-400/40 rounded-xl p-2.5 my-1 text-left">
+              <div className="flex items-center justify-between text-xs font-black text-amber-300">
+                <span className="flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                  Déficit a arrastrar a siguiente VT:
+                </span>
+                <span className="text-amber-300 text-sm">
+                  {'-$' + Math.abs(entregaAyudante).toFixed(2)}
+                </span>
+              </div>
+              <p className="text-[10px] text-amber-200/80 mt-0.5 leading-tight">
+                El taller/gastos superó la recaudación de hoy. Entrega al socio hoy: $0.00. El saldo se arrastra automáticamente.
+              </p>
+            </div>
+          )}
           <p className="text-[10px] text-white/30">
             {totalCajaComunMonto === 0 ? '(EfectivoReal+Ajuste) - (Gastos+Tickets)' : 'Efectivo Real - Total Gastos'}
           </p>

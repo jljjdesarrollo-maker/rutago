@@ -272,7 +272,7 @@
     1. Socio Transfiere Todo ($...)
     2. Socio Transfiere una Parte ($...) -> Digita lo transferido, la app calcula el saldo.
     3. Socio Saca Fiado ( $0 Hoy) -> 1 toque, crédito total.
-  * Estado: [PENDIENTE TRAS FASE 2]
+  * Estado: [COMPLETADO v3.59.3]
 
 #### FASE 4: Asentamiento Automático en Libro de Gastos y Deudas del Socio (Commit: feat(finanzas): v3.59.4 - generacion automatica de asientos contables, cartera de deudas y abonos)
 - **Alcance Contable Socio:** Integración automática con OwnerExpense y cartera de deudas:
