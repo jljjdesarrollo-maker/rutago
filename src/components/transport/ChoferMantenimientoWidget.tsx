@@ -208,9 +208,15 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       }
     });
 
+    const handleConfigSync = () => {
+      setItems(cargarItems(activeBusId));
+    };
+    window.addEventListener('rg_mantenimiento_config_sync', handleConfigSync);
+
     return () => {
       unsubBus();
       unsubOdo();
+      window.removeEventListener('rg_mantenimiento_config_sync', handleConfigSync);
     };
   }, [activeBusId, resolverKmActual, cargarItems]);
 

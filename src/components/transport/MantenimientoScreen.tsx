@@ -61,6 +61,7 @@ import {
   getComboUnidad,
   saveComboUnidad,
   resetComboUnidad,
+  isItemProtegidoReceta,
   resolverCascadaEstacion,
   getCategoriaContablePorEstacion,
 } from '@/lib/mantenimiento-estaciones';
@@ -365,6 +366,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   const [comboUnidadItems, setComboUnidadItems] = useState<{ codigo: string; nombre: string; intervaloKm: number; preMarcado: boolean; opcionalTexto?: string }[]>([]);
   const [comboUnidadChecks, setComboUnidadChecks] = useState<Record<string, boolean>>({});
   const [comboUnidadExtras, setComboUnidadExtras] = useState<string[]>([]);
+  const [comboUnidadExcluidos, setComboUnidadExcluidos] = useState<string[]>([]);
   const [busquedaExtraModal, setBusquedaExtraModal] = useState('');
   const [estacionCodigosSeleccionados, setEstacionCodigosSeleccionados] = useState<string[]>([]);
   const [estacionKm, setEstacionKm] = useState<string>();
@@ -1151,7 +1153,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     const config = ESTACIONES_SERVICIO_CONFIG[estacionId];
     if (!config) return;
 
-    // Cargar combo configurado para esta unidad (Fase 1)
+    // Cargar combo configurado para esta unidad (Fase 1 y 2)
     const comboData = getComboUnidad(currentBus.id, estacionId);
     const iniciales = comboData.codigosPreMarcados;
     
@@ -1166,6 +1168,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     setComboUnidadItems(comboData.items);
     setComboUnidadChecks(checksMap);
     setComboUnidadExtras(comboData.items.filter(it => !config.items.some(base => base.codigo === it.codigo)).map(it => it.codigo));
+    setComboUnidadExcluidos(comboData.codigosExcluidos || []);
     setModoConfigurarCombo(abrirEnModoConfigurar);
 
     setEstacionSeleccionada(estacionId);
@@ -1183,10 +1186,16 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     );
   };
 
-  // Fase 1: Guardar Receta Personalizada del Combo para la Unidad
+  // Fase 1 y 2: Guardar Receta Personalizada del Combo para la Unidad
   const handleGuardarRecetaCombo = () => {
     if (!estacionSeleccionada) return;
-    saveComboUnidad(currentBus.id, estacionSeleccionada, comboUnidadChecks, comboUnidadExtras);
+    saveComboUnidad(
+      currentBus.id,
+      estacionSeleccionada,
+      comboUnidadChecks,
+      comboUnidadExtras,
+      comboUnidadExcluidos
+    );
     
     // Actualizar selección activa con los nuevos pre-marcados
     const seleccionados = comboUnidadItems
@@ -1202,7 +1211,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     });
   };
 
-  // Fase 1: Restablecer combo de estación a los valores predeterminados
+  // Fase 1 y 2: Restablecer combo de estación a los valores predeterminados de fábrica
   const handleRestablecerComboBase = () => {
     if (!estacionSeleccionada) return;
     resetComboUnidad(currentBus.id, estacionSeleccionada);
@@ -1214,10 +1223,51 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     setComboUnidadItems(comboData.items);
     setComboUnidadChecks(checksMap);
     setComboUnidadExtras([]);
+    setComboUnidadExcluidos([]);
     setEstacionCodigosSeleccionados(comboData.codigosPreMarcados);
     toast({
-      title: 'Combo Restablecido',
-      description: 'Se restauraron los valores estándar de fábrica para esta estación.',
+      title: 'Receta Restablecida a Fábrica',
+      description: 'Se restauraron los componentes oficiales predeterminados para esta estación.',
+    });
+  };
+
+  // Fase 2: Quitar un componente de la receta de esta unidad
+  const handleQuitarItemReceta = (codigo: string, nombre: string) => {
+    if (!estacionSeleccionada) return;
+
+    // Protección de seguridad del motor
+    if (isItemProtegidoReceta(estacionSeleccionada, codigo)) {
+      toast({
+        title: 'Componente Vital Protegido',
+        description: 'Por seguridad del motor Hino AK, este filtro no puede eliminarse de la receta de Lubricadora.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 1. Remover de la lista visible de items
+    setComboUnidadItems(prev => prev.filter(it => it.codigo !== codigo));
+
+    // 2. Limpiar check
+    setComboUnidadChecks(prev => {
+      const copy = { ...prev };
+      delete copy[codigo];
+      return copy;
+    });
+
+    // 3. Si era un extra añadido por el socio, quitarlo de extras
+    setComboUnidadExtras(prev => prev.filter(c => c !== codigo));
+
+    // 4. Si es un componente base de la estación, agregarlo a codigosExcluidos
+    const configBase = ESTACIONES_SERVICIO_CONFIG[estacionSeleccionada];
+    const esBase = configBase?.items.some(it => it.codigo === codigo);
+    if (esBase) {
+      setComboUnidadExcluidos(prev => prev.includes(codigo) ? prev : [...prev, codigo]);
+    }
+
+    toast({
+      title: 'Componente Removido',
+      description: `${nombre} ha sido retirado de la receta de esta estación. Pulsa "Guardar Receta" para confirmar.`,
     });
   };
 
@@ -1235,6 +1285,9 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
       });
       return;
     }
+
+    // Si estaba previamente excluido, sacarlo de la lista de exclusiones
+    setComboUnidadExcluidos(prev => prev.filter(c => c !== codigoCat));
 
     const nuevoItem: ItemEstacionConfig = {
       codigo: catItem.codigo,
@@ -2450,56 +2503,89 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                         {comboUnidadItems.map(it => {
                           const estaActivo = !!comboUnidadChecks[it.codigo];
                           const esExtra = comboUnidadExtras.includes(it.codigo);
+                          const esProtegido = estacionSeleccionada ? isItemProtegidoReceta(estacionSeleccionada, it.codigo) : false;
                           return (
                             <div
                               key={it.codigo}
-                              onClick={() => {
-                                setComboUnidadChecks(prev => ({
-                                  ...prev,
-                                  [it.codigo]: !prev[it.codigo],
-                                }));
-                              }}
-                              className={`flex items-start gap-2.5 p-2 rounded-xl text-left transition-all cursor-pointer border ${
+                              className={`flex items-center gap-2 p-2 rounded-xl text-left transition-all border ${
                                 estaActivo
                                   ? "bg-white border-amber-500/80 shadow-xs"
                                   : "bg-slate-100/50 border-slate-200 opacity-60 hover:opacity-100"
                               }`}
                             >
                               <div
-                                className={`w-4 h-4 rounded-md mt-0.5 flex items-center justify-center shrink-0 border ${
-                                  estaActivo
-                                    ? "bg-amber-500 border-amber-500 text-slate-950 font-black"
-                                    : "border-slate-300 bg-white"
-                                }`}
+                                onClick={() => {
+                                  setComboUnidadChecks(prev => ({
+                                    ...prev,
+                                    [it.codigo]: !prev[it.codigo],
+                                  }));
+                                }}
+                                className="flex items-start gap-2.5 flex-1 min-w-0 cursor-pointer"
                               >
-                                {estaActivo && <Check className="w-3 h-3 stroke-[3]" />}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className={`text-xs font-bold truncate ${estaActivo ? "text-slate-900" : "text-slate-500"}`}>
-                                    {it.nombre}
-                                  </span>
-                                  {esExtra ? (
-                                    <Badge className="bg-purple-100 text-purple-900 border-0 text-[8px] py-0 px-1 font-black shrink-0">
-                                      Añadido por Socio
-                                    </Badge>
-                                  ) : it.preMarcado ? (
-                                    <Badge className="bg-slate-200 text-slate-800 border-0 text-[8px] py-0 px-1 font-bold shrink-0">
-                                      Base Taller
-                                    </Badge>
-                                  ) : (
-                                    <Badge className="bg-slate-100 text-slate-500 border-0 text-[8px] py-0 px-1 font-medium shrink-0">
-                                      Opcional
-                                    </Badge>
-                                  )}
+                                <div
+                                  className={`w-4 h-4 rounded-md mt-0.5 flex items-center justify-center shrink-0 border ${
+                                    estaActivo
+                                      ? "bg-amber-500 border-amber-500 text-slate-950 font-black"
+                                      : "border-slate-300 bg-white"
+                                  }`}
+                                >
+                                  {estaActivo && <Check className="w-3 h-3 stroke-[3]" />}
                                 </div>
-                                <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
-                                  <span>Ciclo: {(it.intervaloKm || 0).toLocaleString()} km</span>
-                                  {it.opcionalTexto && (
-                                    <span className="text-slate-400 italic truncate">• {it.opcionalTexto}</span>
-                                  )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className={`text-xs font-bold truncate ${estaActivo ? "text-slate-900" : "text-slate-500"}`}>
+                                      {it.nombre}
+                                    </span>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {esExtra ? (
+                                        <Badge className="bg-purple-100 text-purple-900 border-0 text-[8px] py-0 px-1 font-black shrink-0">
+                                          Añadido por Socio
+                                        </Badge>
+                                      ) : esProtegido ? (
+                                        <Badge className="bg-emerald-100 text-emerald-900 border border-emerald-300 text-[8px] py-0 px-1 font-black shrink-0">
+                                          Vital Motor
+                                        </Badge>
+                                      ) : it.preMarcado ? (
+                                        <Badge className="bg-slate-200 text-slate-800 border-0 text-[8px] py-0 px-1 font-bold shrink-0">
+                                          Base Taller
+                                        </Badge>
+                                      ) : (
+                                        <Badge className="bg-slate-100 text-slate-500 border-0 text-[8px] py-0 px-1 font-medium shrink-0">
+                                          Opcional
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
+                                    <span>Ciclo: {(it.intervaloKm || 0).toLocaleString()} km</span>
+                                    {it.opcionalTexto && (
+                                      <span className="text-slate-400 italic truncate">• {it.opcionalTexto}</span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
+
+                              {/* Botón Quitar de la Receta (con protección para filtros vitales de motor) */}
+                              {esProtegido ? (
+                                <div
+                                  title="Filtro vital para la vida del motor Hino AK (Protegido)"
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 shrink-0 cursor-not-allowed"
+                                >
+                                  <ShieldCheck className="w-4 h-4 text-emerald-600/70" />
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  title={`Quitar ${it.nombre} de la receta de esta unidad`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleQuitarItemReceta(it.codigo, it.nombre);
+                                  }}
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors shrink-0 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
                           );
                         })}

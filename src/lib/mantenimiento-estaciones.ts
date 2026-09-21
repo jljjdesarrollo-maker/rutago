@@ -728,6 +728,10 @@ export function saveBusMantenimientoConfigCompleta(
 // PERSISTENCIA Y RECETA DE COMBOS POR UNIDAD (FASE 1)
 // ==========================================
 
+// ==========================================
+// RECETAS DE ESTACIONES PERSONALIZADAS POR UNIDAD (FASE 1 Y 2)
+// ==========================================
+
 export interface ComboUnidadPersonalizado {
   busId: string;
   estacionId: EstacionServicioId;
@@ -735,37 +739,64 @@ export interface ComboUnidadPersonalizado {
   itemsSeleccionados: Record<string, boolean>;
   // Codigos adicionales agregados del catalogo maestro a esta estacion
   codigosExtras?: string[];
+  // Codigos base de fabrica que el socio decidio remover de la receta de su bus
+  codigosExcluidos?: string[];
   actualizadoEn?: string;
 }
 
 const STORAGE_PREFIX_COMBO_UNIDAD = 'rg_combo_estacion_v1_';
 
 /**
+ * Códigos esenciales que NO pueden eliminarse físicamente de la receta de Lubricadora
+ * para proteger la vida del motor contra descuidos mecánicos.
+ */
+export const CODIGOS_PROTEGIDOS_LUBRICADORA = [
+  'MNT-ACEITE-MOT',
+  'MNT-FILT-ACEITE',
+  'MNT-FILT-TRAMPA',
+  'MNT-FILT-DIESEL-SEC',
+];
+
+/**
+ * Verifica si un código de componente está protegido y no debe ser eliminado de su receta.
+ */
+export function isItemProtegidoReceta(estacionId: EstacionServicioId, codigo: string): boolean {
+  if (estacionId === 'LUBRICADORA') {
+    return CODIGOS_PROTEGIDOS_LUBRICADORA.includes(codigo);
+  }
+  return false;
+}
+
+/**
  * Obtiene la configuración personalizada del combo de una estación para un bus específico.
- * Si no existe personalización, retorna los defaults oficiales de ESTACIONES_SERVICIO_CONFIG.
+ * Si no existe personalización (o es un bus nuevo), retorna los defaults oficiales de ESTACIONES_SERVICIO_CONFIG.
  */
 export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
   items: ItemEstacionConfig[];
   codigosPreMarcados: string[];
+  codigosExcluidos: string[];
 } {
   const estacionBase = ESTACIONES_SERVICIO_CONFIG[estacionId];
   if (!estacionBase) {
-    return { items: [], codigosPreMarcados: [] };
+    return { items: [], codigosPreMarcados: [], codigosExcluidos: [] };
   }
 
   if (typeof window === 'undefined') {
     return {
       items: estacionBase.items,
       codigosPreMarcados: estacionBase.items.filter(it => it.preMarcado).map(it => it.codigo),
+      codigosExcluidos: [],
     };
   }
 
   try {
     const raw = localStorage.getItem(STORAGE_PREFIX_COMBO_UNIDAD + busId + "_" + estacionId);
     if (!raw) {
+      // DEFAULT OFICIAL DE FÁBRICA PARA NUEVOS SOCIOS / BUSES
       return {
         items: estacionBase.items,
         codigosPreMarcados: estacionBase.items.filter(it => it.preMarcado).map(it => it.codigo),
+        codigosExcluidos: [],
       };
     }
 
@@ -773,9 +804,18 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
     const catalogo = getCatalogoMaestroGlobal();
     const mapCatalogo = new Map(catalogo.map(c => [c.codigo, c]));
 
-    // 1. Items base de la estación
+    const codigosExcluidosArr = Array.isArray(data.codigosExcluidos) ? data.codigosExcluidos : [];
+    const excluidosSet = new Set(codigosExcluidosArr);
+
+    // 1. Items base de la estación (respetando exclusiones excepto protegidos)
     const itemsMap = new Map<string, ItemEstacionConfig>();
     estacionBase.items.forEach(it => {
+      // Si el socio lo excluyó y no es protegido, se omite de la receta
+      const esProtegido = isItemProtegidoReceta(estacionId, it.codigo);
+      if (excluidosSet.has(it.codigo) && !esProtegido) {
+        return;
+      }
+
       const estaMarcado = data.itemsSeleccionados?.[it.codigo] !== undefined 
         ? data.itemsSeleccionados[it.codigo] 
         : it.preMarcado;
@@ -788,6 +828,9 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
     // 2. Si el socio agregó códigos extras del catálogo a esta estación
     if (data.codigosExtras && Array.isArray(data.codigosExtras)) {
       data.codigosExtras.forEach(cod => {
+        // Solo agregar si no está en la lista de excluidos
+        if (excluidosSet.has(cod)) return;
+
         if (!itemsMap.has(cod)) {
           const catItem = mapCatalogo.get(cod);
           if (catItem) {
@@ -812,12 +855,14 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
     return {
       items: itemsFinales,
       codigosPreMarcados,
+      codigosExcluidos: codigosExcluidosArr,
     };
   } catch (err) {
     console.error('Error cargando combo personalizado de unidad:', err);
     return {
       items: estacionBase.items,
       codigosPreMarcados: estacionBase.items.filter(it => it.preMarcado).map(it => it.codigo),
+      codigosExcluidos: [],
     };
   }
 }
@@ -829,7 +874,8 @@ export function saveComboUnidad(
   busId: string,
   estacionId: EstacionServicioId,
   itemsSeleccionados: Record<string, boolean>,
-  codigosExtras: string[] = []
+  codigosExtras: string[] = [],
+  codigosExcluidos: string[] = []
 ): void {
   if (typeof window === 'undefined') return;
   try {
@@ -838,6 +884,7 @@ export function saveComboUnidad(
       estacionId,
       itemsSeleccionados,
       codigosExtras,
+      codigosExcluidos,
       actualizadoEn: new Date().toISOString(),
     };
     localStorage.setItem(

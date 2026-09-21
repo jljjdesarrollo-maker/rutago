@@ -124,5 +124,11 @@
 - El semáforo es una herramienta de auditoría: si un ítem está en ROJO, alerta al socio de que el conductor no ha reportado el servicio o no lo ha llevado al taller.
 - El conductor es quien visualiza los **Mantenimientos a Realizar** para programar sus paradas y reportar los comprobantes con 1 solo toque.
 
-## 18. Registro de Versiones y Contexto
-- Documento maestro completo respaldado en: `/download/RutaGo_Contexto_Maestro_v3.58.10.md`.
+## 18. Recetas de Estaciones Personalizables por Unidad (v3.59.5)
+- **Problema:** En "Mi Receta" de estaciones (Lubricadora, Frenos, Rodaje, etc.), el socio no podía quitar componentes que no aplicaban a su unidad.
+- **Arquitectura de Fases:**
+  * **Fase 1:** En `mantenimiento-estaciones.ts`, soporte de `codigosExcluidos?: string[]` en `ComboUnidadPersonalizado`, motor de fallback automático predeterminado para nuevos socios y función `resetComboUnidad`.
+  * **Fase 2:** En `MantenimientoScreen.tsx`, botón ergonómico táctil `[ 🗑️ Quitar ]` en tarjetas de receta, blindaje del núcleo crítico (los 4 filtros de motor son fijos) y botón para restablecer receta de fábrica.
+  * **Fase 3:** En `ChoferMantenimientoWidget.tsx`, lectura reactiva de la receta configurada por el socio sin ítems excluidos.
+  * **Fase 4:** Compilación estricta y commit `feat(mantenimiento): v3.59.5 - recetas personalizables por unidad con eliminacion de items y defaults de fabrica`.
+- **Registro Maestro:** Documento maestro completo respaldado en: `/download/RutaGo_Contexto_Maestro_v3.59.5.md`.
