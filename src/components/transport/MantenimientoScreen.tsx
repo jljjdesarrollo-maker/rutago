@@ -167,7 +167,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   const [estacionCosto, setEstacionCosto] = useState<string>();
   const [estacionTaller, setEstacionTaller] = useState<string>();
   const [estacionFactura, setEstacionFactura] = useState<string>();
-  const [estacionMetodoPago, setEstacionMetodoPago] = useState<EFECTIVO | TRANSFERENCIA>(EFECTIVO);
+  const [estacionMetodoPago, setEstacionMetodoPago] = useState<'EFECTIVO' | 'TRANSFERENCIA'>('EFECTIVO');
 
   // Modal Combo 4 Ruedas (Rodaje y Suspensión)
   const [isComboRuedasModalOpen, setIsComboRuedasModalOpen] = useState(false);
@@ -179,15 +179,15 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
 
   // Filtro de la vista principal del socio
   const [filtroVista, setFiltroVista] = useState<'TODOS' | 'VENCIDOS' | 'CHOFER'>('TODOS');
-  const [filtroCategoria, setFiltroCategoria] = useState<string>(TODAS);
+  const [filtroCategoria, setFiltroCategoria] = useState<string>('TODAS');
 
   // Nivel de Control del Socio (BÁSICO 7 | MEDIO 15 | TOTAL 27) y Switches
   const [nivelControl, setNivelControl] = useState<NivelControlMantenimiento>(() => {
-    if (typeof window === undefined) return BASICO;
+    if (typeof window === 'undefined') return 'BASICO';
     return getBusNivelControl(activeBusId);
   });
   const [itemsActivosConfig, setItemsActivosConfig] = useState<Record<string, boolean>>(() => {
-    if (typeof window === undefined) return {};
+    if (typeof window === 'undefined') return {};
     return getBusItemsActivosConfig(activeBusId);
   });
   const [mostrarSoloActivos, setMostrarSoloActivos] = useState<boolean>(true);
@@ -197,7 +197,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
 
   // Decisión del Socio: ¿Desea utilizar las funciones de mantenimiento o solo operativas?
   const [moduloActivo, setModuloActivo] = useState<boolean>(() => {
-    if (typeof window === undefined) return true;
+    if (typeof window === 'undefined') return false;
     return getBusModuloMantenimientoActivo(activeBusId);
   });
 
