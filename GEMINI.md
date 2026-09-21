@@ -1,4 +1,4 @@
-# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.12)
+# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.13)
 
 ## Contexto Esencial
 - **Proyecto:** RutaGo (Control de transporte, boletaje, arqueos y mantenimiento para autobuses interprovinciales/cantonales).
@@ -39,5 +39,20 @@
   * Toggle "Solo Activos" en cabecera para mantener la pantalla despejada.
   * Persistencia local reactiva e independiente por autobús (`rg_mnt_nivel_control_${busId}` y `rg_mnt_items_activos_${busId}`).
 
-## 5. Registro de Versiones y Contexto
+### 5. Estaciones de Servicio de Taller y Combos de Parada (v3.58.13)
+- **Botonera Táctil de 6 Estaciones de Taller Físico:**
+  * **🛢️ Lubricadora:** Combo fosa (4 obligatorios pre-marcados: aceite motor, filtro aceite, trampa, diésel fino + 7 opcionales de revisión).
+  * **🛑 Frenos, Ruedas y Suspensión:** Zapatas delanteras/traseras, bocinas, muelles, bujes y raches.
+  * **🛠️ Mantenimiento Mayor:** Reparación integral de caja, corona, embrague, metales y termostato con efecto cascada automático.
+  * **💨 Sistema de Aire y Admisión:** Calibración toberas Denso, mangueras admisión y filtros de aire secundario/primario.
+  * **🛞 Alineación y Llantas:** Serviteca y alineación láser neumáticos 295/80R22.5.
+  * **🧼 Radiador y Refrigeración:** Lavado químico, intercooler y coolant de servicio pesado.
+  * **🚌 Rutina de Chofer:** Raches, engrase rápido y malla de pasillo en parada diaria.
+- **Modal Ergonómico Bottom Sheet:**
+  * Checklist táctil de componentes con pre-marcado inteligente.
+  * Registro conjunto de Odómetro/Tacómetro del bus, Costo Factura ($), Taller/Proveedor y Comprobante de Venta.
+  * Reseteo simultáneo de odómetros para todos los componentes seleccionados.
+  * **Asiento Contable Automático:** Integración con `saveOwnerExpense` en la categoría contable exacta (`ACEITES_FILTROS`, `FRENOS_RODAJE`, `MOTOR_CAJA_CORONA`, `LLANTAS`).
+
+## 6. Registro de Versiones y Contexto
 - Documento maestro completo respaldado en: `/download/RutaGo_Contexto_Maestro_v3.58.10.md`.

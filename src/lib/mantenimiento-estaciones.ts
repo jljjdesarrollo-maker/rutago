@@ -494,3 +494,29 @@ export function resolverCascadaEstacion(codigosSeleccionados: string[]): string[
 
   return Array.from(resultado);
 }
+
+
+/**
+ * Asocia cada estación de servicio con la categoría contable correspondiente en OwnerExpenses
+ */
+export function getCategoriaContablePorEstacion(estacionId: EstacionServicioId): "ACEITES_FILTROS" | "FRENOS_RODAJE" | "MOTOR_CAJA_CORONA" | "LLANTAS" | "OTROS" {
+  switch (estacionId) {
+    case "LUBRICADORA":
+      return "ACEITES_FILTROS";
+    case "FRENOS_RUEDAS":
+      return "FRENOS_RODAJE";
+    case "MNT_MAYOR":
+      return "MOTOR_CAJA_CORONA";
+    case "ADMISION_AIRE":
+      return "MOTOR_CAJA_CORONA";
+    case "ALINEACION":
+      return "LLANTAS";
+    case "RADIADOR":
+      return "MOTOR_CAJA_CORONA";
+    case "CHOFER_RUTINA":
+      return "OTROS";
+    default:
+      return "OTROS";
+  }
+}
+

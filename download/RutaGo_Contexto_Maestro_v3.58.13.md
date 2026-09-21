@@ -1,0 +1,106 @@
+# RutaGo - Contexto Maestro y Bitácora de Desarrollo v3.58.13
+**Fecha:** Septiembre 2026  
+**Versión Activa:** `v3.58.13-estaciones-taller-combos-parada`  
+**Flota Modelo:** Hino AK (Ruta Loja – Vilcabamba – Malacatos – Yangana – La Elvira)  
+**Hito Alcanzado:** Implementación de la **FASE 3** de la Arquitectura de Mantenimiento Hino AK:
+1. **Botonera Táctil de 6 Estaciones de Taller Físico en `MantenimientoScreen.tsx`:**
+   - 🛢️ Lubricadora (Combo fosa: 4 obligatorios + 7 opcionales).
+   - 🛑 Frenos, Ruedas y Suspensión (Zapatas, tambores, bocinas y muelles).
+   - 🛠️ Mantenimiento Mayor (Caja, corona, kit de embrague con efecto cascada automático).
+   - 💨 Admisión y Aire (Toberas Denso, mangueras y filtros de aire).
+   - 🛞 Alineación y Llantas (Alineación láser rodaje 295/80R22.5).
+   - 🧼 Radiador y Refrigeración (Lavado químico, intercooler y coolant HD).
+   - 🚌 Rutina Chofer (3 toques en terminal).
+2. **Modal Ergonómico Bottom Sheet con Asiento Contable Automático:**
+   - Registro masivo del paquete realizado con un solo ingreso de odómetro, taller y factura.
+   - Reseteo sincrónico de kilometrajes por componente.
+   - Registro directo en el libro patrimonial del socio (`saveOwnerExpense`) con su categoría tributaria y operativa correspondiente.
+3. **Validación Estricta:**
+   - Compilación TypeScript 100% limpia (`tsc --noEmit`).
+
+---
+
+# RutaGo - Contexto Maestro y Bitácora de Desarrollo v3.58.12
+**Fecha:** Septiembre 2026  
+**Versión Activa:** `v3.58.12-socio-asistente-3-niveles-switches`  
+**Flota Modelo:** Hino AK (Ruta Loja – Vilcabamba – Malacatos – Yangana – La Elvira)  
+**Hito Alcanzado:** Implementación de la **FASE 2** de la Arquitectura de Mantenimiento Hino AK:
+1. **Asistente de 3 Niveles en la Pantalla del Socio (`MantenimientoScreen.tsx`):**
+   - Selector táctil de perfiles: **BÁSICO (7)**, **MEDIO (15)** y **TOTAL (27)** con auto-selección instantánea y persistencia por unidad (`busId`).
+   - Switch general "Solo Activos" para alternar entre vista compacta y auditoría completa.
+2. **Switches Táctiles [ON / OFF] por Tarjeta de Mantenimiento:**
+   - Control granular para el socio: posibilidad de pausar o activar cualquier ítem individualmente según la realidad de su vehículo.
+   - Atenuación visual de ítems pausados para no saturar el tablero de alertas operativas.
+   - Cero bucles infinitos (Zero-Loops Policy) garantizada mediante dependencias primitivas y `useMemo`.
+
+---
+
+# RutaGo - Contexto Maestro y Bitácora de Desarrollo v3.58.10
+
+**Fecha:** Septiembre 2026  
+**Versión Activa:** `v3.58.10-superadmin-grid-categorias`  
+**Flota Modelo:** Hino AK (Ruta Loja – Vilcabamba – Malacatos – Yangana – La Elvira)  
+**Hito Alcanzado:** Homologación y Rediseño Ergonómico de la Interfaz del **SuperAdmin (9999)** en Catálogo Institucional de Mantenimiento (`SuperAdminMantenimientoTab.tsx`). Se implementó la matriz visual de **2 Columnas × 3 Filas** auto-extensible para los 5 Bloques Técnicos Oficiales Hino AK, eliminando categorías obsoletas o huérfanas.
+
+---
+
+## 1. Rediseño Ergonómico del SuperAdmin (9999): 2 Columnas × 3 Filas
+
+### Justificación de Arquitectura y Transporte
+- **Problema Previo:** La interfaz del SuperAdmin mostraba 7 categorías genéricas y dispersas en un carrusel horizontal con scroll (`MOTOR`, `TRANSMISION`, `FRENOS`, `SUSPENSION`, `SISTEMA AIRE`, `RODAJE`, `SISTEMA COMBUSTIBLE`), desconectadas del plan calibrado con los transportistas.
+- **Solución Adoptada (Grid 2x3 con Auto-Extensión):**
+  - Matriz táctil fija a **2 Columnas** (`grid grid-cols-2 gap-2`), optimizada para la zona del pulgar en smartphones.
+  - Distribución simétrica en **3 Filas** con los 6 accesos principales y conteo en tiempo real de ítems activos:
+    - **Fila 1:** `📋 Todas las Categorías` (27 ítems) | `⚙️ 1. Motor` (9 ítems)
+    - **Fila 2:** `🔄 2. Transmisión` (5 ítems) | `💨 3. Admisión y Aire` (5 ítems)
+    - **Fila 3:** `🛞 4. Rodaje y Suspensión` (5 ítems) | `🛑 5. Frenos y Neumático` (3 ítems)
+  - **Auto-Escalabilidad a Futuro:** Si en próximas etapas se agregan nuevos bloques (ej. *6. Sistema Eléctrico* o *7. Carrocería*), la matriz agrega automáticamente filas hacia abajo sin romper la estructura ni desbordar la pantalla.
+  - **Consistencia Visual:** Badges de los ítems en lista y selectores de formularios (`Nuevo Ítem` y `Editar`) reflejan exactamente los 5 Bloques Oficiales.
+
+---
+
+## 2. Resumen de los 5 Bloques Técnicos Homologados (27 Ítems Oficiales)
+
+### Bloque 1: MOTOR (9 Ítems)
+1. `MNT-ACEITE-MOT`: Aceite de Motor (Fluido) - 5,000 km
+2. `MNT-FILT-ACEITE`: Filtro de Aceite de Motor - 5,000 km
+3. `MNT-FILT-TRAMPA`: Filtro Trampa de Agua - 5,000 km
+4. `MNT-FILT-DIESEL-SEC`: Filtro Diésel Secundario - 5,000 km
+5. `MNT-VALVULAS-TOBERAS`: Calibración de Válvulas y Toberas - 50,000 km
+6. `MNT-BANDAS-MOTOR`: Bandas del Motor - 100,000 km
+7. `MNT-TERMOSTATO-MOT`: Termostato del Motor - 100,000 km
+8. `MNT-RADIADOR-COOLANT`: Lavado Radiador, Intercooler y Coolant - 100,000 km
+9. `MNT-CHAPAS-MOTOR`: Metales de Motor (Biela y Bancada) - 800,000 km
+
+### Bloque 2: TRANSMISIÓN (5 Ítems)
+1. `MNT-ACEITE-CAJA`: Aceite de Caja - 30,000 km
+2. `MNT-ACEITE-CORONA`: Aceite de Corona - 30,000 km
+3. `MNT-KIT-EMBRAGUE`: Kit de Embrague - 100,000 km
+4. `MNT-MNT-CAJA`: Mantenimiento de Caja - 150,000 km (Cascada: Aceite Caja 30k + Embrague 100k)
+5. `MNT-MNT-CORONA`: Mantenimiento de Corona - 150,000 km (Cascada: Aceite Corona 30k)
+
+### Bloque 3: ADMISIÓN Y AIRE (5 Ítems)
+1. `MNT-SOPLADO-AIRE`: Soplado Filtro Aire - 5,000 km
+2. `MNT-LAVADO-MALLA-PASILLO`: Lavado Malla Aire Pasillo - 5,000 km
+3. `MNT-MANGUERAS-ADMISION`: Ajuste Mangueras Admisión - 10,000 km
+4. `MNT-FILT-AIRE-SEC`: Filtro Aire Pequeño (Seguridad) - 20,000 km
+5. `MNT-FILT-AIRE-PRI`: Filtro Aire Grande (Admisión) - 40,000 km
+
+### Bloque 4: RODAJE Y SUSPENSIÓN (5 Ítems)
+1. `MNT-ENGRASE-CHASIS`: Engrase de Chasis - 1,500 km
+2. `MNT-ALINEACION-LLANTAS`: Alineación y Chequeo Llantas - 15,000 km
+3. `MNT-BOCINAS-POST`: Engrase Bocinas Posteriores - 50,000 km
+4. `MNT-BOCINAS-DEL`: Engrase Bocinas Delanteras - 60,000 km
+5. `MNT-MUELLES-BUJES`: Revisión de Muelles y Bujes - 50,000 km
+*(Incluye modal ergonómico Combo 4 Ruedas para reseteo simultáneo de bocinas delanteras y traseras con costo en FRENOS_RODAJE)*
+
+### Bloque 5: FRENOS Y NEUMÁTICO (3 Ítems)
+1. `MNT-RACHES-FRENO`: Calibración de Raches de Freno - 800 km (Chofer - 5 min con llave)
+2. `MNT-ZAPATAS-POST`: Zapatas y Tambores Posteriores - 8,000 km (Socio - Maestro de frenos)
+3. `MNT-ZAPATAS-DEL`: Zapatas y Tambores Delanteros - 11,000 km (Socio - Maestro de frenos, +40% duración)
+
+---
+
+## 3. Ítems en Reserva
+- `MNT-SECADOR-AIRE`: Cartucho Secador de Aire (25,000 km)
+- `MNT-COMPRESOR-AIRE`: Compresor de Aire (900,000 km)

@@ -47,6 +47,10 @@ import {
   saveBusNivelControl,
   getBusItemsActivosConfig,
   saveBusItemsActivosConfig,
+  type EstacionServicioId,
+  ESTACIONES_SERVICIO_CONFIG,
+  resolverCascadaEstacion,
+  getCategoriaContablePorEstacion,
 } from '@/lib/mantenimiento-estaciones';
 
 export interface MantenimientoBusItem {
@@ -152,6 +156,15 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   const [isCatalogoModalOpen, setIsCatalogoModalOpen] = useState(false);
   const [catalogoBusqueda, setCatalogoBusqueda] = useState('');
   const [catalogoFiltroCat, setCatalogoFiltroCat] = useState('TODAS');
+
+  // Modal de Estaciones de Servicio (Combos de Parada en Taller)
+  const [estacionSeleccionada, setEstacionSeleccionada] = useState<EstacionServicioId | null>(null);
+  const [estacionCodigosSeleccionados, setEstacionCodigosSeleccionados] = useState<string[]>([]);
+  const [estacionKm, setEstacionKm] = useState<string>();
+  const [estacionCosto, setEstacionCosto] = useState<string>();
+  const [estacionTaller, setEstacionTaller] = useState<string>();
+  const [estacionFactura, setEstacionFactura] = useState<string>();
+  const [estacionMetodoPago, setEstacionMetodoPago] = useState<EFECTIVO | TRANSFERENCIA>(EFECTIVO);
 
   // Modal Combo 4 Ruedas (Rodaje y Suspensión)
   const [isComboRuedasModalOpen, setIsComboRuedasModalOpen] = useState(false);
@@ -754,6 +767,151 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   };
 
 
+
+  // Abrir Modal de Estación de Taller
+  const handleAbrirEstacionModal = (estacionId: EstacionServicioId) => {
+    const config = ESTACIONES_SERVICIO_CONFIG[estacionId];
+    if (!config) return;
+
+    // Pre-marcar los ítems obligatorios/por defecto
+    const iniciales = config.items.filter(it => it.preMarcado).map(it => it.codigo);
+    
+    // Si la estación tiene cascade trigger o es MNT_MAYOR, resolver cascada
+    const resueltos = resolverCascadaEstacion(iniciales);
+
+    setEstacionSeleccionada(estacionId);
+    setEstacionCodigosSeleccionados(resueltos);
+    setEstacionKm(kmActual.toString());
+    setEstacionCosto("");
+    setEstacionFactura("");
+    setEstacionTaller(
+      estacionId === "LUBRICADORA" ? "Lubricadora La Fosa - Loja" :
+      estacionId === "FRENOS_RUEDAS" ? "Taller de Frenos Don Fausto" :
+      estacionId === "MNT_MAYOR" ? "Taller Especializado Hino (Mesías)" :
+      estacionId === "ADMISION_AIRE" ? "Taller del Aire y Válvulas" :
+      estacionId === "ALINEACION" ? "Serviteca Continental / Llantas" :
+      estacionId === "RADIADOR" ? "Taller Radiadores Loja" : "Terminal / Parada"
+    );
+  };
+
+  // Alternar selección de un ítem dentro del modal de la estación (con resolución de cascada)
+  const handleToggleItemEstacion = (codigo: string) => {
+    let nuevosCodigos: string[];
+    if (estacionCodigosSeleccionados.includes(codigo)) {
+      nuevosCodigos = estacionCodigosSeleccionados.filter(c => c !== codigo);
+    } else {
+      nuevosCodigos = [...estacionCodigosSeleccionados, codigo];
+      // Si se activó caja o corona en Mantenimiento Mayor, activar sus dependientes
+      nuevosCodigos = resolverCascadaEstacion(nuevosCodigos);
+    }
+    setEstacionCodigosSeleccionados(nuevosCodigos);
+  };
+
+  // Guardar y Asentar Servicio de Estación en el Plan del Bus y Contabilidad del Socio
+  const handleGuardarEstacionServicio = () => {
+    if (!estacionSeleccionada) return;
+    const config = ESTACIONES_SERVICIO_CONFIG[estacionSeleccionada];
+    if (!config) return;
+
+    if (estacionCodigosSeleccionados.length === 0) {
+      toast({
+        title: "Selecciona al menos un ítem",
+        description: "Debes marcar al menos un componente realizado en esta estación.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const odoNum = parseInt(estacionKm, 10);
+    const kmServicio = !isNaN(odoNum) && odoNum > 0 ? odoNum : kmActual;
+    const today = new Date().toISOString().split("T")[0];
+    const costoTotal = parseFloat(estacionCosto) || 0;
+    const tallerStr = estacionTaller.trim() || config.nombre;
+    const facturaRef = estacionFactura.trim();
+
+    const catalogo = getCatalogoMaestroGlobal();
+    const mapCatalogo = new Map(catalogo.map(c => [c.codigo, c]));
+
+    const codigosSet = new Set(estacionCodigosSeleccionados);
+    const codigosExistentesEnBus = new Set(items.map(it => it.codigo));
+
+    // 1. Actualizar ítems existentes que coincidan con los seleccionados
+    const itemsActualizados = items.map(it => {
+      if (it.codigo && codigosSet.has(it.codigo)) {
+        return {
+          ...it,
+          ultimoKm: kmServicio,
+          fechaUltimo: today,
+          tallerMecanico: tallerStr,
+          costoEstimado: costoTotal > 0 ? Math.round(costoTotal / codigosSet.size) : it.costoEstimado,
+        };
+      }
+      return it;
+    });
+
+    // 2. Si hay ítems seleccionados que no estaban agregados al bus, incorporarlos
+    const itemsNuevosParaAgregar: MantenimientoBusItem[] = [];
+    estacionCodigosSeleccionados.forEach(cod => {
+      if (!codigosExistentesEnBus.has(cod)) {
+        const catItem = mapCatalogo.get(cod);
+        if (catItem) {
+          itemsNuevosParaAgregar.push({
+            id: `mbus-${catItem.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            catalogoId: catItem.id,
+            codigo: catItem.codigo,
+            nombre: catItem.nombre,
+            categoria: catItem.categoria,
+            intervaloKm: catItem.intervaloKmOficial,
+            ultimoKm: kmServicio,
+            fechaUltimo: today,
+            costoEstimado: costoTotal > 0 ? Math.round(costoTotal / codigosSet.size) : 40,
+            repuestoDetalle: catItem.especificacionLubricanteRepuesto,
+            tallerMecanico: tallerStr,
+            asignadoChofer: catItem.asignadoChoferPorDefecto,
+            activo: true,
+          });
+        }
+      }
+    });
+
+    const listaFinal = [...itemsActualizados, ...itemsNuevosParaAgregar];
+    saveItems(listaFinal);
+
+    // 3. Registrar Egreso Contable Automático si se especificó costo > 0
+    if (costoTotal > 0) {
+      const categoriaContable = getCategoriaContablePorEstacion(estacionSeleccionada);
+      const nombresRealizados = estacionCodigosSeleccionados
+        .map(c => mapCatalogo.get(c)?.nombre || c)
+        .slice(0, 3)
+        .join(", ");
+
+      const descripcionEgreso = `Parada en ${config.nombre}: ${nombresRealizados}${estacionCodigosSeleccionados.length > 3 ? " y más" : ""} (Km ${kmServicio.toLocaleString()})`;
+
+      saveOwnerExpense({
+        id: `exp-mnt-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        busId: activeBusId,
+        expenseDate: today,
+        createdAt: new Date().toISOString(),
+        category: categoriaContable,
+        description: descripcionEgreso,
+        provider: tallerStr,
+        totalAmount: costoTotal,
+        paidAmount: costoTotal,
+        pendingBalance: 0,
+        paymentMethod: estacionMetodoPago,
+        comprobanteRef: facturaRef || undefined,
+        notes: `Servicio en ${config.nombre} con ${estacionCodigosSeleccionados.length} componentes atendidos. Odómetro: ${kmServicio} km.`,
+      });
+    }
+
+    toast({
+      title: `Servicio en ${config.nombre} Asentado`,
+      description: `${estacionCodigosSeleccionados.length} componentes actualizados a ${kmServicio.toLocaleString()} km${costoTotal > 0 ? ` y $${costoTotal.toFixed(2)} registrado en egresos.` : "."}`,
+    });
+
+    setEstacionSeleccionada(null);
+  };
+
   // Cambiar nivel de control rápido (BÁSICO 7, MEDIO 15, TOTAL 27)
   const handleCambiarNivelControl = (nuevoNivel: NivelControlMantenimiento) => {
     setNivelControl(nuevoNivel);
@@ -1037,6 +1195,58 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             <span className="text-[10px] font-extrabold text-slate-700 shrink-0 ml-2">
               {Object.values(itemsActivosConfig).filter(Boolean).length} activos
             </span>
+          </div>
+        </div>
+
+        {/* ========================================================= */}
+        {/* BOTONERA DE 6 ESTACIONES DE TALLER (COMBOS DE PARADA)     */}
+        {/* ========================================================= */}
+        <div className="bg-slate-900 text-white rounded-3xl p-4 shadow-lg flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-black uppercase tracking-wider text-amber-300">
+                Estaciones de Taller (Combos de Parada)
+              </span>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400">
+              Toque rápido de fosa
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {(["LUBRICADORA", "FRENOS_RUEDAS", "MNT_MAYOR", "ADMISION_AIRE", "ALINEACION", "RADIADOR"] as EstacionServicioId[]).map(estId => {
+              const est = ESTACIONES_SERVICIO_CONFIG[estId];
+              return (
+                <button
+                  key={estId}
+                  type="button"
+                  onClick={() => handleAbrirEstacionModal(estId)}
+                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 transition-all cursor-pointer text-center group"
+                >
+                  <span className="text-xl mb-1 group-hover:scale-110 transition-transform">
+                    {est.icono}
+                  </span>
+                  <span className="text-[11px] font-black text-slate-100 leading-tight">
+                    {est.nombre.split(" ")[0]}
+                  </span>
+                  <span className="text-[9px] text-amber-400 font-semibold mt-0.5">
+                    {est.items.length} ítems
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-white/10">
+            <span>Registra todo el paquete del taller con 1 factura y 1 odómetro.</span>
+            <button
+              type="button"
+              onClick={() => handleAbrirEstacionModal("CHOFER_RUTINA")}
+              className="text-[10px] font-extrabold text-amber-400 hover:text-amber-300 underline cursor-pointer"
+            >
+              🚌 Rutina Chofer
+            </button>
           </div>
         </div>
 
@@ -1468,6 +1678,224 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
           )}
         </div>
       </main>
+
+      {/* ========================================================= */}
+      {/* MODAL ERGONÓMICO: ESTACIÓN DE TALLER (COMBOS DE PARADA)   */}
+      {/* ========================================================= */}
+      {estacionSeleccionada && (() => {
+        const config = ESTACIONES_SERVICIO_CONFIG[estacionSeleccionada];
+        if (!config) return null;
+        const totalItemsEstacion = config.items.length;
+        const totalSeleccionados = estacionCodigosSeleccionados.length;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-200">
+              
+              {/* Header Modal Estación */}
+              <div className="flex items-center justify-between border-b pb-3 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-xl shadow-xs">
+                    {config.icono}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 leading-tight">
+                      Estación: {config.nombre}
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      {config.subtitulo}
+                    </p>
+                  </div>
+                </div>
+                <Badge className="bg-slate-900 text-amber-400 text-[10px] font-black border-0">
+                  {totalSeleccionados}/{totalItemsEstacion} marcados
+                </Badge>
+              </div>
+
+              {/* Contenido con scroll táctil */}
+              <div className="space-y-4 flex-1 overflow-y-auto pr-1">
+                
+                {/* Selector de Ítems / Checklist */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-black text-slate-900 uppercase tracking-wider">
+                      Componentes Atendidos en esta Parada
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (totalSeleccionados === totalItemsEstacion) {
+                          setEstacionCodigosSeleccionados([]);
+                        } else {
+                          setEstacionCodigosSeleccionados(config.items.map(it => it.codigo));
+                        }
+                      }}
+                      className="text-[10px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                    >
+                      {totalSeleccionados === totalItemsEstacion ? "Desmarcar todos" : "Marcar todos"}
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto p-1 bg-slate-50 rounded-2xl border border-slate-200">
+                    {config.items.map(it => {
+                      const estaMarcado = estacionCodigosSeleccionados.includes(it.codigo);
+                      return (
+                        <button
+                          key={it.codigo}
+                          type="button"
+                          onClick={() => handleToggleItemEstacion(it.codigo)}
+                          className={`flex items-start gap-2.5 p-2 rounded-xl text-left transition-all cursor-pointer border ${
+                            estaMarcado
+                              ? "bg-white border-emerald-500/80 shadow-xs"
+                              : "bg-transparent border-transparent hover:bg-slate-100/80 opacity-75"
+                          }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-md mt-0.5 flex items-center justify-center shrink-0 border ${
+                              estaMarcado
+                                ? "bg-emerald-600 border-emerald-600 text-white"
+                                : "border-slate-300 bg-white"
+                            }`}
+                          >
+                            {estaMarcado && <Check className="w-3 h-3 stroke-[3]" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className={`text-xs font-bold truncate ${estaMarcado ? "text-slate-900" : "text-slate-600"}`}>
+                                {it.nombre}
+                              </span>
+                              {it.preMarcado && (
+                                <Badge className="bg-amber-100 text-amber-900 border-0 text-[9px] py-0 px-1 font-black shrink-0">
+                                  Vital
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
+                              <span>Ciclo: {it.intervaloKm.toLocaleString()} km</span>
+                              {it.opcionalTexto && (
+                                <span className="text-slate-400 italic truncate">• {it.opcionalTexto}</span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Formulario de Factura, Odómetro y Taller */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Odómetro / Tacómetro (Km)
+                    </Label>
+                    <Input
+                      type="number"
+                      value={estacionKm}
+                      onChange={e => setEstacionKm(e.target.value)}
+                      placeholder={kmActual.toString()}
+                      className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300 font-bold"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Costo Total Parada ($)
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={estacionCosto}
+                      onChange={e => setEstacionCosto(e.target.value)}
+                      placeholder="0.00"
+                      className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300 font-bold text-emerald-800"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Taller / Proveedor
+                    </Label>
+                    <Input
+                      value={estacionTaller}
+                      onChange={e => setEstacionTaller(e.target.value)}
+                      placeholder="Nombre del taller o lubricadora"
+                      className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Nº Factura / Nota Venta
+                    </Label>
+                    <Input
+                      value={estacionFactura}
+                      onChange={e => setEstacionFactura(e.target.value)}
+                      placeholder="ej. 001-002-9842"
+                      className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Método de Pago
+                  </Label>
+                  <div className="flex gap-2">
+                    {(["EFECTIVO", "TRANSFERENCIA"] as const).map(m => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setEstacionMetodoPago(m)}
+                        className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                          estacionMetodoPago === m
+                            ? "bg-slate-900 text-white border-slate-900"
+                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        {m === "EFECTIVO" ? "💵 Efectivo" : "🏦 Transferencia Bancaria"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Resumen Contable y Cascada */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-600 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    Asentamiento de Datos:
+                  </div>
+                  <p>• Resetea {totalSeleccionados} componentes con el kilometraje ingresado.</p>
+                  <p>
+                    • Se asienta contablemente en <strong>{getCategoriaContablePorEstacion(estacionSeleccionada)}</strong> en tus egresos de socio.
+                  </p>
+                </div>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex items-center gap-2 pt-2 border-t shrink-0">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setEstacionSeleccionada(null)}
+                  className="flex-1 h-10 rounded-xl text-xs font-bold text-gray-600 cursor-pointer"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleGuardarEstacionServicio}
+                  className="flex-1 h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Save className="w-4 h-4 text-amber-400" />
+                  Asentar en {config.nombre.split(" ")[0]}
+                </Button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal Registrar Mantenimiento Realizado */}
       {editingItem && (
