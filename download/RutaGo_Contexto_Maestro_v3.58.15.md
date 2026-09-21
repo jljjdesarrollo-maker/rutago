@@ -210,3 +210,11 @@
     2. **Filtros Dinámicos:** Selector rápido para aislar componentes por criticidad.
     3. **Tarjetas de Componente con Impacto Operativo:** Cada componente muestra barra porcentual de desgaste, odómetro del último cambio, costo estimado y una guía de impacto gerencial (e.g. riesgo de fatiga térmica, rotura de terminales, protección de inyección common-rail o pérdida de compresión).
     4. **Acceso a Gestión Integral:** Botón directo para pasar a la pantalla completa de configuración y asentamiento (`MantenimientoScreen.tsx`).
+
+---
+
+## 23. Corrección de Import de Ícono `Info` en Modal Ejecutivo de Socio (v3.58.30)
+- **Causa del Error:** Al pulsar sobre la etiqueta ejecutiva *"Flota Óptima: Todos los mantenimientos al día"* (o cualquier estado semafórico del socio) para abrir el modal de diagnóstico gerencial, la tarjeta de detalle de cada componente intentaba renderizar `<Info className="w-3.5 h-3.5 text-slate-500" />` en el encabezado de *Impacto en la Operación*. Sin embargo, el ícono `Info` no había sido incluido en la cláusula de importación desde `lucide-react` en `SocioMantenimientoWidget.tsx`, lanzando la excepción en tiempo de ejecución: `ReferenceError: Info is not defined`.
+- **Solución Implementada:**
+  1. Se añadió explícitamente `Info` en el listado de imports de `lucide-react` dentro de `src/components/transport/SocioMantenimientoWidget.tsx`.
+  2. Verificación y validación de sintaxis de todos los componentes JSX del modal de diagnóstico para asegurar despliegue sin interrupciones.

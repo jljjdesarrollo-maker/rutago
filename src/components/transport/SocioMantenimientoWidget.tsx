@@ -33,6 +33,7 @@ import {
   Check,
   TrendingUp,
   SlidersHorizontal,
+  Info,
 } from 'lucide-react';
 import {
   getAllBuses,
