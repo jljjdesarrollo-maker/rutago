@@ -47,6 +47,8 @@ import {
   seedBenchmarkFleet,
   INITIAL_PILOT_BUS,
   getActiveBusId,
+  saveBusOdometer,
+  getLatestBusOdometer,
 } from '@/lib/fleet-storage';
 
 interface FlotaScreenProps {
@@ -65,6 +67,7 @@ const EMPTY_FORM: BusFormData = {
   tipoOperacion: 'TRONCAL_VT',
   activo: true,
   notas: '',
+  odometroInicial: '',
   promoConfig: { ...DEFAULT_PROMO_CONFIG },
 };
 
@@ -192,6 +195,8 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
     const bId = bus.id || `BUS-${bus.numeroDisco}`;
     const busPromo = bus.promoConfig || loadPromoConfig(bId);
     setEditingId(bId);
+    const latestOdo = getLatestBusOdometer(bus.numeroDisco);
+    const initialKm = latestOdo?.kmFinal || (bus as any).odometroInicial || '';
     setFormData({
       numeroDisco: bus.numeroDisco,
       placa: bus.placa,
@@ -203,6 +208,7 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
       tipoOperacion: bus.tipoOperacion,
       activo: bus.activo !== false,
       notas: bus.notas || '',
+      odometroInicial: initialKm,
       promoConfig: busPromo,
     });
     setSheetOpen(true);
@@ -348,6 +354,12 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
       textoPublicidad: (formData.promoConfig?.textoPublicidad ?? '').trim() || 'Quieres RutaGo? 0997149000',
       sonidoGanador: formData.promoConfig?.sonidoGanador ?? true,
     };
+
+    const busKm = formData.odometroInicial ? formData.odometroInicial.trim() : '';
+    if (busKm) {
+      const discoPadded = formData.numeroDisco.trim().padStart(2, '0');
+      saveBusOdometer(discoPadded, busKm, new Date().toISOString().split('T')[0]);
+    }
 
     const busPayload: BusItem = {
       id: editingId || `BUS-${cleanDisco}`,

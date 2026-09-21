@@ -14,7 +14,8 @@ export interface BusItem {
   tipoOperacion: TipoOperacionBus; // TRONCAL_VT (VT01-VT15) vs ALIMENTADOR_P (P1-P3)
   activo: boolean;
   notas?: string;
-  promoConfig?: PromoViajeGratisConfig; // Configuración desacoplada de Viaje Gratis por Unidad
+  promoConfig?: PromoViajeGratisConfig;
+  odometroInicial?: string; // Configuración desacoplada de Viaje Gratis por Unidad
   createdAt?: string;
   updatedAt?: string;
 }
@@ -31,4 +32,5 @@ export interface BusFormData {
   activo: boolean;
   notas?: string;
   promoConfig?: PromoViajeGratisConfig;
+  odometroInicial?: string;
 }

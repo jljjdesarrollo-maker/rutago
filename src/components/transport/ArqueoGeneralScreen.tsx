@@ -386,6 +386,11 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           setKmInicial(valor.toString());
           setKmInicialOrigen(`Sugerido del ${prev.date} (Bus ${currentBus.numeroDisco})`);
           return;
+        } else if (dedicated && dedicated.kmFinal && !cancelled) {
+          // Si no hay arqueos anteriores pero el odómetro fue calibrado en Ficha de Unidad o Mantenimiento
+          setKmInicial(dedicated.kmFinal.toString());
+          setKmInicialOrigen(`Calibrado en Ficha de Unidad (Bus ${currentBus.numeroDisco})`);
+          return;
         } else if (!cancelled) {
           // Si este bus es nuevo o no tiene historial previo (ej. Bus 10 en su primer arqueo)
           setKmInicial('');

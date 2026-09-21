@@ -441,9 +441,44 @@ export function saveBusOdometer(busIdOrDisco: string, kmFinal: string, date: str
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(key, JSON.stringify(payload));
+
+    // Sincronizar también con claves directas de busId
+    localStorage.setItem(`rg_last_km_BUS-${cleanDisco}`, kmFinal.trim());
+    localStorage.setItem(`rg_last_km_${cleanDisco}`, kmFinal.trim());
+
+    // Disparar evento reactivo para toda la aplicación
+    window.dispatchEvent(
+      new CustomEvent('rutago:bus_odometer_updated', {
+        detail: {
+          busId: `BUS-${cleanDisco}`,
+          numeroDisco: cleanDisco,
+          kmFinal: kmFinal.trim(),
+          date,
+        },
+      })
+    );
   } catch (err) {
     console.error('Error guardando odómetro de bus:', err);
   }
+}
+
+/**
+ * Permite a componentes suscribirse en tiempo real a actualizaciones de odómetro de cualquier bus.
+ */
+export function subscribeToBusOdometer(
+  callback: (data: { busId: string; numeroDisco: string; kmFinal: string; date: string }) => void
+): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const handler = (event: Event) => {
+    const custom = event as CustomEvent<{ busId: string; numeroDisco: string; kmFinal: string; date: string }>;
+    if (custom.detail) {
+      callback(custom.detail);
+    }
+  };
+  window.addEventListener('rutago:bus_odometer_updated', handler);
+  return () => {
+    window.removeEventListener('rutago:bus_odometer_updated', handler);
+  };
 }
 
 /**

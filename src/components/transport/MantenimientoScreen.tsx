@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Wrench,
   AlertTriangle,
@@ -32,7 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { getAllBuses, getActiveBusId, getLatestBusOdometer } from '@/lib/fleet-storage';
+import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, setActiveBus, subscribeToActiveBus, subscribeToBusOdometer } from '@/lib/fleet-storage';
 import { saveOwnerExpense } from '@/lib/owner-expenses-storage';
 import {
   type MantenimientoCatalogoItem,
@@ -80,15 +80,13 @@ export interface MantenimientoScreenProps {
 export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   const { toast } = useToast();
 
-  const [activeBusId] = useState<string>(() => {
+  const [activeBusId, setActiveBusId] = useState<string>(() => {
     if (typeof window === 'undefined') return 'BUS-01';
     return getActiveBusId();
   });
 
-  // Odómetro actual del bus auditado
-  const [kmActual, setKmActual] = useState<number>(() => {
-    if (typeof window === 'undefined') return 187420;
-    const busId = getActiveBusId();
+  const resolverKmActual = useCallback((busId: string) => {
+    if (typeof window === 'undefined') return null;
     const busesList = getAllBuses();
     const current = busesList.find(b => b.id === busId);
     const disco = current?.numeroDisco || '01';
@@ -105,13 +103,14 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
       const num = parseInt(savedKm, 10);
       if (!isNaN(num) && num > 0) return num;
     }
-    return 187420;
-  });
+    return null;
+  }, []);
 
-  // Mantenimientos activos de esta unidad
-  const [items, setItems] = useState<MantenimientoBusItem[]>(() => {
+  // Odómetro actual del bus auditado (null si no ha sido calibrado)
+  const [kmActual, setKmActual] = useState<number | null>(() => resolverKmActual(getActiveBusId()));
+
+  const cargarItems = useCallback((busId: string) => {
     if (typeof window === 'undefined') return [];
-    const busId = getActiveBusId();
     const storageKey = `rg_mantenimientos_v2_${busId}`;
     const saved = localStorage.getItem(storageKey);
 
@@ -126,17 +125,19 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
 
     // Inicializar por defecto con los mantenimientos recomendados de la biblioteca Hino AK
     const catalogo = getCatalogoMaestroGlobal();
+    const baseKm = resolverKmActual(busId) || 0;
+
     const iniciales: MantenimientoBusItem[] = catalogo
       .filter(c => c.activoBiblioteca)
       .slice(0, 6)
       .map(c => ({
-        id: `mbus-${c.id}-${Date.now()}`,
+        id: `mbus-${c.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
         catalogoId: c.id,
         codigo: c.codigo,
         nombre: c.nombre,
         categoria: c.categoria,
         intervaloKm: c.intervaloKmOficial,
-        ultimoKm: Math.max(0, 187420 - Math.floor(c.intervaloKmOficial * 0.7)),
+        ultimoKm: baseKm > 0 ? Math.max(0, baseKm - Math.floor(c.intervaloKmOficial * 0.2)) : 0,
         fechaUltimo: new Date().toISOString().split('T')[0],
         costoEstimado: c.categoria === 'MOTOR' ? 120 : 45,
         repuestoDetalle: c.especificacionLubricanteRepuesto,
@@ -148,7 +149,39 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
       localStorage.setItem(storageKey, JSON.stringify(iniciales));
     }
     return iniciales;
-  });
+  }, [resolverKmActual]);
+
+  // Mantenimientos activos de esta unidad
+  const [items, setItems] = useState<MantenimientoBusItem[]>(() => cargarItems(getActiveBusId()));
+
+  // Suscripción reactiva al cambio de unidad física y al odómetro auditado (Arqueo de Llegada)
+  useEffect(() => {
+    const unsubBus = subscribeToActiveBus((bus) => {
+      setActiveBusId(bus.id);
+      setKmActual(resolverKmActual(bus.id));
+      setItems(cargarItems(bus.id));
+      setNivelControl(getBusNivelControl(bus.id));
+      setItemsActivosConfig(getBusItemsActivosConfig(bus.id));
+      setModuloActivo(getBusModuloMantenimientoActivo(bus.id));
+    });
+
+    const unsubOdo = subscribeToBusOdometer((data) => {
+      const busesList = getAllBuses();
+      const current = busesList.find(b => b.id === activeBusId);
+      const disco = current?.numeroDisco || '01';
+      if (data.numeroDisco === disco || data.busId === activeBusId) {
+        const num = parseInt(data.kmFinal, 10);
+        if (!isNaN(num) && num > 0) {
+          setKmActual(num);
+        }
+      }
+    });
+
+    return () => {
+      unsubBus();
+      unsubOdo();
+    };
+  }, [activeBusId, resolverKmActual, cargarItems]);
 
   // Modales
   const [editingItem, setEditingItem] = useState<MantenimientoBusItem | null>(null);
@@ -1083,9 +1116,26 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-base font-black tracking-tight">Mantenimiento de Unidad</span>
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-500 text-slate-950">
-                  {currentBus ? `Bus ${currentBus.numeroDisco}` : 'Bus 01'}
-                </span>
+                {buses.length > 1 ? (
+                  <select
+                    value={activeBusId}
+                    onChange={(e) => {
+                      const newBus = setActiveBus(e.target.value);
+                      setActiveBusId(newBus.id);
+                    }}
+                    className="text-[11px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-500 text-slate-950 border-none cursor-pointer focus:ring-2 focus:ring-amber-300 shadow-sm"
+                  >
+                    {buses.map(b => (
+                      <option key={b.id} value={b.id}>
+                        Bus {b.numeroDisco} ({b.placa})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-500 text-slate-950">
+                    {currentBus ? `Bus ${currentBus.numeroDisco}` : 'Bus 01'}
+                  </span>
+                )}
                 <Badge className="bg-blue-900/80 text-blue-200 border-blue-700 text-[10px] py-0 px-2">
                   PIN 2107 Socio
                 </Badge>

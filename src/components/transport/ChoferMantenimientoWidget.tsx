@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Wrench,
   AlertTriangle,
@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { getAllBuses, getActiveBusId, getLatestBusOdometer } from '@/lib/fleet-storage';
+import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, subscribeToActiveBus, subscribeToBusOdometer } from '@/lib/fleet-storage';
 import { getCatalogoMaestroGlobal } from '@/lib/mantenimiento-catalogo';
 import { saveOwnerExpense } from '@/lib/owner-expenses-storage';
 import { type MantenimientoBusItem } from './MantenimientoScreen';
@@ -33,14 +33,13 @@ import { getBusModuloMantenimientoActivo } from '@/lib/mantenimiento-estaciones'
 export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void }) {
   const { toast } = useToast();
 
-  const [activeBusId] = useState<string>(() => {
+  const [activeBusId, setActiveBusId] = useState<string>(() => {
     if (typeof window === 'undefined') return 'BUS-01';
     return getActiveBusId();
   });
 
-  const [kmActual, setKmActual] = useState<number>(() => {
-    if (typeof window === 'undefined') return 187420;
-    const busId = getActiveBusId();
+  const resolverKmActual = useCallback((busId: string) => {
+    if (typeof window === 'undefined') return null;
     const busesList = getAllBuses();
     const current = busesList.find(b => b.id === busId);
     const disco = current?.numeroDisco || '01';
@@ -55,13 +54,13 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       const num = parseInt(savedKm, 10);
       if (!isNaN(num) && num > 0) return num;
     }
-    return 187420;
-  });
+    return null;
+  }, []);
 
-  // Tareas asignadas al Chofer
-  const [items, setItems] = useState<MantenimientoBusItem[]>(() => {
+  const [kmActual, setKmActual] = useState<number | null>(() => resolverKmActual(getActiveBusId()));
+
+  const cargarItems = useCallback((busId: string) => {
     if (typeof window === 'undefined') return [];
-    const busId = getActiveBusId();
     const storageKey = `rg_mantenimientos_v2_${busId}`;
     const saved = localStorage.getItem(storageKey);
 
@@ -76,12 +75,11 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       }
     }
 
-    // Si el socio no ha activado expresamente el mantenimiento, no cargar nada por defecto
     if (!getBusModuloMantenimientoActivo(busId)) {
       return [];
     }
 
-    // Fallback si está activado
+    const currentKm = resolverKmActual(busId) || 0;
     const catalogo = getCatalogoMaestroGlobal();
     return catalogo
       .filter(c => c.asignadoChoferPorDefecto)
@@ -93,14 +91,43 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         nombre: c.nombre,
         categoria: c.categoria,
         intervaloKm: c.intervaloKmOficial,
-        ultimoKm: 185000,
+        ultimoKm: Math.max(0, currentKm - Math.floor(c.intervaloKmOficial * 0.8)),
         fechaUltimo: new Date().toISOString().split('T')[0],
         costoEstimado: 0,
         repuestoDetalle: c.especificacionLubricanteRepuesto,
         asignadoChofer: true,
         activo: true,
       }));
-  });
+  }, [resolverKmActual]);
+
+  // Tareas asignadas al Chofer
+  const [items, setItems] = useState<MantenimientoBusItem[]>(() => cargarItems(getActiveBusId()));
+
+  // Suscripción reactiva al cambio de unidad física y al odómetro auditado (Arqueo de Llegada)
+  useEffect(() => {
+    const unsubBus = subscribeToActiveBus((bus) => {
+      setActiveBusId(bus.id);
+      setKmActual(resolverKmActual(bus.id));
+      setItems(cargarItems(bus.id));
+    });
+
+    const unsubOdo = subscribeToBusOdometer((data) => {
+      const busesList = getAllBuses();
+      const current = busesList.find(b => b.id === activeBusId);
+      const disco = current?.numeroDisco || '01';
+      if (data.numeroDisco === disco || data.busId === activeBusId) {
+        const num = parseInt(data.kmFinal, 10);
+        if (!isNaN(num) && num > 0) {
+          setKmActual(num);
+        }
+      }
+    });
+
+    return () => {
+      unsubBus();
+      unsubOdo();
+    };
+  }, [activeBusId, resolverKmActual, cargarItems]);
 
   // Modal rápido de registro para el chofer
   const [modalItem, setModalItem] = useState<MantenimientoBusItem | null>(null);

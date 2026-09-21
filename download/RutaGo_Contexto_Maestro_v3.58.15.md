@@ -1,4 +1,4 @@
-# RutaGo - Contexto Maestro y Bitácora de Desarrollo v3.58.25
+# RutaGo - Contexto Maestro y Bitácora de Desarrollo v3.58.26
 **Fecha:** Septiembre 2026
 **Versión Activa:** `v3.58.15-socio-gerencial-mantenimiento-optativo`
 **Flota Modelo:** Hino AK (Ruta Loja – Vilcabamba – Malacatos – Yangana – La Elvira)
@@ -159,3 +159,11 @@
 ## 3. Ítems en Reserva
 - `MNT-SECADOR-AIRE`: Cartucho Secador de Aire (25,000 km)
 - `MNT-COMPRESOR-AIRE`: Compresor de Aire (900,000 km)
+
+---
+
+## 19. Reactividad Completa de Odómetro y Calibración en Ficha de Flota (v3.58.26)
+- **Sincronización Reactiva Multicomponente:** Implementación de `subscribeToBusOdometer` y `subscribeToActiveBus` con eventos desacoplados `rutago:bus_odometer_updated`. Las pantallas de Chofer (`ChoferMantenimientoWidget`) y Socio (`MantenimientoScreen`) actualizan de forma instantánea el tacómetro y el semáforo sin recargar la página cuando el ayudante cierra el arqueo de llegada.
+- **Selector de Unidad en Mantenimiento:** Selector dinámico de bus en el encabezado de `MantenimientoScreen` para socios con más de una unidad en su flota, permitiendo auditar diferentes buses al instante.
+- **Calibración de Odómetro en Ficha de Unidad (`FlotaScreen.tsx`):** Campo oficial de Tacómetro Actual en la edición de buses que precarga el odómetro inicial tanto para el primer arqueo de ruta como para el semáforo de mantenimiento.
+- **Sugerencia Automática en ArqueoGeneralScreen:** Si un bus nuevo no tiene arqueos previos, ahora toma directamente la lectura del odómetro calibrada en la ficha de unidad (`dedicated.kmFinal`).
