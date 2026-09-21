@@ -260,3 +260,15 @@
      ```
   2. Se eliminó la declaración tardía duplicada.
   3. Verificado con `tsc --noEmit` y build estricto.
+
+
+---
+
+## 26. Corrección de Almacenamiento Serverless EROFS en /api/config/mantenimiento (v3.58.34)
+- **Causa del Registro EROFS en Vercel:**
+  En plataformas Serverless (Vercel / AWS Lambda), el sistema de archivos de la aplicación (`/var/task`) se monta en modo estricto de **solo lectura**. Cualquier intento de escritura en disco (`fs.writeFileSync`) dirigido a `process.cwd() + '/db/mantenimiento-config.json'` genera la excepción `EROFS: read-only file system, open '/var/task/db/mantenimiento-config.json'`.
+- **Solución Implementada:**
+  1. Se adaptó la función `getRuntimeFilePath()` para detectar entornos serverless (`process.env.VERCEL`, `process.env.AWS_LAMBDA_FUNCTION_NAME` o `/var/task`), redirigiendo la persistencia física al directorio temporal de escritura autorizado por AWS Lambda/Vercel: `os.tmpdir()` (`/tmp/rutago-mantenimiento-config.json`).
+  2. En `cargarConfiguraciones()`, se implementó lectura en cascada: primero consulta el archivo activo en `/tmp`, luego el archivo empaquetado en `db/` y finalmente el fallback seguro en memoria.
+  3. En `guardarEnArchivo()`, se añadió manejo defensivo de `EROFS` para redirigir inmediatamente a `os.tmpdir()` sin emitir advertencias de error en consola.
+  4. La respuesta HTTP del endpoint se mantiene en `200 OK` con consistencia en memoria (`globalThis`) y sincronización reactiva en tiempo real.

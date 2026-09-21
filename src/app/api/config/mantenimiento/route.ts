@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,16 @@ export interface BusMantenimientoConfig {
   updatedAt: string;
 }
 
-const FILE_PATH = path.join(process.cwd(), 'db', 'mantenimiento-config.json');
+// Ruta empaquetada (solo lectura en producción serverless)
+const BUNDLED_FILE_PATH = path.join(process.cwd(), 'db', 'mantenimiento-config.json');
+
+// Ruta escribible en tiempo de ejecución (en Vercel / AWS Lambda se usa os.tmpdir() que sí tiene permisos de escritura)
+function getRuntimeFilePath(): string {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.cwd().startsWith('/var/task')) {
+    return path.join(os.tmpdir(), 'rutago-mantenimiento-config.json');
+  }
+  return path.join(process.cwd(), 'db', 'mantenimiento-config.json');
+}
 
 // Configuración inicial pre-calibrada oficial para el Bus 01 del Socio Líder
 const DEFAULT_CONFIGS: Record<string, BusMantenimientoConfig> = {
@@ -42,18 +52,22 @@ function cargarConfiguraciones(): Record<string, BusMantenimientoConfig> {
 
   let configs: Record<string, BusMantenimientoConfig> = { ...DEFAULT_CONFIGS };
 
-  try {
-    if (fs.existsSync(FILE_PATH)) {
-      const raw = fs.readFileSync(FILE_PATH, 'utf8');
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
-        configs = { ...DEFAULT_CONFIGS, ...parsed };
+  const runtimePath = getRuntimeFilePath();
+  const pathsToTry = [runtimePath, BUNDLED_FILE_PATH];
+
+  for (const p of pathsToTry) {
+    try {
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          configs = { ...DEFAULT_CONFIGS, ...parsed };
+          break;
+        }
       }
-    } else {
-      guardarEnArchivo(configs);
+    } catch {
+      // Intentar siguiente ruta de respaldo
     }
-  } catch (err) {
-    console.warn('Aviso: No se pudo leer archivo mantenimiento-config.json, usando memoria:', err);
   }
 
   globalStore.__rutago_mantenimiento_configs__ = configs;
@@ -61,14 +75,24 @@ function cargarConfiguraciones(): Record<string, BusMantenimientoConfig> {
 }
 
 function guardarEnArchivo(configs: Record<string, BusMantenimientoConfig>): void {
+  const runtimePath = getRuntimeFilePath();
   try {
-    const dir = path.dirname(FILE_PATH);
+    const dir = path.dirname(runtimePath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(FILE_PATH, JSON.stringify(configs, null, 2), 'utf8');
-  } catch (err) {
-    console.warn('Aviso: No se pudo escribir en mantenimiento-config.json:', err);
+    fs.writeFileSync(runtimePath, JSON.stringify(configs, null, 2), 'utf8');
+  } catch (err: any) {
+    if (err?.code === 'EROFS') {
+      try {
+        const tmpPath = path.join(os.tmpdir(), 'rutago-mantenimiento-config.json');
+        fs.writeFileSync(tmpPath, JSON.stringify(configs, null, 2), 'utf8');
+        return;
+      } catch {
+        // En memoria sigue disponible
+      }
+    }
+    console.warn('Aviso: Persistencia temporal en archivo no disponible, manteniendo en memoria:', err?.message || err);
   }
 }
 
