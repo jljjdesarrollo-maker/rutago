@@ -1069,7 +1069,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                   </button>
                 </div>
 
-                <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto p-1 bg-slate-50 rounded-2xl border border-slate-200">
+                <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto p-2 pb-3 bg-slate-50/80 rounded-2xl border border-slate-200 shadow-inner/5">
                   {estacionItemsChofer.map(it => {
                     const estaActivo = !!estacionChecksChofer[it.codigo];
                     return (
@@ -1118,8 +1118,18 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
               </div>
 
               {/* Datos de Comprobante / Factura */}
-              <div className="space-y-2 pt-1 border-t shrink-0">
-                <div className="grid grid-cols-2 gap-2">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2.5 shrink-0 mt-2">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-200/80">
+                  <Label className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>🧾</span>
+                    Comprobante y Costo del Servicio
+                  </Label>
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-200/60 px-2 py-0.5 rounded-full">
+                    Opcional
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
                   <div>
                     <Label className="text-[11px] font-bold text-slate-700 block mb-1">
                       Valor Total Factura / Nota ($)
@@ -1130,7 +1140,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                       value={estacionCostoChofer}
                       onChange={e => setEstacionCostoChofer(e.target.value)}
                       placeholder="0.00"
-                      className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300 font-bold text-emerald-800"
+                      className="h-10 rounded-xl text-xs bg-white border-slate-300 font-black text-emerald-800 shadow-2xs focus:border-emerald-500"
                     />
                   </div>
                   <div>
@@ -1141,7 +1151,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                       value={estacionFacturaChofer}
                       onChange={e => setEstacionFacturaChofer(e.target.value)}
                       placeholder="ej. 001-002-1458"
-                      className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300"
+                      className="h-10 rounded-xl text-xs bg-white border-slate-300 shadow-2xs"
                     />
                   </div>
                 </div>
@@ -1154,7 +1164,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                     value={estacionTallerChofer}
                     onChange={e => setEstacionTallerChofer(e.target.value)}
                     placeholder="Nombre del taller o lubricadora"
-                    className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300"
+                    className="h-10 rounded-xl text-xs bg-white border-slate-300 shadow-2xs"
                   />
                 </div>
               </div>
@@ -1514,7 +1524,17 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             </div>
 
             {/* Datos opcionales de comprobante / costo */}
-            <div className="space-y-2 pt-1 border-t">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2.5 mt-2">
+              <div className="flex items-center justify-between pb-1 border-b border-slate-200/80">
+                <Label className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>🧾</span>
+                  Comprobante y Costo
+                </Label>
+                <span className="text-[10px] font-bold text-slate-500 bg-slate-200/60 px-2 py-0.5 rounded-full">
+                  Opcional
+                </span>
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label className="text-[11px] font-bold text-slate-700 block mb-1">
@@ -1526,7 +1546,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                     value={comboFacturaValor}
                     onChange={e => setComboFacturaValor(e.target.value)}
                     placeholder="ej. 175.50"
-                    className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
+                    className="h-9 rounded-xl text-xs bg-white border-slate-300 font-bold text-emerald-800"
                   />
                 </div>
                 <div>
@@ -1537,7 +1557,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                     value={comboFacturaNum}
                     onChange={e => setComboFacturaNum(e.target.value)}
                     placeholder="ej. 001-002-1458"
-                    className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
+                    className="h-9 rounded-xl text-xs bg-white border-slate-300"
                   />
                 </div>
               </div>
@@ -1550,7 +1570,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                   value={comboTaller}
                   onChange={e => setComboTaller(e.target.value)}
                   placeholder="ej. Lubricadora Vilcabamba / San Pedro"
-                  className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
+                  className="h-9 rounded-xl text-xs bg-white border-slate-300"
                 />
               </div>
             </div>

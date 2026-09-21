@@ -56,6 +56,7 @@ import {
   syncMantenimientoConfigConServidor,
   isMantenimientoDecisionTomada,
   type EstacionServicioId,
+  type ItemEstacionConfig,
   ESTACIONES_SERVICIO_CONFIG,
   getComboUnidad,
   saveComboUnidad,
@@ -921,6 +922,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     const odoNum = parseInt(comboRuedasKm, 10);
     const km = !isNaN(odoNum) && odoNum > 0 ? odoNum : kmActual;
     const today = new Date().toISOString().split('T')[0];
+    const fechaFinal = today;
     const costoTotal = parseFloat(comboRuedasCosto) || 0;
     const tallerStr = comboRuedasTaller.trim() || 'Taller de Ruedas / Rulimanes';
     const facturaRef = comboRuedasFactura.trim();
@@ -1234,10 +1236,10 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
       return;
     }
 
-    const nuevoItem = {
+    const nuevoItem: ItemEstacionConfig = {
       codigo: catItem.codigo,
       nombre: catItem.nombre,
-      intervaloKm: catItem.intervaloKm,
+      intervaloKm: catItem.intervaloKmOficial || 5000,
       preMarcado: true,
       opcionalTexto: 'Añadido por el socio',
     };
@@ -1283,12 +1285,13 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     const odoNum = parseInt(estacionKm, 10);
     const kmServicio = !isNaN(odoNum) && odoNum > 0 ? odoNum : kmActual;
     const today = new Date().toISOString().split("T")[0];
+    const fechaFinal = today;
     const costoTotal = parseFloat(estacionCosto) || 0;
     const tallerStr = estacionTaller.trim() || config.nombre;
     const facturaRef = estacionFactura.trim();
 
     const catalogo = getCatalogoMaestroGlobal();
-    const mapCatalogo = new Map(catalogo.map(c => [c.codigo, c]));
+    const mapCatalogo = new Map<string, MantenimientoCatalogoItem>(catalogo.map(c => [c.codigo, c]));
 
     const codigosSet = new Set(estacionCodigosSeleccionados);
     const codigosExistentesEnBus = new Set(items.map(it => it.codigo));
@@ -2275,7 +2278,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                               </span>
                               <Switch
                                 checked={itemEstaActivo}
-                                onCheckedChange={() => handleToggleItemActivo(item.codigo!)}
+                                onCheckedChange={(checked) => handleToggleItemActivo(item.codigo!, checked, item.nombre)}
                                 className="scale-75 data-[state=checked]:bg-slate-800"
                               />
                             </div>
@@ -2491,7 +2494,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
-                                  <span>Ciclo: {it.intervaloKm.toLocaleString()} km</span>
+                                  <span>Ciclo: {(it.intervaloKm || 0).toLocaleString()} km</span>
                                   {it.opcionalTexto && (
                                     <span className="text-slate-400 italic truncate">• {it.opcionalTexto}</span>
                                   )}
@@ -2549,7 +2552,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                                       {cat.nombre}
                                     </span>
                                     <span className="text-[9px] text-slate-400">
-                                      {cat.intervaloKm.toLocaleString()} km • {cat.categoria}
+                                      {(cat.intervaloKmOficial || 5000).toLocaleString()} km • {cat.categoria}
                                     </span>
                                   </div>
                                   <button
@@ -2631,7 +2634,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
-                                  <span>Ciclo: {it.intervaloKm.toLocaleString()} km</span>
+                                  <span>Ciclo: {(it.intervaloKm || 0).toLocaleString()} km</span>
                                   {it.opcionalTexto && (
                                     <span className="text-slate-400 italic truncate">• {it.opcionalTexto}</span>
                                   )}
