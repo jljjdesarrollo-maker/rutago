@@ -45,6 +45,7 @@ import { SuperAdminHomeScreen } from './SuperAdminHomeScreen';
 import { getAllBuses, getActiveBusId } from '@/lib/fleet-storage';
 import { getCurrentYearMonth, formatMonthName } from '@/lib/date-helpers';
 import { getSuscripciones } from '@/lib/saas-storage';
+import { getBusModuloMantenimientoActivo, isBusModuloMantenimientoConfigurado } from '@/lib/mantenimiento-estaciones';
 
 interface HomeScreenProps {
   user: UserSession;
