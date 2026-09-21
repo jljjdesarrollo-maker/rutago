@@ -1,4 +1,4 @@
-# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.14)
+# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.15)
 
 ## Contexto Esencial
 - **Proyecto:** RutaGo (Control de transporte, boletaje, arqueos y mantenimiento para autobuses interprovinciales/cantonales).
@@ -58,5 +58,14 @@
 - **Filtro Inmediato Activo por Defecto:** Al seleccionar **BÁSICO (7)** o **MEDIO (15)**, la lista en pantalla se filtra al instante sin depender de la pestaña activa, ocultando los ítems no seleccionados según el switch "Solo Activos".
 - **Contador Dinámico Sincronizado:** El botón de la pestaña Todos ahora refleja exactamente los ítems que el socio decidió controlar (`itemsFiltrados.length`).
 
-## 7. Registro de Versiones y Contexto
+### 7. Arquitectura Gerencial del Socio y Módulo de Mantenimiento Optativo (v3.58.15)
+- **Decisión Optativa del Socio:** Cada unidad (`busId`) puede activar o pausar el módulo de control de mantenimientos. Si está inactivo, el chofer no tiene que registrar talleres y el socio tiene una interfaz limpia 100% enfocada en lo operativo y financiero.
+- **Gastos Directos del Socio Independientes:** `OwnerExpensesModal` continúa operando de forma autónoma para calcular la Utilidad Real Neta, sin importar si se usa o no el módulo técnico.
+- **Separación de Roles Estricta:** 
+  - **Socio:** Gobernanza, selección de nivel (Básico 7 / Medio 15 / Total 27), auditoría y gastos patrimoniales directos.
+  - **Chofer:** Conducción en ruta y reporte rápido de paradas físicas en fosa/taller (si el módulo está activo).
+  - **Ayudante:** Venta/cobro de boletos, conteo de pasajeros y registro de egresos en ruta asentados en el arqueo del día (o arrastrados al día siguiente si hay déficit).
+- **Archivo Maestro de Respaldo:** Creado `download/RutaGo_Contexto_Maestro_v3.58.15.md` para garantizar continuidad multiplataforma.
+
+## 8. Registro de Versiones y Contexto
 - Documento maestro completo respaldado en: `/download/RutaGo_Contexto_Maestro_v3.58.10.md`.

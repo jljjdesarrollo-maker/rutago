@@ -520,3 +520,27 @@ export function getCategoriaContablePorEstacion(estacionId: EstacionServicioId):
   }
 }
 
+
+// ============================================================================
+// ACTIVACIÓN OPTATIVA DEL MÓDULO DE MANTENIMIENTO POR UNIDAD (DECISIÓN DEL SOCIO)
+// ============================================================================
+
+export function getBusModuloMantenimientoActivo(busId: string): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    const raw = localStorage.getItem(`rg_mantenimiento_modulo_activo_${busId}`);
+    if (raw === null) return true; // Por defecto activo para unidades existentes
+    return raw === "true";
+  } catch (e) {
+    return true;
+  }
+}
+
+export function saveBusModuloMantenimientoActivo(busId: string, activo: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(`rg_mantenimiento_modulo_activo_${busId}`, String(activo));
+  } catch (e) {
+    console.error("Error guardando estado de modulo mantenimiento:", e);
+  }
+}

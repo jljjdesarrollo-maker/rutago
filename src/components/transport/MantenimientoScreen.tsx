@@ -47,6 +47,8 @@ import {
   saveBusNivelControl,
   getBusItemsActivosConfig,
   saveBusItemsActivosConfig,
+  getBusModuloMantenimientoActivo,
+  saveBusModuloMantenimientoActivo,
   type EstacionServicioId,
   ESTACIONES_SERVICIO_CONFIG,
   resolverCascadaEstacion,
@@ -188,6 +190,23 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     return getBusItemsActivosConfig(activeBusId);
   });
   const [mostrarSoloActivos, setMostrarSoloActivos] = useState<boolean>(true);
+
+  // Decisión del Socio: ¿Desea utilizar las funciones de mantenimiento o solo operativas?
+  const [moduloActivo, setModuloActivo] = useState<boolean>(() => {
+    if (typeof window === undefined) return true;
+    return getBusModuloMantenimientoActivo(activeBusId);
+  });
+
+  const handleToggleModuloActivo = (activar: boolean) => {
+    setModuloActivo(activar);
+    saveBusModuloMantenimientoActivo(activeBusId, activar);
+    toast({
+      title: activar ? "Módulo de Mantenimiento Activado" : "Módulo de Mantenimiento Pausado",
+      description: activar
+        ? "Tu unidad ahora supervisa desgastes preventivos y sincroniza alertas con el chofer."
+        : "Se pausó el control mecánico para esta unidad. Tu chofer no tendrá que registrar talleres.",
+    });
+  };
 
   const saveItems = (updated: MantenimientoBusItem[]) => {
     setItems(updated);
@@ -1071,6 +1090,83 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
       </header>
 
       <main className="flex-1 px-4 py-4 max-w-xl mx-auto w-full flex flex-col gap-4 pb-20">
+        {/* BANNER GERENCIAL DE CONTROL OPTATIVO DEL MÓDULO */}
+        <div className="bg-white rounded-3xl border border-slate-200/90 p-4 shadow-sm flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-9 h-9 rounded-2xl flex items-center justify-center ${moduloActivo ? "bg-emerald-500/10 text-emerald-600" : "bg-slate-100 text-slate-400"}`}>
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                    Control Preventivo Hino AK
+                  </span>
+                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${moduloActivo ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
+                    {moduloActivo ? "Activo en Bus" : "Solo Operativo"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-tight">
+                  {moduloActivo
+                    ? "Tu unidad supervisa desgastes preventivos y delega reportes de taller al chofer."
+                    : "Módulo pausado. Tu unidad opera únicamente con boletaje, vueltas y arqueo diario."}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <Switch
+                checked={moduloActivo}
+                onCheckedChange={handleToggleModuloActivo}
+                className="data-[state=checked]:bg-emerald-600"
+              />
+              <span className="text-[9px] font-bold text-slate-400">
+                {moduloActivo ? "Activado" : "Pausado"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {!moduloActivo ? (
+          /* VISTA EJECUTIVA LIMPIA CUANDO EL SOCIO DECIDE NO USAR MANTENIMIENTO */
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm flex flex-col items-center text-center gap-4 my-2">
+            <div className="w-16 h-16 rounded-3xl bg-slate-100 flex items-center justify-center text-slate-400">
+              <Wrench className="w-8 h-8" />
+            </div>
+            <div className="flex flex-col gap-1 max-w-sm">
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                Mantenimiento Pausado para esta Unidad
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Has configurado tu unidad para trabajar exclusivamente en <strong>modo operativo y financiero</strong> (vueltas, boletos y liquidación diaria con el ayudante).
+              </p>
+            </div>
+
+            <div className="w-full bg-slate-50 rounded-2xl p-3.5 border border-slate-200/70 text-left flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>El chofer <strong>no tendrá que registrar paradas</strong> de taller ni lubricadoras.</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Tus gastos mayores del socio (llantas, seguros) siguen disponibles en el módulo financiero.</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Puedes activar la supervisión de desgastes cuando desees con el switch superior.</span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              onClick={() => handleToggleModuloActivo(true)}
+              className="w-full h-11 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider shadow-sm flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <span>Activar Supervisión de Mantenimiento</span>
+            </Button>
+          </div>
+        ) : (
+          <>
         {/* Odómetro Actual del Tablero */}
         <Card className="rounded-3xl border-none bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white shadow-lg overflow-hidden">
           <CardContent className="p-4.5">
@@ -1688,6 +1784,8 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             })
           )}
         </div>
+          </>
+        )}
       </main>
 
       {/* ========================================================= */}
