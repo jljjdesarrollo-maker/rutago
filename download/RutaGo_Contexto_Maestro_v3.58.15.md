@@ -193,3 +193,20 @@
      - **Demás componentes preventivos:** Proporcionalmente calibrados respecto al tacómetro real para eliminar falsos vencimientos.
   4. **Selector de Fecha en Asentamiento Manual:** En el modal de registro de servicios para el socio, se incorporó el selector de **Fecha del Servicio**, permitiendo registrar mantenimientos realizados días atrás.
   5. **Auto-Detección y Saneamiento de Desfase Extremo:** Si el navegador detecta datos en caché con un desfase mayor a 100.000 km respecto al odómetro base, recalibra de inmediato los contadores a la línea base real.
+
+---
+
+## 22. Etiqueta Ejecutiva de Supervisión para el Socio y Vista de Diagnóstico para Toma de Decisiones (v3.58.29)
+- **Separación de Roles Operativo vs. Ejecutivo:**
+  - **Conductor (Chofer):** Mantiene su widget operativo `ChoferMantenimientoWidget` ("Mantenimientos a Realizar (Conductor)") enfocado en la rutina de ruta (calibración de raches, chequeo de niveles) y el botón de *Registro Rápido de Lubricadora*.
+  - **Socio Propietario (Administrador):** Se retiró el widget operativo del chofer de su vista principal en `HomeScreen.tsx`. En su lugar, se implementó una **etiqueta visualmente atractiva** (`SocioMantenimientoWidget.tsx`) que sintetiza el estado mecánico general de la unidad sin sobrecargar la pantalla con detalles de taller.
+- **Semaforización Ejecutiva a Simple Vista:**
+  - 🔴 **Rojo (Mantenimientos Vencidos):** Alerta crítica si al menos un ítem ha superado su kilometraje límite. Indica exceso de kilometraje, impacto de falla mecánica y solicita intervención inmediata.
+  - 🟡 **Amarillo (Próximos a Vencer):** Alerta preventiva si los ítems están dentro del margen de aviso (a menos de 800 km o 15% del ciclo). Recomienda planificar la visita a lubricadora o taller al final del turno.
+  - 🟢 **Verde (Todos al Día):** Confirma que el 100% de los componentes auditados ruedan dentro de sus límites seguros con odómetro auditado.
+- **Vista Interactiva Organizada para la Toma de Decisiones:**
+  - Al pulsar sobre la etiqueta semafórica, se abre un modal de diagnóstico gerencial estructurado:
+    1. **Tablero KPI:** 3 indicadores numéricos interactivos (🔴 Vencidos, 🟡 Próximos, 🟢 Al Día).
+    2. **Filtros Dinámicos:** Selector rápido para aislar componentes por criticidad.
+    3. **Tarjetas de Componente con Impacto Operativo:** Cada componente muestra barra porcentual de desgaste, odómetro del último cambio, costo estimado y una guía de impacto gerencial (e.g. riesgo de fatiga térmica, rotura de terminales, protección de inyección common-rail o pérdida de compresión).
+    4. **Acceso a Gestión Integral:** Botón directo para pasar a la pantalla completa de configuración y asentamiento (`MantenimientoScreen.tsx`).
