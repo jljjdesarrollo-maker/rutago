@@ -21,7 +21,8 @@ import {
   Check,
   Search,
   Filter,
-  Sliders, Settings2, RotateCcw,
+  Sliders,
+  Settings2,
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
