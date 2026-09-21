@@ -1825,7 +1825,6 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                     </CardContent>
                   </Card>
                 );
-              }              );
             })
           )}
         </div>
