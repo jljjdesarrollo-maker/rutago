@@ -1,4 +1,4 @@
-# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.10)
+# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.12)
 
 ## Contexto Esencial
 - **Proyecto:** RutaGo (Control de transporte, boletaje, arqueos y mantenimiento para autobuses interprovinciales/cantonales).
@@ -29,5 +29,15 @@
 - **Auto-Extensible:** Al agregar nuevas categorías a futuro, se expande hacia abajo en filas adicionales sin desbordes.
 - **Depuración Integral:** Categorías obsoletas o huérfanas (`SUSPENSION` y `SISTEMA COMBUSTIBLE`) eliminadas y unificadas.
 
-## 4. Registro de Versiones y Contexto
+### 4. Asistente de 3 Niveles y Switches ON/OFF del Socio (v3.58.12)
+- **Barra Ergonómica de 3 Niveles:**
+  * **BÁSICO (7 Ítems):** Aceite, Filtros diésel/trampa, Engrase chasis, Raches y Zapatas traseras.
+  * **MEDIO (15 Ítems):** Básico + Valvulinas caja/corona, Filtros de aire, Bocinas post y Zapatas delanteras.
+  * **TOTAL (27 Ítems):** Catálogo maestro Hino AK completo.
+- **Switches Táctiles [ON / OFF] por Ítem:**
+  * Cada tarjeta permite al socio encender o pausar el ítem en su unidad con feedback visual (opacidad atenuada si está en pausa).
+  * Toggle "Solo Activos" en cabecera para mantener la pantalla despejada.
+  * Persistencia local reactiva e independiente por autobús (`rg_mnt_nivel_control_${busId}` y `rg_mnt_items_activos_${busId}`).
+
+## 5. Registro de Versiones y Contexto
 - Documento maestro completo respaldado en: `/download/RutaGo_Contexto_Maestro_v3.58.10.md`.

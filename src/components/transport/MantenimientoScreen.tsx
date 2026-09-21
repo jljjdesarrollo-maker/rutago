@@ -38,6 +38,16 @@ import {
   getCatalogoMaestroGlobal,
   EFECTO_CASCADA_TRANSMISION,
 } from '@/lib/mantenimiento-catalogo';
+import {
+  type NivelControlMantenimiento,
+  PLANTILLAS_NIVEL_CONTROL,
+  CODIGOS_NIVEL_BASICO,
+  CODIGOS_NIVEL_MEDIO,
+  getBusNivelControl,
+  saveBusNivelControl,
+  getBusItemsActivosConfig,
+  saveBusItemsActivosConfig,
+} from '@/lib/mantenimiento-estaciones';
 
 export interface MantenimientoBusItem {
   id: string;
@@ -743,9 +753,84 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     });
   };
 
-  // Cálculo de semáforos y filtrado
+
+  // Cambiar nivel de control rápido (BÁSICO 7, MEDIO 15, TOTAL 27)
+  const handleCambiarNivelControl = (nuevoNivel: NivelControlMantenimiento) => {
+    setNivelControl(nuevoNivel);
+    saveBusNivelControl(activeBusId, nuevoNivel);
+
+    const catalogo = getCatalogoMaestroGlobal();
+    const nuevaConfig: Record<string, boolean> = {};
+
+    if (nuevoNivel === 'TOTAL') {
+      catalogo.forEach(c => { nuevaConfig[c.codigo] = true; });
+    } else if (nuevoNivel === 'MEDIO') {
+      const setMedio = new Set(CODIGOS_NIVEL_MEDIO);
+      catalogo.forEach(c => { nuevaConfig[c.codigo] = setMedio.has(c.codigo); });
+    } else {
+      const setBasico = new Set(CODIGOS_NIVEL_BASICO);
+      catalogo.forEach(c => { nuevaConfig[c.codigo] = setBasico.has(c.codigo); });
+    }
+
+    setItemsActivosConfig(nuevaConfig);
+    saveBusItemsActivosConfig(activeBusId, nuevaConfig);
+
+    // Asegurar que todos los ítems recomendados del nivel existan en la lista de items del bus
+    const codigosExistentes = new Set(items.map(it => it.codigo));
+    const itemsNuevosParaAgregar: MantenimientoBusItem[] = [];
+
+    catalogo.forEach(c => {
+      const debeEstarActivo = nuevaConfig[c.codigo];
+      if (debeEstarActivo && !codigosExistentes.has(c.codigo)) {
+        itemsNuevosParaAgregar.push({
+          id: `mbus-${c.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: Math.max(0, kmActual - Math.floor(c.intervaloKmOficial * 0.2)),
+          fechaUltimo: new Date().toISOString().split('T')[0],
+          costoEstimado: c.categoria === 'MOTOR' ? 120 : 50,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: c.asignadoChoferPorDefecto,
+          activo: true,
+        });
+      }
+    });
+
+    if (itemsNuevosParaAgregar.length > 0) {
+      saveItems([...items, ...itemsNuevosParaAgregar]);
+    }
+
+    const plantilla = PLANTILLAS_NIVEL_CONTROL[nuevoNivel];
+    toast({
+      title: `Nivel ${plantilla.nombre} Activado`,
+      description: plantilla.descripcion,
+    });
+  };
+
+  // Toggle individual de Switch [ON / OFF] por código de ítem
+  const handleToggleItemActivo = (codigo: string, valor: boolean, nombre: string) => {
+    const updatedConfig = { ...itemsActivosConfig, [codigo]: valor };
+    setItemsActivosConfig(updatedConfig);
+    saveBusItemsActivosConfig(activeBusId, updatedConfig);
+
+    toast({
+      title: valor ? 'Ítem Activado en Plan' : 'Ítem Pausado' ,
+      description: `"${nombre}" ${valor ? 'se mostrará en tus alertas de tablero': 'quedó en pausa para no saturar tu vista'.`,
+    });
+  };
+
+  // Cálculo de semáforos y filtrado con Nivel de Control y Switches
   const itemsFiltrados = useMemo(() => {
     return items.filter(it => {
+      // Si el socio optó por ver solo activos y este ítem está apagado en sus switches
+      const estaActivoPorSwitch = it.codigo ? (itemsActivosConfig[it.codigo] ?? true) : true;
+      if (mostrarSoloActivos && !estaActivoPorSwitch && filtroVista !== 'TODOS') {
+        return false;
+      }
+
       if (filtroCategoria !== 'TODAS') {
         if (filtroCategoria === 'RODAJE') {
           if (it.categoria !== 'RODAJE' && it.categoria !== 'SUSPENSION') return false;
@@ -760,7 +845,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
       }
       return true;
     });
-  }, [items, kmActual, filtroVista, filtroCategoria]);
+  }, [items, kmActual, filtroVista, filtroCategoria, itemsActivosConfig, mostrarSoloActivos]);
 
   const totalVencidos = useMemo(() => {
     return items.filter(it => kmActual - it.ultimoKm >= it.intervaloKm).length;
@@ -871,6 +956,90 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             </div>
           </CardContent>
         </Card>
+
+        {/* ========================================================= */}
+        {/* ASISTENTE DE NIVELES DE CONTROL (BÁSICO 7 | MEDIO 15 | TOTAL 27) */}
+        {/* ========================================================= */}
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-3.5 shadow-xs flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Sliders className="w-4 h-4 text-slate-700" />
+              <span className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                Nivel de Control de Unidad
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-slate-500 font-bold">Solo Activos</span>
+              <Switch
+                checked={mostrarSoloActivos}
+                onCheckedChange={setMostrarSoloActivos}
+                className="data-[state=checked]:bg-slate-900 scale-75"
+              />
+            </div>
+          </div>
+
+          {/* Botonera de 3 Niveles */}
+          <div className="grid grid-cols-3 gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleCambiarNivelControl('BASICO')}
+              className={`flex flex-col items-center justify-center p-2 rounded-2xl border transition-all text-center cursor-pointer ${
+                nivelControl === 'BASICO'
+                  ? 'bg-emerald-500/10 border-emerald-500 text-emerald-950 shadow-xs ring-1 ring-emerald-500/50'
+                  : 'bg-slate-50/80 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1">
+                <span className={`w-2 h-2 rounded-full ${nivelControl === 'BASICO' ? 'bg-emerald-600' : 'bg-slate-300'}`} />
+                <span className="text-xs font-black">BÁSICO</span>
+              </div>
+              <span className="text-[10px] font-extrabold text-emerald-700 mt-0.5">7 Ítems</span>
+              <span className="text-[9px] text-slate-500 leading-tight hidden sm:block">Esenciales & Vital</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleCambiarNivelControl('MEDIO')}
+              className={`flex flex-col items-center justify-center p-2 rounded-2xl border transition-all text-center cursor-pointer ${
+                nivelControl === 'MEDIO'
+                  ? 'bg-amber-500/10 border-amber-500 text-amber-950 shadow-xs ring-1 ring-amber-500/50'
+                  : 'bg-slate-50/80 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1">
+                <span className={`w-2 h-2 rounded-full ${nivelControl === 'MEDIO' ? 'bg-amber-500' : 'bg-slate-300'}`} />
+                <span className="text-xs font-black">MEDIO</span>
+              </div>
+              <span className="text-[10px] font-extrabold text-amber-700 mt-0.5">15 Ítems</span>
+              <span className="text-[9px] text-slate-500 leading-tight hidden sm:block">Operativo & Rodaje</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleCambiarNivelControl('TOTAL')}
+              className={`flex flex-col items-center justify-center p-2 rounded-2xl border transition-all text-center cursor-pointer ${
+                nivelControl === 'TOTAL'
+                  ? 'bg-blue-500/10 border-blue-500 text-blue-950 shadow-xs ring-1 ring-blue-500/50'
+                  : 'bg-slate-50/80 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1">
+                <span className={`w-2 h-2 rounded-full ${nivelControl === 'TOTAL' ? 'bg-blue-600' : 'bg-slate-300'}`} />
+                <span className="text-xs font-black">TOTAL</span>
+              </div>
+              <span className="text-[10px] font-extrabold text-blue-700 mt-0.5">27 Ítems</span>
+              <span className="text-[9px] text-slate-500 leading-tight hidden sm:block">Hino AK Completo</span>
+            </button>
+          </div>
+
+          <div className="px-1 text-[11px] text-slate-500 flex items-center justify-between">
+            <span>{PLANTILLAS_NIVEL_CONTROL[nivelControl].descripcion}</span>
+            <span className="text-[10px] font-extrabold text-slate-700 shrink-0 ml-2">
+              {Object.values(itemsActivosConfig).filter(Boolean).length} activos
+            </span>
+          </div>
+        </div>
+
 
         {/* Barra de Filtros y Resumen */}
         <div className="flex items-center justify-between gap-2">
@@ -1133,7 +1302,9 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                 <Card
                   key={item.id}
                   className={`rounded-2xl border transition-all ${
-                    esVencido
+                    item.codigo && itemsActivosConfig[item.codigo] === false
+                      ? 'border-slate-200 bg-slate-50/70 opacity-60'
+                      : esVencido
                       ? 'border-rose-300 bg-rose-50/40 shadow-xs'
                       : esUrgente
                       ? 'border-amber-300 bg-amber-50/40'
@@ -1258,6 +1429,19 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                       </div>
 
                       <div className="flex items-center gap-3">
+                        {/* Switch ON/OFF del ítem para el Socio */}
+                        {item.codigo && (
+                          <div className="flex items-center gap-1.5" title="Activar o pausar este mantenimiento para esta unidad">
+                            <span className={`text-[10px] font-bold ${(itemsActivosConfig[item.codigo] ?? true) ? 'text-emerald-700' : 'text-slate-400'}`}>
+                              {(itemsActivosConfig[item.codigo] ?? true) ? 'Activo' : 'Pausado'}
+                            </span>
+                            <Switch
+                              checked={itemsActivosConfig[item.codigo] ?? true}
+                              onCheckedChange={checked => handleToggleItemActivo(item.codigo!, checked, item.nombre)}
+                              className="data-[state=checked]:bg-emerald-600 scale-75"
+                            />
+                          </div>
+                        )}
                         <div className="flex items-center gap-1.5" title="Mostrar en la vista de cabina del chofer">
                           <span className="text-[10px] font-bold text-amber-900">Chofer</span>
                           <Switch
