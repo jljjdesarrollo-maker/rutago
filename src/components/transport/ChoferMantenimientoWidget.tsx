@@ -389,14 +389,14 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-black text-xs text-slate-900 uppercase tracking-tight">
-                  Checklist Mecánico Chofer
+                  Mantenimientos a Realizar (Conductor)
                 </span>
                 <Badge className="bg-amber-100 text-amber-900 border-amber-300 text-[9px] px-1.5 py-0 font-extrabold">
                   Bus {disco}
                 </Badge>
               </div>
               <p className="text-[10px] text-slate-500 font-medium">
-                Tacómetro actual: <strong className="text-slate-800">{kmActual.toLocaleString()} km</strong>
+                Tacómetro actual: <strong className="text-slate-800">{kmActual.toLocaleString()} km</strong> • Alimentado del arqueo de llegada
               </p>
             </div>
           </div>

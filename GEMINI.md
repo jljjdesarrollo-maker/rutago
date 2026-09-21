@@ -1,4 +1,4 @@
-# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.24)
+# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.25)
 
 ## Contexto Esencial
 - **Proyecto:** RutaGo (Control de transporte, boletaje, arqueos y mantenimiento para autobuses interprovinciales/cantonales).
@@ -83,25 +83,25 @@
   - Barra de desgaste continua con colores funcionales.
   - Kilometraje restante legible con desglose del intervalo oficial de fábrica.
 
-### 10. Fase 3: Asistente de Parámetros y Políticas de Unidad (v3.58.24)
+### 10. Fase 3: Asistente de Parámetros y Políticas de Unidad (v3.58.25)
 - **Botón Gerencial Políticas en Cabecera:** Acceso rápido para el socio en la barra superior.
 - **Modal de Políticas de Servicio:** Permite al socio personalizar los intervalos de kilometraje según sus marcas de repuestos y lubricantes (ej. extender aceite a 6,000 o 7,000 km, ajustar zapatas o filtros).
 - **Restablecer Fábrica Hino AK:** Función de un toque para volver a los intervalos oficiales del manual de taller.
 - **Persistencia por Unidad:** Los cambios aplican de inmediato en los cálculos de porcentaje y semáforos de la unidad.
 
-### 11. Corrección Sintáctica Turbopack en MantenimientoScreen (v3.58.24)
+### 11. Corrección Sintáctica Turbopack en MantenimientoScreen (v3.58.25)
 - Se eliminó el cierre redundante en la línea 1828 dentro de itemsFiltrados.map(), resolviendo el fallo de compilación en Turbopack/Vercel (Parsing ecmascript source code failed: Expected </>, got closing paren).
 - Verificado y validado sintácticamente con TypeScript (tsc --noEmit).
 
-### 12. Corrección Bloque JSX Anidado en MantenimientoScreen (v3.58.24)
+### 12. Corrección Bloque JSX Anidado en MantenimientoScreen (v3.58.25)
 - Se eliminó la llave de bloque sobrante antes de \`const itemEstaActivo\` en \`itemsFiltrados.map()\`, restaurando la paridad exacta de llaves y paréntesis requerida por el parser de Turbopack/Next.js.
 - Verificado y aprobado sin errores con \`tsc --noEmit\`.
 
-### 13. Limpieza de Imports Duplicados (v3.58.24)
+### 13. Limpieza de Imports Duplicados (v3.58.25)
 - Se eliminó el import duplicado de `RotateCcw` en `MantenimientoScreen.tsx` que causaba el fallo estricto de Turbopack en Vercel (`the name RotateCcw is defined multiple times`).
 - Verificado y validado sintácticamente.
 
-### 14. Activación Optativa y Onboarding de Mantenimiento por Unidad (v3.58.24)
+### 14. Activación Optativa y Onboarding de Mantenimiento por Unidad (v3.58.25)
 - El módulo de Mantenimiento Preventivo viene DESACTIVADO POR DEFECTO para cualquier unidad nueva o socio que recién suscribe su bus.
 - En el Dashboard principal (HomeScreen) ya no se impone el Checklist Mecánico del Chofer a ciegas. Si el socio no lo ha configurado, se muestra una tarjeta de bienvenida para el socio: "¿Deseas supervisar cambios de aceite, filtros y semáforo mecánico para la Unidad?" con el botón "Configurar y Activar".
 - Al ingresar a Mantenimiento con el módulo apagado, se presenta un onboarding claro con 3 opciones directas para que el socio elija el nivel de control:
@@ -110,13 +110,19 @@
   3. TOTAL (27 ítems oficiales completos Hino AK)
 - ChoferMantenimientoWidget ahora respeta estrictamente getBusModuloMantenimientoActivo(), permaneciendo invisible si el socio decide no usarlo.
 
-### 15. Corrección de Import en HomeScreen (v3.58.24)
+### 15. Corrección de Import en HomeScreen (v3.58.25)
 - Se agregó el import faltante de `getBusModuloMantenimientoActivo` e `isBusModuloMantenimientoConfigurado` desde `@/lib/mantenimiento-estaciones` en `HomeScreen.tsx`.
 - Esto soluciona de forma inmediata el error de runtime en navegador `getBusModuloMantenimientoActivo is not defined`.
 
-### 16. Corrección de Literales en Estado de MantenimientoScreen (v3.58.24)
+### 16. Corrección de Literales en Estado de MantenimientoScreen (v3.58.25)
 - Se corrigió el valor inicial de `estacionMetodoPago` pasando de literal sin comillas `EFECTIVO` a `EFECTIVO`, corrigiendo el error de runtime `EFECTIVO is not defined`.
 - Se corrigieron también las inicializaciones de strings `filtroCategoria` ('TODAS') y chequeos de SSR `typeof window === 'undefined'`.
 
-## 17. Registro de Versiones y Contexto
+### 17. Alineación Operativa: Arqueo del Ayudante y Auditoría del Socio (v3.58.25)
+- Clarificación de roles: El socio NO tiene carga operativa; su pantalla es un panel de **Supervisión y Auditoría**.
+- El odómetro se alimenta automáticamente del tacómetro final que el ayudante registra durante el arqueo de caja al terminar el VT asignado.
+- El semáforo es una herramienta de auditoría: si un ítem está en ROJO, alerta al socio de que el conductor no ha reportado el servicio o no lo ha llevado al taller.
+- El conductor es quien visualiza los **Mantenimientos a Realizar** para programar sus paradas y reportar los comprobantes con 1 solo toque.
+
+## 18. Registro de Versiones y Contexto
 - Documento maestro completo respaldado en: `/download/RutaGo_Contexto_Maestro_v3.58.10.md`.

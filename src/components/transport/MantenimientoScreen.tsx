@@ -1128,16 +1128,16 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                    Control Preventivo Hino AK
+                    Supervisión y Semáforo de Cumplimiento
                   </span>
                   <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${moduloActivo ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
-                    {moduloActivo ? "Activo en Bus" : "Solo Operativo"}
+                    {moduloActivo ? "Auditando Conductor" : "Solo Operativo"}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 leading-tight">
                   {moduloActivo
-                    ? "Tu unidad supervisa desgastes preventivos y delega reportes de taller al chofer."
-                    : "Módulo pausado. Tu unidad opera únicamente con boletaje, vueltas y arqueo diario."}
+                    ? "Monitorea si el conductor cumple los mantenimientos. El tacómetro se sincroniza del arqueo que entrega el ayudante al terminar el VT. Si un ítem está en ROJO, el conductor no ha reportado o no ha llevado la unidad a la lubricadora/taller."
+                    : "Módulo pausado. Tu unidad opera exclusivamente con boletaje, vueltas y liquidación de caja diaria."}
                 </p>
               </div>
             </div>
@@ -1290,7 +1290,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             <div className="pt-2 border-t border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Odómetro sincronizado automáticamente con turnos de ruta</span>
+                <span>Tacómetro alimentado del arqueo de caja registrado por el ayudante al cerrar el VT</span>
               </div>
               <button
                 type="button"

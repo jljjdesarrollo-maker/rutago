@@ -557,11 +557,11 @@ export function HomeScreen({
                       <div className="flex items-center gap-2">
                         <p className="font-black text-sm text-gray-900">Mantenimiento Preventivo</p>
                         <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-100 text-amber-900">
-                          Tacómetro
+                          Auditoría
                         </span>
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Alertas de cambio de aceite, frenos, filtros y corona
+                        Semáforo de cumplimiento del conductor: vigila que realice cambios de aceite, filtros y talleres a tiempo
                       </p>
                     </div>
                   </div>
