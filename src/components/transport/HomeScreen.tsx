@@ -39,6 +39,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { ChoferMantenimientoWidget } from './ChoferMantenimientoWidget';
+import { SocioMantenimientoWidget } from './SocioMantenimientoWidget';
 import type { UserSession } from './types';
 import { getOwnerExpenses, fetchOwnerExpensesFromApi } from '@/lib/owner-expenses-storage';
 import { SuperAdminHomeScreen } from './SuperAdminHomeScreen';
@@ -461,9 +462,19 @@ export function HomeScreen({
           const moduloMantenimientoActivo = getBusModuloMantenimientoActivo(activeBusId);
           const yaConfigurado = isBusModuloMantenimientoConfigurado(activeBusId);
 
-          // Si el módulo está activo para este bus, se muestra el widget operativo
+          // Si el módulo está activo para este bus:
           if (moduloMantenimientoActivo) {
-            return <ChoferMantenimientoWidget onVerMas={isAdmin ? onGoToMantenimiento : undefined} />;
+            // En la interfaz del socio (isAdmin): reemplazar vista de chofer por la etiqueta ejecutiva semafórica
+            if (isAdmin) {
+              return (
+                <SocioMantenimientoWidget
+                  busId={activeBusId}
+                  onGoToMantenimiento={onGoToMantenimiento}
+                />
+              );
+            }
+            // En la interfaz del conductor (!isAdmin): conservar el widget operativo de conductor
+            return <ChoferMantenimientoWidget onVerMas={undefined} />;
           }
 
           // Si el socio aún no lo ha configurado o es nuevo en la suscripción, se le presenta la invitación optativa
