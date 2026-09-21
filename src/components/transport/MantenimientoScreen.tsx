@@ -52,6 +52,7 @@ import {
   saveBusItemsActivosConfig,
   getBusModuloMantenimientoActivo,
   saveBusModuloMantenimientoActivo,
+  saveBusMantenimientoConfigCompleta,
   syncMantenimientoConfigConServidor,
   isMantenimientoDecisionTomada,
   type EstacionServicioId,
@@ -429,7 +430,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     setModalConfirmPausarOpen(false);
     toast({
       title: "Módulo de Mantenimiento Pausado",
-      description: `Se pausó el control mecánico para la Unidad \${activeBusDisco}. La decisión se sincronizó en la nube.`,
+      description: `Se pausó el control mecánico para la Unidad ${activeBusDisco}. La decisión se sincronizó en la nube.`,
     });
   };
 
@@ -439,7 +440,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     setModalConfirmReactivarOpen(false);
     toast({
       title: "Módulo de Mantenimiento Reactivado",
-      description: `Se reanudó la supervisión mecánica para la Unidad \${activeBusDisco} con tu plan guardado.`,
+      description: `Se reanudó la supervisión mecánica para la Unidad ${activeBusDisco} con tu plan guardado.`,
     });
   };
 
@@ -451,18 +452,61 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     if (!modalConfirmNivel) return;
     const { nivel, activarModulo } = modalConfirmNivel;
 
-    if (activarModulo && !moduloActivo) {
-      setModuloActivo(true);
-      saveBusModuloMantenimientoActivo(activeBusId, true);
+    const nuevoModuloActivo = activarModulo ? true : moduloActivo;
+    setModuloActivo(nuevoModuloActivo);
+    setNivelControl(nivel);
+
+    const catalogo = getCatalogoMaestroGlobal();
+    const nuevaConfig: Record<string, boolean> = {};
+    if (nivel === "TOTAL") {
+      catalogo.forEach(c => { nuevaConfig[c.codigo] = true; });
+    } else if (nivel === "MEDIO") {
+      const setMedio = new Set(CODIGOS_NIVEL_MEDIO);
+      catalogo.forEach(c => { nuevaConfig[c.codigo] = setMedio.has(c.codigo); });
+    } else {
+      const setBasico = new Set(CODIGOS_NIVEL_BASICO);
+      catalogo.forEach(c => { nuevaConfig[c.codigo] = setBasico.has(c.codigo); });
+    }
+    setItemsActivosConfig(nuevaConfig);
+
+    saveBusMantenimientoConfigCompleta(activeBusId, {
+      moduloActivo: nuevoModuloActivo,
+      nivelControl: nivel,
+      itemsActivos: nuevaConfig,
+      decisionTomada: true,
+    });
+
+    const codigosExistentes = new Set(items.map(it => it.codigo));
+    const itemsNuevosParaAgregar: MantenimientoBusItem[] = [];
+    catalogo.forEach(c => {
+      const debeEstarActivo = nuevaConfig[c.codigo];
+      if (debeEstarActivo && !codigosExistentes.has(c.codigo)) {
+        itemsNuevosParaAgregar.push({
+          id: `mbus-${c.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: Math.max(0, kmActual - Math.floor(c.intervaloKmOficial * 0.2)),
+          fechaUltimo: new Date().toISOString().split("T")[0],
+          costoEstimado: c.categoria === "MOTOR" ? 120 : 50,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: c.asignadoChoferPorDefecto,
+          activo: true,
+        });
+      }
+    });
+    if (itemsNuevosParaAgregar.length > 0) {
+      saveItems([...items, ...itemsNuevosParaAgregar]);
     }
 
-    handleCambiarNivelControl(nivel);
     setModalConfirmNivel(null);
 
     const plantilla = PLANTILLAS_NIVEL_CONTROL[nivel];
     toast({
-      title: `Plan \${plantilla.nombre} Confirmado y Guardado`,
-      description: `Recordaremos tu decisión para la Unidad \${activeBusDisco}. La configuración está sincronizada entre tu celular y tu PC.`,
+      title: `Plan ${plantilla.nombre} Confirmado y Guardado`,
+      description: `Recordaremos tu decisión para la Unidad ${activeBusDisco}. La supervisión de mantenimiento está activa y sincronizada entre tu celular y tu PC.`,
     });
   };
 
@@ -1204,8 +1248,6 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   // Cambiar nivel de control rápido (BÁSICO 7, MEDIO 15, TOTAL 27)
   const handleCambiarNivelControl = (nuevoNivel: NivelControlMantenimiento) => {
     setNivelControl(nuevoNivel);
-    saveBusNivelControl(activeBusId, nuevoNivel);
-
     const catalogo = getCatalogoMaestroGlobal();
     const nuevaConfig: Record<string, boolean> = {};
 
@@ -1220,7 +1262,12 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     }
 
     setItemsActivosConfig(nuevaConfig);
-    saveBusItemsActivosConfig(activeBusId, nuevaConfig);
+    saveBusMantenimientoConfigCompleta(activeBusId, {
+      moduloActivo: true,
+      nivelControl: nuevoNivel,
+      itemsActivos: nuevaConfig,
+      decisionTomada: true,
+    });
 
     // Asegurar que todos los ítems recomendados del nivel existan en la lista de items del bus
     const codigosExistentes = new Set(items.map(it => it.codigo));

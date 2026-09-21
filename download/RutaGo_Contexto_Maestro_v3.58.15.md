@@ -272,3 +272,18 @@
   2. En `cargarConfiguraciones()`, se implementó lectura en cascada: primero consulta el archivo activo en `/tmp`, luego el archivo empaquetado en `db/` y finalmente el fallback seguro en memoria.
   3. En `guardarEnArchivo()`, se añadió manejo defensivo de `EROFS` para redirigir inmediatamente a `os.tmpdir()` sin emitir advertencias de error en consola.
   4. La respuesta HTTP del endpoint se mantiene en `200 OK` con consistencia en memoria (`globalThis`) y sincronización reactiva en tiempo real.
+
+---
+
+## 27. Corrección Integral de Persistencia y Activación de Planes de Mantenimiento (v3.58.35)
+- **Diagnóstico del Fallo ("sigue igual a pesar de aceptar guardar"):**
+  1. **Escape Indebido de Template Strings en `mantenimiento-estaciones.ts`:** Existían 35 ocurrencias de secuencias de escape literales \${...} en lugar de ${...}. En JavaScript, esto provocaba que `localStorage` guardara y leyera claves con el nombre literal `"${STORAGE_PREFIX_MODULO}${busId}"` en lugar del identificador real `"rg_mantenimiento_modulo_activo_BUS-01"`.
+  2. **Query String Mutilado en Endpoint Central:** La función `syncMantenimientoConfigConServidor` llamaba a `/api/config/mantenimiento?busId=\${encodeURIComponent(busId)}`, pasando literalmente la cadena de texto `"${encodeURIComponent(busId)}"` como parámetro. El backend buscaba esa clave inexistente y devolvía por defecto `moduloActivo: false`, lo cual sobreescribía inmediatamente la selección del usuario en el navegador tras aceptar el modal.
+  3. **Escape en Toasts de `MantenimientoScreen.tsx`:** Existían escapes literales en los mensajes emergentes de confirmación y guardado.
+  4. **Carrera de Operaciones Asíncronas en Activación:** La activación llamaba a `saveBusModuloMantenimientoActivo`, `saveBusNivelControl` y `saveBusItemsActivosConfig` por separado, generando múltiples peticiones HTTP PUT concurrentes.
+
+- **Solución Implementada:**
+  1. **Limpieza Completa de Secuencias de Escape:** Se normalizaron todas las interpolaciones ${...} tanto en `src/lib/mantenimiento-estaciones.ts` como en `src/components/transport/MantenimientoScreen.tsx`.
+  2. **Operación Atómica `saveBusMantenimientoConfigCompleta`:** Se introdujo una función centralizada que almacena en `localStorage` de forma simultánea el estado del módulo, el nivel de control, el diccionario de ítems y la confirmación de decisión, enviando un único payload consolidado al servidor cloud y emitiendo el evento global `rg_mantenimiento_config_sync`.
+  3. **Robustez en `getBusItemsActivosConfig`:** Se añadió un fallback automático al catálogo maestro global en caso de que el arreglo de códigos sea omitido o esté vacío.
+  4. **Activación Inmediata y Permanente:** Al pulsar *Confirmar y Guardar Decisión*, el estado local en React se actualiza al instante (`moduloActivo = true`, nivel seleccionado y switches correspondientes), los ítems faltantes se agregan y calibran en la lista del bus, y la persistencia local y cloud queda blindada contra sobreescrituras.
