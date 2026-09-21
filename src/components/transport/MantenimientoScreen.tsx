@@ -1693,9 +1693,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
               const porcentaje = Math.min(100, Math.max(0, (kmRecorridos / item.intervaloKm) * 100));
               const esVencido = kmRestantes <= 0;
               const esUrgente = kmRestantes > 0 && kmRestantes <= 1000;
-
-              {
-                const itemEstaActivo = !item.codigo || itemsActivosConfig[item.codigo] !== false;
+              const itemEstaActivo = !item.codigo || itemsActivosConfig[item.codigo] !== false;
 
                 return (
                   <Card
