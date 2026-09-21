@@ -969,16 +969,24 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                       <div
                         key={it.codigo}
                         onClick={() => handleToggleItemChofer(it.codigo)}
-                        className={}
+                        className={'p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 select-none ' + (
+                          estaActivo
+                            ? 'bg-emerald-50/80 border-emerald-400 text-emerald-950 shadow-2xs'
+                            : 'bg-white border-slate-200 text-slate-500 opacity-60 hover:opacity-100'
+                        )}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div
-                            className={}
+                            className={'w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-all ' + (
+                              estaActivo
+                                ? 'bg-emerald-600 border-emerald-600 text-white'
+                                : 'border-slate-300 bg-white'
+                            )}
                           >
                             {estaActivo && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                           </div>
                           <div className="min-w-0">
-                            <span className={}>
+                            <span className={'text-xs font-black block truncate ' + (estaActivo ? 'text-slate-900' : 'text-slate-500')}>
                               {it.nombre}
                             </span>
                             <span className="text-[9px] text-slate-500 block truncate">
