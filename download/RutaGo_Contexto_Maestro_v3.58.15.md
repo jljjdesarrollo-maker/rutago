@@ -242,3 +242,21 @@
   4. **Visibilidad del Paquete en la Interfaz Ejecutiva:**
      - La tarjeta exterior del socio en `HomeScreen.tsx` ahora exhibe el distintivo del paquete activo (e.g. `[Control Total (27)]`) y la cantidad total de componentes monitoreados (`28 componentes auditados`).
      - El modal de diagnóstico ejecutivo muestra en su cabecera la placa, el número de disco y el badge oficial del nivel: `Bus 01 • Control Total (27)`.
+
+
+---
+
+## 25. Corrección de ReferenceError en MantenimientoScreen (v3.58.33)
+- **Causa de la Pantalla "Algo salió mal":**
+  Al pulsar en la tarjeta o etiqueta *Control Preventivo de Mantenimiento* en la pantalla principal para ingresar a la vista completa de , Next.js arrojaba la pantalla de error global de React (*¡Algo salió mal!*).
+  La causa raíz fue que en el commit anterior se habían declarado las constantes `activeBusDisco` y `activeBusPlaca` en las líneas 92-93 evaluando `currentBus?.numeroDisco`, pero la variable `currentBus` no estaba declarada aún en ese punto del componente (estaba declarada mucho más abajo, en la línea 1321). En JavaScript/TypeScript en tiempo de ejecución, acceder a una variable antes de su inicialización arroja `ReferenceError: Cannot access 'currentBus' before initialization`, rompiendo el renderizado del componente.
+- **Solución Implementada:**
+  1. Se reubicó la resolución de `buses` y `currentBus` al inicio del componente:
+     ```typescript
+     const buses = getAllBuses();
+     const currentBus = buses.find(b => b.id === activeBusId);
+     const activeBusDisco = currentBus?.numeroDisco || '01';
+     const activeBusPlaca = currentBus?.placa || 'TAA-5152';
+     ```
+  2. Se eliminó la declaración tardía duplicada.
+  3. Verificado con `tsc --noEmit` y build estricto.

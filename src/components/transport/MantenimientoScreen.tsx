@@ -88,7 +88,8 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     if (typeof window === 'undefined') return 'BUS-01';
     return getActiveBusId();
   });
-  // currentBus y buses definidos al inicio del componente
+  const buses = getAllBuses();
+  const currentBus = buses.find(b => b.id === activeBusId);
   const activeBusDisco = currentBus?.numeroDisco || '01';
   const activeBusPlaca = currentBus?.placa || 'TAA-5152';
 
@@ -1317,8 +1318,6 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     }).length;
   }, [items, kmActual, itemsActivosConfig]);
 
-  const buses = getAllBuses();
-  const currentBus = buses.find(b => b.id === activeBusId);
   const catalogoOficial = getCatalogoMaestroGlobal();
 
   return (
