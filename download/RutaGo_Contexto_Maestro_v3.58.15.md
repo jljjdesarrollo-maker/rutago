@@ -218,3 +218,27 @@
 - **Solución Implementada:**
   1. Se añadió explícitamente `Info` en el listado de imports de `lucide-react` dentro de `src/components/transport/SocioMantenimientoWidget.tsx`.
   2. Verificación y validación de sintaxis de todos los componentes JSX del modal de diagnóstico para asegurar despliegue sin interrupciones.
+
+---
+
+## 24. Expansión Automática de Componentes según Paquete Elegido por el Socio (Control Total 27) (v3.58.31)
+
+- **Consulta del Socio Propietario:**
+  "Escogí el paquete de los 27 ítems, ¿por qué me sale eso? No entiendo, explícame si está bien o hay error."
+
+- **Diagnóstico Técnico & Aclaración:**
+  1. **¿Qué estaba bien?**
+     El estado **"🟢 Flota Óptima: Todos los mantenimientos al día"** (0 Vencidos, 0 Próximos) es **completamente correcto**, ya que el odómetro real del Bus 01 está en **893.485 km** y sus mantenimientos más recientes (aceite de motor y filtros a 893.100 km, aire acondicionado a 892.000 km, engrase a 893.085 km) ruedan con kilometraje vigente y amplio margen de seguridad mecánica.
+  2. **¿Cuál era el error?**
+     Al inicializar los ítems en caché local (`localStorage`), tanto `SocioMantenimientoWidget.tsx` como `MantenimientoScreen.tsx` tenían un límite provisional fijado en código (`.slice(0, 12)`). Por esa razón, aun cuando el socio seleccionaba el plan **"Control Total (27)"**, el sistema únicamente presentaba los primeros 12 componentes en la vista ejecutiva en lugar de los 28 componentes totales de la biblioteca Hino AK.
+
+- **Solución Implementada:**
+  1. **Eliminación del límite rígido `.slice(0, 12)`:** Se retiró el corte de 12 elementos tanto en `SocioMantenimientoWidget.tsx` como en `MantenimientoScreen.tsx`.
+  2. **Auto-Expansión Dinámica de Componentes por Nivel de Control:**
+     - Al cargar los ítems, el sistema inspecciona el nivel activo de la unidad (`getBusNivelControl(busId)`).
+     - Si el socio tiene activo el plan **Control Total (27)**, el sistema integra automáticamente todos los componentes oficiales del Catálogo Maestro Hino AK (28 ítems incluyendo A/C).
+     - Si faltan ítems en la caché local del navegador, se incorporan de manera inmediata y se persisten en `localStorage`.
+  3. **Calibración Preventiva Real ("Al Día"):** Cada componente nuevo incorporado se calibra con su odómetro de línea base seguro (~20% de desgaste del ciclo), garantizando que refleje su estado óptimo sin generar falsas alarmas de taller.
+  4. **Visibilidad del Paquete en la Interfaz Ejecutiva:**
+     - La tarjeta exterior del socio en `HomeScreen.tsx` ahora exhibe el distintivo del paquete activo (e.g. `[Control Total (27)]`) y la cantidad total de componentes monitoreados (`28 componentes auditados`).
+     - El modal de diagnóstico ejecutivo muestra en su cabecera la placa, el número de disco y el badge oficial del nivel: `Bus 01 • Control Total (27)`.

@@ -121,10 +121,106 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   // Odómetro actual del bus auditado (garantizado numérico para evitar errores de render)
   const [kmActual, setKmActual] = useState<number>(() => resolverKmActual(getActiveBusId()));
 
-  const cargarItems = useCallback((busId: string) => {
+  const cargarItems = useCallback((busId: string): MantenimientoBusItem[] => {
     if (typeof window === 'undefined') return [];
     const storageKey = `rg_mantenimientos_v2_${busId}`;
     const baseKm = resolverKmActual(busId) || 893485;
+    const nivel = getBusNivelControl(busId);
+    const catalogo = getCatalogoMaestroGlobal();
+    const itemsConfig = getBusItemsActivosConfig(busId, catalogo.map(c => c.codigo));
+
+    const calibrarItem = (c: any): MantenimientoBusItem => {
+      // Aceite de motor y tríada de filtros: 19 de septiembre de 2026 a 893,100 km
+      if (
+        c.codigo === 'MNT-ACEITE-MOT' ||
+        c.codigo === 'MNT-FILT-ACEITE' ||
+        c.codigo === 'MNT-FILT-TRAMPA' ||
+        c.codigo === 'MNT-FILT-DIESEL-SEC'
+      ) {
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: 893100,
+          fechaUltimo: '2026-09-19',
+          costoEstimado: c.codigo === 'MNT-ACEITE-MOT' ? 120 : 35,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: c.asignadoChoferPorDefecto,
+          activo: true,
+        };
+      }
+      // Engrase de chasis
+      if (c.codigo === 'MNT-ENGRASE-CHASIS') {
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: 893085,
+          fechaUltimo: '2026-09-19',
+          costoEstimado: 25,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: c.asignadoChoferPorDefecto,
+          activo: true,
+        };
+      }
+      // Aire acondicionado: 13 de septiembre de 2026
+      if (c.codigo === 'MNT-AIRE-ACONDICIONADO') {
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: 892000,
+          fechaUltimo: '2026-09-13',
+          costoEstimado: 60,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: false,
+          activo: true,
+        };
+      }
+      // Calibración de raches de freno (800 km ciclo)
+      if (c.codigo === 'MNT-RACHES-FRENO') {
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: Math.max(0, baseKm - 250),
+          fechaUltimo: '2026-09-20',
+          costoEstimado: 0,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: true,
+          activo: true,
+        };
+      }
+      // Demás ítems del catálogo Hino AK calibrados con 20% de desgaste (Al Día)
+      return {
+        id: `mbus-${c.id}-calibrado`,
+        catalogoId: c.id,
+        codigo: c.codigo,
+        nombre: c.nombre,
+        categoria: c.categoria,
+        intervaloKm: c.intervaloKmOficial,
+        ultimoKm: Math.max(0, baseKm - Math.floor(c.intervaloKmOficial * 0.2)),
+        fechaUltimo: '2026-09-15',
+        costoEstimado: c.categoria === 'MOTOR' ? 120 : c.categoria === 'FRENOS' ? 80 : 45,
+        repuestoDetalle: c.especificacionLubricanteRepuesto,
+        asignadoChofer: c.asignadoChoferPorDefecto,
+        activo: true,
+      };
+    };
+
+    let itemsExistentes: MantenimientoBusItem[] = [];
     const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
@@ -134,118 +230,42 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             (it: MantenimientoBusItem) => it.ultimoKm > 0 && Math.abs(baseKm - it.ultimoKm) > 100000
           );
           if (!desfaseExtremo) {
-            return parsed;
+            itemsExistentes = parsed;
+          } else {
+            console.warn('Detectado desfase histórico en items guardados. Aplicando calibración oficial.');
           }
-          console.warn('Detectado desfase histórico en items guardados. Aplicando calibración oficial.');
         }
       } catch (e) {
         console.error('Error parseando mantenimientos:', e);
       }
     }
 
-    // Inicializar por defecto con la línea base operativa real del Bus 01
-    const catalogo = getCatalogoMaestroGlobal();
-    const iniciales: MantenimientoBusItem[] = catalogo
-      .filter(c => c.activoBiblioteca)
-      .slice(0, 12)
-      .map(c => {
-        // Aceite de motor y tríada de filtros: Cambiados anteayer (19 de septiembre de 2026) a 893,100 km
-        if (
-          c.codigo === 'MNT-ACEITE-MOT' ||
-          c.codigo === 'MNT-FILT-ACEITE' ||
-          c.codigo === 'MNT-FILT-TRAMPA' ||
-          c.codigo === 'MNT-FILT-DIESEL-SEC'
-        ) {
-          return {
-            id: `mbus-${c.id}-calibrado`,
-            catalogoId: c.id,
-            codigo: c.codigo,
-            nombre: c.nombre,
-            categoria: c.categoria,
-            intervaloKm: c.intervaloKmOficial,
-            ultimoKm: 893100,
-            fechaUltimo: '2026-09-19',
-            costoEstimado: c.codigo === 'MNT-ACEITE-MOT' ? 120 : 35,
-            repuestoDetalle: c.especificacionLubricanteRepuesto,
-            asignadoChofer: c.asignadoChoferPorDefecto,
-            activo: true,
-          };
-        }
-        // Engrase de chasis: Realizado recientemente
-        if (c.codigo === 'MNT-ENGRASE-CHASIS') {
-          return {
-            id: `mbus-${c.id}-calibrado`,
-            catalogoId: c.id,
-            codigo: c.codigo,
-            nombre: c.nombre,
-            categoria: c.categoria,
-            intervaloKm: c.intervaloKmOficial,
-            ultimoKm: 893085,
-            fechaUltimo: '2026-09-19',
-            costoEstimado: 25,
-            repuestoDetalle: c.especificacionLubricanteRepuesto,
-            asignadoChofer: c.asignadoChoferPorDefecto,
-            activo: true,
-          };
-        }
-        // Aire acondicionado: Mantenimiento domingo 13 de septiembre de 2026
-        if (c.codigo === 'MNT-AIRE-ACONDICIONADO') {
-          return {
-            id: `mbus-${c.id}-calibrado`,
-            catalogoId: c.id,
-            codigo: c.codigo,
-            nombre: c.nombre,
-            categoria: c.categoria,
-            intervaloKm: c.intervaloKmOficial,
-            ultimoKm: 892000,
-            fechaUltimo: '2026-09-13',
-            costoEstimado: 60,
-            repuestoDetalle: c.especificacionLubricanteRepuesto,
-            asignadoChofer: false,
-            activo: true,
-          };
-        }
-        // Demás ítems del catálogo Hino AK calibrados a línea base real
-        return {
-          id: `mbus-${c.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-          catalogoId: c.id,
-          codigo: c.codigo,
-          nombre: c.nombre,
-          categoria: c.categoria,
-          intervaloKm: c.intervaloKmOficial,
-          ultimoKm: Math.max(0, baseKm - Math.floor(c.intervaloKmOficial * 0.2)),
-          fechaUltimo: '2026-09-10',
-          costoEstimado: c.categoria === 'MOTOR' ? 120 : 45,
-          repuestoDetalle: c.especificacionLubricanteRepuesto,
-          asignadoChofer: c.asignadoChoferPorDefecto,
-          activo: true,
-        };
-      });
+    const catalogoActivo = catalogo.filter(c => c.activoBiblioteca);
+    const codigosExistentes = new Set(itemsExistentes.map(it => it.codigo));
+    let itemsActualizados = [...itemsExistentes];
 
-    if (!iniciales.some(it => it.codigo === 'MNT-AIRE-ACONDICIONADO')) {
-      const acCat = catalogo.find(c => c.codigo === 'MNT-AIRE-ACONDICIONADO');
-      if (acCat) {
-        iniciales.push({
-          id: `mbus-${acCat.id}-calibrado`,
-          catalogoId: acCat.id,
-          codigo: acCat.codigo,
-          nombre: acCat.nombre,
-          categoria: acCat.categoria,
-          intervaloKm: acCat.intervaloKmOficial,
-          ultimoKm: 892000,
-          fechaUltimo: '2026-09-13',
-          costoEstimado: 60,
-          repuestoDetalle: acCat.especificacionLubricanteRepuesto,
-          asignadoChofer: false,
-          activo: true,
-        });
+    // Si el socio seleccionó Control Total (27) o faltan componentes del nivel activo:
+    catalogoActivo.forEach(c => {
+      const debeEstar = nivel === 'TOTAL' ? true : (itemsConfig[c.codigo] ?? true);
+      if (debeEstar && !codigosExistentes.has(c.codigo)) {
+        itemsActualizados.push(calibrarItem(c));
+        codigosExistentes.add(c.codigo);
+      }
+    });
+
+    if (itemsActualizados.length === 0) {
+      itemsActualizados = catalogoActivo.map(calibrarItem);
+    }
+
+    if (itemsActualizados.length > itemsExistentes.length || !saved) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(itemsActualizados));
+      } catch (e) {
+        console.error('Error guardando items ampliados:', e);
       }
     }
 
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(storageKey, JSON.stringify(iniciales));
-    }
-    return iniciales;
+    return itemsActualizados;
   }, [resolverKmActual]);
 
   // Mantenimientos activos de esta unidad

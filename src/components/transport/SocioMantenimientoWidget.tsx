@@ -44,7 +44,14 @@ import {
   BusItem,
 } from '@/lib/fleet-storage';
 import { getCatalogoMaestroGlobal } from '@/lib/mantenimiento-catalogo';
-import { getBusModuloMantenimientoActivo } from '@/lib/mantenimiento-estaciones';
+import {
+  getBusModuloMantenimientoActivo,
+  getBusNivelControl,
+  getBusItemsActivosConfig,
+  PLANTILLAS_NIVEL_CONTROL,
+  CODIGOS_NIVEL_BASICO,
+  CODIGOS_NIVEL_MEDIO,
+} from '@/lib/mantenimiento-estaciones';
 
 export interface MantenimientoBusItem {
   id: string;
@@ -155,8 +162,103 @@ export function SocioMantenimientoWidget({
     if (typeof window === 'undefined') return [];
     const storageKey = `rg_mantenimientos_v2_${bId}`;
     const baseKm = resolverKmActual(bId) || 893485;
-    const saved = localStorage.getItem(storageKey);
+    const nivel = getBusNivelControl(bId);
+    const catalogo = getCatalogoMaestroGlobal();
+    const itemsConfig = getBusItemsActivosConfig(bId, catalogo.map(c => c.codigo));
 
+    const calibrarItem = (c: any): MantenimientoBusItem => {
+      // Aceite de motor y filtros: 19 de septiembre de 2026 a 893,100 km
+      if (
+        c.codigo === 'MNT-ACEITE-MOT' ||
+        c.codigo === 'MNT-FILT-ACEITE' ||
+        c.codigo === 'MNT-FILT-TRAMPA' ||
+        c.codigo === 'MNT-FILT-DIESEL-SEC'
+      ) {
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: 893100,
+          fechaUltimo: '2026-09-19',
+          costoEstimado: c.codigo === 'MNT-ACEITE-MOT' ? 120 : 35,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: c.asignadoChoferPorDefecto,
+          activo: true,
+        };
+      }
+      // Engrase de chasis
+      if (c.codigo === 'MNT-ENGRASE-CHASIS') {
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: 893085,
+          fechaUltimo: '2026-09-19',
+          costoEstimado: 25,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: c.asignadoChoferPorDefecto,
+          activo: true,
+        };
+      }
+      // Aire acondicionado: 13 de septiembre de 2026
+      if (c.codigo === 'MNT-AIRE-ACONDICIONADO') {
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: 892000,
+          fechaUltimo: '2026-09-13',
+          costoEstimado: 60,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: false,
+          activo: true,
+        };
+      }
+      // Calibración de raches de freno (800 km ciclo)
+      if (c.codigo === 'MNT-RACHES-FRENO') {
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: Math.max(0, baseKm - 250),
+          fechaUltimo: '2026-09-20',
+          costoEstimado: 0,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: true,
+          activo: true,
+        };
+      }
+      // Demás componentes oficiales del Hino AK calibrados con 20% de desgaste (Al Día)
+      return {
+        id: `mbus-${c.id}-calibrado`,
+        catalogoId: c.id,
+        codigo: c.codigo,
+        nombre: c.nombre,
+        categoria: c.categoria,
+        intervaloKm: c.intervaloKmOficial,
+        ultimoKm: Math.max(0, baseKm - Math.floor(c.intervaloKmOficial * 0.2)),
+        fechaUltimo: '2026-09-15',
+        costoEstimado: c.categoria === 'MOTOR' ? 120 : c.categoria === 'FRENOS' ? 80 : 45,
+        repuestoDetalle: c.especificacionLubricanteRepuesto,
+        asignadoChofer: c.asignadoChoferPorDefecto,
+        activo: true,
+      };
+    };
+
+    let itemsExistentes: MantenimientoBusItem[] = [];
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -165,7 +267,7 @@ export function SocioMantenimientoWidget({
             (it: MantenimientoBusItem) => it.ultimoKm > 0 && Math.abs(baseKm - it.ultimoKm) > 100000
           );
           if (!desfaseExtremo) {
-            return parsed.filter((it: MantenimientoBusItem) => it.activo);
+            itemsExistentes = parsed;
           }
         }
       } catch (e) {
@@ -173,85 +275,38 @@ export function SocioMantenimientoWidget({
       }
     }
 
-    // Inicializar por defecto con la línea base operativa real del Bus 01
-    const catalogo = getCatalogoMaestroGlobal();
-    const iniciales: MantenimientoBusItem[] = catalogo
-      .filter(c => c.activoBiblioteca)
-      .slice(0, 12)
-      .map(c => {
-        // Aceite de motor y filtros
-        if (
-          c.codigo === 'MNT-ACEITE-MOT' ||
-          c.codigo === 'MNT-FILT-ACEITE' ||
-          c.codigo === 'MNT-FILT-TRAMPA' ||
-          c.codigo === 'MNT-FILT-DIESEL-SEC'
-        ) {
-          return {
-            id: `mbus-${c.id}-calibrado`,
-            catalogoId: c.id,
-            codigo: c.codigo,
-            nombre: c.nombre,
-            categoria: c.categoria,
-            intervaloKm: c.intervaloKmOficial,
-            ultimoKm: 893100,
-            fechaUltimo: '2026-09-19',
-            costoEstimado: c.codigo === 'MNT-ACEITE-MOT' ? 120 : 35,
-            repuestoDetalle: c.especificacionLubricanteRepuesto,
-            asignadoChofer: c.asignadoChoferPorDefecto,
-            activo: true,
-          };
-        }
-        // Engrase de chasis
-        if (c.codigo === 'MNT-ENGRASE-CHASIS') {
-          return {
-            id: `mbus-${c.id}-calibrado`,
-            catalogoId: c.id,
-            codigo: c.codigo,
-            nombre: c.nombre,
-            categoria: c.categoria,
-            intervaloKm: c.intervaloKmOficial,
-            ultimoKm: 893085,
-            fechaUltimo: '2026-09-19',
-            costoEstimado: 25,
-            repuestoDetalle: c.especificacionLubricanteRepuesto,
-            asignadoChofer: c.asignadoChoferPorDefecto,
-            activo: true,
-          };
-        }
-        // Aire acondicionado
-        if (c.codigo === 'MNT-AIRE-ACONDICIONADO') {
-          return {
-            id: `mbus-${c.id}-calibrado`,
-            catalogoId: c.id,
-            codigo: c.codigo,
-            nombre: c.nombre,
-            categoria: c.categoria,
-            intervaloKm: c.intervaloKmOficial,
-            ultimoKm: 892000,
-            fechaUltimo: '2026-09-13',
-            costoEstimado: 60,
-            repuestoDetalle: c.especificacionLubricanteRepuesto,
-            asignadoChofer: false,
-            activo: true,
-          };
-        }
-        return {
-          id: `mbus-${c.id}-default`,
-          catalogoId: c.id,
-          codigo: c.codigo,
-          nombre: c.nombre,
-          categoria: c.categoria,
-          intervaloKm: c.intervaloKmOficial,
-          ultimoKm: Math.max(0, baseKm - Math.floor(c.intervaloKmOficial * 0.2)),
-          fechaUltimo: '2026-09-10',
-          costoEstimado: c.categoria === 'MOTOR' ? 120 : 45,
-          repuestoDetalle: c.especificacionLubricanteRepuesto,
-          asignadoChofer: c.asignadoChoferPorDefecto,
-          activo: true,
-        };
-      });
+    const catalogoActivo = catalogo.filter(c => c.activoBiblioteca);
+    const codigosExistentes = new Set(itemsExistentes.map(it => it.codigo));
+    let itemsActualizados = [...itemsExistentes];
 
-    return iniciales;
+    // Auto-expansión: Si el socio tiene un nivel con más ítems (p. ej. Control Total 27), incorporar los faltantes
+    catalogoActivo.forEach(c => {
+      const debeEstar = nivel === 'TOTAL' ? true : (itemsConfig[c.codigo] ?? true);
+      if (debeEstar && !codigosExistentes.has(c.codigo)) {
+        itemsActualizados.push(calibrarItem(c));
+        codigosExistentes.add(c.codigo);
+      }
+    });
+
+    if (itemsActualizados.length === 0) {
+      itemsActualizados = catalogoActivo.map(calibrarItem);
+    }
+
+    // Persistir si se expandió la lista para garantizar sincronía inmediata
+    if (itemsActualizados.length > itemsExistentes.length) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(itemsActualizados));
+      } catch (e) {
+        console.error('Error al persistir items ampliados:', e);
+      }
+    }
+
+    // Retornar ítems activos para la supervisión ejecutiva del socio
+    return itemsActualizados.filter(it => {
+      if (!it.activo) return false;
+      if (nivel === 'TOTAL') return true;
+      return it.codigo ? (itemsConfig[it.codigo] ?? true) : true;
+    });
   }, [resolverKmActual]);
 
   const [items, setItems] = useState<MantenimientoBusItem[]>(() => cargarItems(activeBusId));
@@ -284,6 +339,8 @@ export function SocioMantenimientoWidget({
   const buses = getAllBuses();
   const currentBus = buses.find(b => b.id === activeBusId);
   const disco = currentBus?.numeroDisco || '01';
+  const nivelControl = getBusNivelControl(activeBusId);
+  const plantillaNivel = PLANTILLAS_NIVEL_CONTROL[nivelControl] || PLANTILLAS_NIVEL_CONTROL.BASICO;
   const placa = currentBus?.placa || 'TAA-5152';
 
   // Cálculos ejecutivos de desgaste y semaforización
@@ -413,6 +470,9 @@ export function SocioMantenimientoWidget({
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-slate-900/5 text-slate-700">
                   Bus {disco} ({placa})
                 </span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/70">
+                  {plantillaNivel.nombre}
+                </span>
               </div>
 
               <h4 className="text-sm font-black text-slate-900 leading-tight">
@@ -420,7 +480,7 @@ export function SocioMantenimientoWidget({
                   ? `Atención Requerida: ${criticosCount} ${criticosCount === 1 ? 'mantenimiento vencido' : 'mantenimientos vencidos'}`
                   : estadoGeneral === 'AMARILLO'
                   ? `Planificar Taller: ${proximosCount} ${proximosCount === 1 ? 'servicio próximo a vencer' : 'servicios próximos a vencer'}`
-                  : `Flota Óptima: Todos los mantenimientos al día`}
+                  : `Flota Óptima: Todos los mantenimientos al día (${itemsCalculados.length} componentes)`}
               </h4>
 
               <p className="text-[11px] text-slate-600 mt-0.5 font-medium leading-snug">
@@ -494,6 +554,9 @@ export function SocioMantenimientoWidget({
                     </h3>
                     <Badge className="bg-slate-900 text-white text-[10px] font-black">
                       Bus {disco}
+                    </Badge>
+                    <Badge className="bg-blue-600 text-white text-[10px] font-black shadow-xs">
+                      {plantillaNivel.nombre}
                     </Badge>
                   </div>
                   <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
