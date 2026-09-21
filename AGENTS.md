@@ -250,7 +250,7 @@
   * Marcar / desmarcar qué ítems son obligatorios para su autobús.
   * Añadir ítems adicionales del catálogo maestro a una estación específica.
   * Persistir la configuración personalizada por autobús (rg_combo_estacion_{busId}_{estacionId}).
-  * Estado: [EN PROCESO DE IMPLEMENTACIÓN]
+  * Estado: [COMPLETADO v3.59.1]
 
 #### FASE 2: Ejecución de Parada Técnica por el Chofer (Commit: feat(chofer): v3.59.2 - ejecucion y asentamiento de combos de parada con reset inmediato de odometro)
 - **Alcance Chofer:** Desde ChoferMantenimientoWidget accede a los combos autorizados por su socio.

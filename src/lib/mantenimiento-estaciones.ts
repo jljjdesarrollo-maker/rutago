@@ -706,3 +706,151 @@ export function saveBusMantenimientoConfigCompleta(
     console.error("Error al guardar configuración completa de mantenimiento:", err);
   }
 }
+
+// ==========================================
+// PERSISTENCIA Y RECETA DE COMBOS POR UNIDAD (FASE 1)
+// ==========================================
+
+export interface ComboUnidadPersonalizado {
+  busId: string;
+  estacionId: EstacionServicioId;
+  // Items configurados: codigo -> estaPreMarcado (si se atiende por defecto en esta parada)
+  itemsSeleccionados: Record<string, boolean>;
+  // Codigos adicionales agregados del catalogo maestro a esta estacion
+  codigosExtras?: string[];
+  actualizadoEn?: string;
+}
+
+const STORAGE_PREFIX_COMBO_UNIDAD = 'rg_combo_estacion_v1_';
+
+/**
+ * Obtiene la configuración personalizada del combo de una estación para un bus específico.
+ * Si no existe personalización, retorna los defaults oficiales de ESTACIONES_SERVICIO_CONFIG.
+ */
+export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
+  items: ItemEstacionConfig[];
+  codigosPreMarcados: string[];
+} {
+  const estacionBase = ESTACIONES_SERVICIO_CONFIG[estacionId];
+  if (!estacionBase) {
+    return { items: [], codigosPreMarcados: [] };
+  }
+
+  if (typeof window === 'undefined') {
+    return {
+      items: estacionBase.items,
+      codigosPreMarcados: estacionBase.items.filter(it => it.preMarcado).map(it => it.codigo),
+    };
+  }
+
+  try {
+    const raw = localStorage.getItem();
+    if (!raw) {
+      return {
+        items: estacionBase.items,
+        codigosPreMarcados: estacionBase.items.filter(it => it.preMarcado).map(it => it.codigo),
+      };
+    }
+
+    const data: ComboUnidadPersonalizado = JSON.parse(raw);
+    const catalogo = getCatalogoMaestroGlobal();
+    const mapCatalogo = new Map(catalogo.map(c => [c.codigo, c]));
+
+    // 1. Items base de la estación
+    const itemsMap = new Map<string, ItemEstacionConfig>();
+    estacionBase.items.forEach(it => {
+      const estaMarcado = data.itemsSeleccionados?.[it.codigo] !== undefined 
+        ? data.itemsSeleccionados[it.codigo] 
+        : it.preMarcado;
+      itemsMap.set(it.codigo, {
+        ...it,
+        preMarcado: estaMarcado,
+      });
+    });
+
+    // 2. Si el socio agregó códigos extras del catálogo a esta estación
+    if (data.codigosExtras && Array.isArray(data.codigosExtras)) {
+      data.codigosExtras.forEach(cod => {
+        if (!itemsMap.has(cod)) {
+          const catItem = mapCatalogo.get(cod);
+          if (catItem) {
+            const estaMarcado = data.itemsSeleccionados?.[cod] !== undefined
+              ? data.itemsSeleccionados[cod]
+              : true;
+            itemsMap.set(cod, {
+              codigo: catItem.codigo,
+              nombre: catItem.nombre,
+              intervaloKm: catItem.intervaloKm,
+              preMarcado: estaMarcado,
+              opcionalTexto: 'Añadido por el socio para esta unidad',
+            });
+          }
+        }
+      });
+    }
+
+    const itemsFinales = Array.from(itemsMap.values());
+    const codigosPreMarcados = itemsFinales.filter(it => it.preMarcado).map(it => it.codigo);
+
+    return {
+      items: itemsFinales,
+      codigosPreMarcados,
+    };
+  } catch (err) {
+    console.error('Error cargando combo personalizado de unidad:', err);
+    return {
+      items: estacionBase.items,
+      codigosPreMarcados: estacionBase.items.filter(it => it.preMarcado).map(it => it.codigo),
+    };
+  }
+}
+
+/**
+ * Guarda la receta personalizada del combo de una estación para la unidad del socio.
+ */
+export function saveComboUnidad(
+  busId: string,
+  estacionId: EstacionServicioId,
+  itemsSeleccionados: Record<string, boolean>,
+  codigosExtras: string[] = []
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const payload: ComboUnidadPersonalizado = {
+      busId,
+      estacionId,
+      itemsSeleccionados,
+      codigosExtras,
+      actualizadoEn: new Date().toISOString(),
+    };
+    localStorage.setItem(
+      ,
+      JSON.stringify(payload)
+    );
+    // Sincronizar evento cross-tab o cross-component
+    window.dispatchEvent(
+      new CustomEvent('rg_combo_unidad_actualizado', {
+        detail: { busId, estacionId },
+      })
+    );
+  } catch (err) {
+    console.error('Error guardando combo personalizado de unidad:', err);
+  }
+}
+
+/**
+ * Restablece el combo de una estación para un bus a los valores preestablecidos de fábrica.
+ */
+export function resetComboUnidad(busId: string, estacionId: EstacionServicioId): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem();
+    window.dispatchEvent(
+      new CustomEvent('rg_combo_unidad_actualizado', {
+        detail: { busId, estacionId },
+      })
+    );
+  } catch (err) {
+    console.error('Error restableciendo combo de unidad:', err);
+  }
+}

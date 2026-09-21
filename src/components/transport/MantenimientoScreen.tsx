@@ -57,6 +57,9 @@ import {
   isMantenimientoDecisionTomada,
   type EstacionServicioId,
   ESTACIONES_SERVICIO_CONFIG,
+  getComboUnidad,
+  saveComboUnidad,
+  resetComboUnidad,
   resolverCascadaEstacion,
   getCategoriaContablePorEstacion,
 } from '@/lib/mantenimiento-estaciones';
@@ -322,6 +325,12 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
 
   // Modal de Estaciones de Servicio (Combos de Parada en Taller)
   const [estacionSeleccionada, setEstacionSeleccionada] = useState<EstacionServicioId | null>(null);
+  // Fase 1: Modo configurador de receta de unidad para el socio
+  const [modoConfigurarCombo, setModoConfigurarCombo] = useState(false);
+  const [comboUnidadItems, setComboUnidadItems] = useState<{ codigo: string; nombre: string; intervaloKm: number; preMarcado: boolean; opcionalTexto?: string }[]>([]);
+  const [comboUnidadChecks, setComboUnidadChecks] = useState<Record<string, boolean>>({});
+  const [comboUnidadExtras, setComboUnidadExtras] = useState<string[]>([]);
+  const [busquedaExtraModal, setBusquedaExtraModal] = useState('');
   const [estacionCodigosSeleccionados, setEstacionCodigosSeleccionados] = useState<string[]>([]);
   const [estacionKm, setEstacionKm] = useState<string>();
   const [estacionCosto, setEstacionCosto] = useState<string>();
@@ -1101,16 +1110,27 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
 
 
 
-  // Abrir Modal de Estación de Taller
-  const handleAbrirEstacionModal = (estacionId: EstacionServicioId) => {
+  // Abrir Modal de Estación de Taller (Cargando la receta personalizada de la unidad)
+  const handleAbrirEstacionModal = (estacionId: EstacionServicioId, abrirEnModoConfigurar = false) => {
     const config = ESTACIONES_SERVICIO_CONFIG[estacionId];
     if (!config) return;
 
-    // Pre-marcar los ítems obligatorios/por defecto
-    const iniciales = config.items.filter(it => it.preMarcado).map(it => it.codigo);
+    // Cargar combo configurado para esta unidad (Fase 1)
+    const comboData = getComboUnidad(currentBus.id, estacionId);
+    const iniciales = comboData.codigosPreMarcados;
     
-    // Si la estación tiene cascade trigger o es MNT_MAYOR, resolver cascada
+    // Resolver cascada si aplica
     const resueltos = resolverCascadaEstacion(iniciales);
+
+    // Preparar estado de edición de receta
+    const checksMap: Record<string, boolean> = {};
+    comboData.items.forEach(it => {
+      checksMap[it.codigo] = it.preMarcado;
+    });
+    setComboUnidadItems(comboData.items);
+    setComboUnidadChecks(checksMap);
+    setComboUnidadExtras(comboData.items.filter(it => !config.items.some(base => base.codigo === it.codigo)).map(it => it.codigo));
+    setModoConfigurarCombo(abrirEnModoConfigurar);
 
     setEstacionSeleccionada(estacionId);
     setEstacionCodigosSeleccionados(resueltos);
@@ -1125,6 +1145,76 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
       estacionId === "ALINEACION" ? "Serviteca Continental / Llantas" :
       estacionId === "RADIADOR" ? "Taller Radiadores Loja" : "Terminal / Parada"
     );
+  };
+
+  // Fase 1: Guardar Receta Personalizada del Combo para la Unidad
+  const handleGuardarRecetaCombo = () => {
+    if (!estacionSeleccionada) return;
+    saveComboUnidad(currentBus.id, estacionSeleccionada, comboUnidadChecks, comboUnidadExtras);
+    
+    // Actualizar selección activa con los nuevos pre-marcados
+    const seleccionados = comboUnidadItems
+      .filter(it => comboUnidadChecks[it.codigo])
+      .map(it => it.codigo);
+    setEstacionCodigosSeleccionados(seleccionados);
+    setModoConfigurarCombo(false);
+
+    toast({
+      title: '✅ Combo de Unidad Guardado',
+      description: ,
+    });
+  };
+
+  // Fase 1: Restablecer combo de estación a los valores predeterminados
+  const handleRestablecerComboBase = () => {
+    if (!estacionSeleccionada) return;
+    resetComboUnidad(currentBus.id, estacionSeleccionada);
+    const comboData = getComboUnidad(currentBus.id, estacionSeleccionada);
+    const checksMap: Record<string, boolean> = {};
+    comboData.items.forEach(it => {
+      checksMap[it.codigo] = it.preMarcado;
+    });
+    setComboUnidadItems(comboData.items);
+    setComboUnidadChecks(checksMap);
+    setComboUnidadExtras([]);
+    setEstacionCodigosSeleccionados(comboData.codigosPreMarcados);
+    toast({
+      title: 'Combo Restablecido',
+      description: 'Se restauraron los valores estándar de fábrica para esta estación.',
+    });
+  };
+
+  // Fase 1: Añadir ítem del catálogo maestro a este combo
+  const handleAgregarItemExtraACombo = (codigoCat: string) => {
+    const catalogo = getCatalogoMaestroGlobal();
+    const catItem = catalogo.find(c => c.codigo === codigoCat);
+    if (!catItem) return;
+
+    if (comboUnidadItems.some(it => it.codigo === codigoCat)) {
+      toast({
+        title: 'Componente ya presente',
+        description: 'Este ítem ya forma parte de esta estación.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const nuevoItem = {
+      codigo: catItem.codigo,
+      nombre: catItem.nombre,
+      intervaloKm: catItem.intervaloKm,
+      preMarcado: true,
+      opcionalTexto: 'Añadido por el socio',
+    };
+
+    setComboUnidadItems(prev => [...prev, nuevoItem]);
+    setComboUnidadChecks(prev => ({ ...prev, [codigoCat]: true }));
+    setComboUnidadExtras(prev => [...prev, codigoCat]);
+    setBusquedaExtraModal('');
+    toast({
+      title: 'Ítem Añadido al Combo',
+      description: ,
+    });
   };
 
   // Alternar selección de un ítem dentro del modal de la estación (con resolución de cascada)
@@ -1742,22 +1832,34 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             {(["LUBRICADORA", "FRENOS_RUEDAS", "MNT_MAYOR", "ADMISION_AIRE", "ALINEACION", "RADIADOR"] as EstacionServicioId[]).map(estId => {
               const est = ESTACIONES_SERVICIO_CONFIG[estId];
               return (
-                <button
-                  key={estId}
-                  type="button"
-                  onClick={() => handleAbrirEstacionModal(estId)}
-                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 transition-all cursor-pointer text-center group"
-                >
-                  <span className="text-xl mb-1 group-hover:scale-110 transition-transform">
-                    {est.icono}
-                  </span>
-                  <span className="text-[11px] font-black text-slate-100 leading-tight">
-                    {est.nombre.split(" ")[0]}
-                  </span>
-                  <span className="text-[9px] text-amber-400 font-semibold mt-0.5">
-                    {est.items.length} ítems
-                  </span>
-                </button>
+                <div key={estId} className="flex flex-col">
+                  <button
+                    type="button"
+                    onClick={() => handleAbrirEstacionModal(estId, false)}
+                    className="w-full flex flex-col items-center justify-center p-2 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 transition-all cursor-pointer text-center group"
+                  >
+                    <span className="text-xl mb-0.5 group-hover:scale-110 transition-transform">
+                      {est.icono}
+                    </span>
+                    <span className="text-[11px] font-black text-slate-100 leading-tight">
+                      {est.nombre.split(" ")[0]}
+                    </span>
+                    <span className="text-[9px] text-amber-400 font-semibold mt-0.5">
+                      {getComboUnidad(currentBus.id, estId).items.length} ítems
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    title="Afinar receta del combo para mi unidad"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAbrirEstacionModal(estId, true);
+                    }}
+                    className="mt-1 py-0.5 px-1 rounded-lg bg-amber-400/10 hover:bg-amber-400/25 active:scale-95 text-[9px] font-bold text-amber-300 border border-amber-400/20 text-center transition-all cursor-pointer"
+                  >
+                    ⚙️ Mi Receta
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -2217,204 +2319,436 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
           <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
             <div className="bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-200">
               
-              {/* Header Modal Estación */}
-              <div className="flex items-center justify-between border-b pb-3 shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-xl shadow-xs">
-                    {config.icono}
+              {/* Header Modal Estación con Selector de Modo (Asentar vs Configurar Receta) */}
+              <div className="flex flex-col gap-2.5 border-b pb-3 shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center text-xl shadow-xs">
+                      {config.icono}
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-slate-900 leading-tight">
+                        Estación: {config.nombre}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        {modoConfigurarCombo 
+                          ? "Configura los componentes que aplican por defecto a tu unidad" 
+                          : config.subtitulo}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-base font-black text-slate-900 leading-tight">
-                      Estación: {config.nombre}
-                    </h3>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      {config.subtitulo}
-                    </p>
-                  </div>
+                  <Badge className="bg-slate-900 text-amber-400 text-[10px] font-black border-0">
+                    {modoConfigurarCombo
+                      ? `${Object.values(comboUnidadChecks).filter(Boolean).length}/${comboUnidadItems.length} activos`
+                      : `${totalSeleccionados}/${comboUnidadItems.length} marcados`}
+                  </Badge>
                 </div>
-                <Badge className="bg-slate-900 text-amber-400 text-[10px] font-black border-0">
-                  {totalSeleccionados}/{totalItemsEstacion} marcados
-                </Badge>
+
+                {/* Tabs de Modo: Asentar Servicio vs Configurar Receta de Unidad */}
+                <div className="flex p-1 bg-slate-100 rounded-xl gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setModoConfigurarCombo(false)}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      !modoConfigurarCombo
+                        ? "bg-white text-slate-900 shadow-xs"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    🛠️ Asentar Parada de Taller
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModoConfigurarCombo(true)}
+                    className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      modoConfigurarCombo
+                        ? "bg-amber-400 text-slate-950 shadow-xs"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    ⚙️ Mi Receta Oficial (Socio)
+                  </button>
+                </div>
               </div>
 
               {/* Contenido con scroll táctil */}
               <div className="space-y-4 flex-1 overflow-y-auto pr-1">
                 
-                {/* Selector de Ítems / Checklist */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-black text-slate-900 uppercase tracking-wider">
-                      Componentes Atendidos en esta Parada
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (totalSeleccionados === totalItemsEstacion) {
-                          setEstacionCodigosSeleccionados([]);
-                        } else {
-                          setEstacionCodigosSeleccionados(config.items.map(it => it.codigo));
-                        }
-                      }}
-                      className="text-[10px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
-                    >
-                      {totalSeleccionados === totalItemsEstacion ? "Desmarcar todos" : "Marcar todos"}
-                    </button>
-                  </div>
+                {/* VISTA 1: MODO CONFIGURADOR DE RECETA DE UNIDAD (SOCIO) */}
+                {modoConfigurarCombo ? (
+                  <div className="space-y-3.5 animate-in fade-in duration-150">
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-950">
+                      <p className="font-extrabold flex items-center gap-1.5 text-amber-900">
+                        <span>🚌</span> Receta Oficial para Unidad {currentBus.numeroDisco || currentBus.id}
+                      </p>
+                      <p className="text-[11px] text-amber-800 mt-1 leading-relaxed">
+                        Marca los ítems que <strong>exiges</strong> que se hagan en tu autobús al parar en esta estación. Los que dejes marcados le aparecerán preseleccionados al chofer en su teléfono.
+                      </p>
+                    </div>
 
-                  <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto p-1 bg-slate-50 rounded-2xl border border-slate-200">
-                    {config.items.map(it => {
-                      const estaMarcado = estacionCodigosSeleccionados.includes(it.codigo);
-                      return (
+                    {/* Lista de Items con Checkbox editable para el socio */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-[11px] font-black text-slate-800 uppercase tracking-wider">
+                          Componentes de la Estación ({comboUnidadItems.length})
+                        </span>
                         <button
-                          key={it.codigo}
                           type="button"
-                          onClick={() => handleToggleItemEstacion(it.codigo)}
-                          className={`flex items-start gap-2.5 p-2 rounded-xl text-left transition-all cursor-pointer border ${
-                            estaMarcado
-                              ? "bg-white border-emerald-500/80 shadow-xs"
-                              : "bg-transparent border-transparent hover:bg-slate-100/80 opacity-75"
-                          }`}
+                          onClick={() => {
+                            const todosActivos = comboUnidadItems.every(it => comboUnidadChecks[it.codigo]);
+                            const nuevoMap: Record<string, boolean> = {};
+                            comboUnidadItems.forEach(it => {
+                              nuevoMap[it.codigo] = !todosActivos;
+                            });
+                            setComboUnidadChecks(nuevoMap);
+                          }}
+                          className="text-[10px] font-bold text-amber-700 hover:text-amber-900 cursor-pointer"
                         >
-                          <div
-                            className={`w-4 h-4 rounded-md mt-0.5 flex items-center justify-center shrink-0 border ${
-                              estaMarcado
-                                ? "bg-emerald-600 border-emerald-600 text-white"
-                                : "border-slate-300 bg-white"
+                          {comboUnidadItems.every(it => comboUnidadChecks[it.codigo]) ? "Desmarcar todos" : "Marcar todos"}
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 max-h-60 overflow-y-auto p-1 bg-slate-50 rounded-2xl border border-slate-200">
+                        {comboUnidadItems.map(it => {
+                          const estaActivo = !!comboUnidadChecks[it.codigo];
+                          const esExtra = comboUnidadExtras.includes(it.codigo);
+                          return (
+                            <div
+                              key={it.codigo}
+                              onClick={() => {
+                                setComboUnidadChecks(prev => ({
+                                  ...prev,
+                                  [it.codigo]: !prev[it.codigo],
+                                }));
+                              }}
+                              className={`flex items-start gap-2.5 p-2 rounded-xl text-left transition-all cursor-pointer border ${
+                                estaActivo
+                                  ? "bg-white border-amber-500/80 shadow-xs"
+                                  : "bg-slate-100/50 border-slate-200 opacity-60 hover:opacity-100"
+                              }`}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-md mt-0.5 flex items-center justify-center shrink-0 border ${
+                                  estaActivo
+                                    ? "bg-amber-500 border-amber-500 text-slate-950 font-black"
+                                    : "border-slate-300 bg-white"
+                                }`}
+                              >
+                                {estaActivo && <Check className="w-3 h-3 stroke-[3]" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className={`text-xs font-bold truncate ${estaActivo ? "text-slate-900" : "text-slate-500"}`}>
+                                    {it.nombre}
+                                  </span>
+                                  {esExtra ? (
+                                    <Badge className="bg-purple-100 text-purple-900 border-0 text-[8px] py-0 px-1 font-black shrink-0">
+                                      Añadido por Socio
+                                    </Badge>
+                                  ) : it.preMarcado ? (
+                                    <Badge className="bg-slate-200 text-slate-800 border-0 text-[8px] py-0 px-1 font-bold shrink-0">
+                                      Base Taller
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-slate-100 text-slate-500 border-0 text-[8px] py-0 px-1 font-medium shrink-0">
+                                      Opcional
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
+                                  <span>Ciclo: {it.intervaloKm.toLocaleString()} km</span>
+                                  {it.opcionalTexto && (
+                                    <span className="text-slate-400 italic truncate">• {it.opcionalTexto}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Añadir Ítem Adicional del Catálogo Maestro al Combo */}
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[11px] font-black text-slate-800 flex items-center gap-1">
+                          <Plus className="w-3 h-3 text-amber-600" />
+                          ¿Deseas agregar otro ítem del catálogo a este combo?
+                        </Label>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <Input
+                          placeholder="Buscar repuesto o trabajo en catálogo..."
+                          value={busquedaExtraModal}
+                          onChange={e => setBusquedaExtraModal(e.target.value)}
+                          className="h-8 rounded-xl text-xs bg-white border-slate-300"
+                        />
+                      </div>
+
+                      {busquedaExtraModal.trim().length > 1 && (() => {
+                        const catalogo = getCatalogoMaestroGlobal();
+                        const q = busquedaExtraModal.toLowerCase().trim();
+                        const resultados = catalogo
+                          .filter(c => c.nombre.toLowerCase().includes(q) || c.codigo.toLowerCase().includes(q))
+                          .slice(0, 5);
+
+                        if (resultados.length === 0) {
+                          return (
+                            <p className="text-[10px] text-slate-400 italic px-1">
+                              No hay coincidencias en el catálogo maestro.
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <div className="flex flex-col gap-1 max-h-36 overflow-y-auto pt-1">
+                            {resultados.map(cat => {
+                              const yaEsta = comboUnidadItems.some(it => it.codigo === cat.codigo);
+                              return (
+                                <div
+                                  key={cat.codigo}
+                                  className="flex items-center justify-between p-1.5 bg-white rounded-lg border border-slate-200 text-xs"
+                                >
+                                  <div className="min-w-0 pr-2">
+                                    <span className="font-bold text-slate-900 block truncate text-[11px]">
+                                      {cat.nombre}
+                                    </span>
+                                    <span className="text-[9px] text-slate-400">
+                                      {cat.intervaloKm.toLocaleString()} km • {cat.categoria}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    disabled={yaEsta}
+                                    onClick={() => handleAgregarItemExtraACombo(cat.codigo)}
+                                    className={`py-1 px-2 rounded-md text-[10px] font-bold shrink-0 cursor-pointer ${
+                                      yaEsta
+                                        ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                                        : "bg-amber-400 hover:bg-amber-500 text-slate-950 shadow-xs"
+                                    }`}
+                                  >
+                                    {yaEsta ? "Agregado" : "+ Agregar"}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                ) : (
+                  /* VISTA 2: ASENTAMIENTO REGULAR DE PARADA DE TALLER */
+                  <>
+                    {/* Selector de Ítems / Checklist */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-black text-slate-900 uppercase tracking-wider">
+                          Componentes Atendidos en esta Parada
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (totalSeleccionados === comboUnidadItems.length) {
+                              setEstacionCodigosSeleccionados([]);
+                            } else {
+                              setEstacionCodigosSeleccionados(comboUnidadItems.map(it => it.codigo));
+                            }
+                          }}
+                          className="text-[10px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                        >
+                          {totalSeleccionados === comboUnidadItems.length ? "Desmarcar todos" : "Marcar todos"}
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto p-1 bg-slate-50 rounded-2xl border border-slate-200">
+                        {comboUnidadItems.map(it => {
+                          const estaMarcado = estacionCodigosSeleccionados.includes(it.codigo);
+                          return (
+                            <button
+                              key={it.codigo}
+                              type="button"
+                              onClick={() => handleToggleItemEstacion(it.codigo)}
+                              className={`flex items-start gap-2.5 p-2 rounded-xl text-left transition-all cursor-pointer border ${
+                                estaMarcado
+                                  ? "bg-white border-emerald-500/80 shadow-xs"
+                                  : "bg-transparent border-transparent hover:bg-slate-100/80 opacity-75"
+                              }`}
+                            >
+                              <div
+                                className={`w-4 h-4 rounded-md mt-0.5 flex items-center justify-center shrink-0 border ${
+                                  estaMarcado
+                                    ? "bg-emerald-600 border-emerald-600 text-white"
+                                    : "border-slate-300 bg-white"
+                                }`}
+                              >
+                                {estaMarcado && <Check className="w-3 h-3 stroke-[3]" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className={`text-xs font-bold truncate ${estaMarcado ? "text-slate-900" : "text-slate-600"}`}>
+                                    {it.nombre}
+                                  </span>
+                                  {it.preMarcado && (
+                                    <Badge className="bg-amber-100 text-amber-900 border-0 text-[9px] py-0 px-1 font-black shrink-0">
+                                      Vital
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
+                                  <span>Ciclo: {it.intervaloKm.toLocaleString()} km</span>
+                                  {it.opcionalTexto && (
+                                    <span className="text-slate-400 italic truncate">• {it.opcionalTexto}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Formulario de Factura, Odómetro y Taller */}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                          Odómetro / Tacómetro (Km)
+                        </Label>
+                        <Input
+                          type="number"
+                          value={estacionKm}
+                          onChange={e => setEstacionKm(e.target.value)}
+                          placeholder={kmActual.toString()}
+                          className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300 font-bold"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                          Costo Total Parada ($)
+                        </Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={estacionCosto}
+                          onChange={e => setEstacionCosto(e.target.value)}
+                          placeholder="0.00"
+                          className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300 font-bold text-emerald-800"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                          Taller / Proveedor
+                        </Label>
+                        <Input
+                          value={estacionTaller}
+                          onChange={e => setEstacionTaller(e.target.value)}
+                          placeholder="Nombre del taller o lubricadora"
+                          className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                          Nº Factura / Nota Venta
+                        </Label>
+                        <Input
+                          value={estacionFactura}
+                          onChange={e => setEstacionFactura(e.target.value)}
+                          placeholder="ej. 001-002-9842"
+                          className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        Método de Pago
+                      </Label>
+                      <div className="flex gap-2">
+                        {(["EFECTIVO", "TRANSFERENCIA"] as const).map(m => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setEstacionMetodoPago(m)}
+                            className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                              estacionMetodoPago === m
+                                ? "bg-slate-900 text-white border-slate-900"
+                                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                             }`}
                           >
-                            {estaMarcado && <Check className="w-3 h-3 stroke-[3]" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-1">
-                              <span className={`text-xs font-bold truncate ${estaMarcado ? "text-slate-900" : "text-slate-600"}`}>
-                                {it.nombre}
-                              </span>
-                              {it.preMarcado && (
-                                <Badge className="bg-amber-100 text-amber-900 border-0 text-[9px] py-0 px-1 font-black shrink-0">
-                                  Vital
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
-                              <span>Ciclo: {it.intervaloKm.toLocaleString()} km</span>
-                              {it.opcionalTexto && (
-                                <span className="text-slate-400 italic truncate">• {it.opcionalTexto}</span>
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                            {m === "EFECTIVO" ? "💵 Efectivo" : "🏦 Transferencia Bancaria"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
 
-                {/* Formulario de Factura, Odómetro y Taller */}
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div>
-                    <Label className="text-[11px] font-bold text-slate-700 block mb-1">
-                      Odómetro / Tacómetro (Km)
-                    </Label>
-                    <Input
-                      type="number"
-                      value={estacionKm}
-                      onChange={e => setEstacionKm(e.target.value)}
-                      placeholder={kmActual.toString()}
-                      className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300 font-bold"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[11px] font-bold text-slate-700 block mb-1">
-                      Costo Total Parada ($)
-                    </Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={estacionCosto}
-                      onChange={e => setEstacionCosto(e.target.value)}
-                      placeholder="0.00"
-                      className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300 font-bold text-emerald-800"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div>
-                    <Label className="text-[11px] font-bold text-slate-700 block mb-1">
-                      Taller / Proveedor
-                    </Label>
-                    <Input
-                      value={estacionTaller}
-                      onChange={e => setEstacionTaller(e.target.value)}
-                      placeholder="Nombre del taller o lubricadora"
-                      className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[11px] font-bold text-slate-700 block mb-1">
-                      Nº Factura / Nota Venta
-                    </Label>
-                    <Input
-                      value={estacionFactura}
-                      onChange={e => setEstacionFactura(e.target.value)}
-                      placeholder="ej. 001-002-9842"
-                      className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-[11px] font-bold text-slate-700 block mb-1">
-                    Método de Pago
-                  </Label>
-                  <div className="flex gap-2">
-                    {(["EFECTIVO", "TRANSFERENCIA"] as const).map(m => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setEstacionMetodoPago(m)}
-                        className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                          estacionMetodoPago === m
-                            ? "bg-slate-900 text-white border-slate-900"
-                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                        }`}
-                      >
-                        {m === "EFECTIVO" ? "💵 Efectivo" : "🏦 Transferencia Bancaria"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Resumen Contable y Cascada */}
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-600 space-y-1">
-                  <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    Asentamiento de Datos:
-                  </div>
-                  <p>• Resetea {totalSeleccionados} componentes con el kilometraje ingresado.</p>
-                  <p>
-                    • Se asienta contablemente en <strong>{getCategoriaContablePorEstacion(estacionSeleccionada)}</strong> en tus egresos de socio.
-                  </p>
-                </div>
+                    {/* Resumen Contable y Cascada */}
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-600 space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-900">
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        Asentamiento de Datos:
+                      </div>
+                      <p>• Resetea {totalSeleccionados} componentes con el kilometraje ingresado.</p>
+                      <p>
+                        • Se asienta contablemente en <strong>{getCategoriaContablePorEstacion(estacionSeleccionada)}</strong> en tus egresos de socio.
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
 
-              {/* Botones de Acción */}
+              {/* Botones de Acción Adaptables por Modo */}
               <div className="flex items-center gap-2 pt-2 border-t shrink-0">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setEstacionSeleccionada(null)}
-                  className="flex-1 h-10 rounded-xl text-xs font-bold text-gray-600 cursor-pointer"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleGuardarEstacionServicio}
-                  className="flex-1 h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Save className="w-4 h-4 text-amber-400" />
-                  Asentar en {config.nombre.split(" ")[0]}
-                </Button>
+                {modoConfigurarCombo ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleRestablecerComboBase}
+                      className="h-10 rounded-xl text-xs font-bold text-slate-600 border-slate-300 hover:bg-slate-100 flex items-center gap-1 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Por Defecto
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setEstacionSeleccionada(null)}
+                      className="flex-1 h-10 rounded-xl text-xs font-bold text-gray-600 cursor-pointer"
+                    >
+                      Cerrar
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleGuardarRecetaCombo}
+                      className="flex-1 h-10 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Save className="w-4 h-4" />
+                      Guardar Receta
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setEstacionSeleccionada(null)}
+                      className="flex-1 h-10 rounded-xl text-xs font-bold text-gray-600 cursor-pointer"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleGuardarEstacionServicio}
+                      className="flex-1 h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Save className="w-4 h-4 text-amber-400" />
+                      Asentar en {config.nombre.split(" ")[0]}
+                    </Button>
+                  </>
+                )}
               </div>
 
             </div>
