@@ -1,4 +1,4 @@
-# RutaGo - Contexto Maestro y Bitácora de Desarrollo v3.58.27
+# RutaGo - Contexto Maestro y Bitácora de Desarrollo v3.58.28
 **Fecha:** Septiembre 2026
 **Versión Activa:** `v3.58.15-socio-gerencial-mantenimiento-optativo`
 **Flota Modelo:** Hino AK (Ruta Loja – Vilcabamba – Malacatos – Yangana – La Elvira)
@@ -176,3 +176,20 @@
   1. `resolverKmActual` ahora garantiza un retorno numérico tipado estricto `number` con fallback por capas: Odómetro auditado -> LocalStorage por busId -> LocalStorage por disco -> Calibración en ficha de bus (`odometroInicial`) -> Valor base de benchmark de flota (187,420 km).
   2. Estado `kmActual` tipado como `number` en `MantenimientoScreen.tsx` y `ChoferMantenimientoWidget.tsx`.
   3. Renderizado defensivo en JSX con operador nullish coalescing `(kmActual ?? 187420).toLocaleString()`, evitando cualquier fallo de renderizado al conmutar el switch de activación.
+
+---
+
+## 21. Calibración de Línea Base Real de Odómetro (893,485 km) y Registro Operativo Sobre la Marcha (v3.58.28)
+- **Diagnóstico del Problema Reportado por el Socio:**
+  1. Al cambiar de máquina o abrir un navegador limpio, los datos locales temporales (`localStorage`) no persistían si la unidad piloto no tenía definida en código su calibración de fábrica.
+  2. Al ingresar el tacómetro real de la unidad física (**893.485 km**) en un sistema que arranca con registros base de maqueta (~187.420 km), la resta matemática ($893.485 - 191.420 = 702.065	ext{ km}$) arrojaba una falsa alarma masiva de "¡VENCIDO! Excedido por 702.065 km" en todos los ítems.
+- **Solución Implementada:**
+  1. **Odómetro Oficial de Ficha Técnica:** `INITIAL_PILOT_BUS` en `src/lib/fleet-storage.ts` ahora incluye oficialmente `odometroInicial: '893485'`, garantizando que cualquier PC, teléfono o ventana de incógnito inicie directamente en el tacómetro físico real del bus.
+  2. **Catálogo Oficial con Aire Acondicionado:** Se integró el código `MNT-AIRE-ACONDICIONADO` ("Mantenimiento y Filtro de Aire Acondicionado", ciclo 20,000 km / 90 días) al catálogo maestro Hino AK.
+  3. **Asentamiento Oficial de la Línea Base del Bus 01:**
+     - **Aceite de Motor + Tríada de Filtros** (Aceite, Trampa de Agua, Combustible Secundario): Asentados a **893.100 km** con fecha **2026-09-19** (anteayer). Desgaste real de 385 km, restan 5.615 km (**VERDE ÓPTIMO**).
+     - **Aire Acondicionado:** Asentado a **892.000 km** con fecha **2026-09-13** (domingo 13 de septiembre). Restan más de 18.000 km (**VERDE ÓPTIMO**).
+     - **Engrase de Chasis:** Asentado a **893.085 km** con fecha **2026-09-19** (**VERDE ÓPTIMO**).
+     - **Demás componentes preventivos:** Proporcionalmente calibrados respecto al tacómetro real para eliminar falsos vencimientos.
+  4. **Selector de Fecha en Asentamiento Manual:** En el modal de registro de servicios para el socio, se incorporó el selector de **Fecha del Servicio**, permitiendo registrar mantenimientos realizados días atrás.
+  5. **Auto-Detección y Saneamiento de Desfase Extremo:** Si el navegador detecta datos en caché con un desfase mayor a 100.000 km respecto al odómetro base, recalibra de inmediato los contadores a la línea base real.

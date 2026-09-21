@@ -63,6 +63,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       const num = parseInt((current as any).odometroInicial, 10);
       if (!isNaN(num) && num > 0) return num;
     }
+    if (disco === '01' || busId === 'BUS-01') return 893485;
     return 187420;
   }, []);
 
@@ -71,13 +72,19 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   const cargarItems = useCallback((busId: string) => {
     if (typeof window === 'undefined') return [];
     const storageKey = `rg_mantenimientos_v2_${busId}`;
+    const currentKm = resolverKmActual(busId) || 893485;
     const saved = localStorage.getItem(storageKey);
-
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.filter((it: MantenimientoBusItem) => it.asignadoChofer && it.activo);
+          const desfaseExtremo = parsed.some(
+            (it: MantenimientoBusItem) => it.ultimoKm > 0 && Math.abs(currentKm - it.ultimoKm) > 100000
+          );
+          if (!desfaseExtremo) {
+            return parsed.filter((it: MantenimientoBusItem) => it.asignadoChofer && it.activo);
+          }
+          console.warn('Detectado desfase histórico en widget del chofer. Re-calibrando a línea base real...');
         }
       } catch (e) {
         console.error(e);
@@ -88,25 +95,65 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       return [];
     }
 
-    const currentKm = resolverKmActual(busId) || 0;
     const catalogo = getCatalogoMaestroGlobal();
     return catalogo
       .filter(c => c.asignadoChoferPorDefecto)
-      .slice(0, 5)
-      .map(c => ({
-        id: `mbus-${c.id}-default`,
-        catalogoId: c.id,
-        codigo: c.codigo,
-        nombre: c.nombre,
-        categoria: c.categoria,
-        intervaloKm: c.intervaloKmOficial,
-        ultimoKm: Math.max(0, currentKm - Math.floor(c.intervaloKmOficial * 0.8)),
-        fechaUltimo: new Date().toISOString().split('T')[0],
-        costoEstimado: 0,
-        repuestoDetalle: c.especificacionLubricanteRepuesto,
-        asignadoChofer: true,
-        activo: true,
-      }));
+      .slice(0, 8)
+      .map(c => {
+        // Aceite de motor y tríada de filtros: Cambiados anteayer (19 de septiembre de 2026) a 893,100 km
+        if (
+          c.codigo === 'MNT-ACEITE-MOT' ||
+          c.codigo === 'MNT-FILT-ACEITE' ||
+          c.codigo === 'MNT-FILT-TRAMPA' ||
+          c.codigo === 'MNT-FILT-DIESEL-SEC'
+        ) {
+          return {
+            id: `mbus-${c.id}-calibrado`,
+            catalogoId: c.id,
+            codigo: c.codigo,
+            nombre: c.nombre,
+            categoria: c.categoria,
+            intervaloKm: c.intervaloKmOficial,
+            ultimoKm: 893100,
+            fechaUltimo: '2026-09-19',
+            costoEstimado: 0,
+            repuestoDetalle: c.especificacionLubricanteRepuesto,
+            asignadoChofer: true,
+            activo: true,
+          };
+        }
+        // Engrase de chasis
+        if (c.codigo === 'MNT-ENGRASE-CHASIS') {
+          return {
+            id: `mbus-${c.id}-calibrado`,
+            catalogoId: c.id,
+            codigo: c.codigo,
+            nombre: c.nombre,
+            categoria: c.categoria,
+            intervaloKm: c.intervaloKmOficial,
+            ultimoKm: 893085,
+            fechaUltimo: '2026-09-19',
+            costoEstimado: 0,
+            repuestoDetalle: c.especificacionLubricanteRepuesto,
+            asignadoChofer: true,
+            activo: true,
+          };
+        }
+        return {
+          id: `mbus-${c.id}-default`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: Math.max(0, currentKm - Math.floor(c.intervaloKmOficial * 0.2)),
+          fechaUltimo: '2026-09-10',
+          costoEstimado: 0,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: true,
+          activo: true,
+        };
+      });
   }, [resolverKmActual]);
 
   // Tareas asignadas al Chofer

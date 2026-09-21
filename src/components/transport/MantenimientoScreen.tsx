@@ -114,6 +114,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
       if (!isNaN(num) && num > 0) return num;
     }
     // 4. Referencia estándar segura para no romper cálculos ni toLocaleString
+    if (disco === '01' || busId === 'BUS-01') return 893485;
     return 187420;
   }, []);
 
@@ -123,38 +124,123 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   const cargarItems = useCallback((busId: string) => {
     if (typeof window === 'undefined') return [];
     const storageKey = `rg_mantenimientos_v2_${busId}`;
+    const baseKm = resolverKmActual(busId) || 893485;
     const saved = localStorage.getItem(storageKey);
-
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const desfaseExtremo = parsed.some(
+            (it: MantenimientoBusItem) => it.ultimoKm > 0 && Math.abs(baseKm - it.ultimoKm) > 100000
+          );
+          if (!desfaseExtremo) {
+            return parsed;
+          }
+          console.warn('Detectado desfase histórico en items guardados. Aplicando calibración oficial.');
+        }
       } catch (e) {
         console.error('Error parseando mantenimientos:', e);
       }
     }
 
-    // Inicializar por defecto con los mantenimientos recomendados de la biblioteca Hino AK
+    // Inicializar por defecto con la línea base operativa real del Bus 01
     const catalogo = getCatalogoMaestroGlobal();
-    const baseKm = resolverKmActual(busId) || 0;
-
     const iniciales: MantenimientoBusItem[] = catalogo
       .filter(c => c.activoBiblioteca)
-      .slice(0, 6)
-      .map(c => ({
-        id: `mbus-${c.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-        catalogoId: c.id,
-        codigo: c.codigo,
-        nombre: c.nombre,
-        categoria: c.categoria,
-        intervaloKm: c.intervaloKmOficial,
-        ultimoKm: baseKm > 0 ? Math.max(0, baseKm - Math.floor(c.intervaloKmOficial * 0.2)) : 0,
-        fechaUltimo: new Date().toISOString().split('T')[0],
-        costoEstimado: c.categoria === 'MOTOR' ? 120 : 45,
-        repuestoDetalle: c.especificacionLubricanteRepuesto,
-        asignadoChofer: c.asignadoChoferPorDefecto,
-        activo: true,
-      }));
+      .slice(0, 12)
+      .map(c => {
+        // Aceite de motor y tríada de filtros: Cambiados anteayer (19 de septiembre de 2026) a 893,100 km
+        if (
+          c.codigo === 'MNT-ACEITE-MOT' ||
+          c.codigo === 'MNT-FILT-ACEITE' ||
+          c.codigo === 'MNT-FILT-TRAMPA' ||
+          c.codigo === 'MNT-FILT-DIESEL-SEC'
+        ) {
+          return {
+            id: `mbus-${c.id}-calibrado`,
+            catalogoId: c.id,
+            codigo: c.codigo,
+            nombre: c.nombre,
+            categoria: c.categoria,
+            intervaloKm: c.intervaloKmOficial,
+            ultimoKm: 893100,
+            fechaUltimo: '2026-09-19',
+            costoEstimado: c.codigo === 'MNT-ACEITE-MOT' ? 120 : 35,
+            repuestoDetalle: c.especificacionLubricanteRepuesto,
+            asignadoChofer: c.asignadoChoferPorDefecto,
+            activo: true,
+          };
+        }
+        // Engrase de chasis: Realizado recientemente
+        if (c.codigo === 'MNT-ENGRASE-CHASIS') {
+          return {
+            id: `mbus-${c.id}-calibrado`,
+            catalogoId: c.id,
+            codigo: c.codigo,
+            nombre: c.nombre,
+            categoria: c.categoria,
+            intervaloKm: c.intervaloKmOficial,
+            ultimoKm: 893085,
+            fechaUltimo: '2026-09-19',
+            costoEstimado: 25,
+            repuestoDetalle: c.especificacionLubricanteRepuesto,
+            asignadoChofer: c.asignadoChoferPorDefecto,
+            activo: true,
+          };
+        }
+        // Aire acondicionado: Mantenimiento domingo 13 de septiembre de 2026
+        if (c.codigo === 'MNT-AIRE-ACONDICIONADO') {
+          return {
+            id: `mbus-${c.id}-calibrado`,
+            catalogoId: c.id,
+            codigo: c.codigo,
+            nombre: c.nombre,
+            categoria: c.categoria,
+            intervaloKm: c.intervaloKmOficial,
+            ultimoKm: 892000,
+            fechaUltimo: '2026-09-13',
+            costoEstimado: 60,
+            repuestoDetalle: c.especificacionLubricanteRepuesto,
+            asignadoChofer: false,
+            activo: true,
+          };
+        }
+        // Demás ítems del catálogo Hino AK calibrados a línea base real
+        return {
+          id: `mbus-${c.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: Math.max(0, baseKm - Math.floor(c.intervaloKmOficial * 0.2)),
+          fechaUltimo: '2026-09-10',
+          costoEstimado: c.categoria === 'MOTOR' ? 120 : 45,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: c.asignadoChoferPorDefecto,
+          activo: true,
+        };
+      });
+
+    if (!iniciales.some(it => it.codigo === 'MNT-AIRE-ACONDICIONADO')) {
+      const acCat = catalogo.find(c => c.codigo === 'MNT-AIRE-ACONDICIONADO');
+      if (acCat) {
+        iniciales.push({
+          id: `mbus-${acCat.id}-calibrado`,
+          catalogoId: acCat.id,
+          codigo: acCat.codigo,
+          nombre: acCat.nombre,
+          categoria: acCat.categoria,
+          intervaloKm: acCat.intervaloKmOficial,
+          ultimoKm: 892000,
+          fechaUltimo: '2026-09-13',
+          costoEstimado: 60,
+          repuestoDetalle: acCat.especificacionLubricanteRepuesto,
+          asignadoChofer: false,
+          activo: true,
+        });
+      }
+    }
 
     if (typeof window !== 'undefined') {
       localStorage.setItem(storageKey, JSON.stringify(iniciales));
@@ -197,6 +283,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   // Modales
   const [editingItem, setEditingItem] = useState<MantenimientoBusItem | null>(null);
   const [newUltimoKm, setNewUltimoKm] = useState('');
+  const [fechaRegistro, setFechaRegistro] = useState(new Date().toISOString().split('T')[0]);
   const [costoRegistro, setCostoRegistro] = useState('');
   const [tallerRegistro, setTallerRegistro] = useState('');
 
@@ -637,7 +724,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
         return {
           ...it,
           ultimoKm: km,
-          fechaUltimo: today,
+          fechaUltimo: fechaFinal,
           tallerMecanico: tallerStr,
           costoEstimado: costoTotal > 0 ? Math.round(costoTotal * 0.4) : it.costoEstimado,
         };
@@ -651,7 +738,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
           categoria: 'RODAJE' as const,
           intervaloKm: 50000,
           ultimoKm: km,
-          fechaUltimo: today,
+          fechaUltimo: fechaFinal,
           tallerMecanico: tallerStr,
           costoEstimado: costoTotal > 0 ? Math.round(costoTotal * 0.6) : it.costoEstimado,
         };
@@ -667,7 +754,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
         categoria: 'RODAJE',
         intervaloKm: 60000,
         ultimoKm: km,
-        fechaUltimo: today,
+        fechaUltimo: fechaFinal,
         tallerMecanico: tallerStr,
         costoEstimado: costoTotal > 0 ? Math.round(costoTotal * 0.4) : 90,
         repuestoDetalle: '1.5 kg de grasa de alta temperatura + 2 retenes delanteros (1 por rueda). Desmontaje rápido (1.5 horas).',
@@ -684,7 +771,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
         categoria: 'RODAJE',
         intervaloKm: 50000,
         ultimoKm: km,
-        fechaUltimo: today,
+        fechaUltimo: fechaFinal,
         tallerMecanico: tallerStr,
         costoEstimado: costoTotal > 0 ? Math.round(costoTotal * 0.6) : 130,
         repuestoDetalle: '3.5 kg de grasa de alta temperatura + 4 retenes posteriores (2 por rueda). Soporta el 70% del peso del bus y calor de tambores.',
@@ -746,6 +833,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
       return;
     }
     const today = new Date().toISOString().split('T')[0];
+    const fechaFinal = fechaRegistro || today;
     const costoNum = parseFloat(costoRegistro) || editingItem.costoEstimado || 0;
 
     // Detectar si el ítem tiene efecto cascada
@@ -757,7 +845,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
         return {
           ...it,
           ultimoKm: km,
-          fechaUltimo: today,
+          fechaUltimo: fechaFinal,
           costoEstimado: costoNum,
           tallerMecanico: tallerRegistro.trim() || it.tallerMecanico,
         };
@@ -768,7 +856,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
         return {
           ...it,
           ultimoKm: km,
-          fechaUltimo: today,
+          fechaUltimo: fechaFinal,
         };
       }
       return it;
@@ -919,7 +1007,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
         return {
           ...it,
           ultimoKm: kmServicio,
-          fechaUltimo: today,
+          fechaUltimo: fechaFinal,
           tallerMecanico: tallerStr,
           costoEstimado: costoTotal > 0 ? Math.round(costoTotal / codigosSet.size) : it.costoEstimado,
         };
@@ -941,7 +1029,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             categoria: catItem.categoria,
             intervaloKm: catItem.intervaloKmOficial,
             ultimoKm: kmServicio,
-            fechaUltimo: today,
+            fechaUltimo: fechaFinal,
             costoEstimado: costoTotal > 0 ? Math.round(costoTotal / codigosSet.size) : 40,
             repuestoDetalle: catItem.especificacionLubricanteRepuesto,
             tallerMecanico: tallerStr,
@@ -2181,16 +2269,29 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             </div>
 
             <div className="space-y-3">
-              <div>
-                <Label className="text-xs font-bold text-gray-700 block mb-1">
-                  Kilometraje del Odómetro al Realizar el Cambio *
-                </Label>
-                <Input
-                  type="number"
-                  value={newUltimoKm}
-                  onChange={e => setNewUltimoKm(e.target.value)}
-                  className="h-10 rounded-xl text-sm font-black bg-slate-50"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-bold text-gray-700 block mb-1">
+                    Tacómetro del Cambio *
+                  </Label>
+                  <Input
+                    type="number"
+                    value={newUltimoKm}
+                    onChange={e => setNewUltimoKm(e.target.value)}
+                    className="h-10 rounded-xl text-sm font-black bg-slate-50"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-gray-700 block mb-1">
+                    Fecha del Servicio
+                  </Label>
+                  <Input
+                    type="date"
+                    value={fechaRegistro}
+                    onChange={e => setFechaRegistro(e.target.value)}
+                    className="h-10 rounded-xl text-xs font-bold bg-slate-50"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

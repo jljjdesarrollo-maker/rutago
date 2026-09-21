@@ -14,6 +14,7 @@ export const INITIAL_PILOT_BUS: BusItem = {
   capacidadAsientos: 45,
   propietario: 'José Leonardo Jaya Jaramillo',
   tipoOperacion: 'TRONCAL_VT',
+  odometroInicial: '893485',
   activo: true,
   notas: 'Unidad Piloto del Socio Líder • Circuito Troncal General (VT01 - VT15)',
 };
@@ -495,6 +496,14 @@ export function getLatestBusOdometer(busIdOrDisco: string): { kmFinal: string; d
       if (parsed && parsed.kmFinal) {
         return { kmFinal: parsed.kmFinal, date: parsed.date || '' };
       }
+    }
+    // Fallback: Si no hay lectura en caché local, usar odometroInicial de ficha técnica
+    const bus = getBusByDisco(cleanDisco);
+    if (bus?.odometroInicial) {
+      return { kmFinal: bus.odometroInicial, date: new Date().toISOString().split('T')[0] };
+    }
+    if (cleanDisco === '01') {
+      return { kmFinal: '893485', date: new Date().toISOString().split('T')[0] };
     }
     return null;
   } catch (err) {
