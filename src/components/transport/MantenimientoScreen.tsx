@@ -428,7 +428,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     setModalConfirmPausarOpen(false);
     toast({
       title: "Módulo de Mantenimiento Pausado",
-      description: \`Se pausó el control mecánico para la Unidad \${activeBusDisco}. La decisión se sincronizó en la nube.\`,
+      description: `Se pausó el control mecánico para la Unidad \${activeBusDisco}. La decisión se sincronizó en la nube.`,
     });
   };
 
@@ -438,7 +438,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     setModalConfirmReactivarOpen(false);
     toast({
       title: "Módulo de Mantenimiento Reactivado",
-      description: \`Se reanudó la supervisión mecánica para la Unidad \${activeBusDisco} con tu plan guardado.\`,
+      description: `Se reanudó la supervisión mecánica para la Unidad \${activeBusDisco} con tu plan guardado.`,
     });
   };
 
@@ -460,8 +460,8 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
 
     const plantilla = PLANTILLAS_NIVEL_CONTROL[nivel];
     toast({
-      title: \`Plan \${plantilla.nombre} Confirmado y Guardado\`,
-      description: \`Recordaremos tu decisión para la Unidad \${activeBusDisco}. La configuración está sincronizada entre tu celular y tu PC.\`,
+      title: `Plan \${plantilla.nombre} Confirmado y Guardado`,
+      description: `Recordaremos tu decisión para la Unidad \${activeBusDisco}. La configuración está sincronizada entre tu celular y tu PC.`,
     });
   };
 

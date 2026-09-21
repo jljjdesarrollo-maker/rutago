@@ -83,22 +83,22 @@ const STORAGE_PREFIX_DECISION = 'rg_mantenimiento_decision_';
 export async function syncMantenimientoConfigConServidor(busId: string): Promise<any> {
   if (typeof window === 'undefined') return null;
   try {
-    const res = await fetch(\`/api/config/mantenimiento?busId=\${encodeURIComponent(busId)}\`);
+    const res = await fetch(`/api/config/mantenimiento?busId=\${encodeURIComponent(busId)}`);
     if (!res.ok) return null;
     const json = await res.json();
     if (json?.success && json?.data) {
       const data = json.data;
       if (typeof data.moduloActivo === 'boolean') {
-        localStorage.setItem(\`\${STORAGE_PREFIX_MODULO}\${busId}\`, String(data.moduloActivo));
+        localStorage.setItem(`\${STORAGE_PREFIX_MODULO}\${busId}`, String(data.moduloActivo));
       }
       if (data.nivelControl === 'BASICO' || data.nivelControl === 'MEDIO' || data.nivelControl === 'TOTAL') {
-        localStorage.setItem(\`\${STORAGE_PREFIX_NIVEL}\${busId}\`, data.nivelControl);
+        localStorage.setItem(`\${STORAGE_PREFIX_NIVEL}\${busId}`, data.nivelControl);
       }
       if (data.itemsActivos && typeof data.itemsActivos === 'object') {
-        localStorage.setItem(\`\${STORAGE_PREFIX_ITEMS}\${busId}\`, JSON.stringify(data.itemsActivos));
+        localStorage.setItem(`\${STORAGE_PREFIX_ITEMS}\${busId}`, JSON.stringify(data.itemsActivos));
       }
       if (typeof data.decisionTomada === 'boolean') {
-        localStorage.setItem(\`\${STORAGE_PREFIX_DECISION}\${busId}\`, String(data.decisionTomada));
+        localStorage.setItem(`\${STORAGE_PREFIX_DECISION}\${busId}`, String(data.decisionTomada));
       }
       window.dispatchEvent(new CustomEvent('rg_mantenimiento_config_sync', { detail: data }));
       return data;
@@ -145,7 +145,7 @@ export function pushMantenimientoConfigAlServidor(
 export function getBusNivelControl(busId: string): NivelControlMantenimiento {
   if (typeof window === 'undefined') return busId === 'BUS-01' ? 'TOTAL' : 'BASICO';
   try {
-    const saved = localStorage.getItem(\`\${STORAGE_PREFIX_NIVEL}\${busId}\`);
+    const saved = localStorage.getItem(`\${STORAGE_PREFIX_NIVEL}\${busId}`);
     if (saved === 'BASICO' || saved === 'MEDIO' || saved === 'TOTAL') {
       return saved;
     }
@@ -162,8 +162,8 @@ export function getBusNivelControl(busId: string): NivelControlMantenimiento {
 export function saveBusNivelControl(busId: string, nivel: NivelControlMantenimiento): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(\`\${STORAGE_PREFIX_NIVEL}\${busId}\`, nivel);
-    localStorage.setItem(\`\${STORAGE_PREFIX_DECISION}\${busId}\`, 'true');
+    localStorage.setItem(`\${STORAGE_PREFIX_NIVEL}\${busId}`, nivel);
+    localStorage.setItem(`\${STORAGE_PREFIX_DECISION}\${busId}`, 'true');
     pushMantenimientoConfigAlServidor(busId, { nivelControl: nivel, decisionTomada: true });
     window.dispatchEvent(new CustomEvent('rg_mantenimiento_config_sync', { detail: { busId, nivelControl: nivel } }));
   } catch (err) {
@@ -182,7 +182,7 @@ export function getBusItemsActivosConfig(busId: string, todosCodigosCatalogo: st
     return fallback;
   }
   try {
-    const raw = localStorage.getItem(\`\${STORAGE_PREFIX_ITEMS}\${busId}\`);
+    const raw = localStorage.getItem(`\${STORAGE_PREFIX_ITEMS}\${busId}`);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (typeof parsed === 'object' && parsed !== null) {
@@ -203,7 +203,7 @@ export function getBusItemsActivosConfig(busId: string, todosCodigosCatalogo: st
       todosCodigosCatalogo.forEach(cod => { config[cod] = setBasico.has(cod); });
     }
 
-    localStorage.setItem(\`\${STORAGE_PREFIX_ITEMS}\${busId}\`, JSON.stringify(config));
+    localStorage.setItem(`\${STORAGE_PREFIX_ITEMS}\${busId}`, JSON.stringify(config));
     return config;
   } catch (err) {
     console.error('Error al leer items activos de bus:', err);
@@ -214,7 +214,7 @@ export function getBusItemsActivosConfig(busId: string, todosCodigosCatalogo: st
 export function saveBusItemsActivosConfig(busId: string, config: Record<string, boolean>): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(\`\${STORAGE_PREFIX_ITEMS}\${busId}\`, JSON.stringify(config));
+    localStorage.setItem(`\${STORAGE_PREFIX_ITEMS}\${busId}`, JSON.stringify(config));
     pushMantenimientoConfigAlServidor(busId, { itemsActivos: config });
     window.dispatchEvent(new CustomEvent('rg_mantenimiento_config_sync', { detail: { busId, itemsActivos: config } }));
   } catch (err) {
@@ -608,7 +608,7 @@ export function getCategoriaContablePorEstacion(estacionId: EstacionServicioId):
 export function getBusModuloMantenimientoActivo(busId: string): boolean {
   if (typeof window === 'undefined') return busId === 'BUS-01';
   try {
-    const raw = localStorage.getItem(\`\${STORAGE_PREFIX_MODULO}\${busId}\`);
+    const raw = localStorage.getItem(`\${STORAGE_PREFIX_MODULO}\${busId}`);
     // Si ya existe registro expreso guardado localmente:
     if (raw !== null) {
       return raw === 'true';
@@ -628,8 +628,8 @@ export function isBusModuloMantenimientoConfigurado(busId: string): boolean {
   if (typeof window === 'undefined') return busId === 'BUS-01';
   try {
     if (busId === 'BUS-01') return true;
-    return localStorage.getItem(\`\${STORAGE_PREFIX_MODULO}\${busId}\`) !== null ||
-      localStorage.getItem(\`\${STORAGE_PREFIX_DECISION}\${busId}\`) !== null;
+    return localStorage.getItem(`\${STORAGE_PREFIX_MODULO}\${busId}`) !== null ||
+      localStorage.getItem(`\${STORAGE_PREFIX_DECISION}\${busId}`) !== null;
   } catch (e) {
     return busId === 'BUS-01';
   }
@@ -639,9 +639,9 @@ export function isMantenimientoDecisionTomada(busId: string): boolean {
   if (typeof window === 'undefined') return busId === 'BUS-01';
   try {
     if (busId === 'BUS-01') return true;
-    const dec = localStorage.getItem(\`\${STORAGE_PREFIX_DECISION}\${busId}\`);
+    const dec = localStorage.getItem(`\${STORAGE_PREFIX_DECISION}\${busId}`);
     if (dec === 'true') return true;
-    return localStorage.getItem(\`\${STORAGE_PREFIX_MODULO}\${busId}\`) !== null;
+    return localStorage.getItem(`\${STORAGE_PREFIX_MODULO}\${busId}`) !== null;
   } catch (e) {
     return busId === 'BUS-01';
   }
@@ -650,8 +650,8 @@ export function isMantenimientoDecisionTomada(busId: string): boolean {
 export function saveBusModuloMantenimientoActivo(busId: string, activo: boolean): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(\`\${STORAGE_PREFIX_MODULO}\${busId}\`, String(activo));
-    localStorage.setItem(\`\${STORAGE_PREFIX_DECISION}\${busId}\`, 'true');
+    localStorage.setItem(`\${STORAGE_PREFIX_MODULO}\${busId}`, String(activo));
+    localStorage.setItem(`\${STORAGE_PREFIX_DECISION}\${busId}`, 'true');
     pushMantenimientoConfigAlServidor(busId, { moduloActivo: activo, decisionTomada: true });
     window.dispatchEvent(new CustomEvent('rg_mantenimiento_config_sync', { detail: { busId, moduloActivo: activo } }));
   } catch (e) {
