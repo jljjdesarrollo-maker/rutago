@@ -238,3 +238,46 @@
   * Bloque 5: FRENOS Y SISTEMA NEUMÁTICO (Bandas de freno, Secador de aire WABCO, Compresor 900,000 km).
 
 
+
+
+### PENDIENTE #7: Módulo Operativo de Estaciones de Taller y Combos de Parada (v3.59.0)
+- **Filosofía del Módulo:** Estricta separación de roles entre Socio (dueño/financiero), Chofer (operación mecánica) y Ayudante (caja y recaudación del viaje). Cero fricción operativa en ruta.
+- **Estructura en 4 Fases con Commits Atómicos:**
+
+#### FASE 1: Personalización de Combos de Unidad por el Socio (Commit: feat(mantenimiento): v3.59.1 - edicion y personalizacion de combos de parada por unidad para socios)
+- **Alcance Socio:** El socio no crea combos desde cero; parte de las 6 Estaciones de Servicio preestablecidas en ESTACIONES_SERVICIO_CONFIG (Lubricadora, Frenos y Rodaje, Mantenimiento Mayor, Tornero/Cardán, Eléctrico/Baterías, Llantera/Alineación).
+- **Capacidades de Edición del Socio:**
+  * Marcar / desmarcar qué ítems son obligatorios para su autobús.
+  * Añadir ítems adicionales del catálogo maestro a una estación específica.
+  * Persistir la configuración personalizada por autobús (rg_combo_estacion_{busId}_{estacionId}).
+  * Estado: [EN PROCESO DE IMPLEMENTACIÓN]
+
+#### FASE 2: Ejecución de Parada Técnica por el Chofer (Commit: feat(chofer): v3.59.2 - ejecucion y asentamiento de combos de parada con reset inmediato de odometro)
+- **Alcance Chofer:** Desde ChoferMantenimientoWidget accede a los combos autorizados por su socio.
+- **Comportamiento en Fosa / Taller:**
+  * Los ítems aprobados por el socio ya aparecen seleccionados.
+  * Si en fosa realizaron tareas adicionales no preseleccionadas (ej. soplado de filtro, lavado de malla pasillo, engrase de chasis), el chofer las marca con 1 tap.
+  * Ingreso del Odómetro actual del velocímetro/tacómetro y costo total pactado.
+- **Regla Mecánica Inmutable:** El contador de kilometraje de todos los ítems marcados se resetea inmediatamente a 0 km transcurridos en el momento del asentamiento, independiente de cómo o cuándo se pague.
+  * Estado: [PENDIENTE TRAS FASE 1]
+
+#### FASE 3: Gestión del Pago y Arqueo por el Ayudante (Commit: feat(ayudante): v3.59.3 - bifurcacion de pago de parada, arrastre de saldo de VT y liquidacion en arqueo)
+- **Alcance Ayudante:** Responsable del dinero del bus. Registra quién y cómo se paga el servicio:
+- **Bifurcación 1: Paga Ayudante (Efectivo de la Vuelta / Día de Trabajo VT):**
+  * Caso 2.A (Alcanza el dinero hoy): Se descuenta en el Arqueo General de la VT de hoy. Entrega al socio = Recaudación - Gasto Taller.
+  * Caso 2.B (No alcanza el total hoy - Déficit operativo): Paga lo que tiene en caja hoy; el arqueo de hoy liquida en $0.00 de entrega al socio y el saldo pendiente se arrastra automáticamente a la VT del día siguiente.
+- **Bifurcación 2: Paga el Socio (Acordado previamente con la Tripulación vía telefónica/WhatsApp):**
+  * Efecto en el Ayudante: Su arqueo de caja queda 100% limpio e intacto ( $0 descontado del bus).
+  * La tripulación registra la decisión acordada con 1 solo toque:
+    1. Socio Transfiere Todo ($...)
+    2. Socio Transfiere una Parte ($...) -> Digita lo transferido, la app calcula el saldo.
+    3. Socio Saca Fiado ( $0 Hoy) -> 1 toque, crédito total.
+  * Estado: [PENDIENTE TRAS FASE 2]
+
+#### FASE 4: Asentamiento Automático en Libro de Gastos y Deudas del Socio (Commit: feat(finanzas): v3.59.4 - generacion automatica de asientos contables, cartera de deudas y abonos)
+- **Alcance Contable Socio:** Integración automática con OwnerExpense y cartera de deudas:
+  * Si la tripulación marcó Socio Transfiere Todo: Gasto total creado como PAGADO (Sello verde). El socio no tiene que transcribir nada.
+  * Si marcó Socio Transfiere una Parte: Gasto total creado por el monto completo, con el valor transferido registrado y el saldo pendiente en estado PENDIENTE (Sello ámbar), reflejado en su cartera de deudas por pagar.
+  * Si marcó Socio Saca Fiado: Gasto total creado con $0 pagados, saldo total en estado PENDIENTE.
+  * Opción de Registrar Abono directo para extinguir la deuda cuando el socio transfiera días después.
+  * Estado: [PENDIENTE TRAS FASE 3]
