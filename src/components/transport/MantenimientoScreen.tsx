@@ -818,7 +818,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
 
     toast({
       title: valor ? 'Ítem Activado en Plan' : 'Ítem Pausado' ,
-      description: `"${nombre}" ${valor ? 'se mostrará en tus alertas de tablero': 'quedó en pausa para no saturar tu vista'.`,
+      description: `"${nombre}" ${valor ? "se mostrará en tus alertas de tablero" : "quedó en pausa para no saturar tu vista"}.`,
     });
   };
 
