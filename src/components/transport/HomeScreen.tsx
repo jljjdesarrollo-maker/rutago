@@ -455,10 +455,55 @@ export function HomeScreen({
       <main className="flex-1 px-5 pb-8 flex flex-col gap-4">
 
         {/* ─── PILAR 1: DÍA A DÍA (OPERACIÓN Y CAJA DE HOY) ─── */}
-        {/* Widget Operativo Rápido para el Chofer (Fase 3 - Mantenimiento Semafórico) */}
-        {onGoToMantenimiento && (
-          <ChoferMantenimientoWidget onVerMas={isAdmin ? onGoToMantenimiento : undefined} />
-        )}
+        {/* Widget de Mantenimiento: SOLO si el socio lo activó expresamente para su unidad */}
+        {onGoToMantenimiento && (() => {
+          const moduloMantenimientoActivo = getBusModuloMantenimientoActivo(activeBusId);
+          const yaConfigurado = isBusModuloMantenimientoConfigurado(activeBusId);
+
+          // Si el módulo está activo para este bus, se muestra el widget operativo
+          if (moduloMantenimientoActivo) {
+            return <ChoferMantenimientoWidget onVerMas={isAdmin ? onGoToMantenimiento : undefined} />;
+          }
+
+          // Si el socio aún no lo ha configurado o es nuevo en la suscripción, se le presenta la invitación optativa
+          if (isAdmin) {
+            return (
+              <Card className="rounded-3xl border-2 border-dashed border-amber-300/80 bg-gradient-to-br from-amber-50/60 via-white to-amber-50/20 p-4 shadow-xs">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-900 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+                      <Wrench className="w-5 h-5 text-amber-700" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-xs text-slate-900 uppercase tracking-tight">
+                          Control Preventivo de Mantenimiento
+                        </span>
+                        <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                          {yaConfigurado ? "Pausado" : "Opcional"}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                        ¿Deseas supervisar cambios de aceite, filtros y semáforo mecánico para la <strong>Unidad {activeBus?.numeroDisco || "01"}</strong>?
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={onGoToMantenimiento}
+                    className="w-full sm:w-auto h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider shrink-0 shadow-xs cursor-pointer"
+                  >
+                    <Wrench className="w-3.5 h-3.5 mr-1.5" />
+                    {yaConfigurado ? "Revisar / Activar" : "Configurar y Activar"}
+                  </Button>
+                </div>
+              </Card>
+            );
+          }
+
+          // Si es chofer/ayudante y el socio no activó el módulo, no se muestra nada (no se le impone al chofer)
+          return null;
+        })()}
         <div>
           <div className="flex items-center justify-between mb-2">
             <p className="text-[11px] font-black text-[#3A3A3A]/50 uppercase tracking-wider flex items-center gap-1.5">

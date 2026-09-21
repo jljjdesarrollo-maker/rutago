@@ -1155,43 +1155,95 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
         </div>
 
         {!moduloActivo ? (
-          /* VISTA EJECUTIVA LIMPIA CUANDO EL SOCIO DECIDE NO USAR MANTENIMIENTO */
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-sm flex flex-col items-center text-center gap-4 my-2">
-            <div className="w-16 h-16 rounded-3xl bg-slate-100 flex items-center justify-center text-slate-400">
-              <Wrench className="w-8 h-8" />
+          /* VISTA INICIAL DE ONBOARDING / BIENVENIDA CUANDO EL SOCIO DECIDE SI ACTIVAR O NO */
+          <div className="bg-white rounded-3xl border-2 border-amber-200/80 p-6 shadow-md flex flex-col items-center text-center gap-5 my-2">
+            <div className="w-16 h-16 rounded-3xl bg-amber-500/15 border border-amber-300 text-amber-900 flex items-center justify-center shadow-xs">
+              <Wrench className="w-8 h-8 text-amber-600" />
             </div>
-            <div className="flex flex-col gap-1 max-w-sm">
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
-                Mantenimiento Pausado para esta Unidad
+            <div className="flex flex-col gap-1.5 max-w-md">
+              <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 w-fit mx-auto">
+                Módulo Optativo del Socio
+              </span>
+              <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">
+                ¿Deseas supervisar mantenimientos en esta unidad?
               </h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Has configurado tu unidad para trabajar exclusivamente en <strong>modo operativo y financiero</strong> (vueltas, boletos y liquidación diaria con el ayudante).
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Como socio propietario, tú decides si tu chofer reporta cambios de aceite y desgastes mecánicos en sus 3 toques, o si prefieres trabajar únicamente con boletos, vueltas y arqueo de caja.
               </p>
             </div>
 
-            <div className="w-full bg-slate-50 rounded-2xl p-3.5 border border-slate-200/70 text-left flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>El chofer <strong>no tendrá que registrar paradas</strong> de taller ni lubricadoras.</span>
+            {/* Opciones de Niveles para elegir */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full text-left">
+              <div
+                onClick={() => { handleCambiarNivelControl('BASICO'); handleToggleModuloActivo(true); }}
+                className="cursor-pointer p-3.5 rounded-2xl border-2 border-emerald-500/40 bg-emerald-50/40 hover:bg-emerald-50 hover:border-emerald-600 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-black text-emerald-950">1. BÁSICO</span>
+                    <span className="text-[9px] font-black px-1.5 py-0.5 bg-emerald-200 text-emerald-900 rounded">7 Ítems</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-800 leading-snug">
+                    Aceite de motor, tríada de filtros (aceite, combustible y trampa de agua) y engrase de chasis.
+                  </p>
+                </div>
+                <Button size="sm" className="mt-3 w-full h-8 text-[10px] font-black bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl">
+                  Activar Básico
+                </Button>
               </div>
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Tus gastos mayores del socio (llantas, seguros) siguen disponibles en el módulo financiero.</span>
+
+              <div
+                onClick={() => { handleCambiarNivelControl('MEDIO'); handleToggleModuloActivo(true); }}
+                className="cursor-pointer p-3.5 rounded-2xl border-2 border-amber-500/40 bg-amber-50/40 hover:bg-amber-50 hover:border-amber-600 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-black text-amber-950">2. MEDIO</span>
+                    <span className="text-[9px] font-black px-1.5 py-0.5 bg-amber-200 text-amber-900 rounded">15 Ítems</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 leading-snug">
+                    Básico + Raches de frenos, zapatas, filtros de aire, valvulinas y alineación de llantas.
+                  </p>
+                </div>
+                <Button size="sm" className="mt-3 w-full h-8 text-[10px] font-black bg-amber-600 hover:bg-amber-700 text-white rounded-xl">
+                  Activar Recomendado
+                </Button>
               </div>
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Puedes activar la supervisión de desgastes cuando desees con el switch superior.</span>
+
+              <div
+                onClick={() => { handleCambiarNivelControl('TOTAL'); handleToggleModuloActivo(true); }}
+                className="cursor-pointer p-3.5 rounded-2xl border-2 border-blue-500/40 bg-blue-50/40 hover:bg-blue-50 hover:border-blue-600 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-black text-blue-950">3. TOTAL</span>
+                    <span className="text-[9px] font-black px-1.5 py-0.5 bg-blue-200 text-blue-900 rounded">27 Ítems</span>
+                  </div>
+                  <p className="text-[11px] text-blue-800 leading-snug">
+                    Catálogo oficial Hino AK completo: embrague, corona, bocinas, radiador y bajada de motor.
+                  </p>
+                </div>
+                <Button size="sm" className="mt-3 w-full h-8 text-[10px] font-black bg-blue-700 hover:bg-blue-800 text-white rounded-xl">
+                  Activar Total Hino
+                </Button>
               </div>
             </div>
 
-            <Button
-              type="button"
-              onClick={() => handleToggleModuloActivo(true)}
-              className="w-full h-11 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider shadow-sm flex items-center justify-center gap-2"
-            >
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>Activar Supervisión de Mantenimiento</span>
-            </Button>
+            <div className="w-full pt-3 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+              <span className="text-[11px]">
+                Si no deseas usar mantenimiento preventivo ahora, tu unidad opera 100% normal con caja y boletos.
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  handleToggleModuloActivo(false);
+                  onBack();
+                }}
+                className="text-xs font-bold text-slate-700 hover:text-slate-900 underline cursor-pointer"
+              >
+                Volver a la pantalla principal
+              </button>
+            </div>
           </div>
         ) : (
           <>

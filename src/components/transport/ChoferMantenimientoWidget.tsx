@@ -28,6 +28,7 @@ import { getAllBuses, getActiveBusId, getLatestBusOdometer } from '@/lib/fleet-s
 import { getCatalogoMaestroGlobal } from '@/lib/mantenimiento-catalogo';
 import { saveOwnerExpense } from '@/lib/owner-expenses-storage';
 import { type MantenimientoBusItem } from './MantenimientoScreen';
+import { getBusModuloMantenimientoActivo } from '@/lib/mantenimiento-estaciones';
 
 export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void }) {
   const { toast } = useToast();
@@ -75,7 +76,12 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       }
     }
 
-    // Fallback: items pre-asignados al chofer de la biblioteca Hino AK
+    // Si el socio no ha activado expresamente el mantenimiento, no cargar nada por defecto
+    if (!getBusModuloMantenimientoActivo(busId)) {
+      return [];
+    }
+
+    // Fallback si está activado
     const catalogo = getCatalogoMaestroGlobal();
     return catalogo
       .filter(c => c.asignadoChoferPorDefecto)
@@ -368,7 +374,8 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   const criticosCount = tareasCalculadas.filter(t => t.esVencido).length;
   const proximosCount = tareasCalculadas.filter(t => t.esUrgente).length;
 
-  if (items.length === 0) return null;
+  // Si el módulo está apagado por el socio, no renderizar nada
+  if (!getBusModuloMantenimientoActivo(activeBusId) || items.length === 0) return null;
 
   return (
     <Card className="rounded-2xl border-2 border-amber-300/80 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20 shadow-xs overflow-hidden">

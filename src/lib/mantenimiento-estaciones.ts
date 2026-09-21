@@ -526,13 +526,23 @@ export function getCategoriaContablePorEstacion(estacionId: EstacionServicioId):
 // ============================================================================
 
 export function getBusModuloMantenimientoActivo(busId: string): boolean {
-  if (typeof window === "undefined") return true;
+  if (typeof window === "undefined") return false;
   try {
     const raw = localStorage.getItem(`rg_mantenimiento_modulo_activo_${busId}`);
-    if (raw === null) return true; // Por defecto activo para unidades existentes
+    // Por defecto es FALSE: el socio debe decidir conscientemente activarlo y elegir su nivel
+    if (raw === null) return false;
     return raw === "true";
   } catch (e) {
-    return true;
+    return false;
+  }
+}
+
+export function isBusModuloMantenimientoConfigurado(busId: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(`rg_mantenimiento_modulo_activo_${busId}`) !== null;
+  } catch (e) {
+    return false;
   }
 }
 
