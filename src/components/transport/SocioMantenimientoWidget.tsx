@@ -46,6 +46,7 @@ import {
 import { getCatalogoMaestroGlobal } from '@/lib/mantenimiento-catalogo';
 import {
   getBusModuloMantenimientoActivo,
+  syncMantenimientoConfigConServidor,
   getBusNivelControl,
   getBusItemsActivosConfig,
   PLANTILLAS_NIVEL_CONTROL,
@@ -326,6 +327,15 @@ export function SocioMantenimientoWidget({
       setKmActual(resolverKmActual(bus.id));
       setItems(cargarItems(bus.id));
     });
+    syncMantenimientoConfigConServidor(activeBusId).then(() => {
+      setItems(cargarItems(activeBusId));
+    });
+
+    const handleSync = () => {
+      setItems(cargarItems(activeBusId));
+    };
+    window.addEventListener('rg_mantenimiento_config_sync', handleSync);
+
     const unsubOdo = subscribeToBusOdometer(() => {
       setKmActual(resolverKmActual(activeBusId));
       setItems(cargarItems(activeBusId));
@@ -333,6 +343,7 @@ export function SocioMantenimientoWidget({
     return () => {
       unsubBus();
       unsubOdo();
+      window.removeEventListener('rg_mantenimiento_config_sync', handleSync);
     };
   }, [activeBusId, resolverKmActual, cargarItems]);
 

@@ -46,7 +46,7 @@ import { SuperAdminHomeScreen } from './SuperAdminHomeScreen';
 import { getAllBuses, getActiveBusId } from '@/lib/fleet-storage';
 import { getCurrentYearMonth, formatMonthName } from '@/lib/date-helpers';
 import { getSuscripciones } from '@/lib/saas-storage';
-import { getBusModuloMantenimientoActivo, isBusModuloMantenimientoConfigurado } from '@/lib/mantenimiento-estaciones';
+import { getBusModuloMantenimientoActivo, isBusModuloMantenimientoConfigurado, syncMantenimientoConfigConServidor } from '@/lib/mantenimiento-estaciones';
 
 interface HomeScreenProps {
   user: UserSession;
@@ -137,6 +137,27 @@ export function HomeScreen({
   });
 
   const { toast } = useToast();
+
+  const [moduloMantenimientoActivo, setModuloMantenimientoActivo] = useState<boolean>(() =>
+    getBusModuloMantenimientoActivo(activeBusId)
+  );
+
+  useEffect(() => {
+    setModuloMantenimientoActivo(getBusModuloMantenimientoActivo(activeBusId));
+    syncMantenimientoConfigConServidor(activeBusId).then((cloud) => {
+      if (cloud && typeof cloud.moduloActivo === 'boolean') {
+        setModuloMantenimientoActivo(cloud.moduloActivo);
+      }
+    });
+
+    const handleSync = (e: any) => {
+      if (!e.detail || !e.detail.busId || e.detail.busId === activeBusId) {
+        setModuloMantenimientoActivo(getBusModuloMantenimientoActivo(activeBusId));
+      }
+    };
+    window.addEventListener('rg_mantenimiento_config_sync', handleSync);
+    return () => window.removeEventListener('rg_mantenimiento_config_sync', handleSync);
+  }, [activeBusId]);
 
   // Calcular balance financiero, tripulación y suscripción en vivo para el socio
   useEffect(() => {
@@ -459,11 +480,11 @@ export function HomeScreen({
         {/* ─── PILAR 1: DÍA A DÍA (OPERACIÓN Y CAJA DE HOY) ─── */}
         {/* Widget de Mantenimiento: SOLO si el socio lo activó expresamente para su unidad */}
         {onGoToMantenimiento && (() => {
-          const moduloMantenimientoActivo = getBusModuloMantenimientoActivo(activeBusId);
+          const moduloMantenimientoActivoVal = moduloMantenimientoActivo;
           const yaConfigurado = isBusModuloMantenimientoConfigurado(activeBusId);
 
           // Si el módulo está activo para este bus:
-          if (moduloMantenimientoActivo) {
+          if (moduloMantenimientoActivoVal) {
             // En la interfaz del socio (isAdmin): reemplazar vista de chofer por la etiqueta ejecutiva semafórica
             if (isAdmin) {
               return (

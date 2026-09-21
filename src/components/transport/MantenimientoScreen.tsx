@@ -24,6 +24,8 @@ import {
   Sliders,
   Settings2,
   Sparkles,
+  Cloud,
+  PauseCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -50,6 +52,8 @@ import {
   saveBusItemsActivosConfig,
   getBusModuloMantenimientoActivo,
   saveBusModuloMantenimientoActivo,
+  syncMantenimientoConfigConServidor,
+  isMantenimientoDecisionTomada,
   type EstacionServicioId,
   ESTACIONES_SERVICIO_CONFIG,
   resolverCascadaEstacion,
@@ -84,6 +88,9 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     if (typeof window === 'undefined') return 'BUS-01';
     return getActiveBusId();
   });
+  // currentBus y buses definidos al inicio del componente
+  const activeBusDisco = currentBus?.numeroDisco || '01';
+  const activeBusPlaca = currentBus?.placa || 'TAA-5152';
 
   const resolverKmActual = useCallback((busId: string): number => {
     if (typeof window === 'undefined') return 187420;
@@ -352,14 +359,109 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     return getBusModuloMantenimientoActivo(activeBusId);
   });
 
+  // Modales de Confirmación de Decisiones del Socio (Cross-Device Sync & Confirmación)
+  const [modalConfirmPausarOpen, setModalConfirmPausarOpen] = useState<boolean>(false);
+  const [modalConfirmNivel, setModalConfirmNivel] = useState<{
+    nivel: NivelControlMantenimiento;
+    activarModulo: boolean;
+  } | null>(null);
+  const [modalConfirmReactivarOpen, setModalConfirmReactivarOpen] = useState<boolean>(false);
+  const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
+
+  // Sincronización en segundo plano con el servidor al cambiar de unidad
+  useEffect(() => {
+    setIsCloudSyncing(true);
+    syncMantenimientoConfigConServidor(activeBusId)
+      .then((cloudData) => {
+        if (cloudData) {
+          if (typeof cloudData.moduloActivo === 'boolean') {
+            setModuloActivo(cloudData.moduloActivo);
+          }
+          if (cloudData.nivelControl) {
+            setNivelControl(cloudData.nivelControl);
+          }
+          if (cloudData.itemsActivos) {
+            setItemsActivosConfig(cloudData.itemsActivos);
+          }
+        }
+      })
+      .finally(() => {
+        setIsCloudSyncing(false);
+      });
+  }, [activeBusId]);
+
+  // Suscripción al evento global de sincronización en tiempo real
+  useEffect(() => {
+    const handleSync = (e: any) => {
+      const detail = e.detail;
+      if (!detail) return;
+      if (detail.busId && detail.busId !== activeBusId) return;
+      if (typeof detail.moduloActivo === 'boolean') {
+        setModuloActivo(detail.moduloActivo);
+      }
+      if (detail.nivelControl) {
+        setNivelControl(detail.nivelControl);
+      }
+      if (detail.itemsActivos) {
+        setItemsActivosConfig(detail.itemsActivos);
+      }
+    };
+
+    window.addEventListener('rg_mantenimiento_config_sync', handleSync);
+    return () => {
+      window.removeEventListener('rg_mantenimiento_config_sync', handleSync);
+    };
+  }, [activeBusId]);
+
+  // Interceptar el toggle para solicitar confirmación consciente (evitar clicks accidentales)
   const handleToggleModuloActivo = (activar: boolean) => {
-    setModuloActivo(activar);
-    saveBusModuloMantenimientoActivo(activeBusId, activar);
+    if (!activar) {
+      setModalConfirmPausarOpen(true);
+    } else {
+      setModalConfirmReactivarOpen(true);
+    }
+  };
+
+  const ejecutarPausaModulo = () => {
+    setModuloActivo(false);
+    saveBusModuloMantenimientoActivo(activeBusId, false);
+    setModalConfirmPausarOpen(false);
     toast({
-      title: activar ? "Módulo de Mantenimiento Activado" : "Módulo de Mantenimiento Pausado",
-      description: activar
-        ? "Tu unidad ahora supervisa desgastes preventivos y sincroniza alertas con el chofer."
-        : "Se pausó el control mecánico para esta unidad. Tu chofer no tendrá que registrar talleres.",
+      title: "Módulo de Mantenimiento Pausado",
+      description: \`Se pausó el control mecánico para la Unidad \${activeBusDisco}. La decisión se sincronizó en la nube.\`,
+    });
+  };
+
+  const ejecutarReactivacionModulo = () => {
+    setModuloActivo(true);
+    saveBusModuloMantenimientoActivo(activeBusId, true);
+    setModalConfirmReactivarOpen(false);
+    toast({
+      title: "Módulo de Mantenimiento Reactivado",
+      description: \`Se reanudó la supervisión mecánica para la Unidad \${activeBusDisco} con tu plan guardado.\`,
+    });
+  };
+
+  const solicitarConfirmacionNivel = (nuevoNivel: NivelControlMantenimiento, activarModulo: boolean = true) => {
+    setModalConfirmNivel({ nivel: nuevoNivel, activarModulo });
+  };
+
+  const ejecutarCambioNivelConfirmado = () => {
+    if (!modalConfirmNivel) return;
+    const { nivel, activarModulo } = modalConfirmNivel;
+
+    if (activarModulo && !moduloActivo) {
+      setModuloActivo(true);
+      saveBusModuloMantenimientoActivo(activeBusId, true);
+    }
+
+    handleCambiarNivelControl(nivel);
+    setModalConfirmNivel(null);
+
+    const plantilla = PLANTILLAS_NIVEL_CONTROL[nivel];
+    toast({
+      title: \`Plan \${plantilla.nombre} Confirmado y Guardado\`,
+      description: \`Recordaremos tu decisión para la Unidad \${activeBusDisco}. La configuración está sincronizada entre tu celular y tu PC.\`,
     });
   };
 
@@ -1295,17 +1397,21 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-xs font-black text-slate-900 uppercase tracking-wider">
                     Supervisión y Semáforo de Cumplimiento
                   </span>
                   <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${moduloActivo ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
                     {moduloActivo ? "Auditando Conductor" : "Solo Operativo"}
                   </span>
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-500 bg-slate-100/90 px-2 py-0.5 rounded-full border border-slate-200/60">
+                    <Cloud className={`w-3 h-3 ${isCloudSyncing ? "text-amber-500 animate-pulse" : "text-blue-600"}`} />
+                    <span>{isCloudSyncing ? "Sincronizando..." : "Sincronizado en la nube (Móvil & PC)"}</span>
+                  </span>
                 </div>
-                <p className="text-[11px] text-slate-500 leading-tight">
+                <p className="text-[11px] text-slate-500 leading-tight mt-0.5">
                   {moduloActivo
-                    ? "Monitorea si el conductor cumple los mantenimientos. El tacómetro se sincroniza del arqueo que entrega el ayudante al terminar el VT. Si un ítem está en ROJO, el conductor no ha reportado o no ha llevado la unidad a la lubricadora/taller."
+                    ? "Monitorea si el conductor cumple los mantenimientos. El tacómetro se sincroniza del arqueo que entrega el ayudante al terminar el VT. Tu configuración se conserva en la nube entre tu celular y tu PC."
                     : "Módulo pausado. Tu unidad opera exclusivamente con boletaje, vueltas y liquidación de caja diaria."}
                 </p>
               </div>
@@ -1344,7 +1450,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             {/* Opciones de Niveles para elegir */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full text-left">
               <div
-                onClick={() => { handleCambiarNivelControl('BASICO'); handleToggleModuloActivo(true); }}
+                onClick={() => solicitarConfirmacionNivel('BASICO', true)}
                 className="cursor-pointer p-3.5 rounded-2xl border-2 border-emerald-500/40 bg-emerald-50/40 hover:bg-emerald-50 hover:border-emerald-600 transition-all flex flex-col justify-between"
               >
                 <div>
@@ -1362,7 +1468,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
               </div>
 
               <div
-                onClick={() => { handleCambiarNivelControl('MEDIO'); handleToggleModuloActivo(true); }}
+                onClick={() => solicitarConfirmacionNivel('MEDIO', true)}
                 className="cursor-pointer p-3.5 rounded-2xl border-2 border-amber-500/40 bg-amber-50/40 hover:bg-amber-50 hover:border-amber-600 transition-all flex flex-col justify-between"
               >
                 <div>
@@ -1380,7 +1486,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
               </div>
 
               <div
-                onClick={() => { handleCambiarNivelControl('TOTAL'); handleToggleModuloActivo(true); }}
+                onClick={() => solicitarConfirmacionNivel('TOTAL', true)}
                 className="cursor-pointer p-3.5 rounded-2xl border-2 border-blue-500/40 bg-blue-50/40 hover:bg-blue-50 hover:border-blue-600 transition-all flex flex-col justify-between"
               >
                 <div>
@@ -1512,7 +1618,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
           <div className="grid grid-cols-3 gap-1.5">
             <button
               type="button"
-              onClick={() => handleCambiarNivelControl('BASICO')}
+              onClick={() => solicitarConfirmacionNivel('BASICO', false)}
               className={`flex flex-col items-center justify-center p-2 rounded-2xl border transition-all text-center cursor-pointer ${
                 nivelControl === 'BASICO'
                   ? 'bg-emerald-500/10 border-emerald-500 text-emerald-950 shadow-xs ring-1 ring-emerald-500/50'
@@ -1529,7 +1635,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
 
             <button
               type="button"
-              onClick={() => handleCambiarNivelControl('MEDIO')}
+              onClick={() => solicitarConfirmacionNivel('MEDIO', false)}
               className={`flex flex-col items-center justify-center p-2 rounded-2xl border transition-all text-center cursor-pointer ${
                 nivelControl === 'MEDIO'
                   ? 'bg-amber-500/10 border-amber-500 text-amber-950 shadow-xs ring-1 ring-amber-500/50'
@@ -1546,7 +1652,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
 
             <button
               type="button"
-              onClick={() => handleCambiarNivelControl('TOTAL')}
+              onClick={() => solicitarConfirmacionNivel('TOTAL', false)}
               className={`flex flex-col items-center justify-center p-2 rounded-2xl border transition-all text-center cursor-pointer ${
                 nivelControl === 'TOTAL'
                   ? 'bg-blue-500/10 border-blue-500 text-blue-950 shadow-xs ring-1 ring-blue-500/50'
@@ -2648,6 +2754,191 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
         </div>
       )}
     
+      {/* MODAL DE CONFIRMACIÓN: PAUSAR MÓDULO DE MANTENIMIENTO */}
+      {modalConfirmPausarOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
+                <PauseCircle className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 leading-tight">
+                  ¿Deseas pausar el mantenimiento para la Unidad {activeBusDisco}?
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Esta decisión se sincronizará automáticamente entre tu celular y tu computadora.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/70 space-y-2 text-xs text-slate-600">
+              <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">
+                Al pausar la supervisión:
+              </p>
+              <div className="flex items-start gap-2">
+                <span className="text-slate-400">•</span>
+                <span>Se ocultará el semáforo y las alertas ejecutivas en tu pantalla de inicio.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-slate-400">•</span>
+                <span>Tu chofer no recibirá alertas de lubricadora ni tendrá que asentar servicios en su turno.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-slate-400">•</span>
+                <span><strong>Tus datos están protegidos:</strong> Los kilometrajes y fechas no se borran; permanecerán listos para cuando decidas reactivar.</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setModalConfirmPausarOpen(false)}
+                className="w-full sm:w-auto h-10 text-xs font-bold text-slate-700 rounded-xl"
+              >
+                Cancelar (Mantener Activo)
+              </Button>
+              <Button
+                type="button"
+                onClick={ejecutarPausaModulo}
+                className="w-full sm:w-auto h-10 text-xs font-black bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs"
+              >
+                Confirmar y Pausar Módulo
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMACIÓN: ACTIVAR O CAMBIAR PLAN DE MANTENIMIENTO */}
+      {modalConfirmNivel && (() => {
+        const plantilla = PLANTILLAS_NIVEL_CONTROL[modalConfirmNivel.nivel];
+        const cantidadItems = modalConfirmNivel.nivel === 'TOTAL'
+          ? 27
+          : modalConfirmNivel.nivel === 'MEDIO'
+          ? 15
+          : 7;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
+              <div className="flex items-start gap-3">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                  modalConfirmNivel.nivel === 'TOTAL'
+                    ? 'bg-blue-500/15 text-blue-600'
+                    : modalConfirmNivel.nivel === 'MEDIO'
+                    ? 'bg-amber-500/15 text-amber-600'
+                    : 'bg-emerald-500/15 text-emerald-600'
+                }`}>
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-black text-slate-900 leading-tight">
+                      Confirmar {plantilla.nombre}
+                    </h3>
+                    <Badge className="text-[9px] font-black uppercase">
+                      {plantilla.badge}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Para la Unidad <strong>{activeBusDisco}</strong> ({activeBusPlaca})
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/70 space-y-2 text-xs text-slate-600">
+                <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">
+                  Alcance del Plan Seleccionado:
+                </p>
+                <div className="flex items-center justify-between py-1 border-b border-slate-200/60 font-semibold text-slate-800">
+                  <span>Componentes auditados:</span>
+                  <span className="text-sm font-black text-slate-900">{cantidadItems} ítems oficiales</span>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed pt-1">
+                  {plantilla.descripcion}
+                </p>
+              </div>
+
+              <div className="rounded-2xl p-3 bg-blue-50/70 border border-blue-200/80 text-[11px] text-blue-900 flex items-start gap-2.5">
+                <Cloud className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <p className="leading-snug">
+                  <strong>Sincronización en la nube:</strong> Recordaremos permanentemente esta decisión para que no tengas que volver a configurarla al abrir RutaGo desde tu celular o computadora. Podrás ajustar ítems individuales con sus interruptores en cualquier momento.
+                </p>
+              </div>
+
+              <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setModalConfirmNivel(null)}
+                  className="w-full sm:w-auto h-10 text-xs font-bold text-slate-700 rounded-xl"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={ejecutarCambioNivelConfirmado}
+                  className={`w-full sm:w-auto h-10 text-xs font-black text-white rounded-xl shadow-xs ${
+                    modalConfirmNivel.nivel === 'TOTAL'
+                      ? 'bg-blue-700 hover:bg-blue-800'
+                      : modalConfirmNivel.nivel === 'MEDIO'
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
+                >
+                  Confirmar y Guardar Decisión
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* MODAL DE CONFIRMACIÓN: REACTIVAR MÓDULO */}
+      {modalConfirmReactivarOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 leading-tight">
+                  ¿Reactivar supervisión de mantenimiento?
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Para la Unidad <strong>{activeBusDisco}</strong> con plan guardado ({PLANTILLAS_NIVEL_CONTROL[nivelControl]?.nombre || 'Control Total'}).
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-2xl border border-slate-200/70">
+              Se volverá a mostrar el semáforo y diagnósticos de desgaste en tu pantalla principal, y tu chofer tendrá activas las alertas para reportar lubricadoras y talleres. Esta decisión se sincronizará entre todos tus dispositivos.
+            </p>
+
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setModalConfirmReactivarOpen(false)}
+                className="w-full sm:w-auto h-10 text-xs font-bold text-slate-700 rounded-xl"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={ejecutarReactivacionModulo}
+                className="w-full sm:w-auto h-10 text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs"
+              >
+                Confirmar y Reactivar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL DE POLÍTICAS DE FLOTA / PARÁMETROS DEL SOCIO */}
       {isPoliticasModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">

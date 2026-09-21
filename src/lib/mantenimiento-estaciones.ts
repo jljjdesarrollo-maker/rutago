@@ -68,29 +68,104 @@ export const PLANTILLAS_NIVEL_CONTROL: Record<NivelControlMantenimiento, Plantil
 };
 
 // ==========================================
-// PERSISTENCIA LOCAL POR AUTOBÚS (busId)
+// PERSISTENCIA LOCAL Y CLOUD POR AUTOBÚS (busId)
 // ==========================================
 
 const STORAGE_PREFIX_NIVEL = 'rg_mnt_nivel_control_';
 const STORAGE_PREFIX_ITEMS = 'rg_mnt_items_activos_';
+const STORAGE_PREFIX_MODULO = 'rg_mantenimiento_modulo_activo_';
+const STORAGE_PREFIX_DECISION = 'rg_mantenimiento_decision_';
+
+/**
+ * Consulta y sincroniza la configuración de mantenimiento con el servidor central
+ * Esto permite que las decisiones tomadas en el móvil se repliquen automáticamente en la PC y viceversa.
+ */
+export async function syncMantenimientoConfigConServidor(busId: string): Promise<any> {
+  if (typeof window === 'undefined') return null;
+  try {
+    const res = await fetch(\`/api/config/mantenimiento?busId=\${encodeURIComponent(busId)}\`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json?.success && json?.data) {
+      const data = json.data;
+      if (typeof data.moduloActivo === 'boolean') {
+        localStorage.setItem(\`\${STORAGE_PREFIX_MODULO}\${busId}\`, String(data.moduloActivo));
+      }
+      if (data.nivelControl === 'BASICO' || data.nivelControl === 'MEDIO' || data.nivelControl === 'TOTAL') {
+        localStorage.setItem(\`\${STORAGE_PREFIX_NIVEL}\${busId}\`, data.nivelControl);
+      }
+      if (data.itemsActivos && typeof data.itemsActivos === 'object') {
+        localStorage.setItem(\`\${STORAGE_PREFIX_ITEMS}\${busId}\`, JSON.stringify(data.itemsActivos));
+      }
+      if (typeof data.decisionTomada === 'boolean') {
+        localStorage.setItem(\`\${STORAGE_PREFIX_DECISION}\${busId}\`, String(data.decisionTomada));
+      }
+      window.dispatchEvent(new CustomEvent('rg_mantenimiento_config_sync', { detail: data }));
+      return data;
+    }
+  } catch (err) {
+    console.warn('Aviso: Sincronización en segundo plano con servidor:', err);
+  }
+  return null;
+}
+
+/**
+ * Notifica al servidor central en segundo plano cualquier cambio en la configuración
+ */
+export function pushMantenimientoConfigAlServidor(
+  busId: string,
+  partial: {
+    moduloActivo?: boolean;
+    nivelControl?: NivelControlMantenimiento;
+    itemsActivos?: Record<string, boolean>;
+    decisionTomada?: boolean;
+  }
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const origen = typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile')
+      ? 'Dispositivo Móvil'
+      : 'Computadora / PC';
+
+    fetch('/api/config/mantenimiento', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        busId,
+        ...partial,
+        origenDispositivo: origen,
+        fechaDecision: new Date().toISOString().split('T')[0],
+      }),
+    }).catch(err => console.warn('Aviso al sincronizar en servidor:', err));
+  } catch (err) {
+    console.warn('Error al enviar configuración de mantenimiento a la nube:', err);
+  }
+}
 
 export function getBusNivelControl(busId: string): NivelControlMantenimiento {
-  if (typeof window === 'undefined') return 'BASICO';
+  if (typeof window === 'undefined') return busId === 'BUS-01' ? 'TOTAL' : 'BASICO';
   try {
-    const saved = localStorage.getItem(`${STORAGE_PREFIX_NIVEL}${busId}`);
+    const saved = localStorage.getItem(\`\${STORAGE_PREFIX_NIVEL}\${busId}\`);
     if (saved === 'BASICO' || saved === 'MEDIO' || saved === 'TOTAL') {
       return saved;
+    }
+    // Para la Unidad 01 del Socio Líder, el plan oficial calibrado es TOTAL
+    if (busId === 'BUS-01') {
+      return 'TOTAL';
     }
   } catch (err) {
     console.error('Error al leer nivel de control de bus:', err);
   }
-  return 'BASICO';
+  return busId === 'BUS-01' ? 'TOTAL' : 'BASICO';
 }
 
 export function saveBusNivelControl(busId: string, nivel: NivelControlMantenimiento): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(`${STORAGE_PREFIX_NIVEL}${busId}`, nivel);
+    localStorage.setItem(\`\${STORAGE_PREFIX_NIVEL}\${busId}\`, nivel);
+    localStorage.setItem(\`\${STORAGE_PREFIX_DECISION}\${busId}\`, 'true');
+    pushMantenimientoConfigAlServidor(busId, { nivelControl: nivel, decisionTomada: true });
+    window.dispatchEvent(new CustomEvent('rg_mantenimiento_config_sync', { detail: { busId, nivelControl: nivel } }));
   } catch (err) {
     console.error('Error al guardar nivel de control de bus:', err);
   }
@@ -99,11 +174,15 @@ export function saveBusNivelControl(busId: string, nivel: NivelControlMantenimie
 export function getBusItemsActivosConfig(busId: string, todosCodigosCatalogo: string[]): Record<string, boolean> {
   if (typeof window === 'undefined') {
     const fallback: Record<string, boolean> = {};
-    CODIGOS_NIVEL_BASICO.forEach(cod => { fallback[cod] = true; });
+    if (busId === 'BUS-01') {
+      todosCodigosCatalogo.forEach(cod => { fallback[cod] = true; });
+    } else {
+      CODIGOS_NIVEL_BASICO.forEach(cod => { fallback[cod] = true; });
+    }
     return fallback;
   }
   try {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX_ITEMS}${busId}`);
+    const raw = localStorage.getItem(\`\${STORAGE_PREFIX_ITEMS}\${busId}\`);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (typeof parsed === 'object' && parsed !== null) {
@@ -114,7 +193,7 @@ export function getBusItemsActivosConfig(busId: string, todosCodigosCatalogo: st
     const nivel = getBusNivelControl(busId);
     const config: Record<string, boolean> = {};
 
-    if (nivel === 'TOTAL') {
+    if (nivel === 'TOTAL' || busId === 'BUS-01') {
       todosCodigosCatalogo.forEach(cod => { config[cod] = true; });
     } else if (nivel === 'MEDIO') {
       const setMedio = new Set(CODIGOS_NIVEL_MEDIO);
@@ -124,7 +203,7 @@ export function getBusItemsActivosConfig(busId: string, todosCodigosCatalogo: st
       todosCodigosCatalogo.forEach(cod => { config[cod] = setBasico.has(cod); });
     }
 
-    localStorage.setItem(`${STORAGE_PREFIX_ITEMS}${busId}`, JSON.stringify(config));
+    localStorage.setItem(\`\${STORAGE_PREFIX_ITEMS}\${busId}\`, JSON.stringify(config));
     return config;
   } catch (err) {
     console.error('Error al leer items activos de bus:', err);
@@ -135,12 +214,13 @@ export function getBusItemsActivosConfig(busId: string, todosCodigosCatalogo: st
 export function saveBusItemsActivosConfig(busId: string, config: Record<string, boolean>): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(`${STORAGE_PREFIX_ITEMS}${busId}`, JSON.stringify(config));
+    localStorage.setItem(\`\${STORAGE_PREFIX_ITEMS}\${busId}\`, JSON.stringify(config));
+    pushMantenimientoConfigAlServidor(busId, { itemsActivos: config });
+    window.dispatchEvent(new CustomEvent('rg_mantenimiento_config_sync', { detail: { busId, itemsActivos: config } }));
   } catch (err) {
     console.error('Error al guardar items activos de bus:', err);
   }
 }
-
 // ==========================================
 // ESTACIONES DE SERVICIO (TALLERES DE PARADA)
 // ==========================================
@@ -526,31 +606,55 @@ export function getCategoriaContablePorEstacion(estacionId: EstacionServicioId):
 // ============================================================================
 
 export function getBusModuloMantenimientoActivo(busId: string): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === 'undefined') return busId === 'BUS-01';
   try {
-    const raw = localStorage.getItem(`rg_mantenimiento_modulo_activo_${busId}`);
-    // Por defecto es FALSE: el socio debe decidir conscientemente activarlo y elegir su nivel
-    if (raw === null) return false;
-    return raw === "true";
-  } catch (e) {
+    const raw = localStorage.getItem(\`\${STORAGE_PREFIX_MODULO}\${busId}\`);
+    // Si ya existe registro expreso guardado localmente:
+    if (raw !== null) {
+      return raw === 'true';
+    }
+    // Para la Unidad 01 Oficial del Socio Líder, el módulo ya está activado por decisión previa
+    if (busId === 'BUS-01') {
+      return true;
+    }
+    // Para otras unidades no configuradas, por defecto es FALSE hasta que el socio lo decida
     return false;
+  } catch (e) {
+    return busId === 'BUS-01';
   }
 }
 
 export function isBusModuloMantenimientoConfigurado(busId: string): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === 'undefined') return busId === 'BUS-01';
   try {
-    return localStorage.getItem(`rg_mantenimiento_modulo_activo_${busId}`) !== null;
+    if (busId === 'BUS-01') return true;
+    return localStorage.getItem(\`\${STORAGE_PREFIX_MODULO}\${busId}\`) !== null ||
+      localStorage.getItem(\`\${STORAGE_PREFIX_DECISION}\${busId}\`) !== null;
   } catch (e) {
-    return false;
+    return busId === 'BUS-01';
+  }
+}
+
+export function isMantenimientoDecisionTomada(busId: string): boolean {
+  if (typeof window === 'undefined') return busId === 'BUS-01';
+  try {
+    if (busId === 'BUS-01') return true;
+    const dec = localStorage.getItem(\`\${STORAGE_PREFIX_DECISION}\${busId}\`);
+    if (dec === 'true') return true;
+    return localStorage.getItem(\`\${STORAGE_PREFIX_MODULO}\${busId}\`) !== null;
+  } catch (e) {
+    return busId === 'BUS-01';
   }
 }
 
 export function saveBusModuloMantenimientoActivo(busId: string, activo: boolean): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(`rg_mantenimiento_modulo_activo_${busId}`, String(activo));
+    localStorage.setItem(\`\${STORAGE_PREFIX_MODULO}\${busId}\`, String(activo));
+    localStorage.setItem(\`\${STORAGE_PREFIX_DECISION}\${busId}\`, 'true');
+    pushMantenimientoConfigAlServidor(busId, { moduloActivo: activo, decisionTomada: true });
+    window.dispatchEvent(new CustomEvent('rg_mantenimiento_config_sync', { detail: { busId, moduloActivo: activo } }));
   } catch (e) {
-    console.error("Error guardando estado de modulo mantenimiento:", e);
+    console.error('Error guardando estado de modulo mantenimiento:', e);
   }
 }
