@@ -1,4 +1,4 @@
-# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.16)
+# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.17)
 
 ## Contexto Esencial
 - **Proyecto:** RutaGo (Control de transporte, boletaje, arqueos y mantenimiento para autobuses interprovinciales/cantonales).
@@ -72,5 +72,16 @@
 - **Retiro del Ruido de Fosa:** Se transformó la botonera pesada de las 6 estaciones de taller en un panel gerencial que informa que la labor de patio corresponde al chofer, con un botón colapsable para "Registro Extraordinario del Socio" solo si llevó el bus en su día libre.
 - **Persistencia Optativa:** El switch superior de mantenimiento activo/pausado opera fluidamente por unidad (`busId`).
 
-## 9. Registro de Versiones y Contexto
+### 9. Fase 2: Semáforo Ejecutivo y Tarjetas Gerenciales de Componentes (v3.58.17)
+- **Semáforo Ejecutivo de Flota:** Resumen de 3 segundos con 3 bloques de alto contraste:
+  - 🟢 **En Regla:** Componentes con más de 1,000 km de vida restante.
+  - 🟡 **Por Vencer:** Componentes a menos de 1,000 km de servicio (filtro interactivo directo).
+  - 🔴 **Vencidos:** Alertas críticas animadas que requieren fosa inmediata.
+- **Tarjetas de Componentes Rediseñadas:**
+  - Badge de responsabilidad operativa explícito (`Chofer en Fosa` vs `Serviteca / Taller`).
+  - Switch individual integrado (`Vigilar / Ignorar`) para pausar componentes sin alterar el nivel global.
+  - Barra de desgaste continua con colores funcionales.
+  - Kilometraje restante legible con desglose del intervalo oficial de fábrica.
+
+## 10. Registro de Versiones y Contexto
 - Documento maestro completo respaldado en: `/download/RutaGo_Contexto_Maestro_v3.58.10.md`.

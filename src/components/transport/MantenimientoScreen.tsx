@@ -1043,10 +1043,23 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
 
   const totalProximos = useMemo(() => {
     return items.filter(it => {
+      if (it.codigo && itemsActivosConfig[it.codigo] === false) return false;
       const rest = it.intervaloKm - (kmActual - it.ultimoKm);
       return rest > 0 && rest <= 1000;
     }).length;
-  }, [items, kmActual]);
+  }, [items, kmActual, itemsActivosConfig]);
+
+  const totalActivosCount = useMemo(() => {
+    return items.filter(it => !it.codigo || itemsActivosConfig[it.codigo] !== false).length;
+  }, [items, itemsActivosConfig]);
+
+  const totalNormales = useMemo(() => {
+    return items.filter(it => {
+      if (it.codigo && itemsActivosConfig[it.codigo] === false) return false;
+      const rest = it.intervaloKm - (kmActual - it.ultimoKm);
+      return rest > 1000;
+    }).length;
+  }, [items, kmActual, itemsActivosConfig]);
 
   const buses = getAllBuses();
   const currentBus = buses.find(b => b.id === activeBusId);
@@ -1376,52 +1389,88 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
         </div>
 
 
-        {/* Barra de Filtros y Resumen */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setFiltroVista('TODOS')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                filtroVista === 'TODOS'
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              Todos ({items.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFiltroVista('VENCIDOS')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                filtroVista === 'VENCIDOS'
-                  ? 'bg-rose-600 text-white'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              Urgentes ({totalVencidos})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFiltroVista('CHOFER')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                filtroVista === 'CHOFER'
-                  ? 'bg-amber-600 text-white'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              Vista Chofer ({items.filter(i => i.asignadoChofer).length})
-            </button>
+        {/* ========================================================= */}
+        {/* SEMÁFORO EJECUTIVO DE SALUD DE FLOTA (RESUMEN EN 3 SEGUNDOS) */}
+        {/* ========================================================= */}
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-3.5 shadow-xs flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black text-slate-900 uppercase tracking-wider">
+              Estado de Salud de Unidad ({totalActivosCount} Activos)
+            </span>
+            {totalVencidos === 0 && totalProximos === 0 ? (
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Estado Óptimo
+              </span>
+            ) : totalVencidos > 0 ? (
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 animate-pulse flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> Atención Inmediata
+              </span>
+            ) : (
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 flex items-center gap-1">
+                <Clock className="w-3 h-3" /> Próximos Servicios
+              </span>
+            )}
           </div>
 
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setIsCatalogoModalOpen(true)}
-            className="h-8 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-200/60 flex items-center gap-1 shrink-0"
-          >
-            <Plus className="w-3.5 h-3.5" /> Biblioteca Hino
-          </Button>
+          {/* 3 Bloques Semafóricos Interactivos */}
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => setFiltroVista(filtroVista === "TODOS" ? "TODOS" : "TODOS")}
+              className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                filtroVista === "TODOS"
+                  ? "border-emerald-500 bg-emerald-50/50 shadow-xs ring-1 ring-emerald-500"
+                  : "border-slate-200 bg-slate-50/70 hover:bg-slate-100/70"
+              }`}
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <span className="text-[11px] font-bold text-slate-600">En Regla</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl font-black text-slate-900">{totalNormales}</span>
+                <span className="text-[10px] text-slate-500">ítems</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFiltroVista(filtroVista === "CHOFER" ? "TODOS" : "CHOFER")}
+              className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                filtroVista === "CHOFER"
+                  ? "border-amber-500 bg-amber-50/50 shadow-xs ring-1 ring-amber-500"
+                  : "border-slate-200 bg-slate-50/70 hover:bg-slate-100/70"
+              }`}
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                <span className="text-[11px] font-bold text-slate-600">Por Vencer</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl font-black text-amber-700">{totalProximos}</span>
+                <span className="text-[10px] text-slate-500">&lt; 1,000 km</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFiltroVista(filtroVista === "VENCIDOS" ? "TODOS" : "VENCIDOS")}
+              className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                filtroVista === "VENCIDOS"
+                  ? "border-rose-500 bg-rose-50/50 shadow-xs ring-1 ring-rose-500"
+                  : "border-slate-200 bg-slate-50/70 hover:bg-slate-100/70"
+              }`}
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
+                <span className="text-[11px] font-bold text-slate-600">Vencidos</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl font-black text-rose-700">{totalVencidos}</span>
+                <span className="text-[10px] text-slate-500">urgentes</span>
+              </div>
+            </button>
+          </div>
         </div>
 
         {/* Chips de Categorías Técnicas */}
@@ -1633,172 +1682,138 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
               const esVencido = kmRestantes <= 0;
               const esUrgente = kmRestantes > 0 && kmRestantes <= 1000;
 
-              return (
-                <Card
-                  key={item.id}
-                  className={`rounded-2xl border transition-all ${
-                    item.codigo && itemsActivosConfig[item.codigo] === false
-                      ? 'border-slate-200 bg-slate-50/70 opacity-60'
-                      : esVencido
-                      ? 'border-rose-300 bg-rose-50/40 shadow-xs'
-                      : esUrgente
-                      ? 'border-amber-300 bg-amber-50/40'
-                      : 'border-slate-200 bg-white'
-                  }`}
-                >
-                  <CardContent className="p-3.5 space-y-2.5">
-                    {/* Fila superior: Nombre, Categoría y Estado Semafórico */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                          {item.codigo && (
-                            <span className="text-[9px] font-mono font-bold bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">
-                              {item.codigo}
+              {
+                const itemEstaActivo = !item.codigo || itemsActivosConfig[item.codigo] !== false;
+
+                return (
+                  <Card
+                    key={item.id}
+                    className={`rounded-2xl border transition-all ${
+                      !itemEstaActivo
+                        ? "border-slate-200 bg-slate-50/60 opacity-60"
+                        : esVencido
+                        ? "border-rose-300 bg-rose-50/30 shadow-xs ring-1 ring-rose-200"
+                        : esUrgente
+                        ? "border-amber-300 bg-amber-50/30"
+                        : "border-slate-200/90 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <CardContent className="p-3.5 space-y-2.5">
+                      {/* Fila superior: Identificación, Delegación y Switch Activo */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                            {item.codigo && (
+                              <span className="text-[9px] font-mono font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
+                                {item.codigo}
+                              </span>
+                            )}
+                            <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200/60">
+                              {item.categoria ? item.categoria.replace("_", " ") : "Mecánica"}
                             </span>
-                          )}
-                          {item.categoria && (
-                            <span className="text-[9px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
-                              {item.categoria.replace('_', ' ')}
-                            </span>
-                          )}
-                          {item.asignadoChofer && (
-                            <span className="text-[9px] font-extrabold bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                              <UserCheck className="w-2.5 h-2.5" /> Chofer
-                            </span>
-                          )}
-                        </div>
-                        <h4 className="font-extrabold text-sm text-gray-900 truncate">
-                          {item.nombre}
-                        </h4>
-                        {item.repuestoDetalle && (
-                          <p className="text-[11px] text-gray-500 truncate">
-                            ⚙️ {item.repuestoDetalle}
-                          </p>
-                        )}
-                      </div>
-
-                      <span
-                        className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${
-                          esVencido
-                            ? 'bg-rose-600 text-white shadow-xs'
-                            : esUrgente
-                            ? 'bg-amber-500 text-slate-950 font-extrabold'
-                            : 'bg-emerald-100 text-emerald-800'
-                        }`}
-                      >
-                        {esVencido ? '¡Cambio Urgente!' : esUrgente ? 'Próximo' : 'Normal'}
-                      </span>
-                    </div>
-
-                    {/* Barra de Progreso de Odómetro */}
-                    <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          esVencido ? 'bg-rose-600' : esUrgente ? 'bg-amber-500' : 'bg-emerald-500'
-                        }`}
-                        style={{ width: `${porcentaje}%` }}
-                      />
-                    </div>
-
-                    {/* Kilometraje y Fechas */}
-                    <div className="flex items-center justify-between text-xs pt-0.5">
-                      <span className="font-medium text-gray-600">
-                        {esVencido ? (
-                          <span className="text-rose-700 font-extrabold">
-                            Excedido por {Math.abs(kmRestantes).toLocaleString()} km
-                          </span>
-                        ) : (
-                          <span>
-                            Faltan <strong>{kmRestantes.toLocaleString()} km</strong>
-                          </span>
-                        )}
-                        <span className="text-gray-400 text-[10px] ml-1.5">
-                          (Último: {item.ultimoKm.toLocaleString()} km)
-                        </span>
-                      </span>
-
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEditingItem(item);
-                          setNewUltimoKm(kmActual.toString());
-                          setCostoRegistro(item.costoEstimado ? item.costoEstimado.toString() : '');
-                          setTallerRegistro(item.tallerMecanico || '');
-                        }}
-                        className="h-8 px-2.5 rounded-xl border-gray-300 text-xs font-bold text-gray-800 hover:bg-slate-100 active:scale-95"
-                      >
-                        <RotateCcw className="w-3 h-3 mr-1 text-gray-500" />
-                        Registrar Cambio
-                      </Button>
-                    </div>
-
-                    {/* Controles para el Socio: Ajustar Intervalo, Toggle Chofer y Eliminar */}
-                    <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500 font-medium">Cada:</span>
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            step="500"
-                            defaultValue={item.intervaloKm}
-                            onBlur={e => {
-                              const val = parseInt(e.target.value, 10);
-                              if (!isNaN(val) && val > 0 && val !== item.intervaloKm) {
-                                const upd = items.map(it =>
-                                  it.id === item.id ? { ...it, intervaloKm: val } : it
-                                );
-                                saveItems(upd);
-                                toast({
-                                  title: 'Intervalo Personalizado',
-                                  description: `Nuevo intervalo de ${val.toLocaleString()} km para ${item.nombre}`,
-                                });
-                              }
-                            }}
-                            className="h-7 w-20 text-right pr-6 text-xs font-bold border-gray-200 bg-gray-50 rounded"
-                          />
-                          <span className="absolute right-1.5 top-1.5 text-[9px] text-gray-400 font-bold">
-                            km
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        {/* Switch ON/OFF del ítem para el Socio */}
-                        {item.codigo && (
-                          <div className="flex items-center gap-1.5" title="Activar o pausar este mantenimiento para esta unidad">
-                            <span className={`text-[10px] font-bold ${(itemsActivosConfig[item.codigo] ?? true) ? 'text-emerald-700' : 'text-slate-400'}`}>
-                              {(itemsActivosConfig[item.codigo] ?? true) ? 'Activo' : 'Pausado'}
-                            </span>
-                            <Switch
-                              checked={itemsActivosConfig[item.codigo] ?? true}
-                              onCheckedChange={checked => handleToggleItemActivo(item.codigo!, checked, item.nombre)}
-                              className="data-[state=checked]:bg-emerald-600 scale-75"
-                            />
+                            {item.asignadoChofer ? (
+                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-0.5">
+                                <UserCheck className="w-2.5 h-2.5" /> Chofer en Fosa
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
+                                🔧 Serviteca / Taller
+                              </span>
+                            )}
                           </div>
-                        )}
-                        <div className="flex items-center gap-1.5" title="Mostrar en la vista de cabina del chofer">
-                          <span className="text-[10px] font-bold text-amber-900">Chofer</span>
-                          <Switch
-                            checked={item.asignadoChofer}
-                            onCheckedChange={checked => handleToggleChofer(item.id, checked)}
-                            className="data-[state=checked]:bg-amber-600 scale-75"
-                          />
+                          <h4 className="font-extrabold text-sm text-slate-900 truncate">
+                            {item.nombre}
+                          </h4>
+                          {item.repuestoDetalle && (
+                            <p className="text-[11px] text-slate-500 truncate">
+                              ⚙️ {item.repuestoDetalle}
+                            </p>
+                          )}
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleEliminarDelBus(item.id, item.nombre)}
-                          className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                          title="Remover de este bus"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {/* Estado Semafórico y Switch individual */}
+                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                          <span
+                            className={`text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                              !itemEstaActivo
+                                ? "bg-slate-200 text-slate-600"
+                                : esVencido
+                                ? "bg-rose-600 text-white shadow-xs animate-pulse"
+                                : esUrgente
+                                ? "bg-amber-500 text-slate-950 font-black"
+                                : "bg-emerald-100 text-emerald-800"
+                            }`}
+                          >
+                            {!itemEstaActivo ? "Pausado" : esVencido ? "¡Cambio Urgente!" : esUrgente ? "Próximo" : "En Regla"}
+                          </span>
+
+                          {item.codigo && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[9px] text-slate-400 font-bold">
+                                {itemEstaActivo ? "Vigilar" : "Ignorar"}
+                              </span>
+                              <Switch
+                                checked={itemEstaActivo}
+                                onCheckedChange={() => handleToggleItemActivo(item.codigo!)}
+                                className="scale-75 data-[state=checked]:bg-slate-800"
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
+
+                      {/* Barra de Progreso de Odómetro y Desgaste */}
+                      <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            !itemEstaActivo
+                              ? "bg-slate-300"
+                              : esVencido
+                              ? "bg-rose-600"
+                              : esUrgente
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                          }`}
+                          style={{ width: `${porcentaje}%` }}
+                        />
+                      </div>
+
+                      {/* Kilometraje y Acción Gerencial */}
+                      <div className="flex items-center justify-between text-xs pt-0.5">
+                        <div className="font-medium text-slate-600">
+                          {esVencido ? (
+                            <span className="text-rose-700 font-black flex items-center gap-1">
+                              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                              Excedido por {Math.abs(kmRestantes).toLocaleString()} km
+                            </span>
+                          ) : (
+                            <span>
+                              Faltan <strong className="text-slate-900">{kmRestantes.toLocaleString()} km</strong>
+                            </span>
+                          )}
+                          <span className="text-slate-400 text-[10px] ml-1.5">
+                            (Intervalo: cada {item.intervaloKm.toLocaleString()} km)
+                          </span>
+                        </div>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingItem(item);
+                            setNewUltimoKm(kmActual.toString());
+                            setCostoRegistro(item.costoEstimado ? item.costoEstimado.toString() : "");
+                            setFechaRegistro(new Date().toISOString().split("T")[0]);
+                          }}
+                          className="h-7 px-2.5 text-[10px] font-extrabold uppercase rounded-lg border-slate-300 hover:bg-slate-100 text-slate-700"
+                        >
+                          Asentar Fosa
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              }              );
             })
           )}
         </div>
