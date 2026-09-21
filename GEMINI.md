@@ -1,4 +1,4 @@
-# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.15)
+# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.16)
 
 ## Contexto Esencial
 - **Proyecto:** RutaGo (Control de transporte, boletaje, arqueos y mantenimiento para autobuses interprovinciales/cantonales).
@@ -67,5 +67,10 @@
   - **Ayudante:** Venta/cobro de boletos, conteo de pasajeros y registro de egresos en ruta asentados en el arqueo del día (o arrastrados al día siguiente si hay déficit).
 - **Archivo Maestro de Respaldo:** Creado `download/RutaGo_Contexto_Maestro_v3.58.15.md` para garantizar continuidad multiplataforma.
 
-## 8. Registro de Versiones y Contexto
+### 8. Fase 1: Limpieza Gerencial de la Interfaz del Socio (v3.58.16)
+- **Odómetro Auditado Ejecutivo:** El odómetro principal ahora es de solo lectura auditada (sincronizado con turnos y vueltas). Se eliminó la caja de digitación invasiva, relegando la calibración a un enlace sutil descolgable.
+- **Retiro del Ruido de Fosa:** Se transformó la botonera pesada de las 6 estaciones de taller en un panel gerencial que informa que la labor de patio corresponde al chofer, con un botón colapsable para "Registro Extraordinario del Socio" solo si llevó el bus en su día libre.
+- **Persistencia Optativa:** El switch superior de mantenimiento activo/pausado opera fluidamente por unidad (`busId`).
+
+## 9. Registro de Versiones y Contexto
 - Documento maestro completo respaldado en: `/download/RutaGo_Contexto_Maestro_v3.58.10.md`.

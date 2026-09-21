@@ -190,6 +190,8 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     return getBusItemsActivosConfig(activeBusId);
   });
   const [mostrarSoloActivos, setMostrarSoloActivos] = useState<boolean>(true);
+  const [mostrarCalibrarOdo, setMostrarCalibrarOdo] = useState<boolean>(false);
+  const [mostrarEstacionesSocio, setMostrarEstacionesSocio] = useState<boolean>(false);
 
   // Decisión del Socio: ¿Desea utilizar las funciones de mantenimiento o solo operativas?
   const [moduloActivo, setModuloActivo] = useState<boolean>(() => {
@@ -1207,18 +1209,34 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                placeholder="Ajustar tacómetro actual..."
-                defaultValue={kmActual}
-                onBlur={e => handleUpdateKmActual(e.target.value)}
-                className="h-9 rounded-xl bg-white/10 border-white/20 text-white text-xs placeholder:text-white/40 font-bold"
-              />
-              <span className="text-[11px] text-slate-300 shrink-0 font-medium">
-                Calibrar lectura
-              </span>
+            <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Odómetro sincronizado automáticamente con turnos de ruta</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMostrarCalibrarOdo(!mostrarCalibrarOdo)}
+                className="text-[10px] font-bold text-amber-400 hover:text-amber-300 underline cursor-pointer"
+              >
+                {mostrarCalibrarOdo ? "Cerrar ajuste" : "Calibrar manual"}
+              </button>
             </div>
+
+            {mostrarCalibrarOdo && (
+              <div className="mt-3 p-3 rounded-2xl bg-black/30 border border-white/10 flex items-center gap-2">
+                <Input
+                  type="number"
+                  placeholder="Ajustar tacómetro actual..."
+                  defaultValue={kmActual}
+                  onBlur={e => handleUpdateKmActual(e.target.value)}
+                  className="h-8 rounded-xl bg-white/10 border-white/20 text-white text-xs placeholder:text-white/40 font-bold"
+                />
+                <span className="text-[10px] text-slate-300 shrink-0 font-medium">
+                  Guardar ajuste
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
