@@ -1,4 +1,4 @@
-# RutaGo - Contexto Maestro y Bitácora de Desarrollo v3.58.26
+# RutaGo - Contexto Maestro y Bitácora de Desarrollo v3.58.27
 **Fecha:** Septiembre 2026
 **Versión Activa:** `v3.58.15-socio-gerencial-mantenimiento-optativo`
 **Flota Modelo:** Hino AK (Ruta Loja – Vilcabamba – Malacatos – Yangana – La Elvira)
@@ -167,3 +167,12 @@
 - **Selector de Unidad en Mantenimiento:** Selector dinámico de bus en el encabezado de `MantenimientoScreen` para socios con más de una unidad en su flota, permitiendo auditar diferentes buses al instante.
 - **Calibración de Odómetro en Ficha de Unidad (`FlotaScreen.tsx`):** Campo oficial de Tacómetro Actual en la edición de buses que precarga el odómetro inicial tanto para el primer arqueo de ruta como para el semáforo de mantenimiento.
 - **Sugerencia Automática en ArqueoGeneralScreen:** Si un bus nuevo no tiene arqueos previos, ahora toma directamente la lectura del odómetro calibrada en la ficha de unidad (`dedicated.kmFinal`).
+
+---
+
+## 20. Blindaje Numérico de Odómetro y Corrección de `toLocaleString` (v3.58.27)
+- **Causa del Error:** Al activar o desactivar el módulo de mantenimiento en una unidad sin lecturas previas o en un navegador limpio, `resolverKmActual` devolvía `null`. Al renderizarse el bloque activo del odómetro en `MantenimientoScreen.tsx` (línea 1320), la llamada `kmActual.toLocaleString()` disparaba la excepción no capturada: `Cannot read properties of null (reading 'toLocaleString')`.
+- **Solución Implementada:**
+  1. `resolverKmActual` ahora garantiza un retorno numérico tipado estricto `number` con fallback por capas: Odómetro auditado -> LocalStorage por busId -> LocalStorage por disco -> Calibración en ficha de bus (`odometroInicial`) -> Valor base de benchmark de flota (187,420 km).
+  2. Estado `kmActual` tipado como `number` en `MantenimientoScreen.tsx` y `ChoferMantenimientoWidget.tsx`.
+  3. Renderizado defensivo en JSX con operador nullish coalescing `(kmActual ?? 187420).toLocaleString()`, evitando cualquier fallo de renderizado al conmutar el switch de activación.

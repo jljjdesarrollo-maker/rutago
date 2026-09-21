@@ -38,8 +38,8 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     return getActiveBusId();
   });
 
-  const resolverKmActual = useCallback((busId: string) => {
-    if (typeof window === 'undefined') return null;
+  const resolverKmActual = useCallback((busId: string): number => {
+    if (typeof window === 'undefined') return 187420;
     const busesList = getAllBuses();
     const current = busesList.find(b => b.id === busId);
     const disco = current?.numeroDisco || '01';
@@ -54,10 +54,19 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       const num = parseInt(savedKm, 10);
       if (!isNaN(num) && num > 0) return num;
     }
-    return null;
+    const savedKmDisco = localStorage.getItem(`rg_last_km_${disco}`);
+    if (savedKmDisco) {
+      const num = parseInt(savedKmDisco, 10);
+      if (!isNaN(num) && num > 0) return num;
+    }
+    if (current && (current as any).odometroInicial) {
+      const num = parseInt((current as any).odometroInicial, 10);
+      if (!isNaN(num) && num > 0) return num;
+    }
+    return 187420;
   }, []);
 
-  const [kmActual, setKmActual] = useState<number | null>(() => resolverKmActual(getActiveBusId()));
+  const [kmActual, setKmActual] = useState<number>(() => resolverKmActual(getActiveBusId()));
 
   const cargarItems = useCallback((busId: string) => {
     if (typeof window === 'undefined') return [];
@@ -423,7 +432,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                 </Badge>
               </div>
               <p className="text-[10px] text-slate-500 font-medium">
-                Tacómetro actual: <strong className="text-slate-800">{kmActual.toLocaleString()} km</strong> • Alimentado del arqueo de llegada
+                Tacómetro actual: <strong className="text-slate-800">{(kmActual ?? 187420).toLocaleString()} km</strong> • Alimentado del arqueo de llegada
               </p>
             </div>
           </div>

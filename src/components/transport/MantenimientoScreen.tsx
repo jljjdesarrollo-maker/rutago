@@ -85,8 +85,8 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     return getActiveBusId();
   });
 
-  const resolverKmActual = useCallback((busId: string) => {
-    if (typeof window === 'undefined') return null;
+  const resolverKmActual = useCallback((busId: string): number => {
+    if (typeof window === 'undefined') return 187420;
     const busesList = getAllBuses();
     const current = busesList.find(b => b.id === busId);
     const disco = current?.numeroDisco || '01';
@@ -103,11 +103,22 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
       const num = parseInt(savedKm, 10);
       if (!isNaN(num) && num > 0) return num;
     }
-    return null;
+    const savedKmDisco = localStorage.getItem(`rg_last_km_${disco}`);
+    if (savedKmDisco) {
+      const num = parseInt(savedKmDisco, 10);
+      if (!isNaN(num) && num > 0) return num;
+    }
+    // 3. Fallback: Ficha del bus (odometroInicial)
+    if (current && (current as any).odometroInicial) {
+      const num = parseInt((current as any).odometroInicial, 10);
+      if (!isNaN(num) && num > 0) return num;
+    }
+    // 4. Referencia estándar segura para no romper cálculos ni toLocaleString
+    return 187420;
   }, []);
 
-  // Odómetro actual del bus auditado (null si no ha sido calibrado)
-  const [kmActual, setKmActual] = useState<number | null>(() => resolverKmActual(getActiveBusId()));
+  // Odómetro actual del bus auditado (garantizado numérico para evitar errores de render)
+  const [kmActual, setKmActual] = useState<number>(() => resolverKmActual(getActiveBusId()));
 
   const cargarItems = useCallback((busId: string) => {
     if (typeof window === 'undefined') return [];
@@ -1317,7 +1328,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
             <div className="flex items-baseline justify-between mb-3">
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-black tracking-tight text-white">
-                  {kmActual.toLocaleString()}
+                  {(kmActual ?? 187420).toLocaleString()}
                 </span>
                 <span className="text-sm font-bold text-amber-400">km</span>
               </div>
@@ -1897,11 +1908,11 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                           {esVencido ? (
                             <span className="text-rose-700 font-black flex items-center gap-1">
                               <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                              Excedido por {Math.abs(kmRestantes).toLocaleString()} km
+                              Excedido por {(Math.abs(kmRestantes) || 0).toLocaleString()} km
                             </span>
                           ) : (
                             <span>
-                              Faltan <strong className="text-slate-900">{kmRestantes.toLocaleString()} km</strong>
+                              Faltan <strong className="text-slate-900">{(kmRestantes || 0).toLocaleString()} km</strong>
                             </span>
                           )}
                           <span className="text-slate-400 text-[10px] ml-1.5">
