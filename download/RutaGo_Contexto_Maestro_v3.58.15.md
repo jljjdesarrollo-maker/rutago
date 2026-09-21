@@ -1,4 +1,4 @@
-# RutaGo - Contexto Maestro y Bitácora de Desarrollo v3.58.17
+# RutaGo - Contexto Maestro y Bitácora de Desarrollo v3.58.18
 **Fecha:** Septiembre 2026
 **Versión Activa:** `v3.58.15-socio-gerencial-mantenimiento-optativo`
 **Flota Modelo:** Hino AK (Ruta Loja – Vilcabamba – Malacatos – Yangana – La Elvira)

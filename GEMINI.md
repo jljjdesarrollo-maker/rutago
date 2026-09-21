@@ -1,4 +1,4 @@
-# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.17)
+# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.18)
 
 ## Contexto Esencial
 - **Proyecto:** RutaGo (Control de transporte, boletaje, arqueos y mantenimiento para autobuses interprovinciales/cantonales).
@@ -83,5 +83,11 @@
   - Barra de desgaste continua con colores funcionales.
   - Kilometraje restante legible con desglose del intervalo oficial de fábrica.
 
-## 10. Registro de Versiones y Contexto
+### 10. Fase 3: Asistente de Parámetros y Políticas de Unidad (v3.58.18)
+- **Botón Gerencial Políticas en Cabecera:** Acceso rápido para el socio en la barra superior.
+- **Modal de Políticas de Servicio:** Permite al socio personalizar los intervalos de kilometraje según sus marcas de repuestos y lubricantes (ej. extender aceite a 6,000 o 7,000 km, ajustar zapatas o filtros).
+- **Restablecer Fábrica Hino AK:** Función de un toque para volver a los intervalos oficiales del manual de taller.
+- **Persistencia por Unidad:** Los cambios aplican de inmediato en los cálculos de porcentaje y semáforos de la unidad.
+
+## 11. Registro de Versiones y Contexto
 - Documento maestro completo respaldado en: `/download/RutaGo_Contexto_Maestro_v3.58.10.md`.

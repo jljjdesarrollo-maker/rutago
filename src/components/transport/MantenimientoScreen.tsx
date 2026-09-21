@@ -21,7 +21,7 @@ import {
   Check,
   Search,
   Filter,
-  Sliders,
+  Sliders, Settings2, RotateCcw,
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -192,6 +192,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   const [mostrarSoloActivos, setMostrarSoloActivos] = useState<boolean>(true);
   const [mostrarCalibrarOdo, setMostrarCalibrarOdo] = useState<boolean>(false);
   const [mostrarEstacionesSocio, setMostrarEstacionesSocio] = useState<boolean>(false);
+  const [isPoliticasModalOpen, setIsPoliticasModalOpen] = useState<boolean>(false);
 
   // Decisión del Socio: ¿Desea utilizar las funciones de mantenimiento o solo operativas?
   const [moduloActivo, setModuloActivo] = useState<boolean>(() => {
@@ -1093,14 +1094,25 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
               </p>
             </div>
           </div>
-          <Button
-            size="sm"
-            onClick={() => setIsCatalogoModalOpen(true)}
-            className="h-9 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-sm active:scale-95"
-          >
-            <BookOpen className="w-4 h-4" />
-            <span className="hidden sm:inline">Biblioteca</span> Hino AK
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsPoliticasModalOpen(true)}
+              className="h-9 px-2.5 rounded-xl border-slate-700 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 active:scale-95"
+            >
+              <Settings2 className="w-4 h-4 text-amber-400" />
+              <span className="hidden sm:inline">Políticas</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setIsCatalogoModalOpen(true)}
+              className="h-9 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-sm active:scale-95"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span className="hidden sm:inline">Biblioteca</span> Hino AK
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -2403,6 +2415,110 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
           </div>
         </div>
       )}
+    
+      {/* MODAL DE POLÍTICAS DE FLOTA / PARÁMETROS DEL SOCIO */}
+      {isPoliticasModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b pb-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                  <Settings2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Políticas de Servicio de Unidad
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Define los intervalos oficiales según las marcas y lubricantes que compras
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPoliticasModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto pr-1 flex-1 text-xs">
+              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 leading-relaxed">
+                💡 <strong>Autonomía del Socio:</strong> Si utilizas aceite sintético de larga duración (ej. 7,000 km) o lubricas zapatas con mayor frecuencia, ajusta los parámetros aquí para que el odómetro del chofer calcule con exactitud la vida útil.
+              </div>
+
+              <div className="space-y-3">
+                {items
+                  .filter(it => it.codigo && ["HINO-01", "HINO-04", "HINO-09", "HINO-10", "HINO-11", "HINO-13"].includes(it.codigo))
+                  .map(it => (
+                    <div key={it.id} className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-[9px] font-mono font-bold bg-white text-slate-700 px-1.5 py-0.2 rounded border">
+                            {it.codigo}
+                          </span>
+                          <span className="text-xs font-black text-slate-900 truncate">
+                            {it.nombre}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500">
+                          {it.repuestoDetalle || "Parámetro crítico de flota"}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Input
+                          type="number"
+                          defaultValue={it.intervaloKm}
+                          onBlur={e => {
+                            const val = parseInt(e.target.value, 10);
+                            if (!isNaN(val) && val > 0) {
+                              const updated = items.map(x => x.id === it.id ? { ...x, intervaloKm: val } : x);
+                              saveItems(updated);
+                              toast({
+                                title: "Intervalo Actualizado",
+                                description: `${it.nombre} configurado para cambiarse cada ${val.toLocaleString()} km.`,
+                              });
+                            }
+                          }}
+                          className="w-24 h-8 text-xs font-black text-right rounded-xl bg-white border-slate-300"
+                        />
+                        <span className="text-slate-500 font-bold text-[11px]">km</span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t flex items-center justify-between shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  handleSincronizarBloqueMotor();
+                  toast({
+                    title: "Intervalos Restablecidos",
+                    description: "Se restauraron los parámetros oficiales de fábrica Hino AK.",
+                  });
+                }}
+                className="h-9 text-xs font-bold text-slate-600 rounded-xl"
+              >
+                Restablecer Fábrica
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsPoliticasModalOpen(false)}
+                className="h-9 px-5 text-xs font-black rounded-xl bg-slate-900 text-white hover:bg-slate-800"
+              >
+                Listo y Aplicar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
