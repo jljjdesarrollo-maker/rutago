@@ -176,7 +176,18 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
 
   // Filtro de la vista principal del socio
   const [filtroVista, setFiltroVista] = useState<'TODOS' | 'VENCIDOS' | 'CHOFER'>('TODOS');
-  const [filtroCategoria, setFiltroCategoria] = useState<string>('TODAS');
+  const [filtroCategoria, setFiltroCategoria] = useState<string>(TODAS);
+
+  // Nivel de Control del Socio (BÁSICO 7 | MEDIO 15 | TOTAL 27) y Switches
+  const [nivelControl, setNivelControl] = useState<NivelControlMantenimiento>(() => {
+    if (typeof window === undefined) return BASICO;
+    return getBusNivelControl(activeBusId);
+  });
+  const [itemsActivosConfig, setItemsActivosConfig] = useState<Record<string, boolean>>(() => {
+    if (typeof window === undefined) return {};
+    return getBusItemsActivosConfig(activeBusId);
+  });
+  const [mostrarSoloActivos, setMostrarSoloActivos] = useState<boolean>(true);
 
   const saveItems = (updated: MantenimientoBusItem[]) => {
     setItems(updated);

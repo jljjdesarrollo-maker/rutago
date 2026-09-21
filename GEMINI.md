@@ -1,4 +1,4 @@
-# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.13)
+# RutaGo - Directivas Operativas y Estado del Proyecto (v3.58.14)
 
 ## Contexto Esencial
 - **Proyecto:** RutaGo (Control de transporte, boletaje, arqueos y mantenimiento para autobuses interprovinciales/cantonales).
@@ -54,5 +54,9 @@
   * Reseteo simultáneo de odómetros para todos los componentes seleccionados.
   * **Asiento Contable Automático:** Integración con `saveOwnerExpense` en la categoría contable exacta (`ACEITES_FILTROS`, `FRENOS_RODAJE`, `MOTOR_CAJA_CORONA`, `LLANTAS`).
 
-## 6. Registro de Versiones y Contexto
+### 6. Corrección y Sincronización Inmediata de los 3 Niveles de Control (v3.58.14)
+- **Filtro Inmediato Activo por Defecto:** Al seleccionar **BÁSICO (7)** o **MEDIO (15)**, la lista en pantalla se filtra al instante sin depender de la pestaña activa, ocultando los ítems no seleccionados según el switch "Solo Activos".
+- **Contador Dinámico Sincronizado:** El botón de la pestaña Todos ahora refleja exactamente los ítems que el socio decidió controlar (`itemsFiltrados.length`).
+
+## 7. Registro de Versiones y Contexto
 - Documento maestro completo respaldado en: `/download/RutaGo_Contexto_Maestro_v3.58.10.md`.
