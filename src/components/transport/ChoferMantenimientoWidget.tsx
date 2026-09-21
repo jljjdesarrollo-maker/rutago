@@ -28,7 +28,14 @@ import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, sub
 import { getCatalogoMaestroGlobal } from '@/lib/mantenimiento-catalogo';
 import { saveOwnerExpense } from '@/lib/owner-expenses-storage';
 import { type MantenimientoBusItem } from './MantenimientoScreen';
-import { getBusModuloMantenimientoActivo } from '@/lib/mantenimiento-estaciones';
+import { 
+  getBusModuloMantenimientoActivo, 
+  type EstacionServicioId, 
+  ESTACIONES_SERVICIO_CONFIG, 
+  getComboUnidad, 
+  resolverCascadaEstacion, 
+  getCategoriaContablePorEstacion 
+} from '@/lib/mantenimiento-estaciones';
 
 export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void }) {
   const { toast } = useToast();
@@ -244,6 +251,174 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       description: `${modalItem.nombre} registrado con éxito en ${km.toLocaleString()} km.`,
     });
     setModalItem(null);
+  };
+
+  // FASE 2: Modal Oficial de Estaciones de Taller / Combos de Parada del Chofer
+  const [estacionSeleccionadaChofer, setEstacionSeleccionadaChofer] = useState<EstacionServicioId | null>(null);
+  const [estacionItemsChofer, setEstacionItemsChofer] = useState<{ codigo: string; nombre: string; intervaloKm: number; preMarcado: boolean; opcionalTexto?: string }[]>([]);
+  const [estacionChecksChofer, setEstacionChecksChofer] = useState<Record<string, boolean>>({});
+  const [estacionKmChofer, setEstacionKmChofer] = useState<string>('');
+  const [estacionCostoChofer, setEstacionCostoChofer] = useState<string>('');
+  const [estacionFacturaChofer, setEstacionFacturaChofer] = useState<string>('');
+  const [estacionTallerChofer, setEstacionTallerChofer] = useState<string>('');
+
+  // Abrir Modal de Parada de Taller cargando la receta oficial del socio
+  const handleAbrirEstacionChofer = (estacionId: EstacionServicioId) => {
+    const config = ESTACIONES_SERVICIO_CONFIG[estacionId];
+    if (!config) return;
+
+    // Cargar combo de la unidad afinado por el socio en Fase 1
+    const comboData = getComboUnidad(activeBusId, estacionId);
+    
+    // Checks basados en la receta del socio
+    const checksMap: Record<string, boolean> = {};
+    comboData.items.forEach(it => {
+      checksMap[it.codigo] = it.preMarcado;
+    });
+
+    setEstacionSeleccionadaChofer(estacionId);
+    setEstacionItemsChofer(comboData.items);
+    setEstacionChecksChofer(checksMap);
+    setEstacionKmChofer(kmActual.toString());
+    setEstacionCostoChofer('');
+    setEstacionFacturaChofer('');
+    setEstacionTallerChofer(
+      estacionId === 'LUBRICADORA' ? 'Lubricadora Vilcabamba' :
+      estacionId === 'FRENOS_RUEDAS' ? 'Taller de Frenos Don Fausto' :
+      estacionId === 'MNT_MAYOR' ? 'Taller Mecánico Especializado Hino' :
+      estacionId === 'ADMISION_AIRE' ? 'Taller de Filtros y Neumática' :
+      estacionId === 'ALINEACION' ? 'Serviteca y Alineación Continental' :
+      estacionId === 'RADIADOR' ? 'Taller Radiadores Loja' : 'Terminal / Taller Parada'
+    );
+  };
+
+  // Alternar ítem con 1 solo toque en fosa (soporta resolver cascada)
+  const handleToggleItemChofer = (codigo: string) => {
+    setEstacionChecksChofer(prev => {
+      const nuevoValor = !prev[codigo];
+      const actualizado = { ...prev, [codigo]: nuevoValor };
+
+      // Si se activó mantenimiento mayor con cascada
+      if (nuevoValor) {
+        const activos = Object.keys(actualizado).filter(c => actualizado[c]);
+        const resueltos = resolverCascadaEstacion(activos);
+        resueltos.forEach(c => {
+          actualizado[c] = true;
+        });
+      }
+      return actualizado;
+    });
+  };
+
+  // Asentar Parada de Taller: RESIDUO INMUTABLE -> Reset inmediato de odómetro a 0 km transcurridos
+  const handleAsentarParadaChofer = () => {
+    if (!estacionSeleccionadaChofer) return;
+    const config = ESTACIONES_SERVICIO_CONFIG[estacionSeleccionadaChofer];
+    if (!config) return;
+
+    const km = parseInt(estacionKmChofer, 10);
+    if (isNaN(km) || km <= 0) {
+      toast({
+        title: 'Kilometraje inválido',
+        description: 'Ingresa la lectura actual del tacómetro del autobús.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const codigosMarcados = Object.keys(estacionChecksChofer).filter(c => estacionChecksChofer[c]);
+    if (codigosMarcados.length === 0) {
+      toast({
+        title: 'Selecciona al menos un componente',
+        description: 'Debes marcar las tareas que efectivamente se ejecutaron en el taller.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const storageKey = 'rg_mantenimientos_v2_' + activeBusId;
+    const catalogo = getCatalogoMaestroGlobal();
+    let fullList: MantenimientoBusItem[] = [];
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) fullList = JSON.parse(saved);
+    } catch {}
+
+    const tallerStr = estacionTallerChofer.trim() || config.nombre;
+    const facturaDetalle = estacionFacturaChofer.trim() ? 'Fac: ' + estacionFacturaChofer.trim() : '';
+    const tallerCompleto = facturaDetalle ? tallerStr + ' (' + facturaDetalle + ')' : tallerStr;
+    const valorTotal = parseFloat(estacionCostoChofer) || 0;
+    const costoPorItem = valorTotal > 0 ? Math.round((valorTotal / codigosMarcados.length) * 100) / 100 : 0;
+
+    // REGLA MECÁNICA INMUTABLE: Reseteo inmediato del últimoKm al valor actual del odómetro
+    codigosMarcados.forEach(cod => {
+      const catItem = catalogo.find(c => c.codigo === cod);
+      const index = fullList.findIndex(it => it.codigo === cod);
+      if (index >= 0) {
+        fullList[index] = {
+          ...fullList[index],
+          ultimoKm: km,
+          fechaUltimo: today,
+          tallerMecanico: tallerCompleto,
+          costoEstimado: costoPorItem > 0 ? costoPorItem : fullList[index].costoEstimado,
+        };
+      } else {
+        fullList.push({
+          id: 'mbus-' + cod + '-' + Date.now(),
+          catalogoId: catItem?.id,
+          codigo: cod,
+          nombre: catItem?.nombre || cod,
+          categoria: (catItem?.categoria as any) || 'MOTOR',
+          intervaloKm: catItem?.intervaloKmOficial || 5000,
+          ultimoKm: km,
+          fechaUltimo: today,
+          tallerMecanico: tallerCompleto,
+          costoEstimado: costoPorItem,
+          repuestoDetalle: catItem?.especificacionLubricanteRepuesto || '',
+          asignadoChofer: true,
+          activo: true,
+        });
+      }
+    });
+
+    localStorage.setItem(storageKey, JSON.stringify(fullList));
+
+    // Guardar odómetro actualizado del bus si es mayor al registrado
+    saveBusOdometer(disco, km.toString(), 'Taller ' + config.nombre);
+    setKmActual(km);
+
+    // Actualizar lista en pantalla del chofer
+    setItems(fullList.filter(it => it.asignadoChofer && it.activo));
+
+    // Integración contable si se especificó costo
+    if (valorTotal > 0) {
+      try {
+        saveOwnerExpense({
+          id: 'gasto-parada-' + Date.now(),
+          busId: activeBusId,
+          category: getCategoriaContablePorEstacion(estacionSeleccionadaChofer) as any,
+          amount: valorTotal,
+          date: today,
+          description: 'Parada Técnica ' + config.nombre + ' [' + codigosMarcados.join(', ') + ']',
+          provider: tallerStr,
+          invoiceNumber: estacionFacturaChofer.trim() || undefined,
+          odometerKm: km,
+          paidBy: 'CHOFER',
+          isFinanced: false,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error('Error registrando gasto de parada:', err);
+      }
+    }
+
+    toast({
+      title: '⚡ Parada de Taller Asentada',
+      description: codigosMarcados.length + ' componentes reseteados a 0 km recorridos en ' + km.toLocaleString() + ' km (Bus ' + disco + ').',
+    });
+
+    setEstacionSeleccionadaChofer(null);
   };
 
   // Modal de Registro Rápido de Lubricadora (Combo)
@@ -499,43 +674,52 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           )}
         </div>
 
-        {/* Botón Destacado: REGISTRO RÁPIDO DE LUBRICADORA */}
-        <button
-          type="button"
-          onClick={() => {
-            setComboKm(kmActual.toString());
-            setComboFacturaValor('');
-            setComboFacturaNum('');
-            setComboTaller('Lubricadora Vilcabamba');
-            setComboChecks({
-              aceite: true,
-              filtroAceite: true,
-              trampaAgua: true,
-              filtroCombustible: true,
-              filtroAireSecundario: false, // Desmarcado por defecto según indicación del usuario
-              filtroAirePrimario: false,   // Desmarcado por defecto según indicación del usuario
-            });
-            setIsComboModalOpen(true);
-          }}
-          className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-600 hover:to-amber-500 text-slate-950 font-black text-xs shadow-xs border border-amber-400 flex items-center justify-between transition-all active:scale-[0.99] cursor-pointer"
-        >
-          <div className="flex items-center gap-2">
-            <span className="p-1 rounded-lg bg-slate-950 text-amber-400 flex items-center justify-center shadow-xs">
-              <Zap className="w-3.5 h-3.5 fill-amber-400" />
-            </span>
-            <div className="text-left">
-              <span className="uppercase tracking-tight font-black text-xs block leading-tight">
-                Registro Rápido de Lubricadora
+        {/* FASE 2: BOTONERA DE ESTACIONES DE TALLER / COMBOS EN RUTA PARA CHOFER */}
+        <div className="bg-slate-900 text-white rounded-2xl p-3 shadow-md space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="p-1 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center shadow-xs">
+                <Zap className="w-3.5 h-3.5 fill-slate-950" />
               </span>
-              <span className="text-[10px] text-slate-800 font-semibold block leading-tight">
-                Aceite + Tríada de Filtros en 1 toque
-              </span>
+              <div>
+                <span className="text-xs font-black uppercase tracking-tight text-amber-300 block leading-tight">
+                  Paradas de Taller y Combos (Ruta)
+                </span>
+                <span className="text-[10px] text-slate-300 font-medium block leading-tight">
+                  Toca la estación para asentar tareas con receta de tu socio
+                </span>
+              </div>
             </div>
+            <Badge className="bg-amber-400 text-slate-950 text-[10px] font-black border-0 shrink-0">
+              1 Toque ⚡
+            </Badge>
           </div>
-          <Badge className="bg-slate-950 text-amber-400 text-[10px] px-2 py-0.5 font-black border-0 shrink-0">
-            Combo ⚡
-          </Badge>
-        </button>
+
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 pt-1">
+            {(['LUBRICADORA', 'FRENOS_RUEDAS', 'MNT_MAYOR', 'ADMISION_AIRE', 'ALINEACION', 'RADIADOR'] as EstacionServicioId[]).map(estId => {
+              const est = ESTACIONES_SERVICIO_CONFIG[estId];
+              const comboUnidad = getComboUnidad(activeBusId, estId);
+              return (
+                <button
+                  key={estId}
+                  type="button"
+                  onClick={() => handleAbrirEstacionChofer(estId)}
+                  className="flex flex-col items-center justify-center p-2 rounded-xl bg-white/5 hover:bg-white/15 active:scale-95 border border-white/10 transition-all cursor-pointer text-center group"
+                >
+                  <span className="text-lg mb-0.5 group-hover:scale-110 transition-transform">
+                    {est.icono}
+                  </span>
+                  <span className="text-[10px] font-black text-slate-100 leading-tight truncate w-full">
+                    {est.nombre.split(' ')[0]}
+                  </span>
+                  <span className="text-[8px] text-amber-400 font-bold mt-0.5">
+                    {comboUnidad.items.length} ítems
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Lista de tareas tipo semáforo */}
         <div className="space-y-2">
@@ -689,7 +873,202 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         </div>
       )}
 
-      {/* Modal: REGISTRO RÁPIDO DE LUBRICADORA */}
+            {/* FASE 2: MODAL EJECUCIÓN DE PARADA DE TALLER DEL CHOFER (RESETEO INMUTABLE) */}
+      {estacionSeleccionadaChofer && (() => {
+        const config = ESTACIONES_SERVICIO_CONFIG[estacionSeleccionadaChofer];
+        if (!config) return null;
+        const totalItems = estacionItemsChofer.length;
+        const totalMarcados = Object.values(estacionChecksChofer).filter(Boolean).length;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto flex flex-col">
+              {/* Cabecera */}
+              <div className="flex items-start justify-between border-b pb-3 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-slate-900 text-amber-400 flex items-center justify-center text-xl shadow-xs">
+                    {config.icono}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-base font-black text-slate-900 leading-tight">
+                        {config.nombre}
+                      </h3>
+                      <Badge className="bg-amber-100 text-amber-900 border-0 text-[10px] font-black">
+                        Bus {disco}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      Receta autorizada por tu socio • Toca tareas extras si se hicieron en fosa
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEstacionSeleccionadaChofer(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Tacómetro / Odómetro actual del bus */}
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-1.5 shrink-0">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                    <Gauge className="w-4 h-4 text-amber-700" />
+                    Tacómetro del Tablero (Km)
+                  </Label>
+                  <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-tight">
+                    Lectura Obligatoria
+                  </span>
+                </div>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={estacionKmChofer}
+                    onChange={e => setEstacionKmChofer(e.target.value)}
+                    placeholder={kmActual.toString()}
+                    className="h-11 rounded-xl text-lg font-black bg-white border-amber-300 pr-12 text-slate-900"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-extrabold text-slate-500">
+                    KM
+                  </span>
+                </div>
+                <p className="text-[10px] text-amber-900 font-medium leading-tight">
+                  Al guardar, todos los componentes marcados se resetearán inmediatamente a <strong>0 km recorridos</strong>.
+                </p>
+              </div>
+
+              {/* Lista de Componentes del Combo con 1 solo toque */}
+              <div className="space-y-1.5 flex-1 min-h-[140px]">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[11px] font-black text-slate-800 uppercase tracking-wider">
+                    Tareas Realizadas ({totalMarcados}/{totalItems})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const todos = totalMarcados === totalItems;
+                      const nuevoMap: Record<string, boolean> = {};
+                      estacionItemsChofer.forEach(it => {
+                        nuevoMap[it.codigo] = !todos;
+                      });
+                      setEstacionChecksChofer(nuevoMap);
+                    }}
+                    className="text-[10px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                  >
+                    {totalMarcados === totalItems ? 'Desmarcar todos' : 'Marcar todos'}
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto p-1 bg-slate-50 rounded-2xl border border-slate-200">
+                  {estacionItemsChofer.map(it => {
+                    const estaActivo = !!estacionChecksChofer[it.codigo];
+                    return (
+                      <div
+                        key={it.codigo}
+                        onClick={() => handleToggleItemChofer(it.codigo)}
+                        className={}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className={}
+                          >
+                            {estaActivo && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </div>
+                          <div className="min-w-0">
+                            <span className={}>
+                              {it.nombre}
+                            </span>
+                            <span className="text-[9px] text-slate-500 block truncate">
+                              Ciclo: {it.intervaloKm.toLocaleString()} km {it.opcionalTexto ? '• ' + it.opcionalTexto : ''}
+                            </span>
+                          </div>
+                        </div>
+
+                        {it.preMarcado ? (
+                          <Badge className="bg-amber-100 text-amber-900 border-0 text-[8px] py-0 px-1 font-bold shrink-0">
+                            Receta Socio
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-slate-100 text-slate-600 border-0 text-[8px] py-0 px-1 font-medium shrink-0">
+                            Extra Fosa
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Datos de Comprobante / Factura */}
+              <div className="space-y-2 pt-1 border-t shrink-0">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Valor Total Factura / Nota ($)
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={estacionCostoChofer}
+                      onChange={e => setEstacionCostoChofer(e.target.value)}
+                      placeholder="0.00"
+                      className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300 font-bold text-emerald-800"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Nº Factura / Nota
+                    </Label>
+                    <Input
+                      value={estacionFacturaChofer}
+                      onChange={e => setEstacionFacturaChofer(e.target.value)}
+                      placeholder="ej. 001-002-1458"
+                      className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Taller / Lugar de Servicio
+                  </Label>
+                  <Input
+                    value={estacionTallerChofer}
+                    onChange={e => setEstacionTallerChofer(e.target.value)}
+                    placeholder="Nombre del taller o lubricadora"
+                    className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300"
+                  />
+                </div>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex items-center gap-2 pt-2 border-t shrink-0">
+                <Button
+                  type="button"
+                  onClick={() => setEstacionSeleccionadaChofer(null)}
+                  variant="ghost"
+                  className="flex-1 h-11 rounded-xl text-gray-600 font-bold text-xs cursor-pointer"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleAsentarParadaChofer}
+                  className="flex-1 h-11 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Zap className="w-4 h-4 fill-slate-950" />
+                  Asentar y Resetear (0 km)
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+{/* Modal: REGISTRO RÁPIDO DE LUBRICADORA */}
       {isComboModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">

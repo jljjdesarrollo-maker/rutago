@@ -259,7 +259,7 @@
   * Si en fosa realizaron tareas adicionales no preseleccionadas (ej. soplado de filtro, lavado de malla pasillo, engrase de chasis), el chofer las marca con 1 tap.
   * Ingreso del Odómetro actual del velocímetro/tacómetro y costo total pactado.
 - **Regla Mecánica Inmutable:** El contador de kilometraje de todos los ítems marcados se resetea inmediatamente a 0 km transcurridos en el momento del asentamiento, independiente de cómo o cuándo se pague.
-  * Estado: [PENDIENTE TRAS FASE 1]
+  * Estado: [COMPLETADO v3.59.2]
 
 #### FASE 3: Gestión del Pago y Arqueo por el Ayudante (Commit: feat(ayudante): v3.59.3 - bifurcacion de pago de parada, arrastre de saldo de VT y liquidacion en arqueo)
 - **Alcance Ayudante:** Responsable del dinero del bus. Registra quién y cómo se paga el servicio:
