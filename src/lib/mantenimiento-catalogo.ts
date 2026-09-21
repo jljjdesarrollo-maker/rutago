@@ -23,6 +23,7 @@ export interface MantenimientoCatalogoItem {
 export const EFECTO_CASCADA_TRANSMISION: Record<string, string[]> = {
   'MNT-MNT-CAJA': ['MNT-ACEITE-CAJA', 'MNT-VALVULINA-CAJA', 'MNT-KIT-EMBRAGUE'],
   'MNT-MNT-CORONA': ['MNT-ACEITE-CORONA', 'MNT-VALVULINA-CORONA'],
+  'MNT-BATERIAS-PAR': ['MNT-ROTACION-BATERIAS'],
 };
 
 export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
@@ -221,6 +222,35 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
     activoBiblioteca: true,
     prioridad: 'ALTA',
     observacionesMecanica: 'Sustitución preventiva a los 100,000 km junto con el lavado de radiador y coolant.',
+  },
+  {
+    id: 'hino-rotacion-bat',
+    codigo: 'MNT-ROTACION-BATERIAS',
+    nombre: 'Rotación Mensual de Baterías (Intercambio A⇄B y Bornes)',
+    categoria: 'MOTOR',
+    intervaloKmOficial: 8600,
+    intervaloDiasAprox: 30,
+    especificacionLubricanteRepuesto: 'Mantenimiento preventivo en patio: intercambio físico posición Batería 1 ⇄ Batería 2 (24V serie), desulfatado y ajuste de terminales',
+    codigoRepuestoReferencia: 'Sistema 24V Serie (2x12V)',
+    asignadoChoferPorDefecto: true,
+    activoBiblioteca: true,
+    prioridad: 'ALTA',
+    observacionesMecanica: 'Tarea de rutina del conductor en patio. Balancea la carga electroquímica y térmica a 24V para duplicar su vida útil.',
+  },
+  {
+    id: 'hino-baterias-par',
+    codigo: 'MNT-BATERIAS-PAR',
+    nombre: 'Renovación de Baterías (Juego Par 24V - 2 Años)',
+    categoria: 'MOTOR',
+    intervaloKmOficial: 200000,
+    intervaloDiasAprox: 730,
+    especificacionLubricanteRepuesto: 'Juego de 2 Baterías de 12V 27M / 4D Heavy Duty conectadas en serie 24V',
+    codigoRepuestoReferencia: 'Par 12V 1100-1400 CCA / 150-180 Ah',
+    asignadoChoferPorDefecto: false,
+    activoBiblioteca: true,
+    prioridad: 'CRITICA',
+    observacionesMecanica: 'Reemplazo preventivo del par completo a los 2 años (~200,000 km). Su renovación resetea en cascada la rotación.',
+    efectoCascadaCodigos: ['MNT-ROTACION-BATERIAS'],
   },
   {
     id: 'hino-09',
@@ -422,7 +452,7 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
   },
 ];
 
-const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v3_58_9';
+const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v3_59_4';
 
 export function getCatalogoMaestroGlobal(): MantenimientoCatalogoItem[] {
   if (typeof window === 'undefined') return CATALOGO_MAESTRO_HINO_AK;

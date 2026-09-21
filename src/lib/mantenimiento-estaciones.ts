@@ -31,6 +31,7 @@ export const CODIGOS_NIVEL_BASICO: string[] = [
 
 export const CODIGOS_NIVEL_MEDIO: string[] = [
   ...CODIGOS_NIVEL_BASICO,
+  'MNT-ROTACION-BATERIAS',  // Rotación Mensual de Baterías Chofer (8,600 km / 30 días)
   'MNT-ACEITE-CAJA',        // Valvulina de Caja (30,000 km)
   'MNT-ACEITE-CORONA',      // Valvulina de Corona (30,000 km)
   'MNT-SOPLADO-AIRE',       // Soplado de Filtro de Aire (5,000 km)
@@ -52,17 +53,17 @@ export const PLANTILLAS_NIVEL_CONTROL: Record<NivelControlMantenimiento, Plantil
   },
   MEDIO: {
     id: 'MEDIO',
-    nombre: 'Control Medio (15)',
+    nombre: 'Control Medio (16)',
     badge: 'Operativo & Rodaje',
-    descripcion: 'Básico + valvulinas, sistema de aire, bocinas traseras y zapatas delanteras.',
+    descripcion: 'Básico + rotación mensual de baterías, valvulinas, sistema de aire, bocinas y zapatas.',
     color: 'amber',
     codigosRecomendados: CODIGOS_NIVEL_MEDIO,
   },
   TOTAL: {
     id: 'TOTAL',
-    nombre: 'Control Total (27)',
+    nombre: 'Control Total (29)',
     badge: 'Full Hino AK',
-    descripcion: 'Auditoría integral de los 5 bloques mecánicos, transmisión mayor y metales.',
+    descripcion: 'Auditoría integral de los 5 bloques mecánicos, baterías 24V, transmisión mayor y metales.',
     color: 'blue',
     codigosRecomendados: [], // Vacío = activa todos los del catálogo oficial
   },
@@ -453,6 +454,12 @@ export const ESTACIONES_SERVICIO_CONFIG: Record<EstacionServicioId, EstacionServ
         preMarcado: false,
       },
       {
+        codigo: 'MNT-BATERIAS-PAR',
+        nombre: 'Renovación de Baterías (Juego Par 24V - 2 Años)',
+        intervaloKm: 200000,
+        preMarcado: false,
+      },
+      {
         codigo: 'MNT-CHAPAS-MOTOR',
         nombre: 'Metales de Motor (Biela y Bancada Estándar)',
         intervaloKm: 800000,
@@ -556,6 +563,12 @@ export const ESTACIONES_SERVICIO_CONFIG: Record<EstacionServicioId, EstacionServ
         intervaloKm: 5000,
         preMarcado: false,
       },
+      {
+        codigo: 'MNT-ROTACION-BATERIAS',
+        nombre: 'Rotación Mensual de Baterías (Intercambio A⇄B y Bornes)',
+        intervaloKm: 8600,
+        preMarcado: false,
+      },
     ],
   },
 };
@@ -566,6 +579,10 @@ export const ESTACIONES_SERVICIO_CONFIG: Record<EstacionServicioId, EstacionServ
  */
 export function resolverCascadaEstacion(codigosSeleccionados: string[]): string[] {
   const resultado = new Set<string>(codigosSeleccionados);
+
+  if (resultado.has('MNT-BATERIAS-PAR')) {
+    resultado.add('MNT-ROTACION-BATERIAS');
+  }
 
   if (resultado.has('MNT-MNT-CAJA')) {
     resultado.add('MNT-KIT-EMBRAGUE');
@@ -780,7 +797,7 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
             itemsMap.set(cod, {
               codigo: catItem.codigo,
               nombre: catItem.nombre,
-              intervaloKm: catItem.intervaloKm,
+              intervaloKm: catItem.intervaloKmOficial || 5000,
               preMarcado: estaMarcado,
               opcionalTexto: 'Añadido por el socio para esta unidad',
             });

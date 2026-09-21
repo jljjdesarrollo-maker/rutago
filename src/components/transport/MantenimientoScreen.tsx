@@ -215,6 +215,40 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
           activo: true,
         };
       }
+      // Rotación mensual de baterías (8,600 km ciclo / 30 días - Chofer sh)
+      if (c.codigo === 'MNT-ROTACION-BATERIAS') {
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: Math.max(0, baseKm - 1500),
+          fechaUltimo: '2026-09-15',
+          costoEstimado: 0,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: true,
+          activo: true,
+        };
+      }
+      // Renovación de baterías par 24V (200,000 km ciclo / 2 años - Socio ~50)
+      if (c.codigo === 'MNT-BATERIAS-PAR') {
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: c.intervaloKmOficial,
+          ultimoKm: Math.max(0, baseKm - 48000),
+          fechaUltimo: '2026-04-10',
+          costoEstimado: 350,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: false,
+          activo: true,
+        };
+      }
       // Demás ítems del catálogo Hino AK calibrados con 20% de desgaste (Al Día)
       return {
         id: `mbus-${c.id}-calibrado`,

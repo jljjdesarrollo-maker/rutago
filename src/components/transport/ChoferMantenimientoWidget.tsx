@@ -111,7 +111,6 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     const catalogo = getCatalogoMaestroGlobal();
     return catalogo
       .filter(c => c.asignadoChoferPorDefecto)
-      .slice(0, 8)
       .map(c => {
         // Aceite de motor y tríada de filtros: Cambiados anteayer (19 de septiembre de 2026) a 893,100 km
         if (
@@ -146,6 +145,23 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             intervaloKm: c.intervaloKmOficial,
             ultimoKm: 893085,
             fechaUltimo: '2026-09-19',
+            costoEstimado: 0,
+            repuestoDetalle: c.especificacionLubricanteRepuesto,
+            asignadoChofer: true,
+            activo: true,
+          };
+        }
+        // Rotación mensual de baterías (8,600 km ciclo / 30 días - sh chofer)
+        if (c.codigo === 'MNT-ROTACION-BATERIAS') {
+          return {
+            id: `mbus-${c.id}-calibrado`,
+            catalogoId: c.id,
+            codigo: c.codigo,
+            nombre: c.nombre,
+            categoria: c.categoria,
+            intervaloKm: c.intervaloKmOficial,
+            ultimoKm: Math.max(0, currentKm - 1500),
+            fechaUltimo: '2026-09-15',
             costoEstimado: 0,
             repuestoDetalle: c.especificacionLubricanteRepuesto,
             asignadoChofer: true,
@@ -671,16 +687,17 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         saveOwnerExpense({
           id: `gasto-lubricadora-${Date.now()}`,
           busId: activeBusId,
+          expenseDate: today,
+          createdAt: new Date().toISOString(),
           category: 'ACEITES_FILTROS',
-          amount: valorFactura,
-          date: today,
           description: `Servicio Rápido Lubricadora [${itemsSeleccionados.map(i => i.nombre).join(', ')}]`,
           provider: tallerStr,
-          invoiceNumber: comboFacturaNum.trim() || undefined,
-          odometerKm: km,
-          paidBy: 'CHOFER',
-          isFinanced: false,
-          createdAt: new Date().toISOString(),
+          totalAmount: valorFactura,
+          paidAmount: valorFactura,
+          pendingBalance: 0,
+          paymentMethod: 'EFECTIVO',
+          comprobanteRef: comboFacturaNum.trim() ? `Fac: ${comboFacturaNum.trim()}` : undefined,
+          status: 'PAGADO',
         });
       } catch (err) {
         console.error('Error registrando gasto de socio:', err);
