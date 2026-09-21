@@ -744,7 +744,7 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
   }
 
   try {
-    const raw = localStorage.getItem();
+    const raw = localStorage.getItem(STORAGE_PREFIX_COMBO_UNIDAD + busId + "_" + estacionId);
     if (!raw) {
       return {
         items: estacionBase.items,
@@ -824,7 +824,7 @@ export function saveComboUnidad(
       actualizadoEn: new Date().toISOString(),
     };
     localStorage.setItem(
-      ,
+      STORAGE_PREFIX_COMBO_UNIDAD + busId + '_' + estacionId,
       JSON.stringify(payload)
     );
     // Sincronizar evento cross-tab o cross-component
@@ -844,7 +844,7 @@ export function saveComboUnidad(
 export function resetComboUnidad(busId: string, estacionId: EstacionServicioId): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.removeItem();
+    localStorage.removeItem(STORAGE_PREFIX_COMBO_UNIDAD + busId + "_" + estacionId);
     window.dispatchEvent(
       new CustomEvent('rg_combo_unidad_actualizado', {
         detail: { busId, estacionId },

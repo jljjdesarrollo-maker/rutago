@@ -1159,9 +1159,10 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     setEstacionCodigosSeleccionados(seleccionados);
     setModoConfigurarCombo(false);
 
+    const descTexto = 'Se actualizó la receta de parada para la unidad ' + (currentBus.numeroDisco || currentBus.id) + '.';
     toast({
       title: '✅ Combo de Unidad Guardado',
-      description: ,
+      description: descTexto,
     });
   };
 
@@ -1213,7 +1214,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     setBusquedaExtraModal('');
     toast({
       title: 'Ítem Añadido al Combo',
-      description: ,
+      description: catItem.nombre + ' ahora está en el combo de esta unidad.',
     });
   };
 
