@@ -281,6 +281,11 @@ export default function OwnerDebtsReportModal({
                           >
                             {categoryMeta?.icon} {categoryMeta?.name || item.category}
                           </span>
+                          {(item.description?.includes('Servicio Rápido Lubricadora') || item.description?.includes('Parada Chofer')) && (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
+                              🚌 Ruta Chofer
+                            </span>
+                          )}
                         </div>
 
                         <p className="text-xs text-gray-600 font-medium mt-1 leading-snug">

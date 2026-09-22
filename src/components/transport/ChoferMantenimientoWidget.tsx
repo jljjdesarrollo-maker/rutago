@@ -539,6 +539,9 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   const [comboFacturaValor, setComboFacturaValor] = useState<string>('');
   const [comboFacturaNum, setComboFacturaNum] = useState<string>('');
   const [comboTaller, setComboTaller] = useState<string>('Lubricadora Vilcabamba');
+  const [comboPagador, setComboPagador] = useState<ParadaPagador>('AYUDANTE');
+  const [comboSocioModalidad, setComboSocioModalidad] = useState<SocioModalidadPago>('TRANSFERENCIA_TOTAL');
+  const [comboSocioAbono, setComboSocioAbono] = useState<string>('');
   const [comboChecks, setComboChecks] = useState({
     aceite: true,
     filtroAceite: true,
@@ -547,6 +550,25 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     filtroAireSecundario: false, // Desmarcado por defecto según indicación del usuario
     filtroAirePrimario: false,   // Desmarcado por defecto según indicación del usuario
   });
+
+  const handleAbrirComboLubricadora = () => {
+    setComboKm(kmActual.toString());
+    setComboFacturaValor('');
+    setComboFacturaNum('');
+    setComboTaller('Lubricadora Vilcabamba');
+    setComboPagador('AYUDANTE');
+    setComboSocioModalidad('TRANSFERENCIA_TOTAL');
+    setComboSocioAbono('');
+    setComboChecks({
+      aceite: true,
+      filtroAceite: true,
+      trampaAgua: true,
+      filtroCombustible: true,
+      filtroAireSecundario: false,
+      filtroAirePrimario: false,
+    });
+    setIsComboModalOpen(true);
+  };
 
   const comboConfigItems = [
     {
@@ -684,29 +706,103 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
     localStorage.setItem(storageKey, JSON.stringify(fullList));
 
+    // Actualizar lectura de tacómetro global del autobús si es mayor
+    if (km > kmActual) {
+      saveBusOdometer(activeBusId, km);
+    }
+
     // Actualizar lista local del widget
     setItems(fullList.filter(it => it.asignadoChofer && it.activo));
 
-    // Guardar en gastos de socio si se ingresó monto
+    // Registrar financieramente el servicio si se ingresó monto
     if (valorFactura > 0) {
       try {
-        saveOwnerExpenseToApi({
-          id: `gasto-lubricadora-${Date.now()}`,
+        const paradaId = `parada-lubricadora-${Date.now()}`;
+        const expenseId = `gasto-lubricadora-${Date.now()}`;
+
+        let paidAmount = valorFactura;
+        let pendingBalance = 0;
+        let paymentMethod: 'EFECTIVO' | 'TRANSFERENCIA' | 'CREDITO' = 'EFECTIVO';
+        let expenseStatus: 'PAGADO' | 'PENDIENTE' | 'PARCIAL' = 'PAGADO';
+        let abonosList: any[] = [];
+
+        if (comboPagador === 'AYUDANTE') {
+          paidAmount = valorFactura;
+          pendingBalance = 0;
+          paymentMethod = 'EFECTIVO';
+          expenseStatus = 'PAGADO';
+        } else {
+          paymentMethod = 'TRANSFERENCIA';
+          if (comboSocioModalidad === 'TRANSFERENCIA_TOTAL') {
+            paidAmount = valorFactura;
+            pendingBalance = 0;
+            expenseStatus = 'PAGADO';
+          } else if (comboSocioModalidad === 'CREDITO_FIADO') {
+            paidAmount = 0;
+            pendingBalance = valorFactura;
+            paymentMethod = 'CREDITO';
+            expenseStatus = 'PENDIENTE';
+          } else if (comboSocioModalidad === 'TRANSFERENCIA_PARCIAL') {
+            const abono = parseFloat(comboSocioAbono) || 0;
+            paidAmount = Math.min(valorFactura, Math.max(0, abono));
+            pendingBalance = Math.max(0, valorFactura - paidAmount);
+            paymentMethod = 'TRANSFERENCIA';
+            expenseStatus = pendingBalance === 0 ? 'PAGADO' : paidAmount > 0 ? 'PARCIAL' : 'PENDIENTE';
+            if (paidAmount > 0) {
+              abonosList.push({
+                id: `abono-init-${Date.now()}`,
+                amount: paidAmount,
+                date: today,
+                paymentMethod: 'TRANSFERENCIA',
+                comprobanteRef: comboFacturaNum.trim() ? `Fac: ${comboFacturaNum.trim()}` : undefined,
+                notes: 'Anticipo/Transferencia inicial del socio en parada de lubricadora',
+                createdAt: new Date().toISOString(),
+              });
+            }
+          }
+        }
+
+        // 1. Guardar parada operativa para que se refleje en el Arqueo General si paga el ayudante
+        saveParadaPago({
+          id: paradaId,
           busId: activeBusId,
-          expenseDate: today,
+          disco,
+          fecha: today,
+          estacionId: 'LUBRICADORA',
+          estacionNombre: 'Lubricadora (Combo)',
+          taller: tallerStr,
+          factura: comboFacturaNum.trim() || undefined,
+          odometroKm: km,
+          costoTotal: valorFactura,
+          pagador: comboPagador,
+          montoCubiertoAyudante: comboPagador === 'AYUDANTE' ? valorFactura : 0,
+          descontadoEnVT: false,
+          socioModalidad: comboPagador === 'SOCIO' ? comboSocioModalidad : undefined,
+          socioMontoTransferido: comboPagador === 'SOCIO' ? paidAmount : undefined,
+          socioSaldoPendiente: comboPagador === 'SOCIO' ? pendingBalance : undefined,
+          ownerExpenseId: expenseId,
           createdAt: new Date().toISOString(),
+        });
+
+        // 2. Asentar gasto en libro contable y cartera de deudas del socio
+        saveOwnerExpenseToApi({
+          id: expenseId,
+          busId: activeBusId,
           category: 'ACEITES_FILTROS',
           description: `Servicio Rápido Lubricadora [${itemsSeleccionados.map(i => i.nombre).join(', ')}]`,
           provider: tallerStr,
           totalAmount: valorFactura,
-          paidAmount: valorFactura,
-          pendingBalance: 0,
-          paymentMethod: 'EFECTIVO',
+          paidAmount,
+          pendingBalance,
+          paymentMethod,
           comprobanteRef: comboFacturaNum.trim() ? `Fac: ${comboFacturaNum.trim()}` : undefined,
-          status: 'PAGADO',
+          status: expenseStatus,
+          expenseDate: today,
+          abonos: abonosList,
+          createdAt: new Date().toISOString(),
         });
       } catch (err) {
-        console.error('Error registrando gasto de socio:', err);
+        console.error('Error registrando gasto de lubricadora:', err);
       }
     }
 
@@ -803,9 +899,19 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                 </span>
               </div>
             </div>
-            <Badge className="bg-amber-400 text-slate-950 text-[10px] font-black border-0 shrink-0">
-              1 Toque ⚡
-            </Badge>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleAbrirComboLubricadora}
+                className="px-2.5 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-[10px] font-black shadow-xs transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+              >
+                <span>🛢️</span>
+                <span>Lubricadora Rápida</span>
+              </button>
+              <Badge className="bg-white/10 text-slate-200 text-[10px] font-bold border-white/20 shrink-0">
+                1 Toque ⚡
+              </Badge>
+            </div>
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 pt-1">
@@ -1580,6 +1686,175 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                 />
               </div>
             </div>
+
+            {/* Bifurcación de Pagador si hay un costo pactado en el Combo */}
+            {(parseFloat(comboFacturaValor) || 0) > 0 && (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2.5 shrink-0 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>💳</span>
+                    ¿Quién cubre este gasto de lubricadora? *
+                  </Label>
+                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                    ${(parseFloat(comboFacturaValor) || 0).toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Opción A: Paga Ayudante */}
+                  <button
+                    type="button"
+                    onClick={() => setComboPagador('AYUDANTE')}
+                    className={
+                      'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ' +
+                      (comboPagador === 'AYUDANTE'
+                        ? 'bg-amber-500/15 border-amber-500 text-amber-950 font-black ring-1 ring-amber-500 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-100/60')
+                    }
+                  >
+                    <div className="flex items-center gap-1.5 font-black text-xs mb-1">
+                      <span>🚌</span>
+                      <span>Paga Ayudante</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 leading-tight">
+                      Efectivo de la vuelta en ruta. Se descuenta en el Arqueo General hoy.
+                    </p>
+                  </button>
+
+                  {/* Opción B: Paga Socio */}
+                  <button
+                    type="button"
+                    onClick={() => setComboPagador('SOCIO')}
+                    className={
+                      'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ' +
+                      (comboPagador === 'SOCIO'
+                        ? 'bg-purple-600/15 border-purple-600 text-purple-950 font-black ring-1 ring-purple-600 shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-100/60')
+                    }
+                  >
+                    <div className="flex items-center gap-1.5 font-black text-xs mb-1">
+                      <span>👤</span>
+                      <span>Paga el Socio</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 leading-tight">
+                      Acordado por WhatsApp/llamada. Arqueo del ayudante queda en $0.
+                    </p>
+                  </button>
+                </div>
+
+                {/* Si PAGA EL SOCIO: 3 Botones de 1 toque */}
+                {comboPagador === 'SOCIO' && (
+                  <div className="bg-purple-50/70 border border-purple-200 rounded-2xl p-3 space-y-2 animate-in fade-in duration-150">
+                    <Label className="text-[10px] font-black text-purple-950 uppercase tracking-wider block">
+                      Modalidad acordada con el Socio:
+                    </Label>
+
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {/* Botón 1: Transfiere Todo */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setComboSocioModalidad('TRANSFERENCIA_TOTAL');
+                          setComboSocioAbono('');
+                        }}
+                        className={
+                          'p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ' +
+                          (comboSocioModalidad === 'TRANSFERENCIA_TOTAL'
+                            ? 'bg-emerald-600 border-emerald-700 text-white font-black shadow-xs'
+                            : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-50')
+                        }
+                      >
+                        <span className="text-[10px] uppercase block">Transfiere Todo</span>
+                        <span className="text-xs font-black block mt-0.5">
+                          {'$' + (parseFloat(comboFacturaValor) || 0).toFixed(2)}
+                        </span>
+                      </button>
+
+                      {/* Botón 2: Transfiere una Parte */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setComboSocioModalidad('TRANSFERENCIA_PARCIAL');
+                          if (!comboSocioAbono) {
+                            const total = parseFloat(comboFacturaValor) || 0;
+                            setComboSocioAbono(total > 0 ? (Math.round((total / 2) * 100) / 100).toString() : '');
+                          }
+                        }}
+                        className={
+                          'p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ' +
+                          (comboSocioModalidad === 'TRANSFERENCIA_PARCIAL'
+                            ? 'bg-amber-500 border-amber-600 text-slate-950 font-black shadow-xs'
+                            : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-50')
+                        }
+                      >
+                        <span className="text-[10px] uppercase block">Una Parte</span>
+                        <span className="text-[11px] block mt-0.5">Anticipo + Saldo</span>
+                      </button>
+
+                      {/* Botón 3: Saca Fiado ($0 hoy) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setComboSocioModalidad('CREDITO_FIADO');
+                          setComboSocioAbono('0');
+                        }}
+                        className={
+                          'p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ' +
+                          (comboSocioModalidad === 'CREDITO_FIADO'
+                            ? 'bg-rose-600 border-rose-700 text-white font-black shadow-xs'
+                            : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-50')
+                        }
+                      >
+                        <span className="text-[10px] uppercase block">Saca Fiado</span>
+                        <span className="text-xs font-black block mt-0.5">$0 Hoy (Crédito)</span>
+                      </button>
+                    </div>
+
+                    {/* Detalle si es pago parcial */}
+                    {comboSocioModalidad === 'TRANSFERENCIA_PARCIAL' && (
+                      <div className="pt-2 border-t border-purple-200 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-[10px] font-bold text-purple-950 shrink-0">
+                            Monto transferido por el socio hoy ($):
+                          </Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={comboSocioAbono}
+                            onChange={e => setComboSocioAbono(e.target.value)}
+                            placeholder="0.00"
+                            className="h-8 rounded-lg text-xs bg-white border-purple-300 font-black text-amber-900"
+                          />
+                        </div>
+                        {(() => {
+                          const total = parseFloat(comboFacturaValor) || 0;
+                          const abono = parseFloat(comboSocioAbono) || 0;
+                          const saldo = Math.max(0, total - abono);
+                          return (
+                            <div className="flex items-center justify-between text-[11px] bg-white/90 p-2 rounded-xl border border-purple-200">
+                              <span className="text-emerald-700 font-bold">Transferido: ${abono.toFixed(2)}</span>
+                              <span className="text-amber-800 font-black">Saldo Deuda Taller: ${saldo.toFixed(2)}</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {comboSocioModalidad === 'TRANSFERENCIA_TOTAL' && (
+                      <p className="text-[10px] text-emerald-800 bg-emerald-100/80 p-1.5 rounded-lg text-center font-bold">
+                        ✓ Transferencia completa por ${(parseFloat(comboFacturaValor) || 0).toFixed(2)}. Gasto liquidado.
+                      </p>
+                    )}
+
+                    {comboSocioModalidad === 'CREDITO_FIADO' && (
+                      <p className="text-[10px] text-rose-800 bg-rose-100/80 p-1.5 rounded-lg text-center font-bold">
+                        ⚠️ Deuda completa por ${(parseFloat(comboFacturaValor) || 0).toFixed(2)} asentada a crédito pendiente.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Botones de acción final */}
             <div className="flex items-center gap-2 pt-1">
