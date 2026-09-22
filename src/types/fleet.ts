@@ -16,6 +16,7 @@ export interface BusItem {
   notas?: string;
   promoConfig?: PromoViajeGratisConfig;
   odometroInicial?: string; // Configuración desacoplada de Viaje Gratis por Unidad
+  socioId?: string;
   createdAt?: string;
   updatedAt?: string;
 }

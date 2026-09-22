@@ -16,7 +16,19 @@ export async function GET(req: NextRequest) {
     const personas = await db.persona.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      select: { id: true, nombre: true, cedula: true, telefono: true, rol: true, esActual: true, createdAt: true, updatedAt: true },
+      select: {
+        id: true,
+        nombre: true,
+        cedula: true,
+        telefono: true,
+        rol: true,
+        esActual: true,
+        deviceId: true,
+        deviceName: true,
+        deviceLinkedAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
     return NextResponse.json(personas);
   } catch (error) {

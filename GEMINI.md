@@ -132,3 +132,11 @@
   * **Fase 3:** En `ChoferMantenimientoWidget.tsx`, lectura reactiva de la receta configurada por el socio sin ítems excluidos.
   * **Fase 4:** Compilación estricta y commit `feat(mantenimiento): v3.59.5 - recetas personalizables por unidad con eliminacion de items y defaults de fabrica`.
 - **Registro Maestro:** Documento maestro completo respaldado en: `/download/RutaGo_Contexto_Maestro_v3.59.5.md`.
+
+## 19. Vinculación Estricta de Dispositivo Físico (Device Binding) y Switch Maestro SuperAdmin (v3.60.0)
+- **Concepto:** No requiere lector biométrico ni huella física del dedo. Opera mediante una huella criptográfica local inmutable (`deviceId`) generada en el almacenamiento del teléfono oficial del bus.
+- **Switch Maestro SuperAdmin (9999):** Ubicado en `VTConfigScreen.tsx` (Pestaña "2. Despacho y Seguridad") y respaldado por `/api/config/device-binding`:
+  * **OFF (Por Defecto):** Acceso libre de ayudantes desde cualquier teléfono con PIN de 4 dígitos. Cero bloqueos en carretera.
+  * **ON (Activado por SuperAdmin):** Exigencia estricta de dispositivo único por ayudante. Bloqueo con error HTTP 403 y alerta en pantalla si se intenta ingresar desde un equipo no autorizado.
+- **Gestión de Emergencias:** En `PersonalScreen.tsx`, el Administrador dispone del botón ergonómico `[ Desvincular ]` para liberar el PIN de un ayudante ante robo, daño o descarga del terminal oficial.
+- **Commit Oficial:** `feat(security): v3.60.0 - vinculacion de dispositivo device binding con switch maestro superadmin`.

@@ -6,7 +6,22 @@ import { hashPin } from '@/lib/pin-hash';
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const persona = await db.persona.findUnique({ where: { id }, select: { id: true, nombre: true, cedula: true, telefono: true, rol: true, esActual: true, createdAt: true, updatedAt: true } });
+    const persona = await db.persona.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        nombre: true,
+        cedula: true,
+        telefono: true,
+        rol: true,
+        esActual: true,
+        deviceId: true,
+        deviceName: true,
+        deviceLinkedAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
     if (!persona) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
     }
@@ -22,7 +37,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await req.json();
-    const { nombre, cedula, telefono, rol, pin, esActual } = body;
+    const { nombre, cedula, telefono, rol, pin, esActual, deviceId, deviceName, resetDevice } = body;
 
     const existing = await db.persona.findUnique({ where: { id } });
     if (!existing) {
@@ -58,6 +73,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         ...(rol && { rol }),
         ...(pin && { pin: hashPin(pin) }),
         ...(esActual !== undefined && { esActual }),
+        ...(resetDevice
+          ? { deviceId: null, deviceName: null, deviceLinkedAt: null }
+          : {
+              ...(deviceId !== undefined && { deviceId }),
+              ...(deviceName !== undefined && { deviceName }),
+            }),
       },
     });
 

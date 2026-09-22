@@ -1,4 +1,5 @@
 import { BusItem } from '../types/fleet';
+export type { BusItem };
 
 const STORAGE_KEY = 'rutago_fleet_buses_v1';
 const INITIALIZED_KEY = 'rutago_fleet_buses_initialized_flag';

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPin, isPlaintextPin } from '@/lib/pin-hash';
+import { getDeviceBindingGlobalConfig } from '@/app/api/config/device-binding/route';
 
 const FIRST_ADMIN_PINS = ['2107', '1234'];
 
@@ -55,7 +56,8 @@ export async function POST(req: NextRequest) {
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
                req.headers.get('x-real-ip') || 'unknown';
 
-    const { pin } = await req.json();
+    const body = await req.json();
+    const { pin, deviceId, deviceName } = body;
 
     if (!pin || pin.length < 4) {
       return NextResponse.json({ error: 'PIN invalido' }, { status: 400 });
@@ -148,12 +150,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'PIN no encontrado' }, { status: 401 });
     }
 
+    // ─── PENDIENTE CRÍTICO #1: Vinculación Estricta de Dispositivo Físico (Device Binding) ───
+    // Controlado por el Switch Maestro del SuperAdmin 9999 (por defecto DESACTIVADO/OFF).
+    // Solo aplica para tripulantes de cobro operativo (AYUDANTE) para evitar sesiones simultáneas no autorizadas.
+    // Los administradores y socios pueden acceder desde cualquier dispositivo para supervisión y gestión.
+    const deviceBindingConfig = getDeviceBindingGlobalConfig();
+    if (deviceBindingConfig.enabled && persona.rol === 'AYUDANTE' && deviceId) {
+      if (!persona.deviceId) {
+        // Primer login del ayudante: Enlazar automáticamente este teléfono como su dispositivo oficial
+        persona = await db.persona.update({
+          where: { id: persona.id },
+          data: {
+            deviceId,
+            deviceName: deviceName || 'Terminal Móvil',
+            deviceLinkedAt: new Date(),
+          },
+        });
+      } else if (persona.deviceId !== deviceId) {
+        // Dispositivo diferente: Rechazo estricto por seguridad
+        recordFailedAttempt(ip);
+        const fechaEnlace = persona.deviceLinkedAt
+          ? new Date(persona.deviceLinkedAt).toLocaleDateString('es-EC')
+          : '';
+        return NextResponse.json(
+          {
+            error: `Dispositivo no autorizado. Este usuario está vinculado al teléfono oficial del bus (${persona.deviceName || 'Móvil'}). Contacta al Socio/Admin para desvincularlo.`,
+            deviceBlocked: true,
+            registeredDeviceName: persona.deviceName || 'Terminal Oficial',
+            registeredAt: fechaEnlace,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     recordSuccess(ip);
     return NextResponse.json({
       id: persona.id,
       nombre: persona.nombre,
       rol: persona.rol,
       esActual: persona.esActual,
+      deviceId: persona.deviceId || null,
+      deviceName: persona.deviceName || null,
     });
   } catch (error) {
     console.error('Error authenticating:', error);

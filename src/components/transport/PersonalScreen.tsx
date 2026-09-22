@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Plus, Trash2, Pencil, Check, X, User, Phone, CreditCard } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, Check, X, User, Phone, CreditCard, Smartphone, ShieldCheck, Unlock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,9 @@ interface PersonaItem {
   rol: string;
   pin: string;
   esActual: boolean;
+  deviceId?: string | null;
+  deviceName?: string | null;
+  deviceLinkedAt?: string | null;
 }
 
 interface PersonalScreenProps {
@@ -125,6 +128,29 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
     } catch { /* ignore */ }
   };
 
+  const handleResetDevice = async (persona: PersonaItem) => {
+    if (!confirm(`¿Deseas desvincular el teléfono actual de "${persona.nombre}"?\n\nEsto liberará su PIN para que pueda iniciar sesión en el teléfono oficial o de reemplazo.`)) {
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/personas/${persona.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resetDevice: true }),
+      });
+      if (!res.ok) {
+        alert('No se pudo desvincular el dispositivo.');
+      } else {
+        fetchPersonas();
+      }
+    } catch {
+      alert('Error al comunicarse con el servidor.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const startEdit = (p: PersonaItem) => {
     setEditingId(p.id);
     setFormNombre(p.nombre);
@@ -195,6 +221,38 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
               )}
               {p.telefono && (
                 <p className="text-xs text-[#3A3A3A]/50 flex items-center gap-1"><Phone className="w-3 h-3" /> {p.telefono}</p>
+              )}
+
+              {/* Indicador de Teléfono Vinculado (Device Binding para Ayudantes) */}
+              {p.rol === 'AYUDANTE' && (
+                <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
+                  {p.deviceId ? (
+                    <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                      <span className="font-semibold truncate max-w-[150px]">
+                        {p.deviceName || 'Teléfono Oficial'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-slate-500 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200">
+                      <Smartphone className="w-3.5 h-3.5 shrink-0" />
+                      <span>Sin teléfono fijo (Libre)</span>
+                    </div>
+                  )}
+
+                  {p.deviceId && (
+                    <button
+                      type="button"
+                      onClick={() => handleResetDevice(p)}
+                      disabled={saving}
+                      title="Desvincular teléfono para permitir login en otro equipo"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold border border-rose-200 active:scale-95 transition text-[10px] cursor-pointer"
+                    >
+                      <Unlock className="w-3 h-3" />
+                      <span>Desvincular</span>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -297,7 +355,10 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
               {/* Ayudantes */}
               <div className="space-y-2 mt-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-bold text-[#3A3A3A] uppercase tracking-wider">Ayudantes</h2>
+                  <div>
+                    <h2 className="text-sm font-bold text-[#3A3A3A] uppercase tracking-wider">Ayudantes (Cobro)</h2>
+                    <p className="text-[10px] text-gray-400">Protegidos con enlace a teléfono físico (Device Binding)</p>
+                  </div>
                   <Button
                     onClick={() => { setShowAdd('AYUDANTE'); setEditingId(null); setFormNombre(''); setFormCedula(''); setFormTelefono(''); setFormPin(''); }}
                     size="sm"

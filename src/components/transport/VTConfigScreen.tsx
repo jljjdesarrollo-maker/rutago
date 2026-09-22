@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Bus, Ticket, Wrench, ShieldAlert, Save, Plus, Trash2, ChevronDown, ChevronUp, Settings, Gift, Clock, Gauge, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Bus, Ticket, Wrench, ShieldAlert, Save, Plus, Trash2, ChevronDown, ChevronUp, Settings, Gift, Clock, Gauge, RotateCcw, Smartphone, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,6 +48,48 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
   // Calibración de Kilometraje por Ruta (Fase A - v3.58.0)
   const [rutasKmConfig, setRutasKmConfig] = useState<ConfiguracionKilometrajeRutas>(DEFAULT_CONFIG_KILOMETRAJE_RUTAS);
   const [savingRutasKm, setSavingRutasKm] = useState(false);
+
+  // Switch Maestro de Vinculación Estricta de Dispositivo (Device Binding)
+  const [deviceBindingEnabled, setDeviceBindingEnabled] = useState(false);
+  const [savingDeviceBinding, setSavingDeviceBinding] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/config/device-binding')
+      .then(r => r.json())
+      .then(d => {
+        if (d?.config?.enabled !== undefined) {
+          setDeviceBindingEnabled(Boolean(d.config.enabled));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleToggleDeviceBinding = async (checked: boolean) => {
+    setDeviceBindingEnabled(checked);
+    setSavingDeviceBinding(true);
+    try {
+      const res = await fetch('/api/config/device-binding', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: checked }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({
+          title: checked ? 'Device Binding Activado' : 'Device Binding Desactivado',
+          description: data.message || 'Configuración actualizada',
+        });
+      } else {
+        setDeviceBindingEnabled(!checked);
+        toast({ title: 'Error', description: 'No se pudo actualizar el estado', variant: 'destructive' });
+      }
+    } catch {
+      setDeviceBindingEnabled(!checked);
+      toast({ title: 'Error de Red', description: 'No se pudo conectar con el servidor', variant: 'destructive' });
+    } finally {
+      setSavingDeviceBinding(false);
+    }
+  };
 
   useEffect(() => {
     setRutasKmConfig(getLocalRutasKmConfig());
@@ -222,7 +264,7 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
             }`}
           >
             <Clock className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">2. Despacho y Premio</span>
+            <span className="truncate">2. Despacho y Seguridad</span>
           </button>
 
           {/* Fila 2 - Columna 1 */}
@@ -605,6 +647,57 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
                 <Save className="w-4 h-4 mr-1" />
                 GUARDAR
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ─── PENDIENTE CRÍTICO #1: SEGURIDAD Y VINCULACIÓN DE DISPOSITIVO FÍSICO (DEVICE BINDING) ─── */}
+        <Card className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs">
+          <CardContent className="p-0">
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                  <Smartphone className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="font-bold text-sm text-white">Vinculación de Dispositivo Físico</p>
+                  <p className="text-[11px] text-slate-300">Device Binding para Ayudantes de Cobro</p>
+                </div>
+              </div>
+              <Badge className={deviceBindingEnabled ? 'bg-emerald-500 text-white font-bold text-[10px]' : 'bg-slate-700 text-slate-300 font-normal text-[10px]'}>
+                {deviceBindingEnabled ? 'ENFORCED (ACTIVO)' : 'LIBRE (DESACTIVADO)'}
+              </Badge>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div className="space-y-0.5 pr-3">
+                  <Label htmlFor="switch-device-binding" className="text-xs font-bold text-slate-900 block cursor-pointer">
+                    Exigir Teléfono Oficial Único por Ayudante
+                  </Label>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    {deviceBindingEnabled
+                      ? 'Activado: Cada ayudante queda bloqueado a su teléfono oficial. No se permiten inicios de sesión paralelos.'
+                      : 'Desactivado (Por Defecto): Los ayudantes pueden acceder desde cualquier teléfono con solo su PIN de 4 dígitos.'}
+                  </p>
+                </div>
+                <Switch
+                  id="switch-device-binding"
+                  checked={deviceBindingEnabled}
+                  disabled={savingDeviceBinding}
+                  onCheckedChange={handleToggleDeviceBinding}
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 text-[11px] text-emerald-950 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold text-emerald-900">
+                  <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>¿Cómo opera este blindaje de seguridad?</span>
+                </div>
+                <p className="leading-relaxed text-emerald-900/90">
+                  No requiere lector de huella dactilar física. Funciona mediante un identificador invisible generado en el almacenamiento local del teléfono del bus. Si alguien intenta abrir sesión desde otro equipo o computadora con el PIN del ayudante, el sistema rechaza el acceso con error 403 y alerta en pantalla.
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>

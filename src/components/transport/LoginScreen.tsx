@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Delete, Truck, Loader2 } from 'lucide-react';
+import { Delete, Truck, Loader2, ShieldAlert } from 'lucide-react';
+import { getDeviceInfo } from '@/lib/device-storage';
 
 interface LoginScreenProps {
   onLogin: (user: { id: string; nombre: string; rol: string }) => void;
@@ -90,10 +91,15 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
     // ─── Online login ───
     try {
+      const { deviceId, deviceName } = getDeviceInfo();
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: pinValue }),
+        body: JSON.stringify({
+          pin: pinValue,
+          deviceId,
+          deviceName,
+        }),
       });
 
       if (res.ok) {
@@ -104,7 +110,15 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         return;
       }
 
-      // Si el backend responde con error 401 o similar, pero no 404/500
+      // Si el backend responde con error 403 (Dispositivo No Autorizado / Device Binding)
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Dispositivo no autorizado. Este usuario está vinculado al teléfono oficial del bus.');
+        setPin('');
+        return;
+      }
+
+      // Si el backend responde con error 401, 400 o 429
       if (res.status === 401 || res.status === 400 || res.status === 429) {
         const data = await res.json().catch(() => ({}));
         setError(data.error || 'PIN incorrecto');
@@ -192,7 +206,13 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           </div>
         )}
         {error && (
-          <p className="text-center text-red-600 text-sm mt-3 font-medium">{error}</p>
+          <div className="mt-3 p-2.5 rounded-xl bg-red-50 border border-red-200 text-center max-w-xs mx-auto animate-in fade-in duration-200">
+            <div className="flex items-center justify-center gap-1.5 text-red-700 text-xs font-bold mb-1">
+              <ShieldAlert className="w-4 h-4 shrink-0" />
+              <span>Aviso de Acceso</span>
+            </div>
+            <p className="text-red-600 text-xs font-medium leading-relaxed">{error}</p>
+          </div>
         )}
       </div>
 
@@ -231,7 +251,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
       {/* Footer */}
       <footer className="py-4 text-center text-xs text-[#3A3A3A]/40">
-        RutaGo v3.0
+        RutaGo v3.60.0
       </footer>
     </div>
   );

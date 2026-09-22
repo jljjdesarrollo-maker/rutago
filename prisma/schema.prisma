@@ -76,15 +76,18 @@ model Expense {
 }
 
 model Persona {
-  id        String   @id @default(cuid())
-  nombre    String
-  cedula    String?
-  telefono  String?
-  rol       String   @default("CONDUCTOR") // CONDUCTOR | AYUDANTE | ADMIN
-  pin       String   @unique
-  esActual  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String    @id @default(cuid())
+  nombre         String
+  cedula         String?
+  telefono       String?
+  rol            String    @default("CONDUCTOR") // CONDUCTOR | AYUDANTE | ADMIN
+  pin            String    @unique
+  esActual       Boolean   @default(false)
+  deviceId       String?   // UUID de hardware del teléfono oficial asignado
+  deviceName     String?   // Nombre amigable (ej. "Terminal Móvil Bus 01")
+  deviceLinkedAt DateTime? // Fecha y hora en la que se vinculó
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 // ─── RutaGo: Módulo de Venta de Boletos Offline ───
