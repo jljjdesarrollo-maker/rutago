@@ -140,3 +140,15 @@
   * **ON (Activado por SuperAdmin):** Exigencia estricta de dispositivo único por ayudante. Bloqueo con error HTTP 403 y alerta en pantalla si se intenta ingresar desde un equipo no autorizado.
 - **Gestión de Emergencias:** En `PersonalScreen.tsx`, el Administrador dispone del botón ergonómico `[ Desvincular ]` para liberar el PIN de un ayudante ante robo, daño o descarga del terminal oficial.
 - **Commit Oficial:** `feat(security): v3.60.0 - vinculacion de dispositivo device binding con switch maestro superadmin`.
+
+## 20. Historial Cronológico del Chofer, Anulación en Cascada y Limpieza de Pruebas (v3.60.1)
+- **Fase A (Chofer):**
+  * Botón táctil `[ 📋 Ver Historial del Bus (X) ]` en `ChoferMantenimientoWidget.tsx`.
+  * Modal bottom-sheet con detalle de estación, odómetro en km, taller, factura, costo, modalidad de pago y sello de pagador (`Ayudante en Ruta` vs `Socio Propietario`).
+  * Solo lectura para el chofer: previene eliminaciones accidentales en carretera.
+- **Fase B (Socio Propietario):**
+  * Anulación quirúrgica en cascada (`deleteParadaPagoCascada` en `paradas-vt-storage.ts`): botón `[ 🗑️ ]` en el Historial del Socio en `MantenimientoScreen.tsx`.
+  * Saneamiento automático simultáneo: elimina el registro de parada, borra la cuenta por pagar en Cartera/Deudas y anula cualquier descuento indebido en caja/arqueo de ruta.
+  * Limpieza total de pruebas (`clearAllParadasByBus`): botón `[ 🗑️ Limpiar Pruebas ]` con modal de confirmación para dejar el autobús en cero antes de iniciar operación real.
+  * Sincronización reactiva inmediata mediante eventos `rg_paradas_pago_updated` y `rg_owner_expenses_sync`.
+- **Commit Oficial:** `release: v3.60.1 - historial cronologico de mantenimiento, anulacion en cascada y limpieza de pruebas`.
