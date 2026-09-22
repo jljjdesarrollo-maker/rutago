@@ -152,3 +152,15 @@
   * Limpieza total de pruebas (`clearAllParadasByBus`): botón `[ 🗑️ Limpiar Pruebas ]` con modal de confirmación para dejar el autobús en cero antes de iniciar operación real.
   * Sincronización reactiva inmediata mediante eventos `rg_paradas_pago_updated` y `rg_owner_expenses_sync`.
 - **Commit Oficial:** `release: v3.60.1 - historial cronologico de mantenimiento, anulacion en cascada y limpieza de pruebas`.
+
+## 21. Compatibilidad Retroactiva de Mantenimientos y Saneamiento de Pruebas (v3.60.2)
+- **Problema Resuelto:** Los gastos de mantenimiento registrados con anterioridad o durante pruebas en `OwnerExpenses` no figuraban en el nuevo "Historial de Paradas en Taller" (`rg_paradas_pago_v1`), impidiendo visualizarlos o eliminarlos en cascada desde la nueva interfaz.
+- **Motor de Sincronización Retroactiva (`syncRetroactiveParadasFromExpenses` en `paradas-vt-storage.ts`):**
+  * Proyecta automáticamente los gastos de categorías de taller (`ACEITES_FILTROS`, `FRENOS_RODAJE`, `MOTOR_CAJA_CORONA`, `LLANTAS`, etc.) o con prefijos de servicio (`gasto-lubricadora-`, `EXP-COMBO-`, `EXP-PARADA-`, `EXP-ESTACION-`) hacia el modelo `ParadaPagoRegistro`.
+  * Deducción automática de estación (`LUBRICADORA`, `FRENOS_RODAJE`, `MANTENIMIENTO_MAYOR`, `LLANTERA`, `SISTEMA_AIRE`), odómetro en km (por regex en notas/descripción o lectura base del bus), factura y pagador (`AYUDANTE` vs `SOCIO`).
+  * Ejecución automática y transparente al consultar `getParadasPagoByBus(busId)` en `MantenimientoScreen` y `ChoferMantenimientoWidget`.
+- **Blindaje contra Regeneración Fantasma (Tombstones Criptográficos):**
+  * Al pulsar `[ 🗑️ ]` (anulación individual) o `[ 🗑️ Limpiar Pruebas ]` (anulación masiva de unidad), se registra el ID en `rg_paradas_pago_deleted_ids_v1` y en `rutago_owner_expenses_deleted_ids_v1`.
+  * La sincronización retroactiva omite estrictamente los IDs eliminados, garantizando que los registros borrados nunca vuelvan a aparecer.
+- **Acople de Combo 4 Ruedas:** `handleConfirmComboRuedas` ahora asienta tanto la `ParadaPagoRegistro` como el gasto contable, manteniendo paridad perfecta en toda la aplicación.
+- **Commit Oficial:** `feat(mantenimiento): v3.60.2 - compatibilidad retroactiva de mantenimientos y saneamiento de pruebas`.

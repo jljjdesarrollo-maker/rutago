@@ -1076,8 +1076,32 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     // Guardar en contabilidad de gastos del socio si se especificó monto
     if (costoTotal > 0) {
       try {
+        const expenseId = `EXP-COMBO-4RUEDAS-${Date.now()}`;
+        const paradaId = `PARADA-RUEDAS-${Date.now()}`;
+
+        // 1. Guardar parada operativa en historial técnico
+        saveParadaPago({
+          id: paradaId,
+          busId: activeBusId,
+          disco: activeBusDisco,
+          fecha: today,
+          estacionId: 'FRENOS_RODAJE',
+          estacionNombre: 'Combo 4 Ruedas (Frenos y Rodaje)',
+          taller: tallerStr,
+          factura: facturaRef || undefined,
+          odometroKm: km,
+          costoTotal,
+          pagador: 'SOCIO',
+          socioModalidad: 'TRANSFERENCIA_TOTAL',
+          socioMontoTransferido: costoTotal,
+          socioSaldoPendiente: 0,
+          ownerExpenseId: expenseId,
+          createdAt: new Date().toISOString(),
+        });
+
+        // 2. Asentar gasto en contabilidad del socio
         saveOwnerExpense({
-          id: `EXP-COMBO-4RUEDAS-${Date.now()}`,
+          id: expenseId,
           busId: activeBusId,
           expenseDate: today,
           createdAt: new Date().toISOString(),
@@ -1091,6 +1115,8 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           comprobanteRef: facturaRef ? `Fac/Nota: ${facturaRef}` : undefined,
           status: 'PAGADO',
         });
+
+        recargarCarteraYParadas();
       } catch (err) {
         console.error('Error al registrar gasto contable de Combo 4 Ruedas:', err);
       }
