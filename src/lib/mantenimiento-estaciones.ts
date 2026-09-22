@@ -77,6 +77,7 @@ const STORAGE_PREFIX_NIVEL = 'rg_mnt_nivel_control_';
 const STORAGE_PREFIX_ITEMS = 'rg_mnt_items_activos_';
 const STORAGE_PREFIX_MODULO = 'rg_mantenimiento_modulo_activo_';
 const STORAGE_PREFIX_DECISION = 'rg_mantenimiento_decision_';
+export const STORAGE_PREFIX_COMBO_UNIDAD = 'rg_combo_estacion_v1_';
 
 /**
  * Consulta y sincroniza la configuración de mantenimiento con el servidor central
@@ -102,6 +103,26 @@ export async function syncMantenimientoConfigConServidor(busId: string): Promise
       if (typeof data.decisionTomada === 'boolean') {
         localStorage.setItem(`${STORAGE_PREFIX_DECISION}${busId}`, String(data.decisionTomada));
       }
+      // FASE B: Hidratar combos personalizados descargados desde el servidor
+      if (data.combosPersonalizados && typeof data.combosPersonalizados === 'object') {
+        let combosCargados = 0;
+        Object.entries(data.combosPersonalizados).forEach(([estacionId, comboData]) => {
+          if (comboData && typeof comboData === 'object') {
+            localStorage.setItem(
+              `${STORAGE_PREFIX_COMBO_UNIDAD}${busId}_${estacionId}`,
+              JSON.stringify(comboData)
+            );
+            combosCargados++;
+          }
+        });
+        if (combosCargados > 0) {
+          window.dispatchEvent(
+            new CustomEvent('rg_combo_unidad_actualizado', {
+              detail: { busId, totalCombos: combosCargados },
+            })
+          );
+        }
+      }
       window.dispatchEvent(new CustomEvent('rg_mantenimiento_config_sync', { detail: data }));
       return data;
     }
@@ -120,6 +141,9 @@ export function pushMantenimientoConfigAlServidor(
     moduloActivo?: boolean;
     nivelControl?: NivelControlMantenimiento;
     itemsActivos?: Record<string, boolean>;
+    combosPersonalizados?: Record<string, ComboUnidadPersonalizado>;
+    comboActualizado?: ComboUnidadPersonalizado;
+    comboEliminadoEstacionId?: string;
     decisionTomada?: boolean;
   }
 ): void {
@@ -705,6 +729,7 @@ export function saveBusMantenimientoConfigCompleta(
       moduloActivo: config.moduloActivo,
       nivelControl: config.nivelControl,
       itemsActivos: config.itemsActivos,
+      combosPersonalizados: getAllCombosPersonalizadosByBus(busId),
       decisionTomada: true,
     });
 
@@ -744,7 +769,7 @@ export interface ComboUnidadPersonalizado {
   actualizadoEn?: string;
 }
 
-const STORAGE_PREFIX_COMBO_UNIDAD = 'rg_combo_estacion_v1_';
+// STORAGE_PREFIX_COMBO_UNIDAD exportado arriba
 
 /**
  * Códigos esenciales que NO pueden eliminarse físicamente de la receta de Lubricadora
@@ -870,6 +895,78 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
 /**
  * Guarda la receta personalizada del combo de una estación para la unidad del socio.
  */
+/**
+ * Recupera todas las recetas de combos personalizadas guardadas para un autobús.
+ */
+export function getAllCombosPersonalizadosByBus(busId: string): Record<string, ComboUnidadPersonalizado> {
+  if (typeof window === 'undefined') return {};
+  const result: Record<string, ComboUnidadPersonalizado> = {};
+  try {
+    const prefix = `${STORAGE_PREFIX_COMBO_UNIDAD}${busId}_`;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(prefix)) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const estacionId = key.replace(prefix, '');
+          result[estacionId] = parsed;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error al obtener todos los combos personalizados de la unidad:', err);
+  }
+  return result;
+}
+
+/**
+ * Envía la receta de un combo personalizado al servidor central para persistencia durable en la nube (PostgreSQL).
+ */
+export async function pushComboUnidadAlServidor(busId: string, combo: ComboUnidadPersonalizado): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    const origen = typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile')
+      ? 'Dispositivo Móvil'
+      : 'Computadora / PC';
+    const res = await fetch('/api/config/mantenimiento', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        busId,
+        comboActualizado: combo,
+        origenDispositivo: origen,
+        fechaDecision: new Date().toISOString().split('T')[0],
+      }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Aviso: Persistencia de combo en servidor diferida:', err);
+    return false;
+  }
+}
+
+/**
+ * Notifica al servidor central que se restableció un combo a valores de fábrica para eliminarlo de la nube.
+ */
+export async function pushComboEliminadoAlServidor(busId: string, estacionId: string): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    const res = await fetch('/api/config/mantenimiento', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        busId,
+        comboEliminadoEstacionId: estacionId,
+      }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Aviso: Eliminación de combo en servidor diferida:', err);
+    return false;
+  }
+}
+
 export function saveComboUnidad(
   busId: string,
   estacionId: EstacionServicioId,
@@ -891,6 +988,8 @@ export function saveComboUnidad(
       STORAGE_PREFIX_COMBO_UNIDAD + busId + '_' + estacionId,
       JSON.stringify(payload)
     );
+    // FASE B: Persistir durablemente en el servidor central / PostgreSQL
+    pushComboUnidadAlServidor(busId, payload);
     // Sincronizar evento cross-tab o cross-component
     window.dispatchEvent(
       new CustomEvent('rg_combo_unidad_actualizado', {
@@ -909,6 +1008,8 @@ export function resetComboUnidad(busId: string, estacionId: EstacionServicioId):
   if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem(STORAGE_PREFIX_COMBO_UNIDAD + busId + "_" + estacionId);
+    // FASE B: Eliminar del servidor central / PostgreSQL
+    pushComboEliminadoAlServidor(busId, estacionId);
     window.dispatchEvent(
       new CustomEvent('rg_combo_unidad_actualizado', {
         detail: { busId, estacionId },

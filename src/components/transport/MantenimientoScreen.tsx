@@ -529,6 +529,27 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     };
   }, [activeBusId]);
 
+  // Suscripción reactiva a actualización de combos de estación en nube y local (Fase B)
+  useEffect(() => {
+    const handleComboSync = (e: any) => {
+      const detail = e.detail;
+      if (detail && detail.busId && detail.busId !== activeBusId) return;
+      if (estacionSeleccionada) {
+        const comboData = getComboUnidad(activeBusId, estacionSeleccionada);
+        setComboUnidadItems(comboData.items);
+        const checksMap: Record<string, boolean> = {};
+        comboData.items.forEach(it => {
+          checksMap[it.codigo] = it.preMarcado;
+        });
+        setComboUnidadChecks(checksMap);
+      }
+    };
+    window.addEventListener('rg_combo_unidad_actualizado', handleComboSync);
+    return () => {
+      window.removeEventListener('rg_combo_unidad_actualizado', handleComboSync);
+    };
+  }, [activeBusId, estacionSeleccionada]);
+
   // Recarga de deudas contables y paradas técnicas vinculadas (Fase 4)
   const recargarCarteraYParadas = useCallback(() => {
     setDeudasTalleres(getPendingDebts(activeBusId));
@@ -1374,7 +1395,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     setEstacionCodigosSeleccionados(seleccionados);
     setModoConfigurarCombo(false);
 
-    const descTexto = 'Se actualizó la receta de parada para la unidad ' + (currentBus.numeroDisco || currentBus.id) + '.';
+    const descTexto = 'Se actualizó y sincronizó en la nube la receta para la unidad ' + (currentBus.numeroDisco || currentBus.id) + '.';
     toast({
       title: '✅ Combo de Unidad Guardado',
       description: descTexto,
@@ -1397,7 +1418,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     setEstacionCodigosSeleccionados(comboData.codigosPreMarcados);
     toast({
       title: 'Receta Restablecida a Fábrica',
-      description: 'Se restauraron los componentes oficiales predeterminados para esta estación.',
+      description: 'Se restauraron y sincronizaron en la nube los componentes oficiales de fábrica para esta estación.',
     });
   };
 

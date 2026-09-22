@@ -193,6 +193,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
   // Tareas asignadas al Chofer
   const [items, setItems] = useState<MantenimientoBusItem[]>(() => cargarItems(getActiveBusId()));
+  const [, setComboSyncCounter] = useState<number>(0);
 
   // Suscripción reactiva al cambio de unidad física y al odómetro auditado (Arqueo de Llegada)
   useEffect(() => {
@@ -223,13 +224,18 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     const handleParadasSync = () => {
       setHistorialParadas(getParadasPagoByBus(activeBusId));
     };
+    const handleCombosSync = () => {
+      setComboSyncCounter(c => c + 1);
+    };
     window.addEventListener('rg_paradas_pago_updated', handleParadasSync);
+    window.addEventListener('rg_combo_unidad_actualizado', handleCombosSync);
 
     return () => {
       unsubBus();
       unsubOdo();
       window.removeEventListener('rg_mantenimiento_config_sync', handleConfigSync);
       window.removeEventListener('rg_paradas_pago_updated', handleParadasSync);
+      window.removeEventListener('rg_combo_unidad_actualizado', handleCombosSync);
     };
   }, [activeBusId, resolverKmActual, cargarItems]);
 
