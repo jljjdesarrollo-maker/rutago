@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { deleteVentasByVT } from '@/lib/indexeddb';
+import { deleteVentasByVT, updateVentasFrecuencia } from '@/lib/indexeddb';
+import { VT_DATA } from '@/lib/seed-vts';
 import {
   ChevronLeft,
   Search,
@@ -23,7 +24,11 @@ import {
   RefreshCw,
   Sparkles,
   Layers,
-  Trash2
+  Trash2,
+  CheckSquare,
+  Square,
+  X,
+  Compass
 } from 'lucide-react';
 
 interface VentasReviewScreenProps {
@@ -36,6 +41,8 @@ interface FrecuenciaRel {
   ruta: string;
   hora: string;
   direccion: string;
+  vtCode?: string;
+  activo?: boolean;
 }
 
 interface Venta {
@@ -117,6 +124,57 @@ function formatExactHMS(v: Venta): string {
   return v.hora ? `${v.hora}:00` : '--:--:--';
 }
 
+/** Calcula coincidencia inteligente entre un grupo de boletos y una frecuencia del catálogo */
+function calcularCoincidencia(
+  frecOrigen: FrecuenciaAgrupada,
+  cand: FrecuenciaRel
+): { score: number; deltaMinutos: number; esSugerida: boolean; motivo: string } {
+  const horaOrigenStr = frecOrigen.primeraEmision
+    ? frecOrigen.primeraEmision.slice(0, 5)
+    : (frecOrigen.hora && frecOrigen.hora !== '--:--' ? frecOrigen.hora.slice(0, 5) : '');
+
+  let delta = 9999;
+  let mins1 = 0;
+  let mins2 = 0;
+  if (horaOrigenStr && cand.hora) {
+    const [h1, m1] = horaOrigenStr.split(':').map(Number);
+    const [h2, m2] = cand.hora.split(':').map(Number);
+    if (!isNaN(h1) && !isNaN(m1) && !isNaN(h2) && !isNaN(m2)) {
+      mins1 = h1 * 60 + m1;
+      mins2 = h2 * 60 + m2;
+      delta = Math.abs(mins1 - mins2);
+    }
+  }
+
+  const origRuta = (frecOrigen.ruta || '').toLowerCase();
+  const candRuta = (cand.ruta || cand.nombre || '').toLowerCase();
+
+  let matchRuta = false;
+  if (origRuta && candRuta) {
+    if (origRuta.includes('vilcabamba') && candRuta.includes('vilcabamba')) matchRuta = true;
+    if (origRuta.includes('yangana') && candRuta.includes('yangana')) matchRuta = true;
+    if (origRuta.includes('tambo') && candRuta.includes('tambo')) matchRuta = true;
+    if (origRuta.includes('malacatos') && candRuta.includes('malacatos')) matchRuta = true;
+    if (origRuta.includes('loja') && candRuta.includes('loja')) matchRuta = true;
+  }
+
+  const candDir = cand.direccion || (candRuta.startsWith('loja') ? 'ida' : 'retorno');
+  const matchSentido = frecOrigen.tipo === candDir;
+
+  let score = 0;
+  if (delta <= 180) score += (180 - delta);
+  if (matchSentido) score += 100;
+  if (matchRuta) score += 150;
+  if (frecOrigen.vtCode && cand.vtCode && frecOrigen.vtCode === cand.vtCode) score += 80;
+
+  const esSugerida = delta <= 90 && (matchSentido || matchRuta);
+  const diffSign = mins2 >= mins1 ? '+' : '-';
+  const motivo = diffSign + delta + ' min' + (matchSentido ? ' • ' + candDir : '');
+
+  return { score, deltaMinutos: delta, esSugerida, motivo };
+}
+
+
 export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const [selectedFecha, setSelectedFecha] = useState(todayStr);
@@ -135,27 +193,63 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
   const [deleting, setDeleting] = useState(false);
   const [deleteSuccessMsg, setDeleteSuccessMsg] = useState('');
 
-  // Estado para reasignación de frecuencias (PENDIENTE #3)
+  // Estado para reasignación de frecuencias (PENDIENTE #3 - FASE C)
   const [showReasignarModal, setShowReasignarModal] = useState(false);
   const [frecuenciaToReasign, setFrecuenciaToReasign] = useState<FrecuenciaAgrupada | null>(null);
   const [catalogoFrecuencias, setCatalogoFrecuencias] = useState<FrecuenciaRel[]>([]);
   const [reasignando, setReasignando] = useState(false);
   const [reasignSuccessMsg, setReasignSuccessMsg] = useState('');
+  const [filtroVtModal, setFiltroVtModal] = useState<string>('TODOS');
+  const [filtroDireccionModal, setFiltroDireccionModal] = useState<'TODAS' | 'ida' | 'retorno'>('TODAS');
+  const [searchFrecModal, setSearchFrecModal] = useState<string>('');
+  const [selectedTicketIds, setSelectedTicketIds] = useState<string[]>([]);
+  const [mostrarListaTicketsModal, setMostrarListaTicketsModal] = useState<boolean>(false);
 
   const abrirReasignacion = async (frec: FrecuenciaAgrupada) => {
     setFrecuenciaToReasign(frec);
+    setSelectedTicketIds(frec.boletos.map(b => b.id));
+    setFiltroVtModal('TODOS');
+    setFiltroDireccionModal('TODAS');
+    setSearchFrecModal('');
+    setMostrarListaTicketsModal(false);
     setShowReasignarModal(true);
+
     try {
       const res = await fetch('/api/frecuencias?all=true');
+      let frecs: FrecuenciaRel[] = [];
       if (res.ok) {
-        const data: FrecuenciaRel[] = await res.json();
-        const filtered = frec.vtCode && frec.vtCode !== 'VT' && frec.vtCode !== 'GENERAL'
-          ? data.filter(d => (d as any).vtCode === frec.vtCode)
-          : data;
-        setCatalogoFrecuencias(filtered.length > 0 ? filtered : data);
+        frecs = await res.json();
       }
+
+      if (!frecs || frecs.length === 0) {
+        frecs = VT_DATA.flatMap(vt =>
+          vt.frecuencias.map((f, idx) => ({
+            id: `${vt.codigo}_frec_${idx}`,
+            nombre: `${f.routeFrom}-${f.routeTo}`,
+            ruta: `${f.routeFrom} - ${f.routeTo}`,
+            hora: f.time,
+            direccion: f.routeFrom.toLowerCase().includes('loja') ? 'ida' : 'retorno',
+            vtCode: vt.codigo,
+            activo: true,
+          }))
+        );
+      }
+
+      setCatalogoFrecuencias(frecs);
     } catch (err) {
-      console.error('Error cargando frecuencias:', err);
+      console.error('Error cargando frecuencias, usando catálogo local:', err);
+      const fallbackFrecs: FrecuenciaRel[] = VT_DATA.flatMap(vt =>
+        vt.frecuencias.map((f, idx) => ({
+          id: `${vt.codigo}_frec_${idx}`,
+          nombre: `${f.routeFrom}-${f.routeTo}`,
+          ruta: `${f.routeFrom} - ${f.routeTo}`,
+          hora: f.time,
+          direccion: f.routeFrom.toLowerCase().includes('loja') ? 'ida' : 'retorno',
+          vtCode: vt.codigo,
+          activo: true,
+        }))
+      );
+      setCatalogoFrecuencias(fallbackFrecs);
     }
   };
 
@@ -163,21 +257,42 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
     if (!frecuenciaToReasign) return;
     setReasignando(true);
     try {
-      const ticketIds = frecuenciaToReasign.boletos.map(b => b.id);
+      const ticketsToMove = selectedTicketIds.length > 0
+        ? selectedTicketIds
+        : frecuenciaToReasign.boletos.map(b => b.id);
+
+      const targetFrec = catalogoFrecuencias.find(f => f.id === targetFrecuenciaId);
+      const targetVtCode = targetFrec?.vtCode || (targetFrecuenciaId.includes('_frec_') ? targetFrecuenciaId.split('_frec_')[0] : undefined);
+
       const res = await fetch('/api/ventas', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ticketIds,
+          ticketIds: ticketsToMove,
           frecuenciaId: targetFrecuenciaId,
+          vtCode: targetVtCode,
         }),
       });
-      if (!res.ok) throw new Error('Error al reasignar boletos');
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Error al reasignar boletos');
+      }
+
       const json = await res.json();
-      setReasignSuccessMsg(json.message || 'Boletos reasignados con éxito');
-      setTimeout(() => setReasignSuccessMsg(''), 4000);
+
+      // Sincronizar en almacenamiento local IndexedDB (Offline-First)
+      try {
+        await updateVentasFrecuencia(ticketsToMove, targetFrecuenciaId, targetVtCode);
+      } catch (idbErr) {
+        console.warn('Advertencia actualizando en IndexedDB:', idbErr);
+      }
+
+      setReasignSuccessMsg(json.message || `Se reasignaron ${ticketsToMove.length} boleto(s) con éxito`);
+      setTimeout(() => setReasignSuccessMsg(''), 4500);
       setShowReasignarModal(false);
       setFrecuenciaToReasign(null);
+      setSelectedTicketIds([]);
       await loadVentas(selectedFecha);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error al reasignar boletos');
@@ -259,23 +374,23 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
           ruta = v.frecuencia.nombre || v.frecuencia.ruta || ruta;
           tipo = v.frecuencia.direccion || tipo;
         }
-      } else if (v.ruta) {
-        // Fallback inteligente: si aún no tiene frecuenciaId enlazado en BD pero tiene ruta y hora de venta,
-        // se agrupa por su salida operativa real para NO esconder los boletos del día
-        key = `RUTA_${v.vtCode || 'VT'}_${hora.slice(0, 5)}_${ruta}_${tipo}`;
       } else {
-        // Boletos No Asignados a Frecuencia (Ventas registradas sin despacho oficial)
-        key = `HUERFANOS_${v.vtCode || 'GENERAL'}`;
+        // Boleto huérfano (sin frecuenciaId enlazado en BD)
         esHuerfano = true;
-        hora = '--:--';
-        tipo = 'especial';
-        ruta = 'Boletos No Asignados a Frecuencia';
+        if (v.ruta) {
+          key = `HUERFANO_${v.vtCode || 'VT'}_${hora.slice(0, 5)}_${ruta}_${tipo}`;
+        } else {
+          key = `HUERFANOS_${v.vtCode || 'GENERAL'}`;
+          hora = '--:--';
+          tipo = 'especial';
+          ruta = 'Boletos No Asignados a Frecuencia';
+        }
       }
 
       if (!map[key]) {
         let titulo = '';
         if (esHuerfano) {
-          titulo = '⚠️ Boletos No Asignados a Frecuencia';
+          titulo = v.ruta ? `⚠️ ${hora} • ${ruta} (Sin Frecuencia Oficial)` : '⚠️ Boletos No Asignados a Frecuencia';
         } else if (v.frecuencia) {
           titulo = `${hora} • ${ruta}`;
         } else {
@@ -366,6 +481,68 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
 
     return result;
   }, [ventas, selectedVT, searchTerm]);
+
+  const vtsEnCatalogo = useMemo(() => {
+    const vts = new Set<string>();
+    catalogoFrecuencias.forEach(f => {
+      if (f.vtCode) vts.add(f.vtCode);
+    });
+    return Array.from(vts).sort();
+  }, [catalogoFrecuencias]);
+
+  const frecuenciasCandidatas = useMemo(() => {
+    if (!frecuenciaToReasign) return [];
+
+    let list = [...catalogoFrecuencias];
+
+    if (filtroVtModal !== 'TODOS') {
+      list = list.filter(f => f.vtCode === filtroVtModal);
+    }
+
+    if (filtroDireccionModal !== 'TODAS') {
+      list = list.filter(f => f.direccion === filtroDireccionModal);
+    }
+
+    if (searchFrecModal.trim()) {
+      const q = searchFrecModal.toLowerCase().trim();
+      list = list.filter(f =>
+        f.hora?.toLowerCase().includes(q) ||
+        f.nombre?.toLowerCase().includes(q) ||
+        f.ruta?.toLowerCase().includes(q) ||
+        f.vtCode?.toLowerCase().includes(q)
+      );
+    }
+
+    return list.map(f => {
+      const match = calcularCoincidencia(frecuenciaToReasign, f);
+      return {
+        ...f,
+        matchScore: match.score,
+        esSugerida: match.esSugerida,
+        motivoSugerencia: match.motivo,
+        deltaMinutos: match.deltaMinutos,
+      };
+    }).sort((a, b) => {
+      if (a.esSugerida !== b.esSugerida) return a.esSugerida ? -1 : 1;
+      if (a.matchScore !== b.matchScore) return b.matchScore - a.matchScore;
+      return (a.hora || '').localeCompare(b.hora || '');
+    });
+  }, [catalogoFrecuencias, frecuenciaToReasign, filtroVtModal, filtroDireccionModal, searchFrecModal]);
+
+  const toggleSelectAllTickets = () => {
+    if (!frecuenciaToReasign) return;
+    if (selectedTicketIds.length === frecuenciaToReasign.boletos.length) {
+      setSelectedTicketIds([]);
+    } else {
+      setSelectedTicketIds(frecuenciaToReasign.boletos.map(b => b.id));
+    }
+  };
+
+  const toggleSelectTicket = (id: string) => {
+    setSelectedTicketIds(prev =>
+      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+    );
+  };
 
   // Totales globales del día
   const totalPasajeros = useMemo(() => ventas.reduce((acc, v) => acc + (selectedVT ? (v.vtCode === selectedVT ? 1 : 0) : 1), 0), [ventas, selectedVT]);
@@ -773,9 +950,25 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
                       <Clock className="w-3 h-3 text-[#912D26]" />
                       Emisión: {frec.primeraEmision} a {frec.ultimaEmision}
                     </span>
-                    <span className="font-mono text-gray-400 text-[10px]">
-                      {frec.boletos.length} tickets emitidos
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-gray-400 text-[10px]">
+                        {frec.boletos.length} tickets
+                      </span>
+                      {!frec.esHuerfano && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            abrirReasignacion(frec);
+                          }}
+                          className="px-2 py-0.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-900 text-[10px] font-bold flex items-center gap-1 transition-all"
+                          title="Reasignar boletos a otra frecuencia oficial"
+                        >
+                          <RefreshCw className="w-3 h-3 text-[#912D26]" />
+                          <span>Reasignar</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Encabezado de columnas de auditoría */}
@@ -899,7 +1092,13 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
             </div>
           );
         })}
-        {/* Mensaje de éxito tras borrado */}
+        {/* Mensajes de éxito tras reasignación o borrado */}
+        {reasignSuccessMsg && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-3.5 text-xs font-bold flex items-center gap-2 shadow-sm animate-fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            <span>{reasignSuccessMsg}</span>
+          </div>
+        )}
         {deleteSuccessMsg && (
           <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-3.5 text-xs font-bold flex items-center gap-2 shadow-sm animate-fade-in">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
@@ -962,6 +1161,314 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
                       <span>Sí, eliminar</span>
                     </>
                   )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── MODAL BOTTOM-SHEET: REASIGNACIÓN DE BOLETOS A FRECUENCIA (FASE C) ─── */}
+        {showReasignarModal && frecuenciaToReasign && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
+            <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-xl max-h-[92vh] sm:max-h-[85vh] flex flex-col shadow-2xl border border-gray-100 overflow-hidden">
+              {/* Indicador táctil de arrastre (Mobile Pull Handle) */}
+              <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto my-2 sm:hidden flex-shrink-0" />
+
+              {/* Cabecera del Modal */}
+              <div className="p-4 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-[#912D26]/10 text-[#912D26] flex items-center justify-center font-bold">
+                    <RefreshCw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-gray-900 leading-tight">
+                      Reasignar Boletos a Vuelta Oficial
+                    </h3>
+                    <p className="text-[11px] font-semibold text-gray-500">
+                      {frecuenciaToReasign.esHuerfano ? 'Sanación de boletos huérfanos' : 'Corrección contable de frecuencia'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!reasignando) {
+                      setShowReasignarModal(false);
+                      setFrecuenciaToReasign(null);
+                    }
+                  }}
+                  disabled={reasignando}
+                  className="w-8 h-8 rounded-full bg-gray-200/70 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Contenido scrolleable del Modal */}
+              <div className="p-4 overflow-y-auto space-y-3.5 flex-1">
+                {/* Tarjeta resumen del lote a reasignar */}
+                <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-3.5 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-extrabold text-amber-900 truncate">
+                      {frecuenciaToReasign.titulo}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 text-[10px] font-black">
+                      {frecuenciaToReasign.vtCode || 'Sin VT'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs font-bold text-amber-950/80 bg-white/70 rounded-xl p-2">
+                    <div>
+                      <span className="text-[10px] text-gray-400 block font-normal">Boletos a mover:</span>
+                      <span className="text-sm font-black text-gray-900">
+                        {selectedTicketIds.length} de {frecuenciaToReasign.totalBoletos}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-400 block font-normal">Monto total:</span>
+                      <span className="text-sm font-black text-emerald-700">
+                        ${frecuenciaToReasign.totalRecaudado.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  {frecuenciaToReasign.primeraEmision && (
+                    <div className="text-[10px] text-amber-800 flex items-center gap-1 font-mono">
+                      <Clock className="w-3 h-3 text-amber-600" />
+                      Horario de emisión: {frecuenciaToReasign.primeraEmision} — {frecuenciaToReasign.ultimaEmision}
+                    </div>
+                  )}
+                </div>
+
+                {/* Desplegable para seleccionar boletos individuales (opcional) */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setMostrarListaTicketsModal(prev => !prev)}
+                    className="text-[11px] font-bold text-[#912D26] hover:underline flex items-center gap-1"
+                  >
+                    {mostrarListaTicketsModal ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    <span>
+                      {mostrarListaTicketsModal ? 'Ocultar desglose de boletos' : 'Seleccionar boletos específicos (opcional)'}
+                    </span>
+                  </button>
+                  {mostrarListaTicketsModal && (
+                    <div className="mt-2 border border-gray-200 rounded-xl p-2.5 bg-gray-50/70 max-h-40 overflow-y-auto space-y-1 text-xs">
+                      <div className="flex items-center justify-between pb-1 border-b border-gray-200 text-[11px]">
+                        <button
+                          type="button"
+                          onClick={toggleSelectAllTickets}
+                          className="font-bold text-[#912D26] flex items-center gap-1"
+                        >
+                          {selectedTicketIds.length === frecuenciaToReasign.boletos.length ? (
+                            <CheckSquare className="w-3.5 h-3.5" />
+                          ) : (
+                            <Square className="w-3.5 h-3.5" />
+                          )}
+                          <span>{selectedTicketIds.length === frecuenciaToReasign.boletos.length ? 'Deseleccionar todos' : 'Seleccionar todos'}</span>
+                        </button>
+                        <span className="text-gray-500 font-mono text-[10px]">
+                          {selectedTicketIds.length} seleccionados
+                        </span>
+                      </div>
+                      {frecuenciaToReasign.boletos.map(b => (
+                        <div
+                          key={b.id}
+                          onClick={() => toggleSelectTicket(b.id)}
+                          className="flex items-center justify-between p-1.5 rounded-lg hover:bg-white cursor-pointer transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            {selectedTicketIds.includes(b.id) ? (
+                              <CheckSquare className="w-3.5 h-3.5 text-[#912D26]" />
+                            ) : (
+                              <Square className="w-3.5 h-3.5 text-gray-400" />
+                            )}
+                            <span className="font-mono text-[11px] text-gray-700">{b.hora}</span>
+                            <span className="font-semibold text-gray-800 text-[11px] truncate max-w-[160px]">{b.parada}</span>
+                          </div>
+                          <span className="font-mono font-bold text-gray-900">${b.cobrado.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Buscador y Filtros Ergonómicos */}
+                <div className="space-y-2 pt-1">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por hora o ruta (ej. 06:15, Vilcabamba...)"
+                      value={searchFrecModal}
+                      onChange={(e) => setSearchFrecModal(e.target.value)}
+                      className="w-full h-10 pl-9 pr-3 rounded-xl border border-gray-200 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#912D26]/20 focus:border-[#912D26]"
+                    />
+                  </div>
+
+                  {/* Chips de filtro por VT */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px]">
+                    <span className="text-gray-400 font-bold text-[10px] uppercase flex-shrink-0">VT:</span>
+                    <button
+                      type="button"
+                      onClick={() => setFiltroVtModal('TODOS')}
+                      className={`px-2.5 py-1 rounded-lg font-bold flex-shrink-0 transition-all ${
+                        filtroVtModal === 'TODOS'
+                          ? 'bg-gray-900 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      Todos
+                    </button>
+                    {vtsEnCatalogo.map(vt => (
+                      <button
+                        key={vt}
+                        type="button"
+                        onClick={() => setFiltroVtModal(vt)}
+                        className={`px-2.5 py-1 rounded-lg font-bold flex-shrink-0 transition-all ${
+                          filtroVtModal === vt
+                            ? 'bg-[#912D26] text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {vt}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Chips de filtro por Sentido */}
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <span className="text-gray-400 font-bold text-[10px] uppercase flex-shrink-0">Sentido:</span>
+                    {(['TODAS', 'ida', 'retorno'] as const).map(dir => (
+                      <button
+                        key={dir}
+                        type="button"
+                        onClick={() => setFiltroDireccionModal(dir)}
+                        className={`px-2.5 py-0.5 rounded-lg font-bold text-[10px] transition-all ${
+                          filtroDireccionModal === dir
+                            ? 'bg-[#912D26] text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {dir === 'TODAS' ? 'Todos' : dir === 'ida' ? 'Ida (Loja →)' : 'Retorno (→ Loja)'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Lista de Frecuencias Candidatas */}
+                <div className="space-y-2 pt-2">
+                  <div className="text-[11px] font-black text-gray-400 uppercase tracking-wider flex items-center justify-between">
+                    <span>Frecuencias Oficiales Disponibles ({frecuenciasCandidatas.length})</span>
+                    {frecuenciasCandidatas.some(f => f.esSugerida) && (
+                      <span className="text-amber-700 font-bold flex items-center gap-1 normal-case text-[10px]">
+                        <Sparkles className="w-3 h-3 text-amber-500" />
+                        Coincidencia sugerida disponible
+                      </span>
+                    )}
+                  </div>
+
+                  {frecuenciasCandidatas.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-gray-500 bg-gray-50 rounded-2xl border border-gray-200 space-y-1">
+                      <Compass className="w-8 h-8 text-gray-400 mx-auto" />
+                      <p className="font-bold">No se encontraron frecuencias con los filtros aplicados</p>
+                      <p className="text-[11px] text-gray-400">Prueba cambiando el VT o borrando la búsqueda.</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100 border border-gray-200 rounded-2xl bg-white overflow-hidden shadow-sm">
+                      {frecuenciasCandidatas.map(frec => {
+                        const esIda = frec.direccion === 'ida' || frec.ruta?.toLowerCase().startsWith('loja');
+                        return (
+                          <div
+                            key={frec.id}
+                            className={`p-3 transition-colors ${
+                              frec.esSugerida
+                                ? 'bg-amber-50/50 hover:bg-amber-50'
+                                : 'hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {/* Hora y VT */}
+                                <div className="flex flex-col items-center">
+                                  <span className="font-mono font-black text-sm text-gray-900">
+                                    {frec.hora}
+                                  </span>
+                                  <span className="px-1.5 py-0.2 rounded bg-gray-100 text-gray-600 font-mono text-[9px] font-bold">
+                                    {frec.vtCode || 'VT'}
+                                  </span>
+                                </div>
+
+                                {/* Ruta y badges */}
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-black text-xs text-gray-900 truncate">
+                                      {frec.nombre || frec.ruta}
+                                    </span>
+                                    <span
+                                      className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                                        esIda
+                                          ? 'bg-blue-100 text-blue-800'
+                                          : 'bg-emerald-100 text-emerald-800'
+                                      }`}
+                                    >
+                                      {esIda ? 'Ida' : 'Retorno'}
+                                    </span>
+                                  </div>
+                                  {frec.esSugerida && (
+                                    <div className="flex items-center gap-1 text-[10px] font-bold text-amber-700 mt-0.5">
+                                      <Sparkles className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                                      <span>Sugerido ({frec.motivoSugerencia})</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Botón de Asignación Ergonómico (1 solo toque) */}
+                              <button
+                                type="button"
+                                onClick={() => ejecutarReasignacion(frec.id)}
+                                disabled={reasignando || selectedTicketIds.length === 0}
+                                className={`h-9 px-3 rounded-xl font-black text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all flex-shrink-0 ${
+                                  frec.esSugerida
+                                    ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                                    : 'bg-[#912D26] hover:bg-[#7a251f] text-white'
+                                }`}
+                              >
+                                {reasignando ? (
+                                  <>
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                    <span>Moviendo...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>Asignar</span>
+                                    <ArrowRight className="w-3.5 h-3.5" />
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Pie del Modal */}
+              <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 flex-shrink-0">
+                <span className="text-[11px]">
+                  Al asignar, se actualizan los boletos en BD y teléfono móvil.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReasignarModal(false);
+                    setFrecuenciaToReasign(null);
+                  }}
+                  disabled={reasignando}
+                  className="px-3.5 py-1.5 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold active:scale-95 transition-all"
+                >
+                  Cerrar
                 </button>
               </div>
             </div>

@@ -261,6 +261,40 @@ export async function deleteVentasByVT(vtCode: string, fecha: string): Promise<v
   });
 }
 
+/** Actualizar la frecuencia oficial de una lista de boletos vendidos (Reasignación contable) */
+export async function updateVentasFrecuencia(
+  ticketIds: string[],
+  newFrecuenciaId: string,
+  newVtCode?: string
+): Promise<number> {
+  const db = await openDB();
+  const idSet = new Set(ticketIds);
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('ventas_pendientes', 'readwrite');
+    const store = tx.objectStore('ventas_pendientes');
+    const request = store.openCursor();
+    let updatedCount = 0;
+    request.onsuccess = (event) => {
+      const cursor = (event.target as IDBRequest).result;
+      if (cursor) {
+        const v = cursor.value as VentaLocal;
+        if (idSet.has(v.id) || idSet.has(cursor.key as string)) {
+          v.frecuenciaId = newFrecuenciaId;
+          if (newVtCode) v.vtCode = newVtCode;
+          if (v.fechaOperacion) {
+            v.estadoId = `${v.fechaOperacion}_${newFrecuenciaId}`;
+          }
+          cursor.update(v);
+          updatedCount++;
+        }
+        cursor.continue();
+      }
+    };
+    tx.oncomplete = () => resolve(updatedCount);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 /** Contar ventas pendientes de un VT+fecha específico */
 export async function countVentasPendientesByVT(vtCode: string, fecha: string): Promise<number> {
   const db = await openDB();

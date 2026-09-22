@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { resolveValidFrecuenciaId, autoVincularVentasHuerfanas } from '@/lib/frecuencia-helper';
+import { resolveValidFrecuenciaId, autoVincularVentasHuerfanas, ensureVTFrecuencias } from '@/lib/frecuencia-helper';
 
 const prisma = new PrismaClient();
 
@@ -114,11 +114,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Reasignación manual de boletos huérfanos por parte del Administrador (PENDIENTE #3)
+// Reasignación manual de boletos huérfanos por parte del Administrador (PENDIENTE #3 - FASE C)
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { ticketIds, frecuenciaId } = body;
+    const { ticketIds, frecuenciaId, vtCode } = body;
 
     if (!Array.isArray(ticketIds) || ticketIds.length === 0 || !frecuenciaId) {
       return NextResponse.json(
@@ -127,22 +127,31 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Verificar que la frecuencia exista
-    const frec = await prisma.frecuencia.findUnique({ where: { id: frecuenciaId } });
+    // Verificar que la frecuencia exista o auto-asegurar en tabla Frecuencia
+    let frec = await prisma.frecuencia.findUnique({ where: { id: frecuenciaId } });
+    if (!frec && frecuenciaId.includes('_frec_')) {
+      const derivedVt = vtCode || frecuenciaId.split('_frec_')[0];
+      await ensureVTFrecuencias(prisma, derivedVt);
+      frec = await prisma.frecuencia.findUnique({ where: { id: frecuenciaId } });
+    }
+
     if (!frec) {
-      return NextResponse.json({ error: 'Frecuencia no encontrada' }, { status: 404 });
+      return NextResponse.json({ error: 'Frecuencia no encontrada en el catálogo' }, { status: 404 });
     }
 
     const updated = await prisma.ventaBoleto.updateMany({
       where: { id: { in: ticketIds } },
-      data: { frecuenciaId: frec.id },
+      data: {
+        frecuenciaId: frec.id,
+        ...(frec.vtCode ? { vtCode: frec.vtCode } : (vtCode ? { vtCode } : {})),
+      },
     });
 
     return NextResponse.json({
       success: true,
       count: updated.count,
       frecuencia: frec,
-      message: `Se reasignaron ${updated.count} boleto(s) a la frecuencia ${frec.hora} ${frec.nombre}`,
+      message: `Se reasignaron ${updated.count} boleto(s) a la frecuencia ${frec.hora} ${frec.nombre || frec.ruta}`,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Error al reasignar boletos';

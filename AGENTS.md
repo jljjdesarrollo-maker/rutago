@@ -1,7 +1,7 @@
 # Reglas y Directivas de Proyecto: RutaGo
 
 ## 1. Identidad y Propósito del Proyecto
-- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.60.7-persistencia-nube-recetas` (base previa: `v3.57.0-promo-centralizada`)
+- **Nombre del Proyecto:** RutaGo (Control de transporte y venta de boletos) - Versión activa en desarrollo: `v3.60.8-reasignacion-huerfanos` (base previa: `v3.57.0-promo-centralizada`)
 - **Repositorio Oficial:** `https://github.com/jljjdesarrollo-maker/rutago`
 - **Stack Técnico:** Next.js (App Router), React 19, TypeScript, Tailwind CSS, Prisma ORM, PostgreSQL, IndexedDB (Offline-First), Radix UI, ESC/POS & JSPDF.
 - **Entorno de Despliegue:** Vercel (CI/CD conectado a GitHub rama `main`) y uso directo en smartphones.
@@ -180,7 +180,7 @@
     - **Mecánica Operativa Personalizable por Socio:** Cada socio puede activar/pausar la rifa en su unidad y ajustar libremente su política de rangos de pasajeros (ej. 1 al 20, 3 al 30, 5 al 45) mediante controles táctiles y chips rápidos en la Ficha de Unidad (`FlotaScreen`). Se eliminó el bloqueo forzado de los valores 3 y 30.
     - **Blindaje del Pie de Boleto (Canal Viral de Adquisición SaaS):** El texto publicitario al pie del boleto premiado (`"Quieres RutaGo? 0997149000"`) está centralizado y bajo control exclusivo del **SuperAdmin SaaS (`9999`)** en `VTConfigScreen`. Se eliminó el campo de edición libre al socio para proteger el canal de ventas y suscripción mensual ($20/mes), acelerar la impresión térmica en 58 mm y garantizar la seriedad institucional.
 
-### PENDIENTE #3: Reasignación Contable de Boletos Huérfanos
+### PENDIENTE #3 (COMPLETADO - v3.60.8): Reasignación Contable de Boletos Huérfanos y Vueltas Regulares
 - **Objetivo:** En la pantalla `VentasReviewScreen`, permitir al Administrador reasignar boletos huérfanos (`frecuenciaId == null`) a una frecuencia oficial existente con un toque para cuadre contable perfecto.
 
 ### PENDIENTE #4: Módulo Institucional de Gerencia de Cooperativa & Informes de Interés Común

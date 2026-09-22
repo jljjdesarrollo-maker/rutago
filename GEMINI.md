@@ -1,4 +1,4 @@
-# RutaGo - Directivas Operativas y Estado del Proyecto (v3.60.7)
+# RutaGo - Directivas Operativas y Estado del Proyecto (v3.60.8)
 
 ## Contexto Esencial
 - **Proyecto:** RutaGo (Control de transporte, boletaje, arqueos y mantenimiento para autobuses interprovinciales/cantonales).
@@ -232,3 +232,18 @@
     - Handlers `handleConfirmarEliminarParada` y `handleConfirmarLimpiarPruebas` convertidos a async/await con confirmación de éxito reactiva.
 - **Commit Oficial:** `feat(mantenimiento): v3.60.6 - fase A eliminacion atomica en nube de paradas tecnicas y erradicacion de efecto zombie`.
 - **Próximo Paso Inmediato:** Fase B — Persistencia en la nube de Recetas y Combos de Estación (`combosPersonalizados` en `/api/config/mantenimiento`).
+
+
+## 26. Reasignación Contable de Boletos Huérfanos y Sincronización Dual (v3.60.8)
+- **Hito:** Conclusión integral de la Fase C (Reasignación Contable de Boletos Huérfanos y Regularización de Vueltas).
+- **Problema Abordado:** Boletos emitidos en ruta con frecuenciaId nulo (por fallas de red o falta de instancia en BD) o emitidos bajo el turno erróneo no podían reasignarse visualmente a una frecuencia oficial, descuadrando el comparador de frecuencias y la caja común.
+- **Implementación Multicapa:**
+  * **Agrupación y Detección de Huérfanos:** En VentasReviewScreen.tsx, todo boleto sin frecuenciaId se agrupa con badge ámbar destacado ("Sin Frecuencia Oficial") y botón ergonómico "[ Asignar Vuelta ]".
+  * **Modal Bottom-Sheet Móvil (Thumb-Zone):** Interfaz táctil ergonómica a una sola mano con resumen contable del lote, desglose opcional de boletos con selección individual/masiva, buscador instantáneo por hora/ruta y chips rápidos por VT ("VT1", "VT2", etc.) y sentido ("Ida" vs "Retorno").
+  * **Algoritmo de Coincidencia Sugerida (calcularCoincidencia):** Pondera la proximidad en minutos entre la emisión y la salida de la frecuencia, el sentido de viaje y las terminales de origen/destino, destacando automáticamente la frecuencia más probable con badge dorado ("Coincidencia Sugerida").
+  * **Sincronización Dual y Offline-First:** Al ejecutar reasignación con un solo toque:
+    1. Endpoint HTTP PATCH /api/ventas actualiza la BD central y crea físicamente las frecuencias en PostgreSQL (ensureVTFrecuencias) si aún no existían.
+    2. Función updateVentasFrecuencia en src/lib/indexeddb.ts actualiza de inmediato el almacenamiento local del teléfono móvil.
+    3. Notificación toast verde de éxito y recarga reactiva sin parpadeo de pantalla (loadVentas).
+  * **Flexibilidad Operativa:** Se incorporó el botón "[ Reasignar ]" también en frecuencias regulares para solventar equivocaciones humanas de chofer o ayudante en despacho de carretera.
+- **Commit Oficial:** feat(ventas): v3.60.8 - fase c reasignacion contable de boletos huerfanos y vueltas regulares con modal ergonomico y sugerencia inteligente.
