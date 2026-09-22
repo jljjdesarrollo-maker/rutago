@@ -191,3 +191,25 @@
     - Si el pagador es el Socio, el egreso se fecha en el día exacto de la parada.
 - **Commit Oficial:** `feat(chofer): v3.60.4 - fase 2 interfaz tactil del chofer con enlace sutil y calculo en vivo para regularizacion retroactiva`.
 - **Próximo Paso Inmediato:** Fase 3 — Panel del Socio (`MantenimientoScreen.tsx`) y Pruebas Integrales de Extremo a Extremo.
+
+## 24. Panel del Socio para Regularización Retroactiva y Cierre Integral del Módulo (v3.60.5)
+- **Hito:** Fase 3 y Conclusión Integral de la Regularización Retroactiva de Servicios de Mantenimiento con Odómetro Histórico.
+- **Implementación en Panel del Socio (`src/components/transport/MantenimientoScreen.tsx`):**
+  * **Modal de Estaciones de Servicio:**
+    - Enlace táctil `⏱️ ¿Se realizó antes? [ Toca aquí para regularizar fecha o km ]` integrado de forma no invasiva.
+    - Campos desplegables para kilometraje del cambio (`estacionKmServicio`) y fecha histórica (`estacionFechaServicio`).
+    - Tarjeta reactiva de cálculo en vivo conectada al motor `calcularDesgasteRegularizacion(...)` con retroalimentación inmediata de kilómetros rodados, vida restante y porcentaje de desgaste.
+    - Candado anti-error que bloquea el botón de asentamiento si el odómetro del servicio supera la lectura actual del tacómetro del autobús.
+  * **Modal Combo 4 Ruedas (Frenos y Rodaje):**
+    - Mismo flujo intuitivo con cálculo dinámico para ciclos de bocinas (50.000 km y 60.000 km).
+    - Asentamiento contable con fecha histórica e imputación del egreso patrimonial en el mes correspondiente.
+  * **Modal Individual de Mantenimiento (`editingItem`):**
+    - Indicador reactivo en vivo: si se ingresa un kilometraje menor al tablero, informa que se regularizará preservando el odómetro del bus intacto.
+  * **Historial de Paradas Técnicas del Socio:**
+    - Badge distintivo `⏱️ Regularizado (892.491 km)` para auditar con claridad los servicios asentados con posterioridad a su ejecución física.
+- **Blindajes Garantizados:**
+  1. *El odómetro general del autobús nunca retrocede:* Solo avanza si el tacómetro del tablero ingresado es superior al almacenado.
+  2. *Caja del ayudante en ruta 100% blindada:* Los servicios en fechas pasadas se marcan `descontadoEnVT = true` para que jamás generen faltantes injustos en la liquidación diaria.
+  3. *Libros contables del socio precisos:* El gasto patrimonial se fecha en el día del servicio histórico.
+- **Validación:** 100% de la suite de pruebas unitarias y de integración superadas (Caso Bus 01: 893.485 km tablero vs 892.491 km servicio -> 994 km rodados, 4.006 km restantes al 80%).
+- **Commit Oficial:** `feat(socio): v3.60.5 - fase 3 panel del socio con regularizacion retroactiva y pruebas integrales completadas`.

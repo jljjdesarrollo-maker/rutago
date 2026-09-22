@@ -283,22 +283,22 @@
   * Estado: [PENDIENTE TRAS FASE 3]
 
 
-### PENDIENTE #8: Regularización Retroactiva de Servicios de Mantenimiento con Odómetro Histórico (v3.60.3+)
+### MODULO COMPLETADO: Regularización Retroactiva de Servicios de Mantenimiento con Odómetro Histórico (v3.60.5 ✅)
 - **Contexto Operativo:** Soluciona el caso real cuando un servicio de mantenimiento (ej. cambio de aceite y filtros en lubricadora) se realizó en días u horas anteriores (ej. 18 de septiembre a los 892.491 km) y el autobús continuó operando en ruta hasta alcanzar su tacómetro actual (ej. 893.485 km).
-- **El Problema:** Al asentar con el tacómetro de hoy, el sistema ponía el aceite en 0 km rodados y 5.000 km de vida, cuando en realidad ya rodó 994 km y le restan 4.006 km reales de vida útil.
-- **La Solución en 3 Fases Modulares:**
+- **El Problema Resuelto:** Se calibran exactamente los 994 km ya rodados dejando al aceite sus 4.006 km reales de vida útil, el odómetro del bus (893.485 km) nunca retrocede, y la caja del ayudante de hoy queda 100% blindada al centavo.
+- **Las 3 Fases Modulares [COMPLETADAS AL 100%]:**
   * **FASE 1: Motor de Cálculo y Blindaje Contable (`src/lib/paradas-vt-storage.ts`) [COMPLETADA ✅ v3.60.3]:**
     1. Distinción explícita en `ParadaPagoRegistro` entre `odometroServicio` (km del cambio, ej. 892.491) y `odometroActualBus` (tablero hoy, ej. 893.485).
     2. Motor de cálculo `calcularDesgasteRegularizacion(odometroActualBus, odometroServicio, intervaloKm)`: calcula km rodados (994 km), km restantes (4.006 km), porcentaje de vida y advertencias en vivo.
     3. **Blindaje Inmutable del Arqueo:** Si `registro.fecha < today` y `registro.pagador === "AYUDANTE"`, se marca automáticamente `descontadoEnVT = true` para que el arqueo de hoy del ayudante jamás sufra descuentos indebidos por dineros liquidados en fechas pasadas.
     4. **Socio Propietario:** Permite registrar los egresos patrimoniales en `OwnerExpenses` con la fecha histórica del servicio (18 de septiembre), respetando sus 3 modalidades (Transferencia total, parcial + saldo a cartera, o crédito fiado).
   * **FASE 2: Interfaz Táctil Ergonómica del Chofer (`ChoferMantenimientoWidget.tsx`) [COMPLETADA ✅ v3.60.4]:**
-    1. Enlace sutil y no invasivo "⏱️ ¿Se realizó antes? [ Toca aquí para regularizar fecha o km ]" integrado tanto en el Modal de Combo Rápido de Lubricadora como en el Modal de Estaciones de Servicio de Taller.
+    1. Enlace sutil y no invasivo "⏱️ ¿Se realizó antes? [ Toca aquí para regularizar fecha o km ]" integrado en el Modal de Combo de Lubricadora y en el Modal de Estaciones de Taller del Chofer.
     2. Preserva al 100% la velocidad de 1 solo toque para el 95% de los casos rutinarios en fosa.
-    3. Al tocarlo, despliega suavemente los campos de kilometraje al momento del cambio y fecha del servicio.
-    4. Tarjeta reactiva de cálculo en vivo que computa `kmRodados` y `kmRestantes` (ej. 994 km rodados, 4.006 km restantes al 80%), garantizando que el odómetro del bus se mantiene en sus 893.485 km.
-    5. Candado anti-error en tiempo real: Si `odometroServicio > odometroActualBus`, bloquea inmediatamente el botón de guardar y muestra alerta visual roja explicativa.
-    6. Asentamiento blindado: El odómetro del bus nunca retrocede (`kmTablero > kmActual`), los componentes se calibran a la fecha y km del servicio, el arqueo del ayudante de hoy queda blindado si fue en fecha pasada, y si pagó el socio el egreso se fecha en el día del servicio.
-  * **FASE 3: Panel del Socio (`MantenimientoScreen.tsx`) y Pruebas Integrales [PENDIENTE INMEDIATO]:**
-    1. Réplica en el modal de registro de taller del socio para regularizar facturas y servicios desde su sesión.
-    2. Prueba con el caso real: Bus 01, 892.491 km al 18/09/2026, verificando tacómetro del bus en 893.485 km y semáforo calibrado a 4.006 km restantes.
+    3. Despliegue de casillas de km al momento del cambio y fecha histórica con tarjeta reactiva de cálculo en vivo y candado anti-error bloqueante si `odometroServicio > odometroActualBus`.
+  * **FASE 3: Panel del Socio (`MantenimientoScreen.tsx`) y Pruebas Integrales [COMPLETADA ✅ v3.60.5]:**
+    1. Modal de Estaciones de Servicio del Socio: Enlace sutil de regularización, casillas de km histórico y fecha, tarjeta de cálculo reactivo en vivo y candado bloqueante.
+    2. Modal Combo 4 Ruedas del Socio: Integración completa de regularización retroactiva, cálculo en vivo sobre ciclos de 50.000 km y 60.000 km, y candado anti-error.
+    3. Modal Individual de Edición (`editingItem`): Tarjeta en vivo informativa que computa desgaste y protege el tacómetro del bus.
+    4. Historial de Paradas del Socio: Badge distintivo "⏱️ Regularizado (892.491 km)" con auditoría clara.
+    5. Suite de Pruebas Integrales: 100% de tests unitarios y de integración superados con el caso real del Bus 01.

@@ -55,6 +55,7 @@ import {
   saveParadaPago,
   deleteParadaPagoCascada,
   clearAllParadasByBus,
+  calcularDesgasteRegularizacion,
   type ParadaPagoRegistro,
   type SocioModalidadPago,
 } from '@/lib/paradas-vt-storage';
@@ -402,6 +403,16 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
   // Modalidad de pago al asentar parada de taller en el modal (Fase 4)
   const [estacionModalidadPago, setEstacionModalidadPago] = useState<'PAGO_TOTAL' | 'PAGO_PARCIAL' | 'CREDITO_FIADO'>('PAGO_TOTAL');
   const [estacionMontoAbono, setEstacionMontoAbono] = useState<string>('');
+
+  // Regularización Retroactiva en Estaciones de Servicio (Socio)
+  const [estacionModoRetroactivo, setEstacionModoRetroactivo] = useState<boolean>(false);
+  const [estacionKmServicio, setEstacionKmServicio] = useState<string>("");
+  const [estacionFechaServicio, setEstacionFechaServicio] = useState<string>(() => new Date().toISOString().split("T")[0]);
+
+  // Regularización Retroactiva en Combo 4 Ruedas (Socio)
+  const [comboRuedasModoRetroactivo, setComboRuedasModoRetroactivo] = useState<boolean>(false);
+  const [comboRuedasKmServicio, setComboRuedasKmServicio] = useState<string>("");
+  const [comboRuedasFechaServicio, setComboRuedasFechaServicio] = useState<string>(() => new Date().toISOString().split("T")[0]);
 
   // Cartera de Cuentas por Pagar y Deudas con Talleres (Fase 4)
   const [deudasTalleres, setDeudasTalleres] = useState<OwnerExpense[]>(() => {
@@ -998,13 +1009,44 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
   };
 
   const handleGuardarCombo4Ruedas = () => {
-    const odoNum = parseInt(comboRuedasKm, 10);
-    const km = !isNaN(odoNum) && odoNum > 0 ? odoNum : kmActual;
+    const kmTablero = parseInt(comboRuedasKm || '', 10) || kmActual;
     const today = new Date().toISOString().split('T')[0];
-    const fechaFinal = today;
+    let km = kmTablero;
+    let fechaFinal = today;
+    let esRetro = false;
+
+    if (comboRuedasModoRetroactivo) {
+      const kmHist = parseInt(comboRuedasKmServicio || '', 10);
+      if (isNaN(kmHist) || kmHist <= 0) {
+        toast({
+          title: 'Kilometraje histórico inválido',
+          description: 'Ingresa el kilometraje en que se realizó el servicio de ruedas.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (kmHist > kmTablero) {
+        toast({
+          title: 'Kilometraje inconsistente',
+          description: `El cambio (${kmHist.toLocaleString()} km) no puede ser mayor al odómetro actual (${kmTablero.toLocaleString()} km).`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      km = kmHist;
+      fechaFinal = comboRuedasFechaServicio || today;
+      esRetro = kmHist < kmTablero || fechaFinal < today;
+    }
+
     const costoTotal = parseFloat(comboRuedasCosto) || 0;
     const tallerStr = comboRuedasTaller.trim() || 'Taller de Ruedas / Rulimanes';
     const facturaRef = comboRuedasFactura.trim();
+
+    // Regla Inmutable del Autobús: El odómetro del bus nunca retrocede.
+    if (kmTablero > kmActual) {
+      saveBusOdometer(activeBusDisco, kmTablero.toString(), 'Combo 4 Ruedas');
+      setKmActual(kmTablero);
+    }
 
     let encontradasDel = false;
     let encontradasPost = false;
@@ -1084,12 +1126,16 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           id: paradaId,
           busId: activeBusId,
           disco: activeBusDisco,
-          fecha: today,
+          fecha: fechaFinal,
           estacionId: 'FRENOS_RODAJE',
           estacionNombre: 'Combo 4 Ruedas (Frenos y Rodaje)',
           taller: tallerStr,
           factura: facturaRef || undefined,
           odometroKm: km,
+          odometroServicio: km,
+          odometroActualBus: kmTablero,
+          esRetroactivo: esRetro,
+          kmRodadosDesdeServicio: Math.max(0, kmTablero - km),
           costoTotal,
           pagador: 'SOCIO',
           socioModalidad: 'TRANSFERENCIA_TOTAL',
@@ -1103,7 +1149,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
         saveOwnerExpense({
           id: expenseId,
           busId: activeBusId,
-          expenseDate: today,
+          expenseDate: fechaFinal,
           createdAt: new Date().toISOString(),
           category: 'FRENOS_RODAJE',
           description: `Engrase Integral Combo 4 Ruedas (Bocinas Delanteras 60k + Posteriores 50k)`,
@@ -1114,6 +1160,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           paymentMethod: comboRuedasMetodo,
           comprobanteRef: facturaRef ? `Fac/Nota: ${facturaRef}` : undefined,
           status: 'PAGADO',
+          notes: `Combo 4 Ruedas. Odómetro servicio: ${km.toLocaleString()} km. Tablero: ${kmTablero.toLocaleString()} km.${esRetro ? ' [Regularización Retroactiva]': ''}`,
         });
 
         recargarCarteraYParadas();
@@ -1179,11 +1226,25 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
       return it;
     });
 
+    // Regla Inmutable: El odómetro del bus solo avanza si el valor ingresado es mayor
+    if (km > kmActual) {
+      saveBusOdometer(activeBusDisco, km.toString(), 'Mantenimiento ' + editingItem.nombre);
+      setKmActual(km);
+    }
+
     saveItems(updated);
+    const esRetro = km < kmActual || (fechaFinal < today);
+
     if (itemsCascadaAfectados.length > 0) {
       toast({
         title: 'Mantenimiento Mayor Registrado',
-        description: `${editingItem.nombre} asentado en ${km.toLocaleString()} km. Efecto cascada reseteó: ${itemsCascadaAfectados.join(', ')}.`,
+        description: `${editingItem.nombre} asentado en ${km.toLocaleString()} km. Efecto cascada reseteó: ${itemsCascadaAfectados.join(', ')}.${esRetro ? ` (hace ${(kmActual - km).toLocaleString()} km rodados)` : ''}`,
+      });
+    } else if (esRetro) {
+      const rodados = Math.max(0, kmActual - km);
+      toast({
+        title: '⚡ Mantenimiento Regularizado',
+        description: `${editingItem.nombre} calibrado a ${km.toLocaleString()} km (hace ${rodados.toLocaleString()} km rodados). Odómetro del bus conservado en ${kmActual.toLocaleString()} km.`,
       });
     } else {
       toast({
@@ -1277,6 +1338,9 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     setEstacionSeleccionada(estacionId);
     setEstacionCodigosSeleccionados(resueltos);
     setEstacionKm(kmActual.toString());
+    setEstacionModoRetroactivo(false);
+    setEstacionKmServicio(kmActual.toString());
+    setEstacionFechaServicio(new Date().toISOString().split("T")[0]);
     setEstacionCosto("");
     setEstacionFactura("");
     setEstacionTaller(
@@ -1441,10 +1505,40 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
       return;
     }
 
-    const odoNum = parseInt(estacionKm, 10);
-    const kmServicio = !isNaN(odoNum) && odoNum > 0 ? odoNum : kmActual;
+    const kmTablero = parseInt(estacionKm || "", 10) || kmActual;
     const today = new Date().toISOString().split("T")[0];
-    const fechaFinal = today;
+    let kmServicio = kmTablero;
+    let fechaFinal = today;
+    let esRetro = false;
+
+    if (estacionModoRetroactivo) {
+      const odoHist = parseInt(estacionKmServicio || "", 10);
+      if (isNaN(odoHist) || odoHist <= 0) {
+        toast({
+          title: "Kilometraje histórico inválido",
+          description: "Ingresa el kilometraje en que se realizó el cambio en taller.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (odoHist > kmTablero) {
+        toast({
+          title: "Kilometraje inconsistente",
+          description: `El cambio (${odoHist.toLocaleString()} km) no puede ser mayor al odómetro actual (${kmTablero.toLocaleString()} km).`,
+          variant: "destructive",
+        });
+        return;
+      }
+      kmServicio = odoHist;
+      fechaFinal = estacionFechaServicio || today;
+      esRetro = odoHist < kmTablero || fechaFinal < today;
+    }
+
+    // Regla Inmutable del Autobús: El odómetro del bus nunca retrocede.
+    if (kmTablero > kmActual) {
+      saveBusOdometer(activeBusDisco, kmTablero.toString(), "Taller " + config.nombre);
+      setKmActual(kmTablero);
+    }
     const costoTotal = parseFloat(estacionCosto) || 0;
     const tallerStr = estacionTaller.trim() || config.nombre;
     const facturaRef = estacionFactura.trim();
@@ -1554,12 +1648,16 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
         id: 'parada-socio-' + Date.now(),
         busId: activeBusId,
         disco: activeBusDisco,
-        fecha: today,
+        fecha: fechaFinal,
         estacionId: estacionSeleccionada,
         estacionNombre: config.nombre,
         taller: tallerStr,
         factura: facturaRef || undefined,
         odometroKm: kmServicio,
+        odometroServicio: kmServicio,
+        odometroActualBus: kmTablero,
+        esRetroactivo: esRetro,
+        kmRodadosDesdeServicio: Math.max(0, kmTablero - kmServicio),
         costoTotal,
         pagador: 'SOCIO',
         montoCubiertoAyudante: 0,
@@ -1575,7 +1673,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
       saveOwnerExpenseToApi({
         id: expenseId,
         busId: activeBusId,
-        expenseDate: today,
+        expenseDate: fechaFinal,
         createdAt: new Date().toISOString(),
         category: categoriaContable,
         description: descripcionEgreso,
@@ -1587,16 +1685,24 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
         comprobanteRef: facturaRef || undefined,
         abonos: abonosList,
         status: expenseStatus,
-        notes: `Servicio en ${config.nombre} con ${estacionCodigosSeleccionados.length} componentes atendidos. Odómetro: ${kmServicio} km.`,
+        notes: `Servicio en ${config.nombre} con ${estacionCodigosSeleccionados.length} componentes atendidos. Odómetro servicio: ${kmServicio.toLocaleString()} km. Tablero: ${kmTablero.toLocaleString()} km.${esRetro ? ' [Regularización Retroactiva]': ''}`,
       });
 
       recargarCarteraYParadas();
     }
 
-    toast({
-      title: `Servicio en ${config.nombre} Asentado`,
-      description: `${estacionCodigosSeleccionados.length} componentes actualizados a ${kmServicio.toLocaleString()} km${costoTotal > 0 ? ` y $${costoTotal.toFixed(2)} registrado en cartera y egresos.` : "."}`,
-    });
+    if (esRetro) {
+      const rodados = Math.max(0, kmTablero - kmServicio);
+      toast({
+        title: `⚡ Servicio en ${config.nombre} Regularizado`,
+        description: `${estacionCodigosSeleccionados.length} componentes calibrados a ${kmServicio.toLocaleString()} km (hace ${rodados.toLocaleString()} km rodados). Odómetro del bus conservado en ${kmTablero.toLocaleString()} km.${costoTotal > 0 ? ` Asentado en fecha ${fechaFinal}.` : ''}`,
+      });
+    } else {
+      toast({
+        title: `Servicio en ${config.nombre} Asentado`,
+        description: `${estacionCodigosSeleccionados.length} componentes actualizados a ${kmServicio.toLocaleString()} km${costoTotal > 0 ? ` y $${costoTotal.toFixed(2)} registrado en cartera y egresos.` : "."}`,
+      });
+    }
 
     setEstacionSeleccionada(null);
   };
@@ -2452,6 +2558,11 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                             <span className="text-[9px] text-slate-400">
                               {p.fecha}
                             </span>
+                            {p.esRetroactivo && (
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
+                                ⏱️ Regularizado ({p.odometroServicio?.toLocaleString() || p.odometroKm.toLocaleString()} km)
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-600">
                             <span>{p.taller}</span>
@@ -2740,6 +2851,9 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                 size="sm"
                 onClick={() => {
                   setComboRuedasKm(kmActual.toString());
+                  setComboRuedasModoRetroactivo(false);
+                  setComboRuedasKmServicio(kmActual.toString());
+                  setComboRuedasFechaServicio(new Date().toISOString().split('T')[0]);
                   setComboRuedasCosto('');
                   setComboRuedasFactura('');
                   setComboRuedasTaller('');
@@ -3287,7 +3401,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                     <div className="grid grid-cols-2 gap-2.5">
                       <div>
                         <Label className="text-[11px] font-bold text-slate-700 block mb-1">
-                          Odómetro / Tacómetro (Km)
+                          Odómetro Actual del Bus (Km)
                         </Label>
                         <Input
                           type="number"
@@ -3310,6 +3424,118 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                           className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300 font-bold text-emerald-800"
                         />
                       </div>
+                    </div>
+
+                    {/* Enlace sutil de regularización retroactiva (Socio) */}
+                    <div className="bg-amber-50/60 border border-amber-200/70 rounded-2xl p-2.5">
+                      <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nuevo = !estacionModoRetroactivo;
+                            setEstacionModoRetroactivo(nuevo);
+                            if (nuevo && (!estacionKmServicio || estacionKmServicio === estacionKm)) {
+                              setEstacionKmServicio(estacionKm || kmActual.toString());
+                            }
+                          }}
+                          className="text-[11px] font-bold text-amber-900 hover:text-amber-950 flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <span>⏱️ ¿Se realizó antes?</span>
+                          <span className="underline decoration-amber-600 underline-offset-2">
+                            {estacionModoRetroactivo ? "Ocultar regularización (Hoy)" : "Toca aquí para regularizar fecha o km"}
+                          </span>
+                        </button>
+                      </div>
+
+                      {estacionModoRetroactivo && (() => {
+                        const odoBus = parseInt(estacionKm || "", 10) || kmActual;
+                        const odoServicio = parseInt(estacionKmServicio || "", 10) || 0;
+                        const primerItem = comboUnidadItems[0];
+                        const intervaloRef = primerItem?.intervaloKm || 5000;
+                        const calculo = calcularDesgasteRegularizacion(odoBus, odoServicio, intervaloRef);
+
+                        return (
+                          <div className="mt-2 pt-2.5 border-t border-amber-300/60 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-950 flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-amber-700" /> Regularizar Servicio Anterior
+                              </span>
+                              <Badge className="bg-amber-200 text-amber-900 border-amber-300 text-[9px] font-black">
+                                Cálculo en Vivo
+                              </Badge>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <Label className="text-[10px] font-black text-slate-700 block mb-1">
+                                  Km al momento del cambio *
+                                </Label>
+                                <Input
+                                  type="number"
+                                  value={estacionKmServicio}
+                                  onChange={e => setEstacionKmServicio(e.target.value)}
+                                  placeholder="ej. 892491"
+                                  className="h-9 rounded-xl text-xs font-black bg-white border-amber-300"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-[10px] font-black text-slate-700 block mb-1">
+                                  Fecha del servicio *
+                                </Label>
+                                <Input
+                                  type="date"
+                                  value={estacionFechaServicio}
+                                  onChange={e => setEstacionFechaServicio(e.target.value)}
+                                  className="h-9 rounded-xl text-xs font-bold bg-white border-amber-300"
+                                />
+                              </div>
+                            </div>
+
+                            {odoServicio > 0 && (
+                              <div
+                                className={
+                                  "p-2.5 rounded-xl border text-xs leading-relaxed " +
+                                  (calculo.esInvalido
+                                    ? "bg-rose-50 border-rose-300 text-rose-900 font-bold"
+                                    : calculo.esVencido
+                                    ? "bg-amber-100 border-amber-400 text-amber-950"
+                                    : "bg-emerald-50 border-emerald-300 text-emerald-950")
+                                }
+                              >
+                                {calculo.esInvalido ? (
+                                  <div className="flex items-start gap-1.5">
+                                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                                    <div>
+                                      <p className="font-black text-[11px] text-rose-800">Kilometraje Inválido</p>
+                                      <p className="text-[10px] text-rose-700 font-medium">{calculo.mensajeError}</p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between font-black text-[11px]">
+                                      <span className="flex items-center gap-1 text-emerald-800">
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                        ✓ Hace {calculo.kmRodados.toLocaleString()} km
+                                      </span>
+                                      <span className="text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded-full text-[10px]">
+                                        Restan {calculo.kmRestantes.toLocaleString()} km ({calculo.porcentajeRestante}%)
+                                      </span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-600 font-medium">
+                                      • El odómetro del autobús se mantendrá en <strong>{odoBus.toLocaleString()} km</strong>
+                                    </p>
+                                    {calculo.advertencia && (
+                                      <p className="text-[10px] text-amber-800 font-bold mt-1">
+                                        {calculo.advertencia}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2.5">
@@ -3496,14 +3722,45 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                     >
                       Cancelar
                     </Button>
-                    <Button
-                      type="button"
-                      onClick={handleGuardarEstacionServicio}
-                      className="flex-1 h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Save className="w-4 h-4 text-amber-400" />
-                      Asentar en {config.nombre.split(" ")[0]}
-                    </Button>
+                    {(() => {
+                      const odoBus = parseInt(estacionKm || "", 10) || kmActual;
+                      const odoServicio = parseInt(estacionKmServicio || "", 10) || 0;
+                      const esInvalido = estacionModoRetroactivo && (odoServicio > odoBus || odoServicio <= 0);
+                      const primerItem = comboUnidadItems[0];
+                      const intervaloRef = primerItem?.intervaloKm || 5000;
+                      const calculo = estacionModoRetroactivo ? calcularDesgasteRegularizacion(odoBus, odoServicio, intervaloRef) : null;
+
+                      return (
+                        <Button
+                          type="button"
+                          disabled={esInvalido}
+                          onClick={handleGuardarEstacionServicio}
+                          className={
+                            "flex-1 h-10 rounded-xl font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all " +
+                            (esInvalido
+                              ? "bg-rose-300 text-rose-800 cursor-not-allowed"
+                              : "bg-slate-900 hover:bg-slate-800 text-white")
+                          }
+                        >
+                          {esInvalido ? (
+                            <>
+                              <AlertTriangle className="w-4 h-4 text-rose-700" />
+                              Km Mayor al Tablero (Bloqueado)
+                            </>
+                          ) : estacionModoRetroactivo && calculo && !calculo.esInvalido ? (
+                            <>
+                              <Save className="w-4 h-4 text-amber-400" />
+                              Calibrar a {calculo.kmRestantes.toLocaleString()} km Restantes
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 text-amber-400" />
+                              Asentar en {config.nombre.split(" ")[0]}
+                            </>
+                          )}
+                        </Button>
+                      );
+                    })()}
                   </>
                 )}
               </div>
@@ -3556,6 +3813,44 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                   />
                 </div>
               </div>
+
+              {/* Cálculo en vivo para regularización histórica si aplica */}
+              {(() => {
+                const kmNum = parseInt(newUltimoKm, 10);
+                if (!kmNum || kmNum <= 0) return null;
+                const rodados = kmActual - kmNum;
+                const intervalo = editingItem.intervaloKm || 5000;
+                const calculo = calcularDesgasteRegularizacion(kmActual, kmNum, intervalo);
+
+                if (kmNum > kmActual) {
+                  return (
+                    <div className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-[11px] font-bold flex items-center gap-1.5">
+                      <Gauge className="w-3.5 h-3.5 text-blue-600" />
+                      Este kilometraje actualizará el tacómetro oficial del bus a {kmNum.toLocaleString()} km.
+                    </div>
+                  );
+                }
+
+                if (rodados > 0) {
+                  return (
+                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 text-xs leading-relaxed space-y-1">
+                      <div className="flex items-center justify-between font-black text-[11px]">
+                        <span className="flex items-center gap-1 text-amber-900">
+                          ⏱️ Regularización Histórica (hace {rodados.toLocaleString()} km)
+                        </span>
+                        <span className="bg-amber-200/80 text-amber-950 px-2 py-0.5 rounded-full text-[10px]">
+                          Restan {calculo.kmRestantes.toLocaleString()} km ({calculo.porcentajeRestante}%)
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-600 font-medium">
+                        • El tacómetro del autobús se mantendrá en <strong>{kmActual.toLocaleString()} km</strong>
+                      </p>
+                    </div>
+                  );
+                }
+
+                return null;
+              })()}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -3786,7 +4081,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-[11px] font-bold text-slate-700 block mb-1">
-                    Odómetro del Servicio (Km)
+                    Odómetro Actual del Bus (Km)
                   </Label>
                   <Input
                     type="number"
@@ -3809,6 +4104,116 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                     className="h-10 rounded-xl text-xs bg-slate-50 border-slate-300 font-bold text-emerald-800"
                   />
                 </div>
+              </div>
+
+              {/* Enlace sutil de regularización retroactiva (Combo 4 Ruedas) */}
+              <div className="bg-amber-50/60 border border-amber-200/70 rounded-2xl p-2.5">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nuevo = !comboRuedasModoRetroactivo;
+                      setComboRuedasModoRetroactivo(nuevo);
+                      if (nuevo && (!comboRuedasKmServicio || comboRuedasKmServicio === comboRuedasKm)) {
+                        setComboRuedasKmServicio(comboRuedasKm || kmActual.toString());
+                      }
+                    }}
+                    className="text-[11px] font-bold text-amber-900 hover:text-amber-950 flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <span>⏱️ ¿Se realizó antes?</span>
+                    <span className="underline decoration-amber-600 underline-offset-2">
+                      {comboRuedasModoRetroactivo ? "Ocultar regularización (Hoy)" : "Toca aquí para regularizar fecha o km"}
+                    </span>
+                  </button>
+                </div>
+
+                {comboRuedasModoRetroactivo && (() => {
+                  const odoBus = parseInt(comboRuedasKm, 10) || kmActual;
+                  const odoServicio = parseInt(comboRuedasKmServicio, 10) || 0;
+                  const calculo = calcularDesgasteRegularizacion(odoBus, odoServicio, 50000);
+
+                  return (
+                    <div className="mt-2 pt-2.5 border-t border-amber-300/60 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-950 flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-amber-700" /> Regularizar Servicio Anterior
+                        </span>
+                        <Badge className="bg-amber-200 text-amber-900 border-amber-300 text-[9px] font-black">
+                          Cálculo en Vivo
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-[10px] font-black text-slate-700 block mb-1">
+                            Km al momento del cambio *
+                          </Label>
+                          <Input
+                            type="number"
+                            value={comboRuedasKmServicio}
+                            onChange={e => setComboRuedasKmServicio(e.target.value)}
+                            placeholder="ej. 892491"
+                            className="h-9 rounded-xl text-xs font-black bg-white border-amber-300"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] font-black text-slate-700 block mb-1">
+                            Fecha del servicio *
+                          </Label>
+                          <Input
+                            type="date"
+                            value={comboRuedasFechaServicio}
+                            onChange={e => setComboRuedasFechaServicio(e.target.value)}
+                            className="h-9 rounded-xl text-xs font-bold bg-white border-amber-300"
+                          />
+                        </div>
+                      </div>
+
+                      {odoServicio > 0 && (
+                        <div
+                          className={
+                            "p-2.5 rounded-xl border text-xs leading-relaxed " +
+                            (calculo.esInvalido
+                              ? "bg-rose-50 border-rose-300 text-rose-900 font-bold"
+                              : calculo.esVencido
+                              ? "bg-amber-100 border-amber-400 text-amber-950"
+                              : "bg-emerald-50 border-emerald-300 text-emerald-950")
+                          }
+                        >
+                          {calculo.esInvalido ? (
+                            <div className="flex items-start gap-1.5">
+                              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                              <div>
+                                <p className="font-black text-[11px] text-rose-800">Kilometraje Inválido</p>
+                                <p className="text-[10px] text-rose-700 font-medium">{calculo.mensajeError}</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between font-black text-[11px]">
+                                <span className="flex items-center gap-1 text-emerald-800">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  ✓ Hace {calculo.kmRodados.toLocaleString()} km
+                                </span>
+                                <span className="text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded-full text-[10px]">
+                                  Restan {calculo.kmRestantes.toLocaleString()} km ({calculo.porcentajeRestante}%)
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-600 font-medium">
+                                • El odómetro del autobús se mantendrá en <strong>{odoBus.toLocaleString()} km</strong>
+                              </p>
+                              {calculo.advertencia && (
+                                <p className="text-[10px] text-amber-800 font-bold mt-1">
+                                  {calculo.advertencia}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3878,14 +4283,43 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
               >
                 Cancelar
               </Button>
-              <Button
-                type="button"
-                onClick={handleGuardarCombo4Ruedas}
-                className="flex-1 h-10 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4" />
-                Asentar Combo 4 Ruedas
-              </Button>
+              {(() => {
+                const odoBus = parseInt(comboRuedasKm, 10) || kmActual;
+                const odoServicio = parseInt(comboRuedasKmServicio, 10) || 0;
+                const esInvalido = comboRuedasModoRetroactivo && (odoServicio > odoBus || odoServicio <= 0);
+                const calculo = comboRuedasModoRetroactivo ? calcularDesgasteRegularizacion(odoBus, odoServicio, 50000) : null;
+
+                return (
+                  <Button
+                    type="button"
+                    disabled={esInvalido}
+                    onClick={handleGuardarCombo4Ruedas}
+                    className={
+                      "flex-1 h-10 rounded-xl font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all " +
+                      (esInvalido
+                        ? "bg-rose-300 text-rose-800 cursor-not-allowed"
+                        : "bg-amber-600 hover:bg-amber-700 text-white")
+                    }
+                  >
+                    {esInvalido ? (
+                      <>
+                        <AlertTriangle className="w-4 h-4 text-rose-700" />
+                        Km Mayor al Tablero (Bloqueado)
+                      </>
+                    ) : comboRuedasModoRetroactivo && calculo && !calculo.esInvalido ? (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        Calibrar a {calculo.kmRestantes.toLocaleString()} km Restantes
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        Asentar Combo 4 Ruedas
+                      </>
+                    )}
+                  </Button>
+                );
+              })()}
             </div>
           </div>
         </div>
