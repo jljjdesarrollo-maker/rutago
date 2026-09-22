@@ -302,3 +302,19 @@
     3. Modal Individual de Edición (`editingItem`): Tarjeta en vivo informativa que computa desgaste y protege el tacómetro del bus.
     4. Historial de Paradas del Socio: Badge distintivo "⏱️ Regularizado (892.491 km)" con auditoría clara.
     5. Suite de Pruebas Integrales: 100% de tests unitarios y de integración superados con el caso real del Bus 01.
+
+### MÓDULO ARQUITECTURA: Sincronización Nube, Erradicación de Zombies y Persistencia de Combos (v3.60.6)
+- **Problemas Diagnosticados por el Comité de Arquitectura:**
+  1. *Error 1 (Combos/Recetas Desaparecidos):* `saveComboUnidad` y `saveCatalogoMaestroGlobal` solo escribían en `localStorage`. `/api/config/mantenimiento` usaba disco efímero `os.tmpdir()` que en Vercel Serverless se destruye tras cada ejecución y carecía de `combosPersonalizados`.
+  2. *Error 2 (Efecto Zombie en Paradas de Taller):* Al eliminar en UI, solo se borraba de `localStorage` local. La eliminación no llamaba a `deleteOwnerExpenseFromApi` hacia PostgreSQL. Al recargar, `fetchOwnerExpensesFromApi` descargaba el registro vivo y `syncRetroactiveParadasFromExpenses` volvía a fabricar automáticamente la parada (`PARADA-RETRO-...`), resucitándola indefinidamente.
+- **Plan de Ejecución por Fases:**
+  * **FASE A: Erradicación del Efecto Zombie en Historial de Paradas Técnicas [COMPLETADA ✅ v3.60.6]:**
+    - `deleteParadaPagoCascada` y `clearAllParadasByBus` en `src/lib/paradas-vt-storage.ts` convertidas en asíncronas y conectadas a `deleteOwnerExpenseFromApi` y `clearAllParadaExpensesFromApi`.
+    - Endpoint `/api/owner-expenses/route.ts` soporta parámetro `paradasOnly=true&busId=...` para purgar gastos de taller huérfanos/de prueba en la base de datos PostgreSQL.
+    - Triple blindaje en `syncRetroactiveParadasFromExpenses` para evitar que ningún registro eliminado vuelva a resucitar por compatibilidad retroactiva.
+    - Handlers en `MantenimientoScreen.tsx` actualizados a async/await con confirmación atómica.
+  * **FASE B: Persistencia Real en la Nube de Recetas y Combos de Estación [PENDIENTE]:**
+    - Añadir `combosPersonalizados` y `catalogoPersonalizado` a `/api/config/mantenimiento` con persistencia durable.
+    - Función `pushComboUnidadAlServidor` en `mantenimiento-estaciones.ts`.
+    - Hidratación en `syncMantenimientoConfigConServidor` al iniciar sesión o cambiar de bus.
+  * **FASE C: Reasignación Contable de Boletos Huérfanos [PENDIENTE TAREA 3].**

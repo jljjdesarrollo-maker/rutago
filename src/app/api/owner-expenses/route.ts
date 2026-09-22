@@ -311,6 +311,30 @@ export async function DELETE(req: NextRequest) {
       });
     }
 
+    // Caso B2: Eliminar solo gastos de paradas/taller de un bus (Limpieza de Pruebas de Paradas)
+    const paradasOnly = searchParams.get('paradasOnly');
+    if (paradasOnly === 'true' && busId) {
+      const deleted = await db.ownerExpense.deleteMany({
+        where: {
+          busId,
+          OR: [
+            { id: { startsWith: 'EXP-COMBO-' } },
+            { id: { startsWith: 'EXP-PARADA-' } },
+            { id: { startsWith: 'EXP-ESTACION-' } },
+            { id: { startsWith: 'gasto-lubricadora-' } },
+            { id: { startsWith: 'EXP-MNT-' } },
+            { id: { startsWith: 'parada-socio-' } },
+            { id: { startsWith: 'PARADA-' } },
+          ],
+        },
+      });
+      return NextResponse.json({
+        success: true,
+        count: deleted.count,
+        message: `Gastos de paradas de prueba del bus ${busId} eliminados de la base de datos`,
+      });
+    }
+
     // Caso C: Eliminar por ID individual
     if (!id) {
       return NextResponse.json(

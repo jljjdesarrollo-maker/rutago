@@ -213,3 +213,22 @@
   3. *Libros contables del socio precisos:* El gasto patrimonial se fecha en el día del servicio histórico.
 - **Validación:** 100% de la suite de pruebas unitarias y de integración superadas (Caso Bus 01: 893.485 km tablero vs 892.491 km servicio -> 994 km rodados, 4.006 km restantes al 80%).
 - **Commit Oficial:** `feat(socio): v3.60.5 - fase 3 panel del socio con regularizacion retroactiva y pruebas integrales completadas`.
+
+## 25. Erradicación del Efecto Zombie en Paradas de Taller y Plan Maestro de Persistencia Nube (v3.60.6)
+- **Hito:** Resolución definitiva de la reactivación de registros de paradas técnicas eliminadas y establecimiento del plan de persistencia multi-dispositivo en la nube.
+- **Diagnóstico del Comité de Arquitectura:**
+  * **Error 1:** Desaparición de personalizaciones en grupos/combos de mantenimiento al abrir en otro dispositivo o reiniciar sesión. La causa: `saveComboUnidad` y `saveCatalogoMaestroGlobal` solo escribían en `localStorage`. `/api/config/mantenimiento` utilizaba disco temporal efímero `os.tmpdir()` que en Vercel Serverless se destruye tras cada invocación y no contenía el campo `combosPersonalizados`.
+  * **Error 2:** Efecto Zombie en Historial de Paradas Técnicas. Al eliminar una parada, `deleteParadaPagoCascada` borraba solo en el `localStorage` del cliente (`deleteOwnerExpense`) sin enviar la petición `DELETE` a la API central en PostgreSQL (`deleteOwnerExpenseFromApi`). Al recargar o consultar desde otro dispositivo, `fetchOwnerExpensesFromApi` descargaba el registro vivo de PostgreSQL y `syncRetroactiveParadasFromExpenses` lo interpretaba como un gasto huérfano, volviendo a generar la parada (`PARADA-RETRO-...`).
+- **Implementación de la Fase A (Completada ✅):**
+  * **Eliminación Atómica en la Nube:**
+    - `deleteParadaPagoCascada` en `src/lib/paradas-vt-storage.ts` ahora es asíncrona y llama a `deleteOwnerExpenseFromApi(relatedExpenseId)`.
+    - `clearAllParadasByBus` en `src/lib/paradas-vt-storage.ts` ahora es asíncrona y ejecuta `clearAllParadaExpensesFromApi(busId)`.
+  * **Purga en PostgreSQL para Limpieza de Pruebas:**
+    - En `/api/owner-expenses/route.ts` se añadió el caso `paradasOnly=true&busId=...` que destruye en la base de datos de PostgreSQL todos los registros de pruebas vinculados a paradas y talleres.
+    - Se agregó `clearAllParadaExpensesFromApi` en `src/lib/owner-expenses-storage.ts`.
+  * **Triple Blindaje de Lápidas de Exclusión (Tombstones):**
+    - En `syncRetroactiveParadasFromExpenses`, se verifica contra `deletedParadaIds.has(generatedParadaId)`, `deletedParadaIds.has(exp.id)` y `deletedExpenseIds.has(exp.id)`. Ninguna parada eliminada puede ser recreada.
+  * **MantenimientoScreen UI:**
+    - Handlers `handleConfirmarEliminarParada` y `handleConfirmarLimpiarPruebas` convertidos a async/await con confirmación de éxito reactiva.
+- **Commit Oficial:** `feat(mantenimiento): v3.60.6 - fase A eliminacion atomica en nube de paradas tecnicas y erradicacion de efecto zombie`.
+- **Próximo Paso Inmediato:** Fase B — Persistencia en la nube de Recetas y Combos de Estación (`combosPersonalizados` en `/api/config/mantenimiento`).

@@ -504,6 +504,21 @@ export async function removeSampleExpensesFromApi(busId = 'BUS-01'): Promise<boo
   }
 }
 
+/**
+ * FASE A: Purga en la base de datos central de todos los gastos de paradas/taller de prueba para un bus
+ */
+export async function clearAllParadaExpensesFromApi(busId = 'BUS-01'): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/owner-expenses?paradasOnly=true&busId=${encodeURIComponent(busId)}`, {
+      method: 'DELETE',
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Purga de gastos de paradas en nube diferida:', err);
+    return false;
+  }
+}
+
 export async function syncAllLocalExpensesToApi(busId = 'BUS-01'): Promise<{ count: number }> {
   const localList = getOwnerExpenses(busId);
   if (localList.length === 0) return { count: 0 };

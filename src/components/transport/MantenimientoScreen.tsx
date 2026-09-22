@@ -1769,14 +1769,14 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     }
   };
 
-  // FASE B: Anulación / Eliminación en Cascada de Paradas Técnicas
-  const handleConfirmarEliminarParada = () => {
+  // FASE A: Anulación / Eliminación en Cascada de Paradas Técnicas (Local + Nube)
+  const handleConfirmarEliminarParada = async () => {
     if (!paradaParaEliminar) return;
-    const ok = deleteParadaPagoCascada(paradaParaEliminar.id);
+    const ok = await deleteParadaPagoCascada(paradaParaEliminar.id);
     if (ok) {
       toast({
         title: 'Registro de Parada Anulado',
-        description: `Se eliminó el servicio en ${paradaParaEliminar.estacionNombre} y se canceló su impacto contable en deudas y caja.`,
+        description: `Se eliminó el servicio en ${paradaParaEliminar.estacionNombre} y se canceló su impacto contable en deudas y caja (local y nube).`,
       });
       recargarCarteraYParadas();
     } else {
@@ -1789,12 +1789,12 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     setParadaParaEliminar(null);
   };
 
-  // FASE B: Limpieza total de paradas de prueba del autobús
-  const handleConfirmarLimpiarPruebas = () => {
-    const eliminadas = clearAllParadasByBus(activeBusId);
+  // FASE A: Limpieza total de paradas de prueba del autobús (Local + Nube)
+  const handleConfirmarLimpiarPruebas = async () => {
+    const eliminadas = await clearAllParadasByBus(activeBusId);
     toast({
       title: 'Limpieza de Pruebas Completada',
-      description: `Se eliminaron ${eliminadas} ${eliminadas === 1 ? 'registro de prueba' : 'registros de prueba'} de la Unidad ${activeBusDisco}. Cartera y deudas saneadas.`,
+      description: `Se eliminaron ${eliminadas} ${eliminadas === 1 ? 'registro de prueba' : 'registros de prueba'} de la Unidad ${activeBusDisco}. Cartera y deudas saneadas en local y en el servidor.`,
     });
     setModalConfirmLimpiarPruebasOpen(false);
     recargarCarteraYParadas();

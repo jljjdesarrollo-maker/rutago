@@ -3,7 +3,13 @@
  * Separa roles: Chofer (reset mecánico), Ayudante (dinero y arqueo), Socio (contabilidad patrimonial).
  */
 
-import { deleteOwnerExpense, getDeletedExpenseIds } from './owner-expenses-storage';
+import {
+  deleteOwnerExpense,
+  deleteOwnerExpenseFromApi,
+  clearAllParadaExpensesFromApi,
+  recordDeletedExpenseId,
+  getDeletedExpenseIds,
+} from './owner-expenses-storage';
 
 export type ParadaPagador = 'AYUDANTE' | 'SOCIO';
 export type SocioModalidadPago = 'TRANSFERENCIA_TOTAL' | 'TRANSFERENCIA_PARCIAL' | 'CREDITO_FIADO';
@@ -135,7 +141,12 @@ export function syncRetroactiveParadasFromExpenses(busId?: string): number {
       if (sampleIds.has(exp.id)) continue;
 
       const generatedParadaId = `PARADA-RETRO-${exp.id}`;
-      if (existingParadaIds.has(generatedParadaId) || deletedParadaIds.has(generatedParadaId)) {
+      if (
+        existingParadaIds.has(generatedParadaId) ||
+        deletedParadaIds.has(generatedParadaId) ||
+        deletedParadaIds.has(exp.id) ||
+        deletedExpenseIds.has(exp.id)
+      ) {
         continue;
       }
 
@@ -569,10 +580,15 @@ export function updateParadaPagoAbono(expenseId: string, montoAbono: number): vo
  * 3. Si afectó el arqueo pendiente del ayudante, lo cancela para que no descuente en VT.
  * 4. Emite eventos reactivos globales para actualizar la UI en vivo.
  */
-export function deleteParadaPagoCascada(paradaId: string): boolean {
+export async function deleteParadaPagoCascada(paradaId: string): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   try {
     recordDeletedParadaId(paradaId);
+    if (paradaId.startsWith('PARADA-RETRO-')) {
+      const origExpenseId = paradaId.replace('PARADA-RETRO-', '');
+      recordDeletedExpenseId(origExpenseId);
+      recordDeletedParadaId(origExpenseId);
+    }
     const raw = localStorage.getItem(STORAGE_PARADAS_KEY);
     if (!raw) return false;
     const list: ParadaPagoRegistro[] = JSON.parse(raw);
@@ -583,10 +599,15 @@ export function deleteParadaPagoCascada(paradaId: string): boolean {
     const updatedList = list.filter(p => p.id !== paradaId);
     localStorage.setItem(STORAGE_PARADAS_KEY, JSON.stringify(updatedList));
 
-    // 2. Si tenía gasto de socio vinculado, eliminarlo en cascada
-    if (target.ownerExpenseId) {
-      deleteOwnerExpense(target.ownerExpenseId);
-      window.dispatchEvent(new CustomEvent('rg_owner_expenses_sync', { detail: { expenseId: target.ownerExpenseId, deleted: true } }));
+    // 2. Si tenía gasto de socio vinculado o derivado, eliminarlo en cascada tanto en local como en la nube (Fase A)
+    const relatedExpenseId = target.ownerExpenseId || (paradaId.startsWith('PARADA-RETRO-') ? paradaId.replace('PARADA-RETRO-', '') : null);
+    if (relatedExpenseId) {
+      recordDeletedExpenseId(relatedExpenseId);
+      recordDeletedParadaId(relatedExpenseId);
+      recordDeletedParadaId(`PARADA-RETRO-${relatedExpenseId}`);
+      deleteOwnerExpense(relatedExpenseId);
+      deleteOwnerExpenseFromApi(relatedExpenseId).catch(err => console.warn('Aviso eliminación en nube:', err));
+      window.dispatchEvent(new CustomEvent('rg_owner_expenses_sync', { detail: { expenseId: relatedExpenseId, deleted: true } }));
     }
 
     // 3. Notificar actualización reactiva a todos los componentes
@@ -599,24 +620,31 @@ export function deleteParadaPagoCascada(paradaId: string): boolean {
 }
 
 /**
- * FASE B: Limpieza total de registros de paradas de prueba para una unidad específica
+ * FASE A: Limpieza total de registros de paradas de prueba para una unidad específica (Local + Nube)
  */
-export function clearAllParadasByBus(busId: string): number {
+export async function clearAllParadasByBus(busId: string): Promise<number> {
   if (typeof window === 'undefined') return 0;
   try {
     const raw = localStorage.getItem(STORAGE_PARADAS_KEY);
     if (!raw) return 0;
     const list: ParadaPagoRegistro[] = JSON.parse(raw);
     const paradasDeBus = list.filter(p => p.busId === busId);
-    if (paradasDeBus.length === 0) return 0;
 
-    // Eliminar gastos asociados y registrar tombstones
+    // Eliminar gastos asociados y registrar tombstones tanto local como en nube (Fase A)
     paradasDeBus.forEach(p => {
       recordDeletedParadaId(p.id);
-      if (p.ownerExpenseId) {
-        deleteOwnerExpense(p.ownerExpenseId);
+      const relatedExpId = p.ownerExpenseId || (p.id.startsWith('PARADA-RETRO-') ? p.id.replace('PARADA-RETRO-', '') : null);
+      if (relatedExpId) {
+        recordDeletedExpenseId(relatedExpId);
+        recordDeletedParadaId(relatedExpId);
+        recordDeletedParadaId(`PARADA-RETRO-${relatedExpId}`);
+        deleteOwnerExpense(relatedExpId);
+        deleteOwnerExpenseFromApi(relatedExpId).catch(() => {});
       }
     });
+
+    // Purgar también en la base de datos central en la nube
+    clearAllParadaExpensesFromApi(busId).catch(() => {});
 
     const restantes = list.filter(p => p.busId !== busId);
     localStorage.setItem(STORAGE_PARADAS_KEY, JSON.stringify(restantes));
