@@ -175,3 +175,19 @@
   * Preservación del tacómetro general del bus: el odómetro de la unidad nunca retrocede al ingresar servicios retroactivos.
 - **Commit Oficial:** `feat(mantenimiento): v3.60.3 - fase 1 motor de calculo y blindaje contable para regularizacion retroactiva`.
 - **Próximo Paso Inmediato:** Fase 2 — Interfaz ergonómica del Chofer (`ChoferMantenimientoWidget.tsx`) con enlace sutil, cálculo en vivo y validación matemática anti-error.
+
+## 23. Interfaz Táctil Ergonómica del Chofer para Regularización Retroactiva (v3.60.4)
+- **Hito:** Fase 2 de la Regularización Retroactiva de Servicios de Mantenimiento con Odómetro Histórico.
+- **Implementación en UI Móvil (`src/components/transport/ChoferMantenimientoWidget.tsx`):**
+  * **Enlace Sutil No Invasivo:** Se agregó `⏱️ ¿Se realizó antes? [ Toca aquí para regularizar fecha o km ]` debajo de la lectura del tacómetro tanto en el modal del Combo Rápido de Lubricadora como en el modal de Estaciones de Servicio de Taller.
+  * **Cero Fricción en Fosa:** Para el 95% de los casos en tiempo real, el chofer mantiene la velocidad de guardado en 1 solo clic sin campos distractores.
+  * **Despliegue Suave:** Al pulsar el enlace, se abre un bloque con casillas de "Km al momento del cambio" y "Fecha del servicio".
+  * **Tarjeta Reactiva de Cálculo en Vivo:** Integra `calcularDesgasteRegularizacion(...)` mostrando en tiempo real los kilómetros ya rodados, los kilómetros de vida útil restantes (ej. `✓ Hace 994 km • Restan 4.006 km de vida útil (80%)`) y confirmando que el odómetro del autobús se mantendrá intacto en su lectura actual (ej. 893.485 km).
+  * **Candado Anti-Error:** Si el chofer ingresa un kilometraje superior al tacómetro actual, la tarjeta se torna roja con advertencia clara y el botón de guardado se bloquea inmediatamente (`Km Mayor al Tablero (Bloqueado)`).
+  * **Asentamiento Blindado:**
+    - Los componentes de mantenimiento reciben `ultimoKm = odometroServicio` y la fecha histórica.
+    - El odómetro global del autobús solo se actualiza si el tacómetro del tablero supera la lectura previa (`kmTablero > kmActual`), impidiendo retrocesos.
+    - Si el pagador es el Ayudante y la fecha es pasada, se activa el blindaje contable (`descontadoEnVT = true`) para no descontar en la caja del día.
+    - Si el pagador es el Socio, el egreso se fecha en el día exacto de la parada.
+- **Commit Oficial:** `feat(chofer): v3.60.4 - fase 2 interfaz tactil del chofer con enlace sutil y calculo en vivo para regularizacion retroactiva`.
+- **Próximo Paso Inmediato:** Fase 3 — Panel del Socio (`MantenimientoScreen.tsx`) y Pruebas Integrales de Extremo a Extremo.

@@ -292,11 +292,13 @@
     2. Motor de cálculo `calcularDesgasteRegularizacion(odometroActualBus, odometroServicio, intervaloKm)`: calcula km rodados (994 km), km restantes (4.006 km), porcentaje de vida y advertencias en vivo.
     3. **Blindaje Inmutable del Arqueo:** Si `registro.fecha < today` y `registro.pagador === "AYUDANTE"`, se marca automáticamente `descontadoEnVT = true` para que el arqueo de hoy del ayudante jamás sufra descuentos indebidos por dineros liquidados en fechas pasadas.
     4. **Socio Propietario:** Permite registrar los egresos patrimoniales en `OwnerExpenses` con la fecha histórica del servicio (18 de septiembre), respetando sus 3 modalidades (Transferencia total, parcial + saldo a cartera, o crédito fiado).
-  * **FASE 2: Interfaz Táctil Ergonómica del Chofer (`ChoferMantenimientoWidget.tsx`) [PENDIENTE INMEDIATO]:**
-    1. Selector ergonómico de 2 botones o enlace sutil "¿Se realizó antes? [ Toca aquí para regularizar fecha/km ]" para preservar el 95% del uso diario en 1 solo toque.
-    2. Despliegue de casillas de km al momento del cambio (`odometroServicio`) y fecha histórica.
-    3. Tarjeta de cálculo en vivo: `✓ Hace 994 km • Restan 4.006 km de vida útil`.
-    4. Bloqueo inteligente si `odometroServicio > odometroActualBus`.
-  * **FASE 3: Panel del Socio (`MantenimientoScreen.tsx`) y Pruebas Integrales [PENDIENTE TRAS FASE 2]:**
+  * **FASE 2: Interfaz Táctil Ergonómica del Chofer (`ChoferMantenimientoWidget.tsx`) [COMPLETADA ✅ v3.60.4]:**
+    1. Enlace sutil y no invasivo "⏱️ ¿Se realizó antes? [ Toca aquí para regularizar fecha o km ]" integrado tanto en el Modal de Combo Rápido de Lubricadora como en el Modal de Estaciones de Servicio de Taller.
+    2. Preserva al 100% la velocidad de 1 solo toque para el 95% de los casos rutinarios en fosa.
+    3. Al tocarlo, despliega suavemente los campos de kilometraje al momento del cambio y fecha del servicio.
+    4. Tarjeta reactiva de cálculo en vivo que computa `kmRodados` y `kmRestantes` (ej. 994 km rodados, 4.006 km restantes al 80%), garantizando que el odómetro del bus se mantiene en sus 893.485 km.
+    5. Candado anti-error en tiempo real: Si `odometroServicio > odometroActualBus`, bloquea inmediatamente el botón de guardar y muestra alerta visual roja explicativa.
+    6. Asentamiento blindado: El odómetro del bus nunca retrocede (`kmTablero > kmActual`), los componentes se calibran a la fecha y km del servicio, el arqueo del ayudante de hoy queda blindado si fue en fecha pasada, y si pagó el socio el egreso se fecha en el día del servicio.
+  * **FASE 3: Panel del Socio (`MantenimientoScreen.tsx`) y Pruebas Integrales [PENDIENTE INMEDIATO]:**
     1. Réplica en el modal de registro de taller del socio para regularizar facturas y servicios desde su sesión.
     2. Prueba con el caso real: Bus 01, 892.491 km al 18/09/2026, verificando tacómetro del bus en 893.485 km y semáforo calibrado a 4.006 km restantes.

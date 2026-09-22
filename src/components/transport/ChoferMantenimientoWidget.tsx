@@ -34,6 +34,7 @@ import { type PaymentMethod, type PaymentAbono } from '@/types/expenses';
 import {
   saveParadaPago,
   getParadasPagoByBus,
+  calcularDesgasteRegularizacion,
   type ParadaPagoRegistro,
   type ParadaPagador,
   type SocioModalidadPago,
@@ -305,6 +306,9 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   const [estacionItemsChofer, setEstacionItemsChofer] = useState<{ codigo: string; nombre: string; intervaloKm: number; preMarcado: boolean; opcionalTexto?: string }[]>([]);
   const [estacionChecksChofer, setEstacionChecksChofer] = useState<Record<string, boolean>>({});
   const [estacionKmChofer, setEstacionKmChofer] = useState<string>('');
+  const [estacionModoRetroactivoChofer, setEstacionModoRetroactivoChofer] = useState<boolean>(false);
+  const [estacionKmServicioChofer, setEstacionKmServicioChofer] = useState<string>('');
+  const [estacionFechaServicioChofer, setEstacionFechaServicioChofer] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [estacionCostoChofer, setEstacionCostoChofer] = useState<string>('');
   const [estacionFacturaChofer, setEstacionFacturaChofer] = useState<string>('');
   const [estacionTallerChofer, setEstacionTallerChofer] = useState<string>('');
@@ -331,6 +335,9 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     setEstacionItemsChofer(comboData.items);
     setEstacionChecksChofer(checksMap);
     setEstacionKmChofer(kmActual.toString());
+    setEstacionModoRetroactivoChofer(false);
+    setEstacionKmServicioChofer(kmActual.toString());
+    setEstacionFechaServicioChofer(new Date().toISOString().split('T')[0]);
     setEstacionCostoChofer('');
     setEstacionFacturaChofer('');
     setPagadorChofer('AYUDANTE');
@@ -402,18 +409,47 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     const tallerStr = estacionTallerChofer.trim() || config.nombre;
     const facturaDetalle = estacionFacturaChofer.trim() ? 'Fac: ' + estacionFacturaChofer.trim() : '';
     const tallerCompleto = facturaDetalle ? tallerStr + ' (' + facturaDetalle + ')' : tallerStr;
+
     const valorTotal = parseFloat(estacionCostoChofer) || 0;
     const costoPorItem = valorTotal > 0 ? Math.round((valorTotal / codigosMarcados.length) * 100) / 100 : 0;
 
-    // REGLA MECÁNICA INMUTABLE: Reseteo inmediato del últimoKm al valor actual del odómetro
+    const kmTablero = km;
+    let kmEfectivoServicio = kmTablero;
+    let fechaEfectiva = today;
+    let esRetro = false;
+
+    if (estacionModoRetroactivoChofer) {
+      const kmServ = parseInt(estacionKmServicioChofer, 10);
+      if (isNaN(kmServ) || kmServ <= 0) {
+        toast({
+          title: 'Kilometraje histórico inválido',
+          description: 'Ingresa el kilometraje en que se realizó el cambio en taller.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (kmServ > kmTablero) {
+        toast({
+          title: 'Kilometraje inconsistente',
+          description: `El cambio (${kmServ.toLocaleString()} km) no puede ser mayor al odómetro actual (${kmTablero.toLocaleString()} km).`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      kmEfectivoServicio = kmServ;
+      fechaEfectiva = estacionFechaServicioChofer || today;
+      esRetro = kmServ < kmTablero || fechaEfectiva < today;
+    }
+
+    // CALIBRACIÓN MECÁNICA: Asigna el últimoKm del servicio (ej: 892491) y su fecha histórica
     codigosMarcados.forEach(cod => {
       const catItem = catalogo.find(c => c.codigo === cod);
       const index = fullList.findIndex(it => it.codigo === cod);
       if (index >= 0) {
         fullList[index] = {
           ...fullList[index],
-          ultimoKm: km,
-          fechaUltimo: today,
+          ultimoKm: kmEfectivoServicio,
+          fechaUltimo: fechaEfectiva,
           tallerMecanico: tallerCompleto,
           costoEstimado: costoPorItem > 0 ? costoPorItem : fullList[index].costoEstimado,
         };
@@ -425,8 +461,8 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           nombre: catItem?.nombre || cod,
           categoria: (catItem?.categoria as any) || 'MOTOR',
           intervaloKm: catItem?.intervaloKmOficial || 5000,
-          ultimoKm: km,
-          fechaUltimo: today,
+          ultimoKm: kmEfectivoServicio,
+          fechaUltimo: fechaEfectiva,
           tallerMecanico: tallerCompleto,
           costoEstimado: costoPorItem,
           repuestoDetalle: catItem?.especificacionLubricanteRepuesto || '',
@@ -438,9 +474,11 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
     localStorage.setItem(storageKey, JSON.stringify(fullList));
 
-    // Guardar odómetro actualizado del bus si es mayor al registrado
-    saveBusOdometer(disco, km.toString(), 'Taller ' + config.nombre);
-    setKmActual(km);
+    // REGLA INMUTABLE: El odómetro del bus NUNCA retrocede. Solo se actualiza si el tablero actual supera kmActual
+    if (kmTablero > kmActual) {
+      saveBusOdometer(disco, kmTablero.toString(), 'Taller ' + config.nombre);
+      setKmActual(kmTablero);
+    }
 
     // Actualizar lista en pantalla del chofer
     setItems(fullList.filter(it => it.asignadoChofer && it.activo));
@@ -457,14 +495,12 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         let descripcionContable = '';
 
         if (pagadorChofer === 'AYUDANTE') {
-          // Sub-fase 3.2: Paga Ayudante con recaudación del día en ruta
           paidAmount = valorTotal;
           pendingBalance = 0;
           paymentMethod = 'EFECTIVO';
           expenseStatus = 'PAGADO';
           descripcionContable = 'Parada Técnica ' + config.nombre + ' [' + codigosMarcados.join(', ') + '] - Cubierto en Ruta por Ayudante';
         } else {
-          // Sub-fase 3.3: Paga Socio (acordado previamente por llamada/WhatsApp)
           if (socioModalidadChofer === 'TRANSFERENCIA_TOTAL') {
             paidAmount = valorTotal;
             pendingBalance = 0;
@@ -481,40 +517,44 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             if (paidAmount > 0) {
               abonosList = [
                 {
-                  id: 'ABO-' + Date.now(),
-                  date: today,
+                  id: 'abono-' + Date.now(),
                   amount: paidAmount,
+                  date: fechaEfectiva,
                   paymentMethod: 'TRANSFERENCIA',
-                  notes: 'Anticipo inicial registrado en parada de taller',
+                  comprobanteRef: estacionFacturaChofer.trim() ? 'Fac: ' + estacionFacturaChofer.trim() : undefined,
+                  notes: 'Anticipo/Transferencia inicial del socio en parada técnica',
                   createdAt: new Date().toISOString(),
                 },
               ];
             }
-          } else {
-            // CREDITO_FIADO ($0 hoy)
+          } else if (socioModalidadChofer === 'CREDITO_FIADO') {
             paidAmount = 0;
             pendingBalance = valorTotal;
-            paymentMethod = 'CREDITO_PENDIENTE';
+            paymentMethod = 'CREDITO';
             expenseStatus = 'PENDIENTE';
             descripcionContable = 'Parada Técnica ' + config.nombre + ' [' + codigosMarcados.join(', ') + '] - Crédito Total Fiado Taller';
           }
         }
 
-        // 1. Guardar en registro operativo de paradas VT (Fase 3)
+        // 1. Guardar en registro operativo de paradas VT (Fases 1, 3 y 4)
         saveParadaPago({
           id: 'parada-' + Date.now(),
           busId: activeBusId,
           disco,
-          fecha: today,
+          fecha: fechaEfectiva,
           estacionId: estacionSeleccionadaChofer,
           estacionNombre: config.nombre,
           taller: tallerStr,
           factura: estacionFacturaChofer.trim() || undefined,
-          odometroKm: km,
+          odometroKm: kmEfectivoServicio,
+          odometroServicio: kmEfectivoServicio,
+          odometroActualBus: kmTablero,
+          esRetroactivo: esRetro,
+          kmRodadosDesdeServicio: Math.max(0, kmTablero - kmEfectivoServicio),
           costoTotal: valorTotal,
           pagador: pagadorChofer,
           montoCubiertoAyudante: pagadorChofer === 'AYUDANTE' ? valorTotal : 0,
-          descontadoEnVT: false,
+          descontadoEnVT: pagadorChofer === 'AYUDANTE' && fechaEfectiva < today ? true : false,
           socioModalidad: pagadorChofer === 'SOCIO' ? socioModalidadChofer : undefined,
           socioMontoTransferido: pagadorChofer === 'SOCIO' ? paidAmount : undefined,
           socioSaldoPendiente: pagadorChofer === 'SOCIO' ? pendingBalance : undefined,
@@ -532,7 +572,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           pendingBalance,
           paymentMethod,
           status: expenseStatus,
-          expenseDate: today,
+          expenseDate: fechaEfectiva,
           description: descripcionContable,
           provider: tallerStr,
           comprobanteRef: estacionFacturaChofer.trim() ? 'Fac: ' + estacionFacturaChofer.trim() : undefined,
@@ -544,17 +584,27 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       }
     }
 
-    toast({
-      title: '⚡ Parada de Taller Asentada',
-      description: codigosMarcados.length + ' componentes reseteados a 0 km recorridos en ' + km.toLocaleString() + ' km (Bus ' + disco + ').',
-    });
-
+    if (esRetro) {
+      const rodados = Math.max(0, kmTablero - kmEfectivoServicio);
+      toast({
+        title: '⚡ Servicio Histórico Regularizado',
+        description: `${codigosMarcados.length} componentes calibrados a ${kmEfectivoServicio.toLocaleString()} km (hace ${rodados.toLocaleString()} km rodados). Tablero se mantiene en ${kmTablero.toLocaleString()} km.`,
+      });
+    } else {
+      toast({
+        title: '⚡ Parada de Taller Asentada',
+        description: `${codigosMarcados.length} componentes reseteados a 0 km recorridos en ${kmTablero.toLocaleString()} km (Bus ${disco}).`,
+      });
+    }
     setEstacionSeleccionadaChofer(null);
   };
 
   // Modal de Registro Rápido de Lubricadora (Combo)
   const [isComboModalOpen, setIsComboModalOpen] = useState(false);
   const [comboKm, setComboKm] = useState<string>('');
+  const [comboModoRetroactivo, setComboModoRetroactivo] = useState<boolean>(false);
+  const [comboKmServicio, setComboKmServicio] = useState<string>('');
+  const [comboFechaServicio, setComboFechaServicio] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [comboFacturaValor, setComboFacturaValor] = useState<string>('');
   const [comboFacturaNum, setComboFacturaNum] = useState<string>('');
   const [comboTaller, setComboTaller] = useState<string>('Lubricadora Vilcabamba');
@@ -572,6 +622,9 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
   const handleAbrirComboLubricadora = () => {
     setComboKm(kmActual.toString());
+    setComboModoRetroactivo(false);
+    setComboKmServicio(kmActual.toString());
+    setComboFechaServicio(new Date().toISOString().split('T')[0]);
     setComboFacturaValor('');
     setComboFacturaNum('');
     setComboTaller('Lubricadora Vilcabamba');
@@ -674,8 +727,37 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     const tallerStr = comboTaller.trim() || 'Lubricadora Vilcabamba';
     const facturaDetalle = comboFacturaNum.trim() ? `Fac: ${comboFacturaNum.trim()}` : '';
     const tallerCompleto = facturaDetalle ? `${tallerStr} (${facturaDetalle})` : tallerStr;
+
     const valorFactura = parseFloat(comboFacturaValor) || 0;
     const costoPorItem = valorFactura > 0 ? Math.round((valorFactura / itemsSeleccionados.length) * 100) / 100 : 0;
+
+    const kmTablero = km;
+    let kmEfectivoServicio = kmTablero;
+    let fechaEfectiva = today;
+    let esRetro = false;
+
+    if (comboModoRetroactivo) {
+      const kmServ = parseInt(comboKmServicio, 10);
+      if (isNaN(kmServ) || kmServ <= 0) {
+        toast({
+          title: 'Kilometraje histórico inválido',
+          description: 'Ingresa el kilometraje en que se realizó el cambio en lubricadora.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (kmServ > kmTablero) {
+        toast({
+          title: 'Kilometraje inconsistente',
+          description: `El cambio (${kmServ.toLocaleString()} km) no puede ser mayor al odómetro actual (${kmTablero.toLocaleString()} km).`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      kmEfectivoServicio = kmServ;
+      fechaEfectiva = comboFechaServicio || today;
+      esRetro = kmServ < kmTablero || fechaEfectiva < today;
+    }
 
     itemsSeleccionados.forEach(ci => {
       const index = fullList.findIndex(
@@ -693,8 +775,8 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       if (index >= 0) {
         fullList[index] = {
           ...fullList[index],
-          ultimoKm: km,
-          fechaUltimo: today,
+          ultimoKm: kmEfectivoServicio,
+          fechaUltimo: fechaEfectiva,
           tallerMecanico: tallerCompleto,
           costoEstimado: costoPorItem > 0 ? costoPorItem : fullList[index].costoEstimado,
         };
@@ -702,7 +784,6 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         const catItem =
           catalogo.find(c => c.codigo === ci.codigo) ||
           catalogo.find(c => c.nombre.toLowerCase().includes(ci.nombre.toLowerCase()));
-
         fullList.push({
           id: `mbus-${ci.codigo}-${Date.now()}`,
           catalogoId: catItem?.id,
@@ -712,8 +793,8 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           intervaloKm:
             catItem?.intervaloKmOficial ||
             (ci.key === 'filtroAirePrimario' ? 40000 : ci.key === 'filtroAireSecundario' ? 20000 : 5000),
-          ultimoKm: km,
-          fechaUltimo: today,
+          ultimoKm: kmEfectivoServicio,
+          fechaUltimo: fechaEfectiva,
           tallerMecanico: tallerCompleto,
           costoEstimado: costoPorItem,
           repuestoDetalle: catItem?.especificacionLubricanteRepuesto || ci.detalle,
@@ -725,9 +806,10 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
     localStorage.setItem(storageKey, JSON.stringify(fullList));
 
-    // Actualizar lectura de tacómetro global del autobús si es mayor
-    if (km > kmActual) {
-      saveBusOdometer(activeBusId, km);
+    // REGLA INMUTABLE: El odómetro del bus NUNCA retrocede. Solo se actualiza si el tablero actual supera kmActual
+    if (kmTablero > kmActual) {
+      saveBusOdometer(activeBusId, kmTablero);
+      setKmActual(kmTablero);
     }
 
     // Actualizar lista local del widget
@@ -738,7 +820,6 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       try {
         const paradaId = `parada-lubricadora-${Date.now()}`;
         const expenseId = `gasto-lubricadora-${Date.now()}`;
-
         let paidAmount = valorFactura;
         let pendingBalance = 0;
         let paymentMethod: 'EFECTIVO' | 'TRANSFERENCIA' | 'CREDITO' = 'EFECTIVO';
@@ -771,7 +852,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
               abonosList.push({
                 id: `abono-init-${Date.now()}`,
                 amount: paidAmount,
-                date: today,
+                date: fechaEfectiva,
                 paymentMethod: 'TRANSFERENCIA',
                 comprobanteRef: comboFacturaNum.trim() ? `Fac: ${comboFacturaNum.trim()}` : undefined,
                 notes: 'Anticipo/Transferencia inicial del socio en parada de lubricadora',
@@ -786,16 +867,20 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           id: paradaId,
           busId: activeBusId,
           disco,
-          fecha: today,
+          fecha: fechaEfectiva,
           estacionId: 'LUBRICADORA',
           estacionNombre: 'Lubricadora (Combo)',
           taller: tallerStr,
           factura: comboFacturaNum.trim() || undefined,
-          odometroKm: km,
+          odometroKm: kmEfectivoServicio,
+          odometroServicio: kmEfectivoServicio,
+          odometroActualBus: kmTablero,
+          esRetroactivo: esRetro,
+          kmRodadosDesdeServicio: Math.max(0, kmTablero - kmEfectivoServicio),
           costoTotal: valorFactura,
           pagador: comboPagador,
           montoCubiertoAyudante: comboPagador === 'AYUDANTE' ? valorFactura : 0,
-          descontadoEnVT: false,
+          descontadoEnVT: comboPagador === 'AYUDANTE' && fechaEfectiva < today ? true : false,
           socioModalidad: comboPagador === 'SOCIO' ? comboSocioModalidad : undefined,
           socioMontoTransferido: comboPagador === 'SOCIO' ? paidAmount : undefined,
           socioSaldoPendiente: comboPagador === 'SOCIO' ? pendingBalance : undefined,
@@ -816,7 +901,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           paymentMethod,
           comprobanteRef: comboFacturaNum.trim() ? `Fac: ${comboFacturaNum.trim()}` : undefined,
           status: expenseStatus,
-          expenseDate: today,
+          expenseDate: fechaEfectiva,
           abonos: abonosList,
           createdAt: new Date().toISOString(),
         });
@@ -825,10 +910,19 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       }
     }
 
-    toast({
-      title: '⚡ Servicio de Lubricadora Asentado',
-      description: `${itemsSeleccionados.length} ítems asentados con éxito en ${km.toLocaleString()} km (Bus ${disco}).`,
-    });
+    if (esRetro) {
+      const rodados = Math.max(0, kmTablero - kmEfectivoServicio);
+      const restantes = Math.max(0, 5000 - rodados);
+      toast({
+        title: '⚡ Lubricadora Regularizada',
+        description: `${itemsSeleccionados.length} componentes calibrados a ${kmEfectivoServicio.toLocaleString()} km (${restantes.toLocaleString()} km restantes). Tablero se mantiene en ${kmTablero.toLocaleString()} km.`,
+      });
+    } else {
+      toast({
+        title: '⚡ Servicio de Lubricadora Asentado',
+        description: `${itemsSeleccionados.length} ítems asentados con éxito en ${kmTablero.toLocaleString()} km (Bus ${disco}).`,
+      });
+    }
 
     setIsComboModalOpen(false);
   };
@@ -1171,7 +1265,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
               </div>
 
               {/* Tacómetro / Odómetro actual del bus */}
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-1.5 shrink-0">
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2 shrink-0">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-black text-amber-950 flex items-center gap-1.5">
                     <Gauge className="w-4 h-4 text-amber-700" />
@@ -1185,7 +1279,12 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                   <Input
                     type="number"
                     value={estacionKmChofer}
-                    onChange={e => setEstacionKmChofer(e.target.value)}
+                    onChange={e => {
+                      setEstacionKmChofer(e.target.value);
+                      if (!estacionModoRetroactivoChofer) {
+                        setEstacionKmServicioChofer(e.target.value);
+                      }
+                    }}
                     placeholder={kmActual.toString()}
                     className="h-11 rounded-xl text-lg font-black bg-white border-amber-300 pr-12 text-slate-900"
                   />
@@ -1193,11 +1292,123 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                     KM
                   </span>
                 </div>
+
+                {/* Enlace sutil no invasivo anti-fricción */}
+                <div className="pt-0.5 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nuevoModo = !estacionModoRetroactivoChofer;
+                      setEstacionModoRetroactivoChofer(nuevoModo);
+                      if (nuevoModo && (!estacionKmServicioChofer || estacionKmServicioChofer === estacionKmChofer)) {
+                        setEstacionKmServicioChofer(estacionKmChofer || kmActual.toString());
+                      }
+                    }}
+                    className="text-[11px] font-bold text-amber-900 hover:text-amber-950 flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <span>⏱️ ¿Se realizó antes?</span>
+                    <span className="underline decoration-amber-600 underline-offset-2">
+                      {estacionModoRetroactivoChofer ? "Ocultar regularización (Hoy)" : "Toca aquí para regularizar fecha o km"}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Bloque desplegable de Regularización Retroactiva */}
+                {estacionModoRetroactivoChofer && (() => {
+                  const odoBus = parseInt(estacionKmChofer, 10) || kmActual;
+                  const odoServicio = parseInt(estacionKmServicioChofer, 10) || 0;
+                  const calculo = calcularDesgasteRegularizacion(odoBus, odoServicio, 5000);
+
+                  return (
+                    <div className="mt-2 pt-2.5 border-t border-amber-300/60 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-950 flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-amber-700" /> Regularizar Servicio Anterior
+                        </span>
+                        <Badge className="bg-amber-200 text-amber-900 border-amber-300 text-[9px] font-black">
+                          Cálculo en Vivo
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-[10px] font-black text-slate-700 block mb-1">
+                            Km al momento del cambio *
+                          </Label>
+                          <Input
+                            type="number"
+                            value={estacionKmServicioChofer}
+                            onChange={e => setEstacionKmServicioChofer(e.target.value)}
+                            placeholder="ej. 892491"
+                            className="h-9 rounded-xl text-xs font-black bg-white border-amber-300"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[10px] font-black text-slate-700 block mb-1">
+                            Fecha del servicio *
+                          </Label>
+                          <Input
+                            type="date"
+                            value={estacionFechaServicioChofer}
+                            onChange={e => setEstacionFechaServicioChofer(e.target.value)}
+                            className="h-9 rounded-xl text-xs font-bold bg-white border-amber-300"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tarjeta de Cálculo en Vivo y Candado de Seguridad */}
+                      {odoServicio > 0 && (
+                        <div
+                          className={
+                            "p-2.5 rounded-xl border text-xs leading-relaxed " +
+                            (calculo.esInvalido
+                              ? "bg-rose-50 border-rose-300 text-rose-900 font-bold"
+                              : calculo.esVencido
+                              ? "bg-amber-100 border-amber-400 text-amber-950"
+                              : "bg-emerald-50 border-emerald-300 text-emerald-950")
+                          }
+                        >
+                          {calculo.esInvalido ? (
+                            <div className="flex items-start gap-1.5">
+                              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                              <div>
+                                <p className="font-black text-[11px] text-rose-800">Kilometraje Inválido</p>
+                                <p className="text-[10px] text-rose-700 font-medium">{calculo.mensajeError}</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between font-black text-[11px]">
+                                <span className="flex items-center gap-1 text-emerald-800">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                  ✓ Hace {calculo.kmRodados.toLocaleString()} km
+                                </span>
+                                <span className="text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded-full text-[10px]">
+                                  Restan {calculo.kmRestantes.toLocaleString()} km ({calculo.porcentajeRestante}%)
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-600 font-medium">
+                                • El odómetro del autobús se mantendrá en <strong>{odoBus.toLocaleString()} km</strong>
+                              </p>
+                              {calculo.advertencia && (
+                                <p className="text-[10px] text-amber-800 font-bold mt-1">
+                                  {calculo.advertencia}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <p className="text-[10px] text-amber-900 font-medium leading-tight">
-                  Al guardar, todos los componentes marcados se resetearán inmediatamente a <strong>0 km recorridos</strong>.
+                  {estacionModoRetroactivoChofer
+                    ? "Los componentes seleccionados se calibrarán al kilometraje histórico ingresado."
+                    : "Al guardar, todos los componentes marcados se resetearán inmediatamente a 0 km recorridos."}
                 </p>
               </div>
-
               {/* Lista de Componentes del Combo con 1 solo toque */}
               <div className="space-y-1.5 flex-1 min-h-[140px]">
                 <div className="flex items-center justify-between px-1">
@@ -1499,21 +1710,50 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                 >
                   Cancelar
                 </Button>
-                <Button
-                  type="button"
-                  onClick={handleAsentarParadaChofer}
-                  className="flex-1 h-11 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Zap className="w-4 h-4 fill-slate-950" />
-                  Asentar y Resetear (0 km)
-                </Button>
+                {(() => {
+                  const odoBus = parseInt(estacionKmChofer, 10) || kmActual;
+                  const odoServicio = parseInt(estacionKmServicioChofer, 10) || 0;
+                  const esInvalido = estacionModoRetroactivoChofer && (odoServicio > odoBus || odoServicio <= 0);
+                  const calculo = estacionModoRetroactivoChofer ? calcularDesgasteRegularizacion(odoBus, odoServicio, 5000) : null;
+
+                  return (
+                    <Button
+                      type="button"
+                      disabled={esInvalido}
+                      onClick={handleAsentarParadaChofer}
+                      className={
+                        "flex-1 h-11 rounded-xl font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all " +
+                        (esInvalido
+                          ? "bg-rose-300 text-rose-800 cursor-not-allowed"
+                          : "bg-amber-500 hover:bg-amber-600 text-slate-950")
+                      }
+                    >
+                      {esInvalido ? (
+                        <>
+                          <AlertTriangle className="w-4 h-4 text-rose-700" />
+                          Km Mayor al Tablero (Bloqueado)
+                        </>
+                      ) : estacionModoRetroactivoChofer && calculo && !calculo.esInvalido ? (
+                        <>
+                          <Save className="w-4 h-4 fill-slate-950" />
+                          Calibrar a {calculo.kmRestantes.toLocaleString()} km Restantes
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="w-4 h-4 fill-slate-950" />
+                          Asentar y Resetear (0 km)
+                        </>
+                      )}
+                    </Button>
+                  );
+                })()}
               </div>
             </div>
           </div>
         );
       })()}
 
-{/* Modal: REGISTRO RÁPIDO DE LUBRICADORA */}
+      {/* Modal: REGISTRO RÁPIDO DE LUBRICADORA */}
       {isComboModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
@@ -1547,7 +1787,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             </div>
 
             {/* Tacómetro / Odómetro actual */}
-            <div className="bg-amber-50/70 p-3 rounded-2xl border border-amber-200 space-y-1.5">
+            <div className="bg-amber-50/70 p-3 rounded-2xl border border-amber-200 space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
                   <Gauge className="w-3.5 h-3.5 text-amber-700" />
@@ -1561,16 +1801,130 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                 <Input
                   type="number"
                   value={comboKm}
-                  onChange={e => setComboKm(e.target.value)}
-                  placeholder="ej. 187420"
+                  onChange={e => {
+                    setComboKm(e.target.value);
+                    if (!comboModoRetroactivo) {
+                      setComboKmServicio(e.target.value);
+                    }
+                  }}
+                  placeholder="ej. 893485"
                   className="h-11 rounded-xl text-lg font-black bg-white border-amber-300 pr-12 text-slate-900"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-extrabold text-slate-500">
                   KM
                 </span>
               </div>
-            </div>
 
+              {/* Enlace sutil no invasivo anti-fricción */}
+              <div className="pt-0.5 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nuevoModo = !comboModoRetroactivo;
+                    setComboModoRetroactivo(nuevoModo);
+                    if (nuevoModo && (!comboKmServicio || comboKmServicio === comboKm)) {
+                      setComboKmServicio(comboKm || kmActual.toString());
+                    }
+                  }}
+                  className="text-[11px] font-bold text-amber-900 hover:text-amber-950 flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <span>⏱️ ¿Se realizó antes?</span>
+                  <span className="underline decoration-amber-600 underline-offset-2">
+                    {comboModoRetroactivo ? "Ocultar regularización (Hoy)" : "Toca aquí para regularizar fecha o km"}
+                  </span>
+                </button>
+              </div>
+
+              {/* Bloque desplegable de Regularización Retroactiva */}
+              {comboModoRetroactivo && (() => {
+                const odoBus = parseInt(comboKm, 10) || kmActual;
+                const odoServicio = parseInt(comboKmServicio, 10) || 0;
+                const calculo = calcularDesgasteRegularizacion(odoBus, odoServicio, 5000);
+
+                return (
+                  <div className="mt-2 pt-2.5 border-t border-amber-300/60 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-950 flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-amber-700" /> Regularizar Servicio Anterior
+                      </span>
+                      <Badge className="bg-amber-200 text-amber-900 border-amber-300 text-[9px] font-black">
+                        Cálculo en Vivo
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-[10px] font-black text-slate-700 block mb-1">
+                          Km al momento del cambio *
+                        </Label>
+                        <Input
+                          type="number"
+                          value={comboKmServicio}
+                          onChange={e => setComboKmServicio(e.target.value)}
+                          placeholder="ej. 892491"
+                          className="h-9 rounded-xl text-xs font-black bg-white border-amber-300"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-black text-slate-700 block mb-1">
+                          Fecha del servicio *
+                        </Label>
+                        <Input
+                          type="date"
+                          value={comboFechaServicio}
+                          onChange={e => setComboFechaServicio(e.target.value)}
+                          className="h-9 rounded-xl text-xs font-bold bg-white border-amber-300"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Tarjeta de Cálculo en Vivo y Candado de Seguridad */}
+                    {odoServicio > 0 && (
+                      <div
+                        className={
+                          "p-2.5 rounded-xl border text-xs leading-relaxed " +
+                          (calculo.esInvalido
+                            ? "bg-rose-50 border-rose-300 text-rose-900 font-bold"
+                            : calculo.esVencido
+                            ? "bg-amber-100 border-amber-400 text-amber-950"
+                            : "bg-emerald-50 border-emerald-300 text-emerald-950")
+                        }
+                      >
+                        {calculo.esInvalido ? (
+                          <div className="flex items-start gap-1.5">
+                            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-black text-[11px] text-rose-800">Kilometraje Inválido</p>
+                              <p className="text-[10px] text-rose-700 font-medium">{calculo.mensajeError}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between font-black text-[11px]">
+                              <span className="flex items-center gap-1 text-emerald-800">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                ✓ Hace {calculo.kmRodados.toLocaleString()} km
+                              </span>
+                              <span className="text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded-full text-[10px]">
+                                Restan {calculo.kmRestantes.toLocaleString()} km ({calculo.porcentajeRestante}%)
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-600 font-medium">
+                              • El odómetro del autobús se mantendrá en <strong>{odoBus.toLocaleString()} km</strong>
+                            </p>
+                            {calculo.advertencia && (
+                              <p className="text-[10px] text-amber-800 font-bold mt-1">
+                                {calculo.advertencia}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
             {/* Checklist: ¿Qué se realizó en este servicio? */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -1905,14 +2259,43 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
               >
                 Cancelar
               </Button>
-              <Button
-                type="button"
-                onClick={handleGuardarComboLubricadora}
-                className="flex-1 h-11 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5"
-              >
-                <Zap className="w-4 h-4 fill-slate-950" />
-                Asentar Servicio (1 Clic)
-              </Button>
+              {(() => {
+                const odoBus = parseInt(comboKm, 10) || kmActual;
+                const odoServicio = parseInt(comboKmServicio, 10) || 0;
+                const esInvalido = comboModoRetroactivo && (odoServicio > odoBus || odoServicio <= 0);
+                const calculo = comboModoRetroactivo ? calcularDesgasteRegularizacion(odoBus, odoServicio, 5000) : null;
+
+                return (
+                  <Button
+                    type="button"
+                    disabled={esInvalido}
+                    onClick={handleGuardarComboLubricadora}
+                    className={
+                      "flex-1 h-11 rounded-xl font-black text-xs shadow-md flex items-center justify-center gap-1.5 transition-all " +
+                      (esInvalido
+                        ? "bg-rose-300 text-rose-800 cursor-not-allowed"
+                        : "bg-amber-500 hover:bg-amber-600 text-slate-950")
+                    }
+                  >
+                    {esInvalido ? (
+                      <>
+                        <AlertTriangle className="w-4 h-4 text-rose-700" />
+                        Km Mayor al Tablero (Bloqueado)
+                      </>
+                    ) : comboModoRetroactivo && calculo && !calculo.esInvalido ? (
+                      <>
+                        <Save className="w-4 h-4 fill-slate-950" />
+                        Calibrar a {calculo.kmRestantes.toLocaleString()} km Restantes
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 fill-slate-950" />
+                        Asentar Servicio (1 Clic)
+                      </>
+                    )}
+                  </Button>
+                );
+              })()}
             </div>
           </div>
         </div>
