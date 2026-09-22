@@ -387,6 +387,7 @@ export default function Home() {
     return (
       <MantenimientoScreen
         onBack={() => setView('home')}
+        onGoToSocioGastos={() => setView('socio_gastos')}
       />
     );
   }

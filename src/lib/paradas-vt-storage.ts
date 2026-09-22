@@ -174,3 +174,52 @@ export function clearDeficitArrastradoVT(busId: string): void {
     // ignore
   }
 }
+
+/**
+ * Obtiene un registro de parada técnica asociado a un ID de gasto contable
+ */
+export function getParadaPagoByExpenseId(expenseId: string): ParadaPagoRegistro | undefined {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const raw = localStorage.getItem(STORAGE_PARADAS_KEY);
+    if (!raw) return undefined;
+    const list: ParadaPagoRegistro[] = JSON.parse(raw);
+    return list.find(p => p.ownerExpenseId === expenseId);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Actualiza el saldo pendiente y transferido de una parada técnica cuando el socio realiza un abono
+ */
+export function updateParadaPagoAbono(expenseId: string, montoAbono: number): void {
+  if (typeof window === 'undefined' || montoAbono <= 0) return;
+  try {
+    const raw = localStorage.getItem(STORAGE_PARADAS_KEY);
+    if (!raw) return;
+    const list: ParadaPagoRegistro[] = JSON.parse(raw);
+    let modificado = false;
+    const updated = list.map(p => {
+      if (p.ownerExpenseId === expenseId) {
+        modificado = true;
+        const prevTransferido = p.socioMontoTransferido || 0;
+        const nuevoTransferido = Math.min(p.costoTotal, prevTransferido + montoAbono);
+        const nuevoSaldo = Math.max(0, p.costoTotal - nuevoTransferido);
+        return {
+          ...p,
+          socioMontoTransferido: nuevoTransferido,
+          socioSaldoPendiente: nuevoSaldo,
+          socioModalidad: (nuevoSaldo <= 0 ? 'TRANSFERENCIA_TOTAL' : 'TRANSFERENCIA_PARCIAL') as SocioModalidadPago,
+        };
+      }
+      return p;
+    });
+    if (modificado) {
+      localStorage.setItem(STORAGE_PARADAS_KEY, JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('rg_paradas_pago_updated', { detail: { expenseId } }));
+    }
+  } catch (err) {
+    console.error('Error actualizando abono en parada técnica:', err);
+  }
+}

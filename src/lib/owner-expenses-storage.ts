@@ -1,4 +1,5 @@
 import { OwnerExpense, PaymentAbono } from '../types/expenses';
+import { updateParadaPagoAbono } from './paradas-vt-storage';
 
 const STORAGE_KEY = 'rutago_owner_expenses_v1';
 const INITIALIZED_KEY = 'rutago_owner_expenses_initialized_flag';
@@ -47,6 +48,7 @@ export function saveOwnerExpense(expense: OwnerExpense): OwnerExpense {
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
     localStorage.setItem(INITIALIZED_KEY, 'true');
+    window.dispatchEvent(new CustomEvent('rg_owner_expenses_sync', { detail: { expenseId: expense.id } }));
     return expense;
   } catch (err) {
     console.error('Error guardando gasto de socio:', err);
@@ -135,6 +137,11 @@ export function registerAbonoToExpense(
     all[index] = updated;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
     localStorage.setItem(INITIALIZED_KEY, 'true');
+    
+    // Sincronizar actualización de saldo en la parada técnica operativa si existe
+    updateParadaPagoAbono(expenseId, abono.amount);
+    window.dispatchEvent(new CustomEvent('rg_owner_expenses_sync', { detail: { expenseId } }));
+
     return updated;
   } catch (err) {
     console.error('Error registrando abono:', err);

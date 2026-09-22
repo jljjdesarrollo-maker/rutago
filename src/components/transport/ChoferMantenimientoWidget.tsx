@@ -26,7 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, subscribeToActiveBus, subscribeToBusOdometer } from '@/lib/fleet-storage';
 import { getCatalogoMaestroGlobal } from '@/lib/mantenimiento-catalogo';
-import { saveOwnerExpense } from '@/lib/owner-expenses-storage';
+import { saveOwnerExpense, saveOwnerExpenseToApi } from '@/lib/owner-expenses-storage';
 import { type PaymentMethod, type PaymentAbono } from '@/types/expenses';
 import {
   saveParadaPago,
@@ -504,7 +504,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         });
 
         // 2. Asentar gasto en libro contable y cartera de deudas del socio (Fase 4)
-        saveOwnerExpense({
+        saveOwnerExpenseToApi({
           id: expenseId,
           busId: activeBusId,
           category: getCategoriaContablePorEstacion(estacionSeleccionadaChofer) as any,
@@ -690,7 +690,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     // Guardar en gastos de socio si se ingresó monto
     if (valorFactura > 0) {
       try {
-        saveOwnerExpense({
+        saveOwnerExpenseToApi({
           id: `gasto-lubricadora-${Date.now()}`,
           busId: activeBusId,
           expenseDate: today,

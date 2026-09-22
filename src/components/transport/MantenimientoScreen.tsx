@@ -26,6 +26,14 @@ import {
   Sparkles,
   Cloud,
   PauseCircle,
+  CreditCard,
+  Banknote,
+  FileDown,
+  Receipt,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,7 +43,21 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, setActiveBus, subscribeToActiveBus, subscribeToBusOdometer } from '@/lib/fleet-storage';
-import { saveOwnerExpense } from '@/lib/owner-expenses-storage';
+import {
+  saveOwnerExpense,
+  saveOwnerExpenseToApi,
+  getPendingDebts,
+  getOwnerExpenses,
+  registerAbonoToApi,
+} from '@/lib/owner-expenses-storage';
+import {
+  getParadasPagoByBus,
+  saveParadaPago,
+  type ParadaPagoRegistro,
+  type SocioModalidadPago,
+} from '@/lib/paradas-vt-storage';
+import { type OwnerExpense, type PaymentAbono } from '@/types/expenses';
+import OwnerDebtsReportModal from '../socio/OwnerDebtsReportModal';
 import {
   type MantenimientoCatalogoItem,
   getCatalogoMaestroGlobal,
@@ -85,9 +107,10 @@ export interface MantenimientoBusItem {
 
 export interface MantenimientoScreenProps {
   onBack: () => void;
+  onGoToSocioGastos?: () => void;
 }
 
-export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
+export function MantenimientoScreen({ onBack, onGoToSocioGastos }: MantenimientoScreenProps) {
   const { toast } = useToast();
 
   const [activeBusId, setActiveBusId] = useState<string>(() => {
@@ -374,6 +397,34 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
   const [estacionTaller, setEstacionTaller] = useState<string>();
   const [estacionFactura, setEstacionFactura] = useState<string>();
   const [estacionMetodoPago, setEstacionMetodoPago] = useState<'EFECTIVO' | 'TRANSFERENCIA'>('EFECTIVO');
+  // Modalidad de pago al asentar parada de taller en el modal (Fase 4)
+  const [estacionModalidadPago, setEstacionModalidadPago] = useState<'PAGO_TOTAL' | 'PAGO_PARCIAL' | 'CREDITO_FIADO'>('PAGO_TOTAL');
+  const [estacionMontoAbono, setEstacionMontoAbono] = useState<string>('');
+
+  // Cartera de Cuentas por Pagar y Deudas con Talleres (Fase 4)
+  const [deudasTalleres, setDeudasTalleres] = useState<OwnerExpense[]>(() => {
+    if (typeof window === 'undefined') return [];
+    return getPendingDebts(activeBusId);
+  });
+  const [allOwnerExpenses, setAllOwnerExpenses] = useState<OwnerExpense[]>(() => {
+    if (typeof window === 'undefined') return [];
+    return getOwnerExpenses(activeBusId);
+  });
+  const [paradasTallerHistorial, setParadasTallerHistorial] = useState<ParadaPagoRegistro[]>(() => {
+    if (typeof window === 'undefined') return [];
+    return getParadasPagoByBus(activeBusId);
+  });
+  const [isDebtsReportModalOpen, setIsDebtsReportModalOpen] = useState(false);
+  const [isAbonoModalOpen, setIsAbonoModalOpen] = useState(false);
+  const [abonoTargetExpense, setAbonoTargetExpense] = useState<OwnerExpense | null>(null);
+  const [abonoAmount, setAbonoAmount] = useState<string>('');
+  const [abonoDate, setAbonoDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [abonoMethod, setAbonoMethod] = useState<'TRANSFERENCIA' | 'EFECTIVO'>('TRANSFERENCIA');
+  const [abonoRef, setAbonoRef] = useState('');
+  const [abonoNotes, setAbonoNotes] = useState('');
+  const [isSubmittingAbono, setIsSubmittingAbono] = useState(false);
+  const [seccionCarteraColapsada, setSeccionCarteraColapsada] = useState(false);
+  const [seccionParadasColapsada, setSeccionParadasColapsada] = useState(false);
 
   // Modal Combo 4 Ruedas (Rodaje y Suspensión)
   const [isComboRuedasModalOpen, setIsComboRuedasModalOpen] = useState(false);
@@ -460,6 +511,26 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
       window.removeEventListener('rg_mantenimiento_config_sync', handleSync);
     };
   }, [activeBusId]);
+
+  // Recarga de deudas contables y paradas técnicas vinculadas (Fase 4)
+  const recargarCarteraYParadas = useCallback(() => {
+    setDeudasTalleres(getPendingDebts(activeBusId));
+    setAllOwnerExpenses(getOwnerExpenses(activeBusId));
+    setParadasTallerHistorial(getParadasPagoByBus(activeBusId));
+  }, [activeBusId]);
+
+  useEffect(() => {
+    recargarCarteraYParadas();
+    const handleSync = () => recargarCarteraYParadas();
+    window.addEventListener('rg_owner_expenses_sync', handleSync);
+    window.addEventListener('rg_paradas_pago_updated', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('rg_owner_expenses_sync', handleSync);
+      window.removeEventListener('rg_paradas_pago_updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, [activeBusId, recargarCarteraYParadas]);
 
   // Interceptar el toggle para solicitar confirmación consciente (evitar clicks accidentales)
   const handleToggleModuloActivo = (activar: boolean) => {
@@ -1184,6 +1255,9 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
       estacionId === "ALINEACION" ? "Serviteca Continental / Llantas" :
       estacionId === "RADIADOR" ? "Taller Radiadores Loja" : "Terminal / Parada"
     );
+    setEstacionModalidadPago('PAGO_TOTAL');
+    setEstacionMontoAbono('');
+    setEstacionMetodoPago('EFECTIVO');
   };
 
   // Fase 1 y 2: Guardar Receta Personalizada del Combo para la Unidad
@@ -1391,7 +1465,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
     const listaFinal = [...itemsActualizados, ...itemsNuevosParaAgregar];
     saveItems(listaFinal);
 
-    // 3. Registrar Egreso Contable Automático si se especificó costo > 0
+    // 3. Registrar Egreso Contable Automático y Cartera de Deudas si se especificó costo > 0 (Fase 4)
     if (costoTotal > 0) {
       const categoriaContable = getCategoriaContablePorEstacion(estacionSeleccionada);
       const nombresRealizados = estacionCodigosSeleccionados
@@ -1399,10 +1473,75 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
         .slice(0, 3)
         .join(", ");
 
-      const descripcionEgreso = `Parada en ${config.nombre}: ${nombresRealizados}${estacionCodigosSeleccionados.length > 3 ? " y más" : ""} (Km ${kmServicio.toLocaleString()})`;
+      const expenseId = `exp-mnt-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+      let paidAmount = 0;
+      let pendingBalance = 0;
+      let expenseStatus: 'PAGADO' | 'PENDIENTE' = 'PAGADO';
+      let abonosList: PaymentAbono[] | undefined = undefined;
+      let modalidadDesc = '';
+      let socioModalidad: SocioModalidadPago = 'TRANSFERENCIA_TOTAL';
 
-      saveOwnerExpense({
-        id: `exp-mnt-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      if (estacionModalidadPago === 'PAGO_TOTAL') {
+        paidAmount = costoTotal;
+        pendingBalance = 0;
+        expenseStatus = 'PAGADO';
+        modalidadDesc = 'Pago Total 100%';
+        socioModalidad = 'TRANSFERENCIA_TOTAL';
+      } else if (estacionModalidadPago === 'PAGO_PARCIAL') {
+        const abonoNum = parseFloat(estacionMontoAbono || '0') || 0;
+        paidAmount = Math.min(costoTotal, Math.max(0, abonoNum));
+        pendingBalance = Math.max(0, Math.round((costoTotal - paidAmount) * 100) / 100);
+        expenseStatus = pendingBalance <= 0 ? 'PAGADO' : 'PENDIENTE';
+        modalidadDesc = `Anticipo Abonado ($${paidAmount.toFixed(2)})`;
+        socioModalidad = 'TRANSFERENCIA_PARCIAL';
+        if (paidAmount > 0) {
+          abonosList = [
+            {
+              id: 'ABO-' + Date.now(),
+              date: today,
+              amount: paidAmount,
+              paymentMethod: estacionMetodoPago,
+              notes: 'Anticipo inicial registrado en parada de taller',
+              createdAt: new Date().toISOString(),
+            },
+          ];
+        }
+      } else {
+        // CREDITO_FIADO
+        paidAmount = 0;
+        pendingBalance = costoTotal;
+        expenseStatus = 'PENDIENTE';
+        modalidadDesc = 'Crédito Fiado Taller';
+        socioModalidad = 'CREDITO_FIADO';
+      }
+
+      const descripcionEgreso = `Parada en ${config.nombre}: ${nombresRealizados}${estacionCodigosSeleccionados.length > 3 ? " y más" : ""} (Km ${kmServicio.toLocaleString()}) - ${modalidadDesc}`;
+
+      // 1. Guardar en Parada Técnica Operativa (Fase 3 y 4)
+      saveParadaPago({
+        id: 'parada-socio-' + Date.now(),
+        busId: activeBusId,
+        disco: activeBusDisco,
+        fecha: today,
+        estacionId: estacionSeleccionada,
+        estacionNombre: config.nombre,
+        taller: tallerStr,
+        factura: facturaRef || undefined,
+        odometroKm: kmServicio,
+        costoTotal,
+        pagador: 'SOCIO',
+        montoCubiertoAyudante: 0,
+        descontadoEnVT: false,
+        socioModalidad,
+        socioMontoTransferido: paidAmount,
+        socioSaldoPendiente: pendingBalance,
+        ownerExpenseId: expenseId,
+        createdAt: new Date().toISOString(),
+      });
+
+      // 2. Asentar gasto en libro contable y cartera de deudas del socio (Fase 4)
+      saveOwnerExpenseToApi({
+        id: expenseId,
         busId: activeBusId,
         expenseDate: today,
         createdAt: new Date().toISOString(),
@@ -1410,20 +1549,86 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
         description: descripcionEgreso,
         provider: tallerStr,
         totalAmount: costoTotal,
-        paidAmount: costoTotal,
-        pendingBalance: 0,
-        paymentMethod: estacionMetodoPago,
+        paidAmount,
+        pendingBalance,
+        paymentMethod: estacionModalidadPago === 'CREDITO_FIADO' ? 'CREDITO_PENDIENTE' : estacionMetodoPago,
         comprobanteRef: facturaRef || undefined,
+        abonos: abonosList,
+        status: expenseStatus,
         notes: `Servicio en ${config.nombre} con ${estacionCodigosSeleccionados.length} componentes atendidos. Odómetro: ${kmServicio} km.`,
       });
+
+      recargarCarteraYParadas();
     }
 
     toast({
       title: `Servicio en ${config.nombre} Asentado`,
-      description: `${estacionCodigosSeleccionados.length} componentes actualizados a ${kmServicio.toLocaleString()} km${costoTotal > 0 ? ` y $${costoTotal.toFixed(2)} registrado en egresos.` : "."}`,
+      description: `${estacionCodigosSeleccionados.length} componentes actualizados a ${kmServicio.toLocaleString()} km${costoTotal > 0 ? ` y $${costoTotal.toFixed(2)} registrado en cartera y egresos.` : "."}`,
     });
 
     setEstacionSeleccionada(null);
+  };
+
+  // Gestión de Cartera y Abonos a Talleres (Fase 4)
+  const handleAbrirAbonoModal = (debt: OwnerExpense) => {
+    setAbonoTargetExpense(debt);
+    setAbonoAmount(debt.pendingBalance.toString());
+    setAbonoDate(new Date().toISOString().split('T')[0]);
+    setAbonoMethod('TRANSFERENCIA');
+    setAbonoRef('');
+    setAbonoNotes('');
+    setIsAbonoModalOpen(true);
+  };
+
+  const handleConfirmarAbono = async () => {
+    if (!abonoTargetExpense) return;
+    const num = parseFloat(abonoAmount);
+    if (isNaN(num) || num <= 0) {
+      toast({
+        title: 'Monto inválido',
+        description: 'Ingresa un valor mayor a $0 para el abono.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (num > abonoTargetExpense.pendingBalance) {
+      toast({
+        title: 'Monto superior al saldo',
+        description: `El abono no puede superar el saldo pendiente de $${abonoTargetExpense.pendingBalance.toFixed(2)}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsSubmittingAbono(true);
+      const updated = await registerAbonoToApi(abonoTargetExpense.id, {
+        date: abonoDate,
+        amount: num,
+        paymentMethod: abonoMethod,
+        comprobanteRef: abonoRef.trim() || undefined,
+        notes: abonoNotes.trim() || undefined,
+      });
+
+      const nuevoSaldo = updated ? updated.pendingBalance : Math.max(0, abonoTargetExpense.pendingBalance - num);
+      toast({
+        title: nuevoSaldo <= 0 ? '🎉 Deuda Extinguida (100% Pagada)' : '✅ Abono Asentado en Cartera',
+        description: `Abono de $${num.toFixed(2)} registrado para ${abonoTargetExpense.provider || 'Taller'}. Saldo restante: $${nuevoSaldo.toFixed(2)}.`,
+      });
+
+      setIsAbonoModalOpen(false);
+      setAbonoTargetExpense(null);
+      recargarCarteraYParadas();
+    } catch (err) {
+      console.error('Error registrando abono:', err);
+      toast({
+        title: 'Error al registrar abono',
+        description: 'Ocurrió un error inesperado al asentar el abono.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmittingAbono(false);
+    }
   };
 
   // Cambiar nivel de control rápido (BÁSICO 7, MEDIO 15, TOTAL 27)
@@ -1965,6 +2170,266 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
               🚌 Rutina Chofer
             </button>
           </div>
+        </div>
+
+        {/* ========================================================= */}
+        {/* CARTERA DE CUENTAS POR PAGAR A TALLERES (FASE 4)          */}
+        {/* ========================================================= */}
+        <div className="bg-white rounded-3xl border border-slate-200/90 p-4 shadow-xs flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600">
+                <CreditCard className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                    Cartera de Deudas con Talleres
+                  </span>
+                  {deudasTalleres.length > 0 ? (
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+                      {deudasTalleres.length} {deudasTalleres.length === 1 ? 'pendiente' : 'pendientes'}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Al Día
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  {deudasTalleres.length > 0
+                    ? `Total por saldar: $${deudasTalleres.reduce((sum, d) => sum + d.pendingBalance, 0).toFixed(2)}`
+                    : 'Cuentas liquidadas al 100% con talleres y proveedores'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsDebtsReportModalOpen(true)}
+                className="py-1 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                title="Ver Cartera Completa y Descargar PDF"
+              >
+                <FileDown className="w-3 h-3 text-slate-500" />
+                <span>Reporte PDF</span>
+              </button>
+
+              {onGoToSocioGastos && (
+                <button
+                  type="button"
+                  onClick={onGoToSocioGastos}
+                  className="py-1 px-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-[10px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                  title="Ir al Libro Contable de Egresos de Socio"
+                >
+                  <BookOpen className="w-3 h-3 text-amber-600" />
+                  <span className="hidden sm:inline">Libro Gastos</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setSeccionCarteraColapsada(!seccionCarteraColapsada)}
+                className="p-1 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+              >
+                {seccionCarteraColapsada ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {!seccionCarteraColapsada && (
+            <>
+              {deudasTalleres.length === 0 ? (
+                <div className="p-3 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  <div className="text-[11px] text-emerald-900 leading-tight">
+                    <p className="font-bold">Sin deudas pendientes con talleres mecánicos.</p>
+                    <p className="text-[10px] text-emerald-700">Todos los servicios de esta unidad han sido liquidados o transferidos en su totalidad.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {deudasTalleres.map(debt => (
+                    <div
+                      key={debt.id}
+                      className="p-3 rounded-2xl border border-amber-200/80 bg-amber-50/30 flex flex-col gap-2 transition-all hover:border-amber-300"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-black text-slate-900 truncate">
+                              {debt.provider || 'Taller Mecánico'}
+                            </span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900">
+                              {debt.category}
+                            </span>
+                            {debt.comprobanteRef && (
+                              <span className="text-[9px] text-slate-500 font-mono">
+                                {debt.comprobanteRef}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-1">
+                            {debt.description}
+                          </p>
+                          <span className="text-[9px] text-slate-400">
+                            Fecha de servicio: {debt.expenseDate}
+                          </span>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-rose-600 block">
+                            Saldo por Pagar
+                          </span>
+                          <span className="text-sm font-black text-rose-600">
+                            ${debt.pendingBalance.toFixed(2)}
+                          </span>
+                          <span className="text-[9px] text-slate-400 block">
+                            de ${debt.totalAmount.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Progreso y Botón de Abono */}
+                      <div className="pt-2 border-t border-amber-200/50 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                          <span>Abonado: <strong className="text-emerald-700">${debt.paidAmount.toFixed(2)}</strong></span>
+                          {debt.abonos && debt.abonos.length > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold text-[9px]">
+                              {debt.abonos.length} {debt.abonos.length === 1 ? 'abono' : 'abonos'}
+                            </span>
+                          )}
+                        </div>
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => handleAbrirAbonoModal(debt)}
+                          className="h-7 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          <CreditCard className="w-3 h-3 text-amber-400" />
+                          <span>Registrar Abono</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* ========================================================= */}
+        {/* HISTORIAL DE PARADAS DE TALLER DE LA UNIDAD (FASE 3 Y 4)   */}
+        {/* ========================================================= */}
+        <div className="bg-white rounded-3xl border border-slate-200/90 p-4 shadow-xs flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-600">
+                <Building2 className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">
+                  Historial de Paradas en Taller
+                </span>
+                <p className="text-[10px] text-slate-500">
+                  {paradasTallerHistorial.length} {paradasTallerHistorial.length === 1 ? 'registro' : 'registros'} operativos sincronizados
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSeccionParadasColapsada(!seccionParadasColapsada)}
+              className="p-1 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+            >
+              {seccionParadasColapsada ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {!seccionParadasColapsada && (
+            <>
+              {paradasTallerHistorial.length === 0 ? (
+                <p className="text-xs text-slate-400 p-2 text-center">
+                  No hay paradas en fosa registradas para esta unidad aún.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
+                  {paradasTallerHistorial.slice(0, 10).map(p => {
+                    const esAyudante = p.pagador === 'AYUDANTE';
+                    const tieneSaldo = (p.socioSaldoPendiente || 0) > 0;
+                    return (
+                      <div
+                        key={p.id}
+                        className="p-2.5 rounded-2xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-2"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-xs text-slate-900 truncate">
+                              {p.estacionNombre}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-500">
+                              {p.odometroKm.toLocaleString()} km
+                            </span>
+                            <span className="text-[9px] text-slate-400">
+                              {p.fecha}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-600">
+                            <span>{p.taller}</span>
+                            {p.factura && <span className="font-mono text-slate-400">• Fac: {p.factura}</span>}
+                          </div>
+                          
+                          {/* Sello de Modalidad */}
+                          <div className="mt-1 flex items-center gap-1 flex-wrap">
+                            {esAyudante ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-800">
+                                🚌 Pagado por Ayudante en Ruta (${p.montoCubiertoAyudante.toFixed(2)}) {p.descontadoEnVT ? '• Descontado en VT' : '• Pendiente de VT'}
+                              </span>
+                            ) : p.socioModalidad === 'TRANSFERENCIA_TOTAL' ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                                🏦 Transferencia Socio 100% Pagada
+                              </span>
+                            ) : p.socioModalidad === 'TRANSFERENCIA_PARCIAL' ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900">
+                                ⚠️ Anticipo ${(p.socioMontoTransferido || 0).toFixed(2)} • Saldo: ${(p.socioSaldoPendiente || 0).toFixed(2)}
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-800">
+                                💳 Crédito Fiado • Saldo: ${(p.socioSaldoPendiente || 0).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                          <span className="font-black text-xs text-slate-900">
+                            ${p.costoTotal.toFixed(2)}
+                          </span>
+                          {tieneSaldo && p.ownerExpenseId && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const targetExp = allOwnerExpenses.find(e => e.id === p.ownerExpenseId) || deudasTalleres.find(d => d.id === p.ownerExpenseId);
+                                if (targetExp) {
+                                  handleAbrirAbonoModal(targetExp);
+                                }
+                              }}
+                              className="py-1 px-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] cursor-pointer shadow-xs"
+                            >
+                              Abonar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
 
@@ -2786,26 +3251,108 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                       </div>
                     </div>
 
-                    <div>
-                      <Label className="text-[11px] font-bold text-slate-700 block mb-1">
-                        Método de Pago
+                    <div className="space-y-2">
+                      <Label className="text-[11px] font-bold text-slate-700 block">
+                        Modalidad Contable de Pago (Socio)
                       </Label>
-                      <div className="flex gap-2">
-                        {(["EFECTIVO", "TRANSFERENCIA"] as const).map(m => (
-                          <button
-                            key={m}
-                            type="button"
-                            onClick={() => setEstacionMetodoPago(m)}
-                            className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                              estacionMetodoPago === m
-                                ? "bg-slate-900 text-white border-slate-900"
-                                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                            }`}
-                          >
-                            {m === "EFECTIVO" ? "💵 Efectivo" : "🏦 Transferencia Bancaria"}
-                          </button>
-                        ))}
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setEstacionModalidadPago('PAGO_TOTAL')}
+                          className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
+                            estacionModalidadPago === 'PAGO_TOTAL'
+                              ? 'bg-emerald-50 border-emerald-500 text-emerald-950 ring-1 ring-emerald-500'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1 font-bold text-xs">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            Pago Total
+                          </div>
+                          <span className="text-[10px] text-slate-500 leading-tight block mt-0.5">
+                            100% Pagado
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setEstacionModalidadPago('PAGO_PARCIAL')}
+                          className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
+                            estacionModalidadPago === 'PAGO_PARCIAL'
+                              ? 'bg-amber-50 border-amber-500 text-amber-950 ring-1 ring-amber-500'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1 font-bold text-xs">
+                            <span className="w-2 h-2 rounded-full bg-amber-500" />
+                            Anticipo
+                          </div>
+                          <span className="text-[10px] text-slate-500 leading-tight block mt-0.5">
+                            Parte Fiada
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setEstacionModalidadPago('CREDITO_FIADO')}
+                          className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
+                            estacionModalidadPago === 'CREDITO_FIADO'
+                              ? 'bg-rose-50 border-rose-500 text-rose-950 ring-1 ring-rose-500'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1 font-bold text-xs">
+                            <span className="w-2 h-2 rounded-full bg-rose-500" />
+                            Saco Fiado
+                          </div>
+                          <span className="text-[10px] text-slate-500 leading-tight block mt-0.5">
+                            100% Crédito
+                          </span>
+                        </button>
                       </div>
+
+                      {estacionModalidadPago === 'PAGO_PARCIAL' && (
+                        <div className="p-2.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1.5">
+                          <Label className="text-[11px] font-bold text-amber-900 block">
+                            Monto que Transfieres / Pagas Hoy ($)
+                          </Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={estacionMontoAbono}
+                            onChange={e => setEstacionMontoAbono(e.target.value)}
+                            placeholder="ej. 50.00"
+                            className="h-8 rounded-xl text-xs bg-white border-amber-300 font-bold"
+                          />
+                          <p className="text-[10px] text-amber-800">
+                            Saldo restante de ${(Math.max(0, (parseFloat(estacionCosto || '0') || 0) - (parseFloat(estacionMontoAbono || '0') || 0))).toFixed(2)} irá a tu Cartera de Deudas por Pagar con sello ámbar.
+                          </p>
+                        </div>
+                      )}
+
+                      {estacionModalidadPago !== 'CREDITO_FIADO' && (
+                        <div>
+                          <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                            Vía de Pago del Desembolso
+                          </Label>
+                          <div className="flex gap-2">
+                            {(["EFECTIVO", "TRANSFERENCIA"] as const).map(m => (
+                              <button
+                                key={m}
+                                type="button"
+                                onClick={() => setEstacionMetodoPago(m)}
+                                className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                                  estacionMetodoPago === m
+                                    ? "bg-slate-900 text-white border-slate-900"
+                                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                                }`}
+                              >
+                                {m === "EFECTIVO" ? "💵 Efectivo" : "🏦 Transferencia Bancaria"}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Resumen Contable y Cascada */}
@@ -2816,7 +3363,7 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
                       </div>
                       <p>• Resetea {totalSeleccionados} componentes con el kilometraje ingresado.</p>
                       <p>
-                        • Se asienta contablemente en <strong>{getCategoriaContablePorEstacion(estacionSeleccionada)}</strong> en tus egresos de socio.
+                        • Se asienta contablemente en <strong>{getCategoriaContablePorEstacion(estacionSeleccionada)}</strong> y se sincroniza en tu <strong>Cartera de Deudas con Talleres</strong>.
                       </p>
                     </div>
                   </>
@@ -3545,6 +4092,177 @@ export function MantenimientoScreen({ onBack }: MantenimientoScreenProps) {
           </div>
         </div>
       )}
+
+      {/* ========================================================= */}
+      {/* MODAL DE REGISTRO DE ABONO A TALLER (FASE 4)              */}
+      {/* ========================================================= */}
+      {isAbonoModalOpen && abonoTargetExpense && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-3xl p-5 shadow-2xl border border-slate-200 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-600">
+                  <CreditCard className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-slate-900">
+                    Registrar Abono a Taller
+                  </h3>
+                  <p className="text-[10px] text-slate-500 truncate max-w-[240px]">
+                    {abonoTargetExpense.provider || 'Taller Mecánico'} • {abonoTargetExpense.category}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAbonoModalOpen(false);
+                  setAbonoTargetExpense(null);
+                }}
+                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Ficha Resumen de Deuda */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  Total Deuda
+                </span>
+                <span className="text-xs font-bold text-slate-700">
+                  ${abonoTargetExpense.totalAmount.toFixed(2)}
+                </span>
+                <span className="text-[10px] text-emerald-700 block">
+                  Abonado: ${abonoTargetExpense.paidAmount.toFixed(2)}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 block">
+                  Saldo Actual
+                </span>
+                <span className="text-base font-black text-rose-600">
+                  ${abonoTargetExpense.pendingBalance.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Inputs del Abono */}
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <Label className="text-[11px] font-bold text-slate-700">
+                    Monto a Abonar Hoy ($)
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => setAbonoAmount(abonoTargetExpense.pendingBalance.toString())}
+                    className="text-[10px] font-extrabold text-blue-600 hover:text-blue-800 cursor-pointer"
+                  >
+                    Pagar Totalidad (${abonoTargetExpense.pendingBalance.toFixed(2)})
+                  </button>
+                </div>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={abonoAmount}
+                  onChange={e => setAbonoAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="h-10 rounded-xl text-sm font-black text-emerald-800 bg-white border-slate-300"
+                  autoFocus
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Fecha del Abono
+                  </Label>
+                  <Input
+                    type="date"
+                    value={abonoDate}
+                    onChange={e => setAbonoDate(e.target.value)}
+                    className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Método de Pago
+                  </Label>
+                  <select
+                    value={abonoMethod}
+                    onChange={e => setAbonoMethod(e.target.value as any)}
+                    className="w-full h-9 rounded-xl text-xs bg-slate-50 border border-slate-300 px-2 font-medium"
+                  >
+                    <option value="TRANSFERENCIA">🏦 Transferencia</option>
+                    <option value="EFECTIVO">💵 Efectivo</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Nº Comprobante / Referencia Bancaria
+                </Label>
+                <Input
+                  value={abonoRef}
+                  onChange={e => setAbonoRef(e.target.value)}
+                  placeholder="ej. Transf. #94821 Banco Loja"
+                  className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
+                />
+              </div>
+
+              <div>
+                <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Notas / Observación
+                </Label>
+                <Input
+                  value={abonoNotes}
+                  onChange={e => setAbonoNotes(e.target.value)}
+                  placeholder="ej. Saldo cancelado en taller por cambio de repuesto"
+                  className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
+                />
+              </div>
+            </div>
+
+            {/* Acciones */}
+            <div className="flex items-center gap-2 pt-2 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAbonoModalOpen(false);
+                  setAbonoTargetExpense(null);
+                }}
+                className="flex-1 h-10 rounded-xl text-xs font-bold text-slate-600 border-slate-300 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                disabled={isSubmittingAbono}
+                onClick={handleConfirmarAbono}
+                className="flex-1 h-10 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md"
+              >
+                {isSubmittingAbono ? 'Asentando...' : 'Confirmar Abono'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CARTERA COMPLETA Y REPORTE PDF */}
+      <OwnerDebtsReportModal
+        isOpen={isDebtsReportModalOpen}
+        onClose={() => setIsDebtsReportModalOpen(false)}
+        busId={activeBusId}
+        allExpenses={allOwnerExpenses}
+        onOpenAbonoModal={(debt) => {
+          setIsDebtsReportModalOpen(false);
+          handleAbrirAbonoModal(debt);
+        }}
+      />
 
     </div>
   );
