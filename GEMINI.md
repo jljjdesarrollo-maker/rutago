@@ -164,3 +164,14 @@
   * La sincronización retroactiva omite estrictamente los IDs eliminados, garantizando que los registros borrados nunca vuelvan a aparecer.
 - **Acople de Combo 4 Ruedas:** `handleConfirmComboRuedas` ahora asienta tanto la `ParadaPagoRegistro` como el gasto contable, manteniendo paridad perfecta en toda la aplicación.
 - **Commit Oficial:** `feat(mantenimiento): v3.60.2 - compatibilidad retroactiva de mantenimientos y saneamiento de pruebas`.
+
+## 22. Motor de Cálculo y Blindaje Contable para Regularización Retroactiva (v3.60.3)
+- **Hito:** Fase 1 de la Regularización Retroactiva de Servicios de Mantenimiento con Odómetro Histórico.
+- **Problema Abordado:** Servicios de taller/lubricadora realizados días antes (ej: 18 de septiembre a 892.491 km) mientras el bus siguió rodando hasta su tacómetro actual (893.485 km). Al registrar el servicio con el tacómetro de hoy, el semáforo borraba falsamente los 994 km ya rodados.
+- **Implementación (`src/lib/paradas-vt-storage.ts`):**
+  * `ParadaPagoRegistro`: Incorporación de `odometroServicio`, `odometroActualBus`, `esRetroactivo` y `kmRodadosDesdeServicio`.
+  * `calcularDesgasteRegularizacion(...)`: Función matemática central que calcula en tiempo real km rodados, km restantes de vida útil, porcentaje de salud y advertencias por desbordamiento de intervalo.
+  * **Blindaje Inmutable de Caja:** En `saveParadaPago`, si `registro.fecha < today` y `registro.pagador === "AYUDANTE"`, se marca automáticamente `descontadoEnVT = true`, blindando el dinero del ayudante activo para evitar que un gasto liquidado en fechas pasadas descuadre la caja de hoy.
+  * Preservación del tacómetro general del bus: el odómetro de la unidad nunca retrocede al ingresar servicios retroactivos.
+- **Commit Oficial:** `feat(mantenimiento): v3.60.3 - fase 1 motor de calculo y blindaje contable para regularizacion retroactiva`.
+- **Próximo Paso Inmediato:** Fase 2 — Interfaz ergonómica del Chofer (`ChoferMantenimientoWidget.tsx`) con enlace sutil, cálculo en vivo y validación matemática anti-error.

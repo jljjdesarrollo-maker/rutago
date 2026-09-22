@@ -17,7 +17,11 @@ export interface ParadaPagoRegistro {
   estacionNombre: string;
   taller: string;
   factura?: string;
-  odometroKm: number;
+  odometroKm: number; // Odómetro del servicio realizado (ej: 892491)
+  odometroServicio?: number; // Odómetro específico al momento del cambio físico (ej. 892491)
+  odometroActualBus?: number; // Odómetro del tablero en el momento del registro (ej. 893485)
+  esRetroactivo?: boolean; // Indicador de servicio regularizado de fecha/km anterior
+  kmRodadosDesdeServicio?: number; // Kilómetros transcurridos desde el servicio (odometroActualBus - odometroServicio)
   costoTotal: number;
   pagador: ParadaPagador;
   montoCubiertoAyudante?: number;
@@ -27,6 +31,16 @@ export interface ParadaPagoRegistro {
   socioSaldoPendiente?: number;
   ownerExpenseId?: string;
   createdAt: string;
+}
+
+export interface ResultadoCalculoRegularizacion {
+  kmRodados: number;
+  kmRestantes: number;
+  porcentajeRestante: number;
+  esVencido: boolean;
+  esInvalido: boolean;
+  mensajeError?: string;
+  advertencia?: string;
 }
 
 export interface DeficitArrastradoVT {
@@ -278,11 +292,93 @@ export function syncRetroactiveParadasFromExpenses(busId?: string): number {
 }
 
 /**
- * Guarda o actualiza un registro de pago de parada técnica
+ * FASE 1: Realiza el cálculo matemático en tiempo real del desgaste y vida restante
+ * para servicios realizados en fecha o kilometraje anterior al tablero actual del bus.
+ */
+export function calcularDesgasteRegularizacion(
+  odometroActualBus: number,
+  odometroServicio: number,
+  intervaloKm: number = 5000
+): ResultadoCalculoRegularizacion {
+  if (isNaN(odometroServicio) || odometroServicio <= 0) {
+    return {
+      kmRodados: 0,
+      kmRestantes: intervaloKm,
+      porcentajeRestante: 100,
+      esVencido: false,
+      esInvalido: true,
+      mensajeError: "Ingresa un kilometraje válido.",
+    };
+  }
+
+  if (odometroServicio > odometroActualBus) {
+    return {
+      kmRodados: 0,
+      kmRestantes: intervaloKm,
+      porcentajeRestante: 100,
+      esVencido: false,
+      esInvalido: true,
+      mensajeError: `El kilometraje del cambio (${odometroServicio.toLocaleString()} km) no puede ser mayor al odómetro actual del autobús (${odometroActualBus.toLocaleString()} km).`,
+    };
+  }
+
+  const kmRodados = Math.max(0, odometroActualBus - odometroServicio);
+  const kmRestantes = Math.max(0, intervaloKm - kmRodados);
+  const porcentajeRestante = Math.max(0, Math.min(100, Math.round((kmRestantes / intervaloKm) * 100)));
+  const esVencido = kmRodados >= intervaloKm;
+
+  let advertencia: string | undefined;
+  if (esVencido) {
+    advertencia = `⚠️ Con este kilometraje el componente ya rodó ${kmRodados.toLocaleString()} km y figurará como VENCIDO para cambio inmediato.`;
+  } else if (kmRestantes < 1000) {
+    advertencia = `⚠️ Atención: restan solo ${kmRestantes.toLocaleString()} km de vida útil (${porcentajeRestante}% restante).`;
+  }
+
+  return {
+    kmRodados,
+    kmRestantes,
+    porcentajeRestante,
+    esVencido,
+    esInvalido: false,
+    advertencia,
+  };
+}
+
+/**
+ * Guarda o actualiza un registro de pago de parada técnica.
+ * Aplica la regla de blindaje contable: si el servicio es en fecha pasada y pagó el Ayudante,
+ * se marca descontadoEnVT = true para que NUNCA descuente en el arqueo del día activo del ayudante.
  */
 export function saveParadaPago(registro: ParadaPagoRegistro): void {
   if (typeof window === 'undefined') return;
   try {
+    const today = new Date().toISOString().split('T')[0];
+
+    // 1. Armonizar odómetro de servicio y odómetro de registro
+    if (typeof registro.odometroServicio === 'number' && registro.odometroServicio > 0) {
+      registro.odometroKm = registro.odometroServicio;
+    } else if (typeof registro.odometroKm === 'number' && registro.odometroKm > 0) {
+      registro.odometroServicio = registro.odometroKm;
+    }
+
+    // 2. Cálculo de desgaste y detección de regularización retroactiva
+    if (typeof registro.odometroActualBus === 'number' && typeof registro.odometroServicio === 'number') {
+      registro.kmRodadosDesdeServicio = Math.max(0, registro.odometroActualBus - registro.odometroServicio);
+      if (registro.odometroServicio < registro.odometroActualBus || registro.fecha < today) {
+        registro.esRetroactivo = true;
+      }
+    } else if (registro.fecha < today) {
+      registro.esRetroactivo = true;
+    }
+
+    // 3. Blindaje Inmutable del Arqueo de Ruta:
+    // Si el servicio ocurrió en fecha pasada (fecha < today) y el pagador fue el Ayudante,
+    // la caja de ese día ya fue liquidada en el pasado. Se marca descontadoEnVT = true para
+    // que la caja y arqueo del ayudante de HOY permanezcan 100% blindados e intactos.
+    if (registro.pagador === 'AYUDANTE' && registro.fecha < today) {
+      registro.descontadoEnVT = true;
+    }
+
     const raw = localStorage.getItem(STORAGE_PARADAS_KEY);
     const list: ParadaPagoRegistro[] = raw ? JSON.parse(raw) : [];
     const idx = list.findIndex(p => p.id === registro.id);

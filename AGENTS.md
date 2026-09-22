@@ -281,3 +281,22 @@
   * Si marcó Socio Saca Fiado: Gasto total creado con $0 pagados, saldo total en estado PENDIENTE.
   * Opción de Registrar Abono directo para extinguir la deuda cuando el socio transfiera días después.
   * Estado: [PENDIENTE TRAS FASE 3]
+
+
+### PENDIENTE #8: Regularización Retroactiva de Servicios de Mantenimiento con Odómetro Histórico (v3.60.3+)
+- **Contexto Operativo:** Soluciona el caso real cuando un servicio de mantenimiento (ej. cambio de aceite y filtros en lubricadora) se realizó en días u horas anteriores (ej. 18 de septiembre a los 892.491 km) y el autobús continuó operando en ruta hasta alcanzar su tacómetro actual (ej. 893.485 km).
+- **El Problema:** Al asentar con el tacómetro de hoy, el sistema ponía el aceite en 0 km rodados y 5.000 km de vida, cuando en realidad ya rodó 994 km y le restan 4.006 km reales de vida útil.
+- **La Solución en 3 Fases Modulares:**
+  * **FASE 1: Motor de Cálculo y Blindaje Contable (`src/lib/paradas-vt-storage.ts`) [COMPLETADA ✅ v3.60.3]:**
+    1. Distinción explícita en `ParadaPagoRegistro` entre `odometroServicio` (km del cambio, ej. 892.491) y `odometroActualBus` (tablero hoy, ej. 893.485).
+    2. Motor de cálculo `calcularDesgasteRegularizacion(odometroActualBus, odometroServicio, intervaloKm)`: calcula km rodados (994 km), km restantes (4.006 km), porcentaje de vida y advertencias en vivo.
+    3. **Blindaje Inmutable del Arqueo:** Si `registro.fecha < today` y `registro.pagador === "AYUDANTE"`, se marca automáticamente `descontadoEnVT = true` para que el arqueo de hoy del ayudante jamás sufra descuentos indebidos por dineros liquidados en fechas pasadas.
+    4. **Socio Propietario:** Permite registrar los egresos patrimoniales en `OwnerExpenses` con la fecha histórica del servicio (18 de septiembre), respetando sus 3 modalidades (Transferencia total, parcial + saldo a cartera, o crédito fiado).
+  * **FASE 2: Interfaz Táctil Ergonómica del Chofer (`ChoferMantenimientoWidget.tsx`) [PENDIENTE INMEDIATO]:**
+    1. Selector ergonómico de 2 botones o enlace sutil "¿Se realizó antes? [ Toca aquí para regularizar fecha/km ]" para preservar el 95% del uso diario en 1 solo toque.
+    2. Despliegue de casillas de km al momento del cambio (`odometroServicio`) y fecha histórica.
+    3. Tarjeta de cálculo en vivo: `✓ Hace 994 km • Restan 4.006 km de vida útil`.
+    4. Bloqueo inteligente si `odometroServicio > odometroActualBus`.
+  * **FASE 3: Panel del Socio (`MantenimientoScreen.tsx`) y Pruebas Integrales [PENDIENTE TRAS FASE 2]:**
+    1. Réplica en el modal de registro de taller del socio para regularizar facturas y servicios desde su sesión.
+    2. Prueba con el caso real: Bus 01, 892.491 km al 18/09/2026, verificando tacómetro del bus en 893.485 km y semáforo calibrado a 4.006 km restantes.
