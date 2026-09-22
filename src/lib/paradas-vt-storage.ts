@@ -54,6 +54,7 @@ export function saveParadaPago(registro: ParadaPagoRegistro): void {
       list.unshift(registro);
     }
     localStorage.setItem(STORAGE_PARADAS_KEY, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent('rg_paradas_pago_updated', { detail: { busId: registro.busId, paradaId: registro.id } }));
   } catch (err) {
     console.error('Error guardando pago de parada:', err);
   }

@@ -17,6 +17,9 @@ import {
   X,
   Wind,
   Receipt,
+  History,
+  Building2,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -30,6 +33,8 @@ import { saveOwnerExpense, saveOwnerExpenseToApi } from '@/lib/owner-expenses-st
 import { type PaymentMethod, type PaymentAbono } from '@/types/expenses';
 import {
   saveParadaPago,
+  getParadasPagoByBus,
+  type ParadaPagoRegistro,
   type ParadaPagador,
   type SocioModalidadPago,
 } from '@/lib/paradas-vt-storage';
@@ -194,6 +199,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       setActiveBusId(bus.id);
       setKmActual(resolverKmActual(bus.id));
       setItems(cargarItems(bus.id));
+      setHistorialParadas(getParadasPagoByBus(bus.id));
     });
 
     const unsubOdo = subscribeToBusOdometer((data) => {
@@ -213,12 +219,25 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     };
     window.addEventListener('rg_mantenimiento_config_sync', handleConfigSync);
 
+    const handleParadasSync = () => {
+      setHistorialParadas(getParadasPagoByBus(activeBusId));
+    };
+    window.addEventListener('rg_paradas_pago_updated', handleParadasSync);
+
     return () => {
       unsubBus();
       unsubOdo();
       window.removeEventListener('rg_mantenimiento_config_sync', handleConfigSync);
+      window.removeEventListener('rg_paradas_pago_updated', handleParadasSync);
     };
   }, [activeBusId, resolverKmActual, cargarItems]);
+
+  // Historial de Mantenimientos y Paradas de Taller del Autobús (Fase A)
+  const [isHistorialModalOpen, setIsHistorialModalOpen] = useState(false);
+  const [historialParadas, setHistorialParadas] = useState<ParadaPagoRegistro[]>(() => {
+    if (typeof window === 'undefined') return [];
+    return getParadasPagoByBus(getActiveBusId());
+  });
 
   // Modal rápido de registro para el chofer
   const [modalItem, setModalItem] = useState<MantenimientoBusItem | null>(null);
@@ -937,6 +956,26 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                 </button>
               );
             })}
+          </div>
+
+          {/* Barra de Historial Operativo del Autobús para el Chofer (Fase A) */}
+          <div className="pt-1.5 border-t border-white/10 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-300 font-medium">
+              <History className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>
+                {historialParadas.length === 0
+                  ? 'Sin servicios registrados aún'
+                  : `${historialParadas.length} ${historialParadas.length === 1 ? 'servicio registrado' : 'servicios registrados'} en historial`}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsHistorialModalOpen(true)}
+              className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-amber-300 hover:text-amber-200 text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer border border-white/15"
+            >
+              <History className="w-3 h-3" />
+              <span>Ver Historial del Bus ({historialParadas.length})</span>
+            </button>
           </div>
         </div>
 
@@ -1873,6 +1912,149 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
               >
                 <Zap className="w-4 h-4 fill-slate-950" />
                 Asentar Servicio (1 Clic)
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* FASE A: MODAL DE HISTORIAL CRONOLÓGICO PARA EL CHOFER      */}
+      {/* ========================================================= */}
+      {isHistorialModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl border border-slate-200 w-full max-w-lg max-h-[88vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-200">
+            {/* Cabecera del Historial */}
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-900 flex items-center justify-center shrink-0">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="font-black text-sm text-slate-900">
+                      Historial de Mantenimientos
+                    </h3>
+                    <Badge className="bg-amber-100 text-amber-900 border-amber-300 text-[10px] px-1.5 py-0 font-extrabold">
+                      Bus {disco}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Servicios mecánicos, lubricaciones y fosas registradas
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsHistorialModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Lista Cronológica Scrollable */}
+            <div className="p-3 sm:p-4 overflow-y-auto space-y-2.5 flex-1">
+              {historialParadas.length === 0 ? (
+                <div className="text-center py-10 px-4 space-y-2">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                    <History className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-700">
+                    Sin mantenimientos registrados aún
+                  </p>
+                  <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                    Cuando asientes una parada de taller o lubricadora, aparecerá aquí cronológicamente con su odómetro y pagador.
+                  </p>
+                </div>
+              ) : (
+                historialParadas.map((p, idx) => {
+                  const esAyudante = p.pagador === 'AYUDANTE';
+                  return (
+                    <div
+                      key={p.id || idx}
+                      className="p-3 rounded-2xl border border-slate-200/90 bg-slate-50/70 hover:bg-slate-50 transition-all space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-black text-xs text-slate-900 truncate">
+                              {p.estacionNombre}
+                            </span>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 font-mono">
+                              {p.odometroKm?.toLocaleString()} km
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-600 flex-wrap">
+                            <span className="flex items-center gap-1 font-medium">
+                              <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
+                              <strong className="text-slate-800">{p.taller || 'Taller sin nombre'}</strong>
+                            </span>
+                            {p.factura && (
+                              <span className="font-mono text-slate-500 bg-white px-1.5 py-0.5 rounded-md border border-slate-200 text-[10px]">
+                                Fac: {p.factura}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Costo total */}
+                        <div className="text-right shrink-0">
+                          <span className="text-xs font-black text-slate-900 block">
+                            ${(p.costoTotal || 0).toFixed(2)}
+                          </span>
+                          <span className="text-[9px] font-bold text-slate-400">
+                            {p.fecha}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Barra de Modalidad / Quién pagó */}
+                      <div className="pt-1.5 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap">
+                        {esAyudante ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-blue-100 text-blue-900 border border-blue-200 flex items-center gap-1">
+                            <span>🚌</span>
+                            <span>Cubierto en Ruta por Ayudante</span>
+                            {p.descontadoEnVT && (
+                              <span className="text-[9px] text-blue-700 font-semibold">• Descontado en VT</span>
+                            )}
+                          </span>
+                        ) : p.socioModalidad === 'TRANSFERENCIA_TOTAL' ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-200 flex items-center gap-1">
+                            <span>👤</span>
+                            <span>Pagado por Socio (Transferencia 100%)</span>
+                          </span>
+                        ) : p.socioModalidad === 'TRANSFERENCIA_PARCIAL' ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-900 border border-amber-200 flex items-center gap-1">
+                            <span>👤</span>
+                            <span>Socio: Anticipo ${(p.socioMontoTransferido || 0).toFixed(2)} • Saldo: ${(p.socioSaldoPendiente || 0).toFixed(2)}</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-rose-100 text-rose-900 border border-rose-200 flex items-center gap-1">
+                            <span>👤</span>
+                            <span>Socio: Crédito Fiado • Deuda: ${(p.socioSaldoPendiente || p.costoTotal || 0).toFixed(2)}</span>
+                          </span>
+                        )}
+
+                        <span className="text-[9px] text-slate-400 font-medium">
+                          {p.createdAt ? new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Pie del Modal con botón ergonómico de cierre */}
+            <div className="p-3 border-t border-slate-100 bg-slate-50/50 rounded-b-3xl shrink-0">
+              <Button
+                type="button"
+                onClick={() => setIsHistorialModalOpen(false)}
+                className="w-full h-11 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm"
+              >
+                Cerrar Historial
               </Button>
             </div>
           </div>
