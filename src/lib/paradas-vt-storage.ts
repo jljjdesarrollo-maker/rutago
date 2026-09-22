@@ -3,6 +3,8 @@
  * Separa roles: Chofer (reset mecánico), Ayudante (dinero y arqueo), Socio (contabilidad patrimonial).
  */
 
+import { deleteOwnerExpense } from './owner-expenses-storage';
+
 export type ParadaPagador = 'AYUDANTE' | 'SOCIO';
 export type SocioModalidadPago = 'TRANSFERENCIA_TOTAL' | 'TRANSFERENCIA_PARCIAL' | 'CREDITO_FIADO';
 
@@ -222,5 +224,71 @@ export function updateParadaPagoAbono(expenseId: string, montoAbono: number): vo
     }
   } catch (err) {
     console.error('Error actualizando abono en parada técnica:', err);
+  }
+}
+
+/**
+ * FASE B: Anula y elimina un registro de parada técnica en CASCADA LIMPIA:
+ * 1. Lo retira del historial de paradas de la unidad.
+ * 2. Si generó un gasto contable al Socio (ownerExpenseId), lo elimina de OwnerExpense y deudas.
+ * 3. Si afectó el arqueo pendiente del ayudante, lo cancela para que no descuente en VT.
+ * 4. Emite eventos reactivos globales para actualizar la UI en vivo.
+ */
+export function deleteParadaPagoCascada(paradaId: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = localStorage.getItem(STORAGE_PARADAS_KEY);
+    if (!raw) return false;
+    const list: ParadaPagoRegistro[] = JSON.parse(raw);
+    const target = list.find(p => p.id === paradaId);
+    if (!target) return false;
+
+    // 1. Eliminar de la lista de paradas
+    const updatedList = list.filter(p => p.id !== paradaId);
+    localStorage.setItem(STORAGE_PARADAS_KEY, JSON.stringify(updatedList));
+
+    // 2. Si tenía gasto de socio vinculado, eliminarlo en cascada
+    if (target.ownerExpenseId) {
+      deleteOwnerExpense(target.ownerExpenseId);
+      window.dispatchEvent(new CustomEvent('rg_owner_expenses_sync', { detail: { expenseId: target.ownerExpenseId, deleted: true } }));
+    }
+
+    // 3. Notificar actualización reactiva a todos los componentes
+    window.dispatchEvent(new CustomEvent('rg_paradas_pago_updated', { detail: { busId: target.busId, paradaId, deleted: true } }));
+    return true;
+  } catch (err) {
+    console.error('Error al eliminar parada técnica en cascada:', err);
+    return false;
+  }
+}
+
+/**
+ * FASE B: Limpieza total de registros de paradas de prueba para una unidad específica
+ */
+export function clearAllParadasByBus(busId: string): number {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const raw = localStorage.getItem(STORAGE_PARADAS_KEY);
+    if (!raw) return 0;
+    const list: ParadaPagoRegistro[] = JSON.parse(raw);
+    const paradasDeBus = list.filter(p => p.busId === busId);
+    if (paradasDeBus.length === 0) return 0;
+
+    // Eliminar gastos asociados
+    paradasDeBus.forEach(p => {
+      if (p.ownerExpenseId) {
+        deleteOwnerExpense(p.ownerExpenseId);
+      }
+    });
+
+    const restantes = list.filter(p => p.busId !== busId);
+    localStorage.setItem(STORAGE_PARADAS_KEY, JSON.stringify(restantes));
+
+    window.dispatchEvent(new CustomEvent('rg_owner_expenses_sync', { detail: { busId, cleared: true } }));
+    window.dispatchEvent(new CustomEvent('rg_paradas_pago_updated', { detail: { busId, cleared: true } }));
+    return paradasDeBus.length;
+  } catch (err) {
+    console.error('Error al limpiar paradas de prueba del bus:', err);
+    return 0;
   }
 }

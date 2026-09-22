@@ -53,6 +53,8 @@ import {
 import {
   getParadasPagoByBus,
   saveParadaPago,
+  deleteParadaPagoCascada,
+  clearAllParadasByBus,
   type ParadaPagoRegistro,
   type SocioModalidadPago,
 } from '@/lib/paradas-vt-storage';
@@ -425,6 +427,10 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
   const [isSubmittingAbono, setIsSubmittingAbono] = useState(false);
   const [seccionCarteraColapsada, setSeccionCarteraColapsada] = useState(false);
   const [seccionParadasColapsada, setSeccionParadasColapsada] = useState(false);
+
+  // FASE B: Modal de confirmación para anulación/eliminación en cascada de parada técnica
+  const [paradaParaEliminar, setParadaParaEliminar] = useState<ParadaPagoRegistro | null>(null);
+  const [modalConfirmLimpiarPruebasOpen, setModalConfirmLimpiarPruebasOpen] = useState(false);
 
   // Modal Combo 4 Ruedas (Rodaje y Suspensión)
   const [isComboRuedasModalOpen, setIsComboRuedasModalOpen] = useState(false);
@@ -1631,6 +1637,37 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     }
   };
 
+  // FASE B: Anulación / Eliminación en Cascada de Paradas Técnicas
+  const handleConfirmarEliminarParada = () => {
+    if (!paradaParaEliminar) return;
+    const ok = deleteParadaPagoCascada(paradaParaEliminar.id);
+    if (ok) {
+      toast({
+        title: 'Registro de Parada Anulado',
+        description: `Se eliminó el servicio en ${paradaParaEliminar.estacionNombre} y se canceló su impacto contable en deudas y caja.`,
+      });
+      recargarCarteraYParadas();
+    } else {
+      toast({
+        title: 'Error al anular registro',
+        description: 'No se pudo eliminar el registro seleccionado.',
+        variant: 'destructive',
+      });
+    }
+    setParadaParaEliminar(null);
+  };
+
+  // FASE B: Limpieza total de paradas de prueba del autobús
+  const handleConfirmarLimpiarPruebas = () => {
+    const eliminadas = clearAllParadasByBus(activeBusId);
+    toast({
+      title: 'Limpieza de Pruebas Completada',
+      description: `Se eliminaron ${eliminadas} ${eliminadas === 1 ? 'registro de prueba' : 'registros de prueba'} de la Unidad ${activeBusDisco}. Cartera y deudas saneadas.`,
+    });
+    setModalConfirmLimpiarPruebasOpen(false);
+    recargarCarteraYParadas();
+  };
+
   // Cambiar nivel de control rápido (BÁSICO 7, MEDIO 15, TOTAL 27)
   const handleCambiarNivelControl = (nuevoNivel: NivelControlMantenimiento) => {
     setNivelControl(nuevoNivel);
@@ -2340,13 +2377,26 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setSeccionParadasColapsada(!seccionParadasColapsada)}
-              className="p-1 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
-            >
-              {seccionParadasColapsada ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-            </button>
+            <div className="flex items-center gap-1.5">
+              {paradasTallerHistorial.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setModalConfirmLimpiarPruebasOpen(true)}
+                  className="px-2 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold transition-all flex items-center gap-1 border border-rose-200 cursor-pointer"
+                  title="Eliminar todos los registros de prueba de este autobús"
+                >
+                  <Trash2 className="w-3 h-3 text-rose-600" />
+                  <span className="hidden sm:inline">Limpiar Pruebas</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSeccionParadasColapsada(!seccionParadasColapsada)}
+                className="p-1 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+              >
+                {seccionParadasColapsada ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           {!seccionParadasColapsada && (
@@ -2408,20 +2458,30 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                           <span className="font-black text-xs text-slate-900">
                             ${p.costoTotal.toFixed(2)}
                           </span>
-                          {tieneSaldo && p.ownerExpenseId && (
+                          <div className="flex items-center gap-1">
+                            {tieneSaldo && p.ownerExpenseId && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const targetExp = allOwnerExpenses.find(e => e.id === p.ownerExpenseId) || deudasTalleres.find(d => d.id === p.ownerExpenseId);
+                                  if (targetExp) {
+                                    handleAbrirAbonoModal(targetExp);
+                                  }
+                                }}
+                                className="py-1 px-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] cursor-pointer shadow-xs"
+                              >
+                                Abonar
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => {
-                                const targetExp = allOwnerExpenses.find(e => e.id === p.ownerExpenseId) || deudasTalleres.find(d => d.id === p.ownerExpenseId);
-                                if (targetExp) {
-                                  handleAbrirAbonoModal(targetExp);
-                                }
-                              }}
-                              className="py-1 px-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] cursor-pointer shadow-xs"
+                              onClick={() => setParadaParaEliminar(p)}
+                              className="p-1 rounded-lg hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                              title="Anular / Eliminar este registro"
                             >
-                              Abonar
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
-                          )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -4263,6 +4323,126 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           handleAbrirAbonoModal(debt);
         }}
       />
+
+      {/* ========================================================= */}
+      {/* FASE B: MODAL DE CONFIRMACIÓN: ANULAR PARADA EN CASCADA    */}
+      {/* ========================================================= */}
+      {paradaParaEliminar && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-slate-200 max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-black text-sm text-slate-900">
+                  ¿Anular este Mantenimiento?
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  {paradaParaEliminar.estacionNombre}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5 text-xs text-slate-700">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Taller:</span>
+                <span className="font-bold">{paradaParaEliminar.taller}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Odómetro:</span>
+                <span className="font-mono font-bold">{paradaParaEliminar.odometroKm?.toLocaleString()} km</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Costo:</span>
+                <span className="font-black text-slate-900">${paradaParaEliminar.costoTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Modalidad:</span>
+                <span className="font-bold text-amber-800">
+                  {paradaParaEliminar.pagador === 'AYUDANTE' ? 'Ruta Ayudante' : 'Socio Propietario'}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              ⚠️ <strong>Efecto en cascada:</strong> Se cancelará la deuda o egreso registrado, se saneará la cartera y se retirará del historial de la unidad.
+            </p>
+
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setParadaParaEliminar(null)}
+                className="flex-1 h-10 rounded-xl text-xs font-bold text-slate-600 border-slate-300 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirmarEliminarParada}
+                className="flex-1 h-10 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-md"
+              >
+                Sí, Anular Registro
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* FASE B: MODAL DE CONFIRMACIÓN: LIMPIAR PRUEBAS DE LA UNIDAD */}
+      {/* ========================================================= */}
+      {modalConfirmLimpiarPruebasOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-slate-200 max-w-sm w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-black text-sm text-slate-900">
+                  Limpiar Registros de Prueba
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  Unidad {activeBusDisco}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              ¿Deseas eliminar <strong>todos los {paradasTallerHistorial.length} registros</strong> de paradas y lubricadoras de prueba de este autobús?
+            </p>
+
+            <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-[11px] text-amber-900 space-y-1">
+              <p className="font-bold">✓ Se limpiarán automáticamente:</p>
+              <ul className="list-disc pl-4 space-y-0.5 text-[10px]">
+                <li>El historial de paradas de taller del autobús.</li>
+                <li>Las deudas y egresos generados en cartera.</li>
+                <li>El saldo arrastrado en caja de ruta.</li>
+              </ul>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setModalConfirmLimpiarPruebasOpen(false)}
+                className="flex-1 h-10 rounded-xl text-xs font-bold text-slate-600 border-slate-300 hover:bg-slate-100 cursor-pointer"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirmarLimpiarPruebas}
+                className="flex-1 h-10 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-md"
+              >
+                Limpiar Todo
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
