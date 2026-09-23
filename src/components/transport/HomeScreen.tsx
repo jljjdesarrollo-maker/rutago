@@ -159,9 +159,10 @@ export function HomeScreen({
     return () => window.removeEventListener('rg_mantenimiento_config_sync', handleSync);
   }, [activeBusId]);
 
-  // Calcular balance financiero, tripulación y suscripción en vivo para el socio
+  // Calcular balance financiero, tripulación y suscripción en vivo para el socio (EXCLUSIVO ADMIN / SOCIO)
+  // El chofer y el ayudante no deben ejecutar estas consultas contables para garantizar entrada instantánea
   useEffect(() => {
-    if (isSuperAdmin) return;
+    if (isSuperAdmin || !isAdmin) return;
 
     // 1. Cargar suscripción del bus activo
     try {

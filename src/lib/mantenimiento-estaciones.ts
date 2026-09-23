@@ -80,60 +80,84 @@ const STORAGE_PREFIX_DECISION = 'rg_mantenimiento_decision_';
 export const STORAGE_PREFIX_COMBO_UNIDAD = 'rg_combo_estacion_v1_';
 export const STORAGE_PREFIX_INTERVALOS = 'rg_bus_intervalos_override_';
 
+// Control de concurrencia y deduplicacion para evitar tormenta de peticiones
+const inFlightSyncs = new Map<string, Promise<any>>();
+const lastSyncTimestamp = new Map<string, number>();
+const SYNC_COOLDOWN_MS = 20000; // 20 segundos de gracia entre peticiones al mismo busId
+
 /**
  * Consulta y sincroniza la configuración de mantenimiento con el servidor central
  * Esto permite que las decisiones tomadas en el móvil se repliquen automáticamente en la PC y viceversa.
  */
-export async function syncMantenimientoConfigConServidor(busId: string): Promise<any> {
+export async function syncMantenimientoConfigConServidor(busId: string, force = false): Promise<any> {
   if (typeof window === 'undefined') return null;
-  try {
-    const res = await fetch(`/api/config/mantenimiento?busId=${encodeURIComponent(busId)}`);
-    if (!res.ok) return null;
-    const json = await res.json();
-    if (json?.success && json?.data) {
-      const data = json.data;
-      if (typeof data.moduloActivo === 'boolean') {
-        localStorage.setItem(`${STORAGE_PREFIX_MODULO}${busId}`, String(data.moduloActivo));
-      }
-      if (data.nivelControl === 'BASICO' || data.nivelControl === 'MEDIO' || data.nivelControl === 'TOTAL') {
-        localStorage.setItem(`${STORAGE_PREFIX_NIVEL}${busId}`, data.nivelControl);
-      }
-      if (data.itemsActivos && typeof data.itemsActivos === 'object') {
-        localStorage.setItem(`${STORAGE_PREFIX_ITEMS}${busId}`, JSON.stringify(data.itemsActivos));
-      }
-      if (typeof data.decisionTomada === 'boolean') {
-        localStorage.setItem(`${STORAGE_PREFIX_DECISION}${busId}`, String(data.decisionTomada));
-      }
-      if (data.intervalosPersonalizados && typeof data.intervalosPersonalizados === 'object') {
-        localStorage.setItem(`${STORAGE_PREFIX_INTERVALOS}${busId}`, JSON.stringify(data.intervalosPersonalizados));
-      }
-      // FASE B: Hidratar combos personalizados descargados desde el servidor
-      if (data.combosPersonalizados && typeof data.combosPersonalizados === 'object') {
-        let combosCargados = 0;
-        Object.entries(data.combosPersonalizados).forEach(([estacionId, comboData]) => {
-          if (comboData && typeof comboData === 'object') {
-            localStorage.setItem(
-              `${STORAGE_PREFIX_COMBO_UNIDAD}${busId}_${estacionId}`,
-              JSON.stringify(comboData)
-            );
-            combosCargados++;
-          }
-        });
-        if (combosCargados > 0) {
-          window.dispatchEvent(
-            new CustomEvent('rg_combo_unidad_actualizado', {
-              detail: { busId, totalCombos: combosCargados },
-            })
-          );
-        }
-      }
-      window.dispatchEvent(new CustomEvent('rg_mantenimiento_config_sync', { detail: data }));
-      return data;
-    }
-  } catch (err) {
-    console.warn('Aviso: Sincronización en segundo plano con servidor:', err);
+  
+  const now = Date.now();
+  const lastTime = lastSyncTimestamp.get(busId) || 0;
+  if (!force && now - lastTime < SYNC_COOLDOWN_MS) {
+    return null;
   }
-  return null;
+
+  if (inFlightSyncs.has(busId)) {
+    return inFlightSyncs.get(busId);
+  }
+
+  const syncPromise = (async () => {
+    try {
+      const res = await fetch(`/api/config/mantenimiento?busId=${encodeURIComponent(busId)}`);
+      if (!res.ok) return null;
+      const json = await res.json();
+      if (json?.success && json?.data) {
+        lastSyncTimestamp.set(busId, Date.now());
+        const data = json.data;
+        if (typeof data.moduloActivo === 'boolean') {
+          localStorage.setItem(`${STORAGE_PREFIX_MODULO}${busId}`, String(data.moduloActivo));
+        }
+        if (data.nivelControl === 'BASICO' || data.nivelControl === 'MEDIO' || data.nivelControl === 'TOTAL') {
+          localStorage.setItem(`${STORAGE_PREFIX_NIVEL}${busId}`, data.nivelControl);
+        }
+        if (data.itemsActivos && typeof data.itemsActivos === 'object') {
+          localStorage.setItem(`${STORAGE_PREFIX_ITEMS}${busId}`, JSON.stringify(data.itemsActivos));
+        }
+        if (typeof data.decisionTomada === 'boolean') {
+          localStorage.setItem(`${STORAGE_PREFIX_DECISION}${busId}`, String(data.decisionTomada));
+        }
+        if (data.intervalosPersonalizados && typeof data.intervalosPersonalizados === 'object') {
+          localStorage.setItem(`${STORAGE_PREFIX_INTERVALOS}${busId}`, JSON.stringify(data.intervalosPersonalizados));
+        }
+        // FASE B: Hidratar combos personalizados descargados desde el servidor
+        if (data.combosPersonalizados && typeof data.combosPersonalizados === 'object') {
+          let combosCargados = 0;
+          Object.entries(data.combosPersonalizados).forEach(([estacionId, comboData]) => {
+            if (comboData && typeof comboData === 'object') {
+              localStorage.setItem(
+                `${STORAGE_PREFIX_COMBO_UNIDAD}${busId}_${estacionId}`,
+                JSON.stringify(comboData)
+              );
+              combosCargados++;
+            }
+          });
+          if (combosCargados > 0) {
+            window.dispatchEvent(
+              new CustomEvent('rg_combo_unidad_actualizado', {
+                detail: { busId, totalCombos: combosCargados },
+              })
+            );
+          }
+        }
+        window.dispatchEvent(new CustomEvent('rg_mantenimiento_config_sync', { detail: data }));
+        return data;
+      }
+    } catch (err) {
+      console.warn('Aviso: Sincronización en segundo plano con servidor:', err);
+    } finally {
+      inFlightSyncs.delete(busId);
+    }
+    return null;
+  })();
+
+  inFlightSyncs.set(busId, syncPromise);
+  return syncPromise;
 }
 
 /**

@@ -186,10 +186,11 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (user && !isSuperAdmin) {
+    // Solo consultar el conteo general de liquidaciones si es Administrador / Socio
+    if (user && !isSuperAdmin && isAdmin) {
       fetchCount();
     }
-  }, [fetchCount, user, isSuperAdmin]);
+  }, [fetchCount, user, isSuperAdmin, isAdmin]);
 
   const handleLogin = (userData: UserSession) => {
     setUser(userData);

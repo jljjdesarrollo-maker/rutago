@@ -275,12 +275,16 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     };
     window.addEventListener('online', handleOnline);
 
-    // Disparar sincronización silenciosa de entrada si el dispositivo ya está online
+    // Disparar sincronización silenciosa de entrada diferida (2 segundos) para no competir con el render inicial del Chofer
+    let initTimer: any = null;
     if (typeof navigator !== 'undefined' && navigator.onLine) {
-      syncMantenimientoBidireccional(activeBusId).catch(() => {});
+      initTimer = setTimeout(() => {
+        syncMantenimientoBidireccional(activeBusId).catch(() => {});
+      }, 2000);
     }
 
     return () => {
+      if (initTimer) clearTimeout(initTimer);
       unsubBus();
       unsubOdo();
       window.removeEventListener('rg_mantenimiento_config_sync', handleConfigSync);
