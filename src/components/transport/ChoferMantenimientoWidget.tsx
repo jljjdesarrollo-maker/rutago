@@ -578,17 +578,18 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     // Actualizar lista en pantalla del chofer
     setItems(fullList.filter(it => it.asignadoChofer && it.activo));
 
-    // Integración contable y financiera (Fases 3 y 4)
-    if (valorTotal > 0) {
-      try {
-        const expenseId = 'gasto-parada-' + Date.now();
-        let paidAmount = 0;
-        let pendingBalance = 0;
-        let paymentMethod: PaymentMethod = 'EFECTIVO';
-        let expenseStatus: 'PAGADO' | 'PENDIENTE' = 'PAGADO';
-        let abonosList: PaymentAbono[] | undefined = undefined;
-        let descripcionContable = '';
+    // Registro técnico y financiero en Historial de Paradas (Soporta valor 0 y con costo)
+    try {
+      const paradaId = 'parada-' + Date.now();
+      const expenseId = 'gasto-parada-' + Date.now();
+      let paidAmount = 0;
+      let pendingBalance = 0;
+      let paymentMethod: PaymentMethod = 'EFECTIVO';
+      let expenseStatus: 'PAGADO' | 'PENDIENTE' = 'PAGADO';
+      let abonosList: PaymentAbono[] | undefined = undefined;
+      let descripcionContable = '';
 
+      if (valorTotal > 0) {
         if (pagadorChofer === 'AYUDANTE') {
           paidAmount = valorTotal;
           pendingBalance = 0;
@@ -625,39 +626,43 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           } else if (socioModalidadChofer === 'CREDITO_FIADO') {
             paidAmount = 0;
             pendingBalance = valorTotal;
-            paymentMethod = 'CREDITO';
+            paymentMethod = 'CREDITO_PENDIENTE';
             expenseStatus = 'PENDIENTE';
             descripcionContable = 'Parada Técnica ' + config.nombre + ' [' + codigosMarcados.join(', ') + '] - Crédito Total Fiado Taller';
           }
         }
+      } else {
+        descripcionContable = 'Parada Técnica ' + config.nombre + ' [' + codigosMarcados.join(', ') + '] - Mantenimiento sin costo / Garantía';
+      }
 
-        // 1. Guardar en registro operativo de paradas VT (Fases 1, 3 y 4)
-        saveParadaPago({
-          id: 'parada-' + Date.now(),
-          busId: activeBusId,
-          disco,
-          fecha: fechaEfectiva,
-          estacionId: estacionSeleccionadaChofer,
-          estacionNombre: config.nombre,
-          taller: tallerStr,
-          factura: estacionFacturaChofer.trim() || undefined,
-          odometroKm: kmEfectivoServicio,
-          odometroServicio: kmEfectivoServicio,
-          odometroActualBus: kmTablero,
-          esRetroactivo: esRetro,
-          kmRodadosDesdeServicio: Math.max(0, kmTablero - kmEfectivoServicio),
-          costoTotal: valorTotal,
-          pagador: pagadorChofer,
-          montoCubiertoAyudante: pagadorChofer === 'AYUDANTE' ? valorTotal : 0,
-          descontadoEnVT: pagadorChofer === 'AYUDANTE' && fechaEfectiva < today ? true : false,
-          socioModalidad: pagadorChofer === 'SOCIO' ? socioModalidadChofer : undefined,
-          socioMontoTransferido: pagadorChofer === 'SOCIO' ? paidAmount : undefined,
-          socioSaldoPendiente: pagadorChofer === 'SOCIO' ? pendingBalance : undefined,
-          ownerExpenseId: expenseId,
-          createdAt: new Date().toISOString(),
-        });
+      // 1. Guardar SIEMPRE en registro operativo de paradas VT (se refleja en Historial de Paradas del Chofer y Socio)
+      saveParadaPago({
+        id: paradaId,
+        busId: activeBusId,
+        disco,
+        fecha: fechaEfectiva,
+        estacionId: estacionSeleccionadaChofer,
+        estacionNombre: config.nombre,
+        taller: tallerStr,
+        factura: estacionFacturaChofer.trim() || undefined,
+        odometroKm: kmEfectivoServicio,
+        odometroServicio: kmEfectivoServicio,
+        odometroActualBus: kmTablero,
+        esRetroactivo: esRetro,
+        kmRodadosDesdeServicio: Math.max(0, kmTablero - kmEfectivoServicio),
+        costoTotal: valorTotal,
+        pagador: pagadorChofer,
+        montoCubiertoAyudante: pagadorChofer === 'AYUDANTE' ? valorTotal : 0,
+        descontadoEnVT: pagadorChofer === 'AYUDANTE' && fechaEfectiva < today ? true : false,
+        socioModalidad: pagadorChofer === 'SOCIO' ? socioModalidadChofer : undefined,
+        socioMontoTransferido: pagadorChofer === 'SOCIO' ? paidAmount : undefined,
+        socioSaldoPendiente: pagadorChofer === 'SOCIO' ? pendingBalance : undefined,
+        ownerExpenseId: expenseId,
+        createdAt: new Date().toISOString(),
+      });
 
-        // 2. Asentar gasto en libro contable y cartera de deudas del socio (Fase 4)
+      // 2. Si hubo costo económico > 0, asentar gasto en libro contable y cartera de deudas del socio
+      if (valorTotal > 0) {
         saveOwnerExpenseToApi({
           id: expenseId,
           busId: activeBusId,
@@ -674,11 +679,10 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           abonos: abonosList,
           createdAt: new Date().toISOString(),
         });
-      } catch (err) {
-        console.error('Error registrando gasto de parada:', err);
       }
+    } catch (err) {
+      console.error('Error registrando parada técnica:', err);
     }
-
     if (esRetro) {
       const rodados = Math.max(0, kmTablero - kmEfectivoServicio);
       toast({
@@ -903,24 +907,24 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
     // REGLA INMUTABLE: El odómetro del bus NUNCA retrocede. Solo se actualiza si el tablero actual supera kmActual
     if (kmTablero > kmActual) {
-      saveBusOdometer(activeBusId, kmTablero);
+      saveBusOdometer(disco, kmTablero.toString(), 'Lubricadora Combo');
       setKmActual(kmTablero);
     }
 
     // Actualizar lista local del widget
     setItems(fullList.filter(it => it.asignadoChofer && it.activo));
 
-    // Registrar financieramente el servicio si se ingresó monto
-    if (valorFactura > 0) {
-      try {
-        const paradaId = `parada-lubricadora-${Date.now()}`;
-        const expenseId = `gasto-lubricadora-${Date.now()}`;
-        let paidAmount = valorFactura;
-        let pendingBalance = 0;
-        let paymentMethod: 'EFECTIVO' | 'TRANSFERENCIA' | 'CREDITO' = 'EFECTIVO';
-        let expenseStatus: 'PAGADO' | 'PENDIENTE' | 'PARCIAL' = 'PAGADO';
-        let abonosList: any[] = [];
+    // Registro técnico y financiero en Historial de Paradas (Soporta valor 0 y con costo)
+    try {
+      const paradaId = `parada-lubricadora-${Date.now()}`;
+      const expenseId = `gasto-lubricadora-${Date.now()}`;
+      let paidAmount = valorFactura;
+      let pendingBalance = 0;
+      let paymentMethod: PaymentMethod = 'EFECTIVO';
+      let expenseStatus: 'PAGADO' | 'PENDIENTE' = 'PAGADO';
+      let abonosList: any[] = [];
 
+      if (valorFactura > 0) {
         if (comboPagador === 'AYUDANTE') {
           paidAmount = valorFactura;
           pendingBalance = 0;
@@ -935,14 +939,15 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           } else if (comboSocioModalidad === 'CREDITO_FIADO') {
             paidAmount = 0;
             pendingBalance = valorFactura;
-            paymentMethod = 'CREDITO';
+            paymentMethod = 'CREDITO_PENDIENTE';
             expenseStatus = 'PENDIENTE';
           } else if (comboSocioModalidad === 'TRANSFERENCIA_PARCIAL') {
             const abono = parseFloat(comboSocioAbono) || 0;
             paidAmount = Math.min(valorFactura, Math.max(0, abono));
             pendingBalance = Math.max(0, valorFactura - paidAmount);
             paymentMethod = 'TRANSFERENCIA';
-            expenseStatus = pendingBalance === 0 ? 'PAGADO' : paidAmount > 0 ? 'PARCIAL' : 'PENDIENTE';
+            expenseStatus = pendingBalance <= 0 ? 'PAGADO' : 'PENDIENTE';
+
             if (paidAmount > 0) {
               abonosList.push({
                 id: `abono-init-${Date.now()}`,
@@ -956,34 +961,36 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             }
           }
         }
+      }
 
-        // 1. Guardar parada operativa para que se refleje en el Arqueo General si paga el ayudante
-        saveParadaPago({
-          id: paradaId,
-          busId: activeBusId,
-          disco,
-          fecha: fechaEfectiva,
-          estacionId: 'LUBRICADORA',
-          estacionNombre: 'Lubricadora (Combo)',
-          taller: tallerStr,
-          factura: comboFacturaNum.trim() || undefined,
-          odometroKm: kmEfectivoServicio,
-          odometroServicio: kmEfectivoServicio,
-          odometroActualBus: kmTablero,
-          esRetroactivo: esRetro,
-          kmRodadosDesdeServicio: Math.max(0, kmTablero - kmEfectivoServicio),
-          costoTotal: valorFactura,
-          pagador: comboPagador,
-          montoCubiertoAyudante: comboPagador === 'AYUDANTE' ? valorFactura : 0,
-          descontadoEnVT: comboPagador === 'AYUDANTE' && fechaEfectiva < today ? true : false,
-          socioModalidad: comboPagador === 'SOCIO' ? comboSocioModalidad : undefined,
-          socioMontoTransferido: comboPagador === 'SOCIO' ? paidAmount : undefined,
-          socioSaldoPendiente: comboPagador === 'SOCIO' ? pendingBalance : undefined,
-          ownerExpenseId: expenseId,
-          createdAt: new Date().toISOString(),
-        });
+      // 1. Guardar SIEMPRE en registro operativo de paradas VT (se refleja en Historial de Paradas del Chofer y Socio)
+      saveParadaPago({
+        id: paradaId,
+        busId: activeBusId,
+        disco,
+        fecha: fechaEfectiva,
+        estacionId: 'LUBRICADORA',
+        estacionNombre: 'Lubricadora (Combo)',
+        taller: tallerStr,
+        factura: comboFacturaNum.trim() || undefined,
+        odometroKm: kmEfectivoServicio,
+        odometroServicio: kmEfectivoServicio,
+        odometroActualBus: kmTablero,
+        esRetroactivo: esRetro,
+        kmRodadosDesdeServicio: Math.max(0, kmTablero - kmEfectivoServicio),
+        costoTotal: valorFactura,
+        pagador: comboPagador,
+        montoCubiertoAyudante: comboPagador === 'AYUDANTE' ? valorFactura : 0,
+        descontadoEnVT: comboPagador === 'AYUDANTE' && fechaEfectiva < today ? true : false,
+        socioModalidad: comboPagador === 'SOCIO' ? comboSocioModalidad : undefined,
+        socioMontoTransferido: comboPagador === 'SOCIO' ? paidAmount : undefined,
+        socioSaldoPendiente: comboPagador === 'SOCIO' ? pendingBalance : undefined,
+        ownerExpenseId: expenseId,
+        createdAt: new Date().toISOString(),
+      });
 
-        // 2. Asentar gasto en libro contable y cartera de deudas del socio
+      // 2. Si hubo costo económico > 0, asentar gasto en libro contable y cartera de deudas del socio
+      if (valorFactura > 0) {
         saveOwnerExpenseToApi({
           id: expenseId,
           busId: activeBusId,
@@ -1000,11 +1007,10 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           abonos: abonosList,
           createdAt: new Date().toISOString(),
         });
-      } catch (err) {
-        console.error('Error registrando gasto de lubricadora:', err);
       }
+    } catch (err) {
+      console.error('Error registrando servicio de lubricadora:', err);
     }
-
     if (esRetro) {
       const rodados = Math.max(0, kmTablero - kmEfectivoServicio);
       const restantes = Math.max(0, 5000 - rodados);

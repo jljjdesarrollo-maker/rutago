@@ -1726,8 +1726,8 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     const listaFinal = [...itemsActualizados, ...itemsNuevosParaAgregar];
     saveItems(listaFinal);
 
-    // 3. Registrar Egreso Contable Automático y Cartera de Deudas si se especificó costo > 0 (Fase 4)
-    if (costoTotal > 0) {
+    // 3. Registrar parada operativa en Historial Técnico (SIEMPRE) y Egreso Contable si costo > 0
+    try {
       const categoriaContable = getCategoriaContablePorEstacion(estacionSeleccionada);
       const nombresRealizados = estacionCodigosSeleccionados
         .map(c => mapCatalogo.get(c)?.nombre || c)
@@ -1742,43 +1742,47 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
       let modalidadDesc = '';
       let socioModalidad: SocioModalidadPago = 'TRANSFERENCIA_TOTAL';
 
-      if (estacionModalidadPago === 'PAGO_TOTAL') {
-        paidAmount = costoTotal;
-        pendingBalance = 0;
-        expenseStatus = 'PAGADO';
-        modalidadDesc = 'Pago Total 100%';
-        socioModalidad = 'TRANSFERENCIA_TOTAL';
-      } else if (estacionModalidadPago === 'PAGO_PARCIAL') {
-        const abonoNum = parseFloat(estacionMontoAbono || '0') || 0;
-        paidAmount = Math.min(costoTotal, Math.max(0, abonoNum));
-        pendingBalance = Math.max(0, Math.round((costoTotal - paidAmount) * 100) / 100);
-        expenseStatus = pendingBalance <= 0 ? 'PAGADO' : 'PENDIENTE';
-        modalidadDesc = `Anticipo Abonado ($${paidAmount.toFixed(2)})`;
-        socioModalidad = 'TRANSFERENCIA_PARCIAL';
-        if (paidAmount > 0) {
-          abonosList = [
-            {
-              id: 'ABO-' + Date.now(),
-              date: today,
-              amount: paidAmount,
-              paymentMethod: estacionMetodoPago,
-              notes: 'Anticipo inicial registrado en parada de taller',
-              createdAt: new Date().toISOString(),
-            },
-          ];
+      if (costoTotal > 0) {
+        if (estacionModalidadPago === 'PAGO_TOTAL') {
+          paidAmount = costoTotal;
+          pendingBalance = 0;
+          expenseStatus = 'PAGADO';
+          modalidadDesc = 'Pago Total 100%';
+          socioModalidad = 'TRANSFERENCIA_TOTAL';
+        } else if (estacionModalidadPago === 'PAGO_PARCIAL') {
+          const abonoNum = parseFloat(estacionMontoAbono || '0') || 0;
+          paidAmount = Math.min(costoTotal, Math.max(0, abonoNum));
+          pendingBalance = Math.max(0, Math.round((costoTotal - paidAmount) * 100) / 100);
+          expenseStatus = pendingBalance <= 0 ? 'PAGADO' : 'PENDIENTE';
+          modalidadDesc = `Anticipo Abonado ($${paidAmount.toFixed(2)})`;
+          socioModalidad = 'TRANSFERENCIA_PARCIAL';
+          if (paidAmount > 0) {
+            abonosList = [
+              {
+                id: 'ABO-' + Date.now(),
+                date: today,
+                amount: paidAmount,
+                paymentMethod: estacionMetodoPago,
+                notes: 'Anticipo inicial registrado en parada de taller',
+                createdAt: new Date().toISOString(),
+              },
+            ];
+          }
+        } else {
+          // CREDITO_FIADO
+          paidAmount = 0;
+          pendingBalance = costoTotal;
+          expenseStatus = 'PENDIENTE';
+          modalidadDesc = 'Crédito Fiado Taller';
+          socioModalidad = 'CREDITO_FIADO';
         }
       } else {
-        // CREDITO_FIADO
-        paidAmount = 0;
-        pendingBalance = costoTotal;
-        expenseStatus = 'PENDIENTE';
-        modalidadDesc = 'Crédito Fiado Taller';
-        socioModalidad = 'CREDITO_FIADO';
+        modalidadDesc = 'Sin costo / Garantía';
       }
 
       const descripcionEgreso = `Parada en ${config.nombre}: ${nombresRealizados}${estacionCodigosSeleccionados.length > 3 ? " y más" : ""} (Km ${kmServicio.toLocaleString()}) - ${modalidadDesc}`;
 
-      // 1. Guardar en Parada Técnica Operativa (Fase 3 y 4)
+      // 1. Guardar en Parada Técnica Operativa (Fase 3 y 4) - SIEMPRE para Historial
       saveParadaPago({
         id: 'parada-socio-' + Date.now(),
         busId: activeBusId,
@@ -1804,28 +1808,30 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
         createdAt: new Date().toISOString(),
       });
 
-      // 2. Asentar gasto en libro contable y cartera de deudas del socio (Fase 4)
-      saveOwnerExpenseToApi({
-        id: expenseId,
-        busId: activeBusId,
-        expenseDate: fechaFinal,
-        createdAt: new Date().toISOString(),
-        category: categoriaContable,
-        description: descripcionEgreso,
-        provider: tallerStr,
-        totalAmount: costoTotal,
-        paidAmount,
-        pendingBalance,
-        paymentMethod: estacionModalidadPago === 'CREDITO_FIADO' ? 'CREDITO_PENDIENTE' : estacionMetodoPago,
-        comprobanteRef: facturaRef || undefined,
-        abonos: abonosList,
-        status: expenseStatus,
-        notes: `Servicio en ${config.nombre} con ${estacionCodigosSeleccionados.length} componentes atendidos. Odómetro servicio: ${kmServicio.toLocaleString()} km. Tablero: ${kmTablero.toLocaleString()} km.${esRetro ? ' [Regularización Retroactiva]': ''}`,
-      });
-
-      recargarCarteraYParadas();
+      // 2. Asentar gasto en libro contable y cartera de deudas del socio si costo > 0
+      if (costoTotal > 0) {
+        saveOwnerExpenseToApi({
+          id: expenseId,
+          busId: activeBusId,
+          expenseDate: fechaFinal,
+          createdAt: new Date().toISOString(),
+          category: categoriaContable,
+          description: descripcionEgreso,
+          provider: tallerStr,
+          totalAmount: costoTotal,
+          paidAmount,
+          pendingBalance,
+          paymentMethod: estacionModalidadPago === 'CREDITO_FIADO' ? 'CREDITO_PENDIENTE' : estacionMetodoPago,
+          comprobanteRef: facturaRef || undefined,
+          abonos: abonosList,
+          status: expenseStatus,
+          
+        });
+        recargarCarteraYParadas();
+      }
+    } catch (e) {
+      console.error('Error al registrar parada de socio:', e);
     }
-
     if (esRetro) {
       const rodados = Math.max(0, kmTablero - kmServicio);
       toast({

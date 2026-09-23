@@ -436,3 +436,21 @@
     - Función `pushComboUnidadAlServidor` en `mantenimiento-estaciones.ts`.
     - Hidratación en `syncMantenimientoConfigConServidor` al iniciar sesión o cambiar de bus.
   * **FASE C: Reasignación Contable de Boletos Huérfanos [PENDIENTE TAREA 3].**
+
+---
+
+## 🛠️ ACTUALIZACIÓN EN VIVO (2026-09-23) - SOPORTE DE REGISTROS DE MANTENIMIENTO CON COSTO $0
+
+### 🎯 INCIDENCIA DETECTADA
+- Los registros de mantenimiento preventivo y paradas técnicas realizados con valor `$0` (por ejemplo: mantenimiento periódico de Aire Acondicionado en garantía o servicios sin costo directo) no se guardaban en el Historial de Mantenimientos (`saveParadaPago`).
+- **Causa Raíz:** La invocación de `saveParadaPago` en `ChoferMantenimientoWidget.tsx` (tanto en la parada técnica estándar `handleAsentarParadaChofer` como en el servicio rápido `handleGuardarComboRapido`) y en `MantenimientoScreen.tsx` estaba condicionada dentro del bloque `if (valorTotal > 0)` / `if (costoTotal > 0)`. Al no haber egreso financiero monetario, el sistema descartaba la creación de la ficha de parada operativa técnica.
+
+### 💡 SOLUCIÓN IMPLEMENTADA
+1. **Desacoplamiento Operativo / Financiero:**
+   - La llamada a `saveParadaPago` se ejecuta de forma **incondicional**, garantizando que cualquier servicio técnico (costo `$0` o superior) quede plenamente asentado en la bitácora operativa y en el modal de Historial de Mantenimientos del Chofer y del Socio.
+   - El registro en el libro contable de egresos (`saveOwnerExpenseToApi`) permanece debidamente condicionado a `valorTotal > 0` (o descripción de garantía/sin costo según corresponda), evitando asientos contables vacíos o basura financiera innecesaria.
+2. **Archivos Modificados:**
+   - `src/components/transport/ChoferMantenimientoWidget.tsx`: Actualizados `handleAsentarParadaChofer` y `handleGuardarComboRapido`.
+   - `src/components/transport/MantenimientoScreen.tsx`: Actualizados `handleGuardarCombo4Ruedas` y `handleGuardarEstacionServicio`.
+3. **Despliegue:**
+   - Commit y push sincronizado con el repositorio GitHub para despliegue automático en Vercel.
