@@ -183,3 +183,70 @@ model Bus {
   @@index([numeroDisco])
   @@index([tipoOperacion])
 }
+
+// ─── Módulo de Mantenimiento Preventivo Jerárquico (SuperAdmin vs Socio) ───
+
+// 1. Catálogo Maestro Global administrado por el SuperAdministrador
+model CatalogoMaestroItem {
+  id                                String   @id @default(cuid())
+  codigo                            String   @unique // Ej: "MNT-ACEITE-MOT"
+  nombre                            String
+  categoria                         String   // "LUBRICACION", "FRENOS", "MOTOR", etc.
+  intervaloKmOficial                Int      @default(5000)
+  prioridad                         String   @default("CRITICA") // "CRITICA" | "PREVENTIVA" | "RUTINARIA"
+  toleranciaKm                      Int      @default(500)
+  especificacionLubricanteRepuesto  String?
+  instruccionesTecnicas             String?
+  activo                            Boolean  @default(true)
+  asignadoChoferPorDefecto          Boolean  @default(true)
+  actualizadoPor                    String   @default("SUPERADMIN")
+  createdAt                         DateTime @default(now())
+  updatedAt                         DateTime @updatedAt
+}
+
+// 2. Personalización de Combos/Recetas de Estaciones por Autobús Físico (Socio)
+model BusRecetaCombo {
+  id                  String   @id @default(cuid())
+  busId               String   // Ej: "BUS-01"
+  estacionId          String   // "LUBRICADORA", "FRENOS_RUEDAS", "ADMISION_AIRE", etc.
+  itemsSeleccionados  Json     @default("{}") // Map { [codigo]: boolean }
+  codigosExtras       Json     @default("[]") // string[] de items agregados del catálogo
+  codigosExcluidos    Json     @default("[]") // string[] de items removidos de fábrica
+  actualizadoPor      String   @default("SOCIO")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([busId, estacionId])
+  @@index([busId])
+}
+
+// 3. Sobrescritura de Durabilidad/Intervalo en Km por Unidad (Socio)
+// Permite que el Socio defina que en su bus el aceite dura 6,000 km en lugar de 5,000 km del SuperAdmin
+model BusItemOverride {
+  id                  String   @id @default(cuid())
+  busId               String   // Ej: "BUS-01"
+  codigo              String   // Ej: "MNT-ACEITE-MOT"
+  intervaloKm         Int      // Ej: 6000
+  repuestoEspecifico  String?  // Ej: "Mobil Delvac 15W40 Sintético"
+  activoEnBus         Boolean  @default(true)
+  asignadoChofer      Boolean  @default(true)
+  actualizadoPor      String   @default("SOCIO")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([busId, codigo])
+  @@index([busId])
+}
+
+// 4. Configuración Global del Módulo de Mantenimiento por Autobús
+model BusMantenimientoConfig {
+  id              String   @id @default(cuid())
+  busId           String   @unique // Ej: "BUS-01"
+  moduloActivo    Boolean  @default(true)
+  nivelControl    String   @default("ESTRICTO") // "ESTRICTO" | "FLEXIBLE"
+  itemsActivos    Json     @default("[]")
+  decisionTomada  Boolean  @default(true)
+  actualizadoPor  String   @default("SOCIO")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
