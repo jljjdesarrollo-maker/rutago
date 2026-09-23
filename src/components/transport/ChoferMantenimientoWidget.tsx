@@ -21,7 +21,7 @@ import {
   Building2,
   Calendar,
   Wifi,
-  CloudSync,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -1124,7 +1124,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
               </div>
               {outboxCount > 0 && (
                 <span className="flex items-center gap-1 text-[9px] font-black bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded-md animate-pulse" title="Mantenimientos pendientes por subir a la nube cuando haya señal">
-                  <CloudSync className="w-3 h-3" /> {outboxCount} en espera
+                  <RefreshCw className="w-3 h-3 animate-spin" /> {outboxCount} en espera
                 </span>
               )}
             </div>
