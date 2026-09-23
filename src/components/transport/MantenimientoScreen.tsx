@@ -1206,58 +1206,76 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
 
     saveItems(listaActualizada);
 
-    // Guardar en contabilidad de gastos del socio si se especificó monto
-    if (costoTotal > 0) {
-      try {
-        const expenseId = `EXP-COMBO-4RUEDAS-${Date.now()}`;
-        const paradaId = `PARADA-RUEDAS-${Date.now()}`;
+    // Registro técnico y financiero en Historial de Paradas y Base de Datos (Soporta $0 y con costo)
+    try {
+      const expenseId = `EXP-COMBO-4RUEDAS-${Date.now()}`;
+      const paradaId = `PARADA-RUEDAS-${Date.now()}`;
 
-        // 1. Guardar parada operativa en historial técnico
-        saveParadaPago({
-          id: paradaId,
-          busId: activeBusId,
-          disco: activeBusDisco,
-          fecha: fechaFinal,
-          estacionId: 'FRENOS_RODAJE',
-          estacionNombre: 'Combo 4 Ruedas (Frenos y Rodaje)',
-          taller: tallerStr,
-          factura: facturaRef || undefined,
-          odometroKm: km,
-          odometroServicio: km,
-          odometroActualBus: kmTablero,
-          esRetroactivo: esRetro,
-          kmRodadosDesdeServicio: Math.max(0, kmTablero - km),
-          costoTotal,
-          pagador: 'SOCIO',
-          socioModalidad: 'TRANSFERENCIA_TOTAL',
-          socioMontoTransferido: costoTotal,
-          socioSaldoPendiente: 0,
-          ownerExpenseId: expenseId,
-          createdAt: new Date().toISOString(),
+      // 1. Guardar parada operativa en historial técnico (SIEMPRE)
+      saveParadaPago({
+        id: paradaId,
+        busId: activeBusId,
+        disco: activeBusDisco,
+        fecha: fechaFinal,
+        estacionId: 'FRENOS_RODAJE',
+        estacionNombre: 'Combo 4 Ruedas (Frenos y Rodaje)',
+        taller: tallerStr,
+        factura: facturaRef || undefined,
+        odometroKm: km,
+        odometroServicio: km,
+        odometroActualBus: kmTablero,
+        esRetroactivo: esRetro,
+        kmRodadosDesdeServicio: Math.max(0, kmTablero - km),
+        costoTotal,
+        pagador: 'SOCIO',
+        socioModalidad: 'TRANSFERENCIA_TOTAL',
+        socioMontoTransferido: costoTotal,
+        socioSaldoPendiente: 0,
+        ownerExpenseId: expenseId,
+        createdAt: new Date().toISOString(),
+      });
+
+      // 2. Sincronizar en Base de Datos Central (soporta tanto costo > 0 como costo $0)
+      const descCombo4 = costoTotal > 0
+        ? `Engrase Integral Combo 4 Ruedas (Bocinas Delanteras 60k + Posteriores 50k)`
+        : `Engrase Integral Combo 4 Ruedas (Bocinas Delanteras 60k + Posteriores 50k) - Sin costo / Garantía`;
+
+      saveOwnerExpenseToApi({
+        id: expenseId,
+        busId: activeBusId,
+        expenseDate: fechaFinal,
+        createdAt: new Date().toISOString(),
+        category: 'FRENOS_RODAJE',
+        description: descCombo4,
+        provider: tallerStr,
+        totalAmount: costoTotal,
+        paidAmount: costoTotal,
+        pendingBalance: 0,
+        paymentMethod: comboRuedasMetodo === 'EFECTIVO' ? 'EFECTIVO' : 'TRANSFERENCIA',
+        comprobanteRef: facturaRef ? `Fac/Nota: ${facturaRef}` : undefined,
+        status: 'PAGADO',
+      }).then(res => {
+        if (res.syncedToCloud) {
+          toast({
+            title: '☁️ Sincronizado en Base de Datos Central',
+            description: 'El combo de 4 ruedas fue almacenado y sincronizado exitosamente en la nube.',
+          });
+        } else {
+          toast({
+            title: '📡 Guardado Local (Sin Conexión)',
+            description: 'Sin internet al asentar. La información está segura en el equipo y se sincronizará automáticamente al conectarse.',
+          });
+        }
+      }).catch(() => {
+        toast({
+          title: '📡 Guardado Local (Sin Conexión)',
+          description: 'Guardado localmente. Se sincronizará a la base de datos central al restablecer la conexión.',
         });
+      });
 
-        // 2. Asentar gasto en contabilidad del socio
-        saveOwnerExpense({
-          id: expenseId,
-          busId: activeBusId,
-          expenseDate: fechaFinal,
-          createdAt: new Date().toISOString(),
-          category: 'FRENOS_RODAJE',
-          description: `Engrase Integral Combo 4 Ruedas (Bocinas Delanteras 60k + Posteriores 50k)`,
-          provider: tallerStr,
-          totalAmount: costoTotal,
-          paidAmount: costoTotal,
-          pendingBalance: 0,
-          paymentMethod: comboRuedasMetodo,
-          comprobanteRef: facturaRef ? `Fac/Nota: ${facturaRef}` : undefined,
-          status: 'PAGADO',
-          notes: `Combo 4 Ruedas. Odómetro servicio: ${km.toLocaleString()} km. Tablero: ${kmTablero.toLocaleString()} km.${esRetro ? ' [Regularización Retroactiva]': ''}`,
-        });
-
-        recargarCarteraYParadas();
-      } catch (err) {
-        console.error('Error al registrar gasto contable de Combo 4 Ruedas:', err);
-      }
+      recargarCarteraYParadas();
+    } catch (err) {
+      console.error('Error al registrar Combo 4 Ruedas:', err);
     }
 
     toast({
@@ -1726,7 +1744,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     const listaFinal = [...itemsActualizados, ...itemsNuevosParaAgregar];
     saveItems(listaFinal);
 
-    // 3. Registrar parada operativa en Historial Técnico (SIEMPRE) y Egreso Contable si costo > 0
+    // 3. Registrar en Historial Operativo (SIEMPRE) y Sincronizar en BD Central (Fase 4)
     try {
       const categoriaContable = getCategoriaContablePorEstacion(estacionSeleccionada);
       const nombresRealizados = estacionCodigosSeleccionados
@@ -1754,7 +1772,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           paidAmount = Math.min(costoTotal, Math.max(0, abonoNum));
           pendingBalance = Math.max(0, Math.round((costoTotal - paidAmount) * 100) / 100);
           expenseStatus = pendingBalance <= 0 ? 'PAGADO' : 'PENDIENTE';
-          modalidadDesc = `Anticipo Abonado ($${paidAmount.toFixed(2)})`;
+          modalidadDesc = `Anticipo Abonado (${paidAmount.toFixed(2)})`;
           socioModalidad = 'TRANSFERENCIA_PARCIAL';
           if (paidAmount > 0) {
             abonosList = [
@@ -1808,30 +1826,46 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
         createdAt: new Date().toISOString(),
       });
 
-      // 2. Asentar gasto en libro contable y cartera de deudas del socio si costo > 0
-      if (costoTotal > 0) {
-        saveOwnerExpenseToApi({
-          id: expenseId,
-          busId: activeBusId,
-          expenseDate: fechaFinal,
-          createdAt: new Date().toISOString(),
-          category: categoriaContable,
-          description: descripcionEgreso,
-          provider: tallerStr,
-          totalAmount: costoTotal,
-          paidAmount,
-          pendingBalance,
-          paymentMethod: estacionModalidadPago === 'CREDITO_FIADO' ? 'CREDITO_PENDIENTE' : estacionMetodoPago,
-          comprobanteRef: facturaRef || undefined,
-          abonos: abonosList,
-          status: expenseStatus,
-          
+      // 2. Sincronizar en Base de Datos Central (soporta tanto costo > 0 como costo $0)
+      saveOwnerExpenseToApi({
+        id: expenseId,
+        busId: activeBusId,
+        expenseDate: fechaFinal,
+        createdAt: new Date().toISOString(),
+        category: categoriaContable,
+        description: descripcionEgreso,
+        provider: tallerStr,
+        totalAmount: costoTotal,
+        paidAmount,
+        pendingBalance,
+        paymentMethod: estacionModalidadPago === 'CREDITO_FIADO' ? 'CREDITO_PENDIENTE' : estacionMetodoPago,
+        comprobanteRef: facturaRef || undefined,
+        abonos: abonosList,
+        status: expenseStatus,
+      }).then(res => {
+        if (res.syncedToCloud) {
+          toast({
+            title: '☁️ Sincronizado en Base de Datos Central',
+            description: `El mantenimiento en ${config.nombre} fue guardado y sincronizado exitosamente en la nube.`,
+          });
+        } else {
+          toast({
+            title: '📡 Guardado Local (Sin Conexión)',
+            description: 'Sin internet al asentar. La información está segura en el equipo y se sincronizará a la base de datos cuando haya conexión.',
+          });
+        }
+      }).catch(() => {
+        toast({
+          title: '📡 Guardado Local (Sin Conexión)',
+          description: 'Guardado en almacenamiento local. Se sincronizará a la base de datos central al restablecer la conexión.',
         });
-        recargarCarteraYParadas();
-      }
-    } catch (e) {
-      console.error('Error al registrar parada de socio:', e);
+      });
+
+      recargarCarteraYParadas();
+    } catch (err) {
+      console.error('Error al registrar parada de socio:', err);
     }
+
     if (esRetro) {
       const rodados = Math.max(0, kmTablero - kmServicio);
       toast({

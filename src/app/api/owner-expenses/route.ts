@@ -143,8 +143,9 @@ export async function POST(req: NextRequest) {
     const paid = Number(paidAmount) || 0;
     const pending = Math.max(0, total - paid);
 
-    const newExpense = await db.ownerExpense.create({
-      data: {
+    const newExpense = await db.ownerExpense.upsert({
+      where: { id: id || 'exp-' + Date.now() },
+      create: {
         id: id || undefined,
         busId,
         expenseDate,
@@ -154,11 +155,27 @@ export async function POST(req: NextRequest) {
         totalAmount: total,
         paidAmount: paid,
         pendingBalance: pending,
-        paymentMethod,
+        paymentMethod: paymentMethod || 'EFECTIVO',
         comprobanteRef: comprobanteRef || null,
         bankName: bankName || null,
         receiptPhotoUrl: receiptPhotoUrl || null,
-        abonos: abonos ? JSON.stringify(abonos) : '[]',
+        abonos: abonos ? (typeof abonos === 'string' ? abonos : JSON.stringify(abonos)) : '[]',
+        status: pending <= 0 ? 'PAGADO' : 'PENDIENTE',
+      },
+      update: {
+        busId,
+        expenseDate,
+        category: category || 'OTROS',
+        description,
+        provider: provider || null,
+        totalAmount: total,
+        paidAmount: paid,
+        pendingBalance: pending,
+        paymentMethod: paymentMethod || 'EFECTIVO',
+        comprobanteRef: comprobanteRef || null,
+        bankName: bankName || null,
+        receiptPhotoUrl: receiptPhotoUrl || null,
+        abonos: abonos ? (typeof abonos === 'string' ? abonos : JSON.stringify(abonos)) : '[]',
         status: pending <= 0 ? 'PAGADO' : 'PENDIENTE',
       },
     });

@@ -454,3 +454,31 @@
    - `src/components/transport/MantenimientoScreen.tsx`: Actualizados `handleGuardarCombo4Ruedas` y `handleGuardarEstacionServicio`.
 3. **Despliegue:**
    - Commit y push sincronizado con el repositorio GitHub para despliegue automático en Vercel.
+
+---
+
+## 🚀 ACTUALIZACIÓN (2026-09-23) - FEEDBACK EN TIEMPO REAL Y PERSISTENCIA CENTRAL EN BD DE MANTENIMIENTOS ($0 Y CON COSTO)
+
+### 📌 REQUERIMIENTO DEL USUARIO
+- Al registrar el cambio de aceite de motor del 18/09/2026 desde el celular con costo $0, se guardó en el dispositivo pero no se encontraba en la base de datos central.
+- El usuario solicitó:
+  1. Confirmación explícita tras cada registro indicando si fue almacenado en la Base de Datos central.
+  2. Si no hay conexión a internet en el momento del registro, notificar claramente que quedó seguro en el dispositivo y que la sincronización se realizará automáticamente cuando se recupere la señal.
+
+### ⚙️ IMPLEMENTACIÓN TÉCNICA
+1. **Contrato Asíncrono de Persistencia (`SaveExpenseApiResult`):**
+   - En `src/lib/owner-expenses-storage.ts`, `saveOwnerExpenseToApi` ahora retorna `{ expense, syncedToCloud: boolean, isOffline: boolean, error?: string }`.
+   - Distingue con precisión entre guardado remoto confirmado (HTTP 200 en `/api/owner-expenses`) y almacenamiento local seguro en cola Outbox diferida.
+2. **Idempotencia en API REST (`src/app/api/owner-expenses/route.ts`):**
+   - Se migró el guardado de `create` a `upsert` por `id`, asegurando que tanto registros individuales con costo como servicios técnicos de $0 (garantía / preventivo rutinario) se asienten de forma atómica y sin duplicados ni errores de clave primaria.
+3. **Feedback Visual Inmediato (Toasts Inteligentes Online/Offline):**
+   - `ChoferMantenimientoWidget.tsx`: En `handleAsentarParadaChofer` y `handleGuardarComboRapido`.
+   - `MantenimientoScreen.tsx`: En `handleGuardarCombo4Ruedas` y `handleGuardarEstacionServicio`.
+   - Si `syncedToCloud === true`:
+     > ☁️ **Sincronizado en Base de Datos Central**  
+     > *El mantenimiento fue guardado y sincronizado exitosamente en la nube de RutaGo.*
+   - Si `isOffline === true`:
+     > 📡 **Guardado Local (Sin Conexión)**  
+     > *Sin internet al asentar. La información está segura en el teléfono y se sincronizará a la base de datos automáticamente al recuperar la señal.*
+4. **Persistencia de Registros de $0 en BD Central:**
+   - Tanto el combo rápido de lubricadora como cualquier estación con costo $0 ahora envían el payload a `saveOwnerExpenseToApi` con estado `PAGADO` (saldo pendiente $0) y descripción clara de *"Mantenimiento sin costo / Garantía"*, permitiendo que la base de datos central en la nube conserve el historial técnico sin generar deudas artificiales al socio.

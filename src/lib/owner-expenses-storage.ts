@@ -418,7 +418,14 @@ export async function fetchOwnerExpensesFromApi(busId = 'BUS-01'): Promise<Owner
   return getOwnerExpenses(busId);
 }
 
-export async function saveOwnerExpenseToApi(expense: OwnerExpense): Promise<OwnerExpense> {
+export interface SaveExpenseApiResult {
+  expense: OwnerExpense;
+  syncedToCloud: boolean;
+  isOffline: boolean;
+  error?: string;
+}
+
+export async function saveOwnerExpenseToApi(expense: OwnerExpense): Promise<SaveExpenseApiResult> {
   // 1. Guardar de inmediato en local para respuesta táctil instantánea (optimistic UI)
   saveOwnerExpense(expense);
 
@@ -430,7 +437,11 @@ export async function saveOwnerExpenseToApi(expense: OwnerExpense): Promise<Owne
       payload: expense,
       busId: expense.busId,
     });
-    return expense;
+    return {
+      expense,
+      syncedToCloud: false,
+      isOffline: true,
+    };
   }
 
   try {
@@ -442,20 +453,31 @@ export async function saveOwnerExpenseToApi(expense: OwnerExpense): Promise<Owne
     if (res.ok) {
       const json = await res.json();
       if (json.success && json.data) {
-        return {
+        const cloudExpense: OwnerExpense = {
           ...json.data,
           abonos: typeof json.data.abonos === 'string' ? JSON.parse(json.data.abonos || '[]') : (json.data.abonos || []),
         };
+        return {
+          expense: cloudExpense,
+          syncedToCloud: true,
+          isOffline: false,
+        };
       }
-    } else {
-      // Si el servidor dio error temporal, encolar para reintento diferido
-      enqueueMantenimientoOutbox({
-        id: expense.id,
-        tipo: 'OWNER_EXPENSE',
-        payload: expense,
-        busId: expense.busId,
-      });
     }
+
+    // Si el servidor dio error temporal, encolar para reintento diferido
+    enqueueMantenimientoOutbox({
+      id: expense.id,
+      tipo: 'OWNER_EXPENSE',
+      payload: expense,
+      busId: expense.busId,
+    });
+    return {
+      expense,
+      syncedToCloud: false,
+      isOffline: false,
+      error: 'Error en respuesta del servidor central',
+    };
   } catch (err) {
     console.warn('Guardado en nube diferido (encolado en outbox para reconexión):', err);
     enqueueMantenimientoOutbox({
@@ -464,8 +486,13 @@ export async function saveOwnerExpenseToApi(expense: OwnerExpense): Promise<Owne
       payload: expense,
       busId: expense.busId,
     });
+    return {
+      expense,
+      syncedToCloud: false,
+      isOffline: true,
+      error: err instanceof Error ? err.message : 'Sin conexión con servidor',
+    };
   }
-  return expense;
 }
 
 export async function registerAbonoToApi(

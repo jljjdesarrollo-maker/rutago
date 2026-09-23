@@ -661,25 +661,40 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         createdAt: new Date().toISOString(),
       });
 
-      // 2. Si hubo costo económico > 0, asentar gasto en libro contable y cartera de deudas del socio
-      if (valorTotal > 0) {
-        saveOwnerExpenseToApi({
-          id: expenseId,
-          busId: activeBusId,
-          category: getCategoriaContablePorEstacion(estacionSeleccionadaChofer) as any,
-          totalAmount: valorTotal,
-          paidAmount,
-          pendingBalance,
-          paymentMethod,
-          status: expenseStatus,
-          expenseDate: fechaEfectiva,
-          description: descripcionContable,
-          provider: tallerStr,
-          comprobanteRef: estacionFacturaChofer.trim() ? 'Fac: ' + estacionFacturaChofer.trim() : undefined,
-          abonos: abonosList,
-          createdAt: new Date().toISOString(),
+      // 2. Sincronizar en Base de Datos Central (soporta tanto costo > 0 como costo $0 de garantía)
+      saveOwnerExpenseToApi({
+        id: expenseId,
+        busId: activeBusId,
+        category: getCategoriaContablePorEstacion(estacionSeleccionadaChofer) as any,
+        totalAmount: valorTotal,
+        paidAmount,
+        pendingBalance,
+        paymentMethod,
+        status: expenseStatus,
+        expenseDate: fechaEfectiva,
+        description: descripcionContable,
+        provider: tallerStr,
+        comprobanteRef: estacionFacturaChofer.trim() ? 'Fac: ' + estacionFacturaChofer.trim() : undefined,
+        abonos: abonosList,
+        createdAt: new Date().toISOString(),
+      }).then(res => {
+        if (res.syncedToCloud) {
+          toast({
+            title: '☁️ Sincronizado en Base de Datos Central',
+            description: `El mantenimiento en ${config.nombre} ha sido guardado exitosamente en la nube de RutaGo.`,
+          });
+        } else {
+          toast({
+            title: '📡 Guardado Local (Sin Conexión)',
+            description: `Sin internet al asentar. La información está segura en el teléfono y se sincronizará a la base de datos automáticamente al recuperar la señal.`,
+          });
+        }
+      }).catch(() => {
+        toast({
+          title: '📡 Guardado Local (Sin Conexión)',
+          description: `Guardado localmente. Se sincronizará a la base de datos central cuando haya conexión estable.`,
         });
-      }
+      });
     } catch (err) {
       console.error('Error registrando parada técnica:', err);
     }
@@ -989,25 +1004,44 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         createdAt: new Date().toISOString(),
       });
 
-      // 2. Si hubo costo económico > 0, asentar gasto en libro contable y cartera de deudas del socio
-      if (valorFactura > 0) {
-        saveOwnerExpenseToApi({
-          id: expenseId,
-          busId: activeBusId,
-          category: 'ACEITES_FILTROS',
-          description: `Servicio Rápido Lubricadora [${itemsSeleccionados.map(i => i.nombre).join(', ')}]`,
-          provider: tallerStr,
-          totalAmount: valorFactura,
-          paidAmount,
-          pendingBalance,
-          paymentMethod,
-          comprobanteRef: comboFacturaNum.trim() ? `Fac: ${comboFacturaNum.trim()}` : undefined,
-          status: expenseStatus,
-          expenseDate: fechaEfectiva,
-          abonos: abonosList,
-          createdAt: new Date().toISOString(),
+      // 2. Sincronizar en Base de Datos Central (soporta tanto costo > 0 como costo $0 de garantía)
+      const descServicio = valorFactura > 0 
+        ? `Servicio Rápido Lubricadora [${itemsSeleccionados.map(i => i.nombre).join(', ')}]`
+        : `Servicio Rápido Lubricadora [${itemsSeleccionados.map(i => i.nombre).join(', ')}] - Mantenimiento sin costo / Garantía`;
+
+      saveOwnerExpenseToApi({
+        id: expenseId,
+        busId: activeBusId,
+        category: 'ACEITES_FILTROS',
+        description: descServicio,
+        provider: tallerStr,
+        totalAmount: valorFactura,
+        paidAmount,
+        pendingBalance,
+        paymentMethod,
+        comprobanteRef: comboFacturaNum.trim() ? `Fac: ${comboFacturaNum.trim()}` : undefined,
+        status: expenseStatus,
+        expenseDate: fechaEfectiva,
+        abonos: abonosList,
+        createdAt: new Date().toISOString(),
+      }).then(res => {
+        if (res.syncedToCloud) {
+          toast({
+            title: '☁️ Sincronizado en Base de Datos Central',
+            description: 'El cambio de lubricadora y filtros ha sido guardado exitosamente en la nube de RutaGo.',
+          });
+        } else {
+          toast({
+            title: '📡 Guardado Local (Sin Conexión)',
+            description: 'Sin internet al asentar. La información está segura en el teléfono y se sincronizará a la base de datos automáticamente al recuperar la señal.',
+          });
+        }
+      }).catch(() => {
+        toast({
+          title: '📡 Guardado Local (Sin Conexión)',
+          description: 'Guardado localmente. Se sincronizará a la base de datos central cuando haya conexión estable.',
         });
-      }
+      });
     } catch (err) {
       console.error('Error registrando servicio de lubricadora:', err);
     }
