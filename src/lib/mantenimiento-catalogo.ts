@@ -472,23 +472,14 @@ export function getCatalogoMaestroGlobal(): MantenimientoCatalogoItem[] {
       // Sincronización inteligente: asegurar que nuevos ítems oficiales de fábrica estén presentes
       const codigosMap = new Set(listaBase.map((p: MantenimientoCatalogoItem) => p.codigo));
       const actualizados = listaBase.map((item: MantenimientoCatalogoItem) => {
+        // Preservar fielmente las ediciones del SuperAdministrador (intervaloKmOficial, nombre, etc.)
         const oficial = CATALOGO_MAESTRO_HINO_AK.find(c => c.codigo === item.codigo);
         if (oficial) {
-          if (
-            item.intervaloKmOficial !== oficial.intervaloKmOficial ||
-            item.categoria !== oficial.categoria ||
-            item.nombre !== oficial.nombre
-          ) {
-            modificado = true;
-            return {
-              ...item,
-              nombre: oficial.nombre,
-              categoria: oficial.categoria,
-              intervaloKmOficial: oficial.intervaloKmOficial,
-              intervaloDiasAprox: oficial.intervaloDiasAprox,
-              observacionesMecanica: oficial.observacionesMecanica,
-            };
-          }
+          return {
+            ...oficial,
+            ...item,
+            intervaloKmOficial: Number(item.intervaloKmOficial) || oficial.intervaloKmOficial,
+          };
         }
         return item;
       });
@@ -515,15 +506,56 @@ export function saveCatalogoMaestroGlobal(items: MantenimientoCatalogoItem[]): v
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_KEY_CATALOGO, JSON.stringify(items));
+    // Persistencia real en la nube para toda la cooperativa
+    syncCatalogoGlobalToApi(items);
+    window.dispatchEvent(new CustomEvent('rg_catalogo_maestro_updated', { detail: items }));
   } catch (err) {
     console.error('Error al guardar catalogo maestro:', err);
   }
+}
+
+export async function syncCatalogoGlobalToApi(items: MantenimientoCatalogoItem[]): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    const res = await fetch('/api/config/mantenimiento', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tipo: 'GLOBAL_CATALOG',
+        catalogoGlobal: items,
+      }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Aviso: Sincronización en servidor diferida:', err);
+    return false;
+  }
+}
+
+export async function fetchCatalogoGlobalFromApi(): Promise<MantenimientoCatalogoItem[] | null> {
+  if (typeof window === 'undefined') return null;
+  try {
+    const res = await fetch('/api/config/mantenimiento?globalCatalog=true', { cache: 'no-store' });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      localStorage.setItem(STORAGE_KEY_CATALOGO, JSON.stringify(json.data));
+      window.dispatchEvent(new CustomEvent('rg_catalogo_maestro_updated', { detail: json.data }));
+      return json.data;
+    }
+  } catch {
+    // fallback seguro
+  }
+  return null;
 }
 
 export function restablecerCatalogoMaestroFabrica(): MantenimientoCatalogoItem[] {
   if (typeof window === 'undefined') return CATALOGO_MAESTRO_HINO_AK;
   try {
     localStorage.setItem(STORAGE_KEY_CATALOGO, JSON.stringify(CATALOGO_MAESTRO_HINO_AK));
+    syncCatalogoGlobalToApi(CATALOGO_MAESTRO_HINO_AK);
+    window.dispatchEvent(new CustomEvent('rg_catalogo_maestro_updated', { detail: CATALOGO_MAESTRO_HINO_AK }));
+    return CATALOGO_MAESTRO_HINO_AK;
   } catch (err) {
     console.error('Error al restablecer catalogo maestro:', err);
   }

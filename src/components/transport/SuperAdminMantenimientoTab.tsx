@@ -27,6 +27,7 @@ import {
   type MantenimientoCatalogoItem,
   getCatalogoMaestroGlobal,
   saveCatalogoMaestroGlobal,
+  fetchCatalogoGlobalFromApi,
   restablecerCatalogoMaestroFabrica,
 } from '@/lib/mantenimiento-catalogo';
 
@@ -34,6 +35,14 @@ export function SuperAdminMantenimientoTab() {
   const { toast } = useToast();
   // Zero-loops: Carga inicial perezosa en memoria sin bucles
   const [catalogo, setCatalogo] = useState<MantenimientoCatalogoItem[]>(() => getCatalogoMaestroGlobal());
+
+  useEffect(() => {
+    fetchCatalogoGlobalFromApi().then(remote => {
+      if (remote && Array.isArray(remote) && remote.length > 0) {
+        setCatalogo(remote);
+      }
+    });
+  }, []);
   const [filtroCategoria, setFiltroCategoria] = useState<string>('TODAS');
   const [busqueda, setBusqueda] = useState<string>('');
   const [editingModalItem, setEditingModalItem] = useState<MantenimientoCatalogoItem | null>(null);
@@ -62,6 +71,11 @@ export function SuperAdminMantenimientoTab() {
         item.id === id ? { ...item, [campo]: valor } : item
       );
       saveCatalogoMaestroGlobal(updated);
+      const mod = updated.find(i => i.id === id);
+      toast({
+        title: 'Norma Institucional Guardada',
+        description: `${mod?.nombre || 'Ítem'}: ${campo === 'intervaloKmOficial' ? `Cada ${Number(valor).toLocaleString()} km` : valor} guardado para toda la cooperativa.`,
+      });
       return updated;
     });
   };
@@ -364,6 +378,7 @@ export function SuperAdminMantenimientoTab() {
                     <div className="flex items-center gap-1">
                       <div className="relative">
                         <Input
+                          key={`${item.id}_${item.intervaloKmOficial}`}
                           type="number"
                           step="500"
                           defaultValue={item.intervaloKmOficial}

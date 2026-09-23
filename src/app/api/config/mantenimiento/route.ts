@@ -11,6 +11,7 @@ export interface BusMantenimientoConfig {
   moduloActivo: boolean;
   nivelControl: "BASICO" | "MEDIO" | "TOTAL";
   itemsActivos?: Record<string, boolean>;
+  intervalosPersonalizados?: Record<string, number>;
   combosPersonalizados?: Record<string, any>;
   catalogoPersonalizado?: any[];
   decisionTomada: boolean;
@@ -142,7 +143,16 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const busId = searchParams.get("busId");
+    const globalCatalog = searchParams.get("globalCatalog");
     const configs = await cargarConfiguracionesAsync();
+
+    if (globalCatalog) {
+      const globalCfg = configs["__GLOBAL_CATALOG__"];
+      return NextResponse.json({
+        success: true,
+        data: globalCfg?.catalogoPersonalizado || null,
+      });
+    }
 
     if (busId) {
       const busConfig = configs[busId] || {
@@ -177,11 +187,36 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
+
+    // Caso 1: Actualización global del Catálogo Maestro Oficial (SuperAdministrador)
+    if (body.tipo === "GLOBAL_CATALOG" || body.catalogoGlobal) {
+      const configs = await cargarConfiguracionesAsync();
+      const catalogoGlobal = Array.isArray(body.catalogoGlobal) ? body.catalogoGlobal : [];
+      configs["__GLOBAL_CATALOG__"] = {
+        busId: "__GLOBAL_CATALOG__",
+        moduloActivo: true,
+        nivelControl: "TOTAL",
+        decisionTomada: true,
+        fechaDecision: new Date().toISOString().split("T")[0],
+        catalogoPersonalizado: catalogoGlobal,
+        origenDispositivo: "SuperAdministrador",
+        updatedAt: new Date().toISOString(),
+      };
+      await guardarConfiguracionesAsync(configs);
+      return NextResponse.json({
+        success: true,
+        data: catalogoGlobal,
+        message: "Catálogo maestro oficial actualizado y sincronizado en servidor para toda la cooperativa",
+      });
+    }
+
+    // Caso 2: Configuración individual de una unidad (Socio)
     const {
       busId,
       moduloActivo,
       nivelControl,
       itemsActivos,
+      intervalosPersonalizados,
       combosPersonalizados,
       comboActualizado,
       comboEliminadoEstacionId,
@@ -223,6 +258,11 @@ export async function PUT(req: NextRequest) {
       delete prevCombos[comboEliminadoEstacionId];
     }
 
+    const prevIntervalos = { ...(prev.intervalosPersonalizados || {}) };
+    if (intervalosPersonalizados && typeof intervalosPersonalizados === "object") {
+      Object.assign(prevIntervalos, intervalosPersonalizados);
+    }
+
     const updated: BusMantenimientoConfig = {
       ...prev,
       busId,
@@ -232,6 +272,7 @@ export async function PUT(req: NextRequest) {
           ? nivelControl
           : prev.nivelControl,
       itemsActivos: itemsActivos ? { ...(prev.itemsActivos || {}), ...itemsActivos } : prev.itemsActivos,
+      intervalosPersonalizados: prevIntervalos,
       combosPersonalizados: prevCombos,
       catalogoPersonalizado: Array.isArray(catalogoPersonalizado)
         ? catalogoPersonalizado

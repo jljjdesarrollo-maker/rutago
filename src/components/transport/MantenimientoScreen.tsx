@@ -80,6 +80,8 @@ import {
   saveBusMantenimientoConfigCompleta,
   syncMantenimientoConfigConServidor,
   isMantenimientoDecisionTomada,
+  getBusIntervalosConfig,
+  saveBusIntervaloOverride,
   type EstacionServicioId,
   type ItemEstacionConfig,
   ESTACIONES_SERVICIO_CONFIG,
@@ -171,6 +173,14 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     const nivel = getBusNivelControl(busId);
     const catalogo = getCatalogoMaestroGlobal();
     const itemsConfig = getBusItemsActivosConfig(busId, catalogo.map(c => c.codigo));
+    const customIntervalos = getBusIntervalosConfig(busId);
+
+    const getIntervaloFinal = (codigo: string, oficialKm: number) => {
+      if (codigo && customIntervalos[codigo] && customIntervalos[codigo] > 0) {
+        return customIntervalos[codigo];
+      }
+      return oficialKm;
+    };
 
     const calibrarItem = (c: any): MantenimientoBusItem => {
       // Aceite de motor y tríada de filtros: 19 de septiembre de 2026 a 893,100 km
@@ -186,7 +196,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           codigo: c.codigo,
           nombre: c.nombre,
           categoria: c.categoria,
-          intervaloKm: c.intervaloKmOficial,
+          intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
           ultimoKm: 893100,
           fechaUltimo: '2026-09-19',
           costoEstimado: c.codigo === 'MNT-ACEITE-MOT' ? 120 : 35,
@@ -203,7 +213,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           codigo: c.codigo,
           nombre: c.nombre,
           categoria: c.categoria,
-          intervaloKm: c.intervaloKmOficial,
+          intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
           ultimoKm: 893085,
           fechaUltimo: '2026-09-19',
           costoEstimado: 25,
@@ -220,7 +230,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           codigo: c.codigo,
           nombre: c.nombre,
           categoria: c.categoria,
-          intervaloKm: c.intervaloKmOficial,
+          intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
           ultimoKm: 892000,
           fechaUltimo: '2026-09-13',
           costoEstimado: 60,
@@ -237,7 +247,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           codigo: c.codigo,
           nombre: c.nombre,
           categoria: c.categoria,
-          intervaloKm: c.intervaloKmOficial,
+          intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
           ultimoKm: Math.max(0, baseKm - 250),
           fechaUltimo: '2026-09-20',
           costoEstimado: 0,
@@ -254,7 +264,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           codigo: c.codigo,
           nombre: c.nombre,
           categoria: c.categoria,
-          intervaloKm: c.intervaloKmOficial,
+          intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
           ultimoKm: Math.max(0, baseKm - 1500),
           fechaUltimo: '2026-09-15',
           costoEstimado: 0,
@@ -271,7 +281,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           codigo: c.codigo,
           nombre: c.nombre,
           categoria: c.categoria,
-          intervaloKm: c.intervaloKmOficial,
+          intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
           ultimoKm: Math.max(0, baseKm - 48000),
           fechaUltimo: '2026-04-10',
           costoEstimado: 350,
@@ -287,7 +297,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
         codigo: c.codigo,
         nombre: c.nombre,
         categoria: c.categoria,
-        intervaloKm: c.intervaloKmOficial,
+        intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
         ultimoKm: Math.max(0, baseKm - Math.floor(c.intervaloKmOficial * 0.2)),
         fechaUltimo: '2026-09-15',
         costoEstimado: c.categoria === 'MOTOR' ? 120 : c.categoria === 'FRENOS' ? 80 : 45,
@@ -315,6 +325,16 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
       } catch (e) {
         console.error('Error parseando mantenimientos:', e);
       }
+    }
+
+    // Aplicar sobreescrituras de intervalo guardadas para esta unidad física
+    if (itemsExistentes.length > 0 && Object.keys(customIntervalos).length > 0) {
+      itemsExistentes = itemsExistentes.map(it => {
+        if (it.codigo && customIntervalos[it.codigo] && it.intervaloKm !== customIntervalos[it.codigo]) {
+          return { ...it, intervaloKm: customIntervalos[it.codigo] };
+        }
+        return it;
+      });
     }
 
     const catalogoActivo = catalogo.filter(c => c.activoBiblioteca);
@@ -471,6 +491,10 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
   const [mostrarCalibrarOdo, setMostrarCalibrarOdo] = useState<boolean>(false);
   const [mostrarEstacionesSocio, setMostrarEstacionesSocio] = useState<boolean>(false);
   const [isPoliticasModalOpen, setIsPoliticasModalOpen] = useState<boolean>(false);
+  const [itemParaAjustarIntervalo, setItemParaAjustarIntervalo] = useState<MantenimientoBusItem | null>(null);
+  const [nuevoIntervaloVal, setNuevoIntervaloVal] = useState<string>('');
+  const [intervaloRegistro, setIntervaloRegistro] = useState<string>('');
+  const [politicaBusqueda, setPoliticaBusqueda] = useState<string>('');
 
   // Decisión del Socio: ¿Desea utilizar las funciones de mantenimiento o solo operativas?
   const [moduloActivo, setModuloActivo] = useState<boolean>(() => {
@@ -502,11 +526,41 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           if (cloudData.itemsActivos) {
             setItemsActivosConfig(cloudData.itemsActivos);
           }
+          if (cloudData.intervalosPersonalizados && typeof cloudData.intervalosPersonalizados === 'object') {
+            setItems(prev => prev.map(it => {
+              if (it.codigo && cloudData.intervalosPersonalizados[it.codigo]) {
+                return { ...it, intervaloKm: cloudData.intervalosPersonalizados[it.codigo] };
+              }
+              return it;
+            }));
+          }
         }
       })
       .finally(() => {
         setIsCloudSyncing(false);
       });
+  }, [activeBusId]);
+
+  // Sincronización reactiva con las actualizaciones que haga el SuperAdmin en el catálogo institucional
+  useEffect(() => {
+    const handleCatalogoUpdated = (e: any) => {
+      const nuevoCatalogo: MantenimientoCatalogoItem[] = e.detail;
+      if (Array.isArray(nuevoCatalogo)) {
+        const overrides = getBusIntervalosConfig(activeBusId);
+        setItems(prev => prev.map(it => {
+          // Si el socio no ha sobreescrito este intervalo para su bus, heredar el nuevo valor institucional
+          if (it.codigo && !overrides[it.codigo]) {
+            const ofi = nuevoCatalogo.find(c => c.codigo === it.codigo);
+            if (ofi && ofi.intervaloKmOficial !== it.intervaloKm) {
+              return { ...it, intervaloKm: ofi.intervaloKmOficial, nombre: ofi.nombre };
+            }
+          }
+          return it;
+        }));
+      }
+    };
+    window.addEventListener('rg_catalogo_maestro_updated', handleCatalogoUpdated);
+    return () => window.removeEventListener('rg_catalogo_maestro_updated', handleCatalogoUpdated);
   }, [activeBusId]);
 
   // Suscripción al evento global de sincronización en tiempo real
@@ -1228,10 +1282,20 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     const cascadaCodigos = editingItem.codigo ? EFECTO_CASCADA_TRANSMISION[editingItem.codigo] : undefined;
     const itemsCascadaAfectados: string[] = [];
 
+    const nuevoIntervaloNum = parseInt(intervaloRegistro, 10);
+    const intervaloFinal = (!isNaN(nuevoIntervaloNum) && nuevoIntervaloNum > 0)
+      ? nuevoIntervaloNum
+      : editingItem.intervaloKm;
+
+    if (intervaloFinal !== editingItem.intervaloKm && editingItem.codigo) {
+      saveBusIntervaloOverride(activeBusId, editingItem.codigo, intervaloFinal);
+    }
+
     const updated = items.map(it => {
       if (it.id === editingItem.id) {
         return {
           ...it,
+          intervaloKm: intervaloFinal,
           ultimoKm: km,
           fechaUltimo: fechaFinal,
           costoEstimado: costoNum,
@@ -1277,6 +1341,24 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
       });
     }
     setEditingItem(null);
+  };
+
+  const handleActualizarIntervaloUnidad = (
+    itemId: string,
+    itemCodigo: string | undefined,
+    nuevoIntervalo: number
+  ) => {
+    if (!nuevoIntervalo || nuevoIntervalo <= 0) return;
+    const updated = items.map(x => (x.id === itemId ? { ...x, intervaloKm: nuevoIntervalo } : x));
+    saveItems(updated);
+    if (itemCodigo) {
+      saveBusIntervaloOverride(activeBusId, itemCodigo, nuevoIntervalo);
+    }
+    const it = items.find(x => x.id === itemId);
+    toast({
+      title: "Intervalo Actualizado para esta Unidad",
+      description: `${it?.nombre || 'Servicio'}: ahora se renovará cada ${nuevoIntervalo.toLocaleString()} km para el Bus ${activeBusDisco}.`,
+    });
   };
 
   const handleToggleChofer = (id: string, asignado: boolean) => {
@@ -3063,9 +3145,19 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                               Faltan <strong className="text-slate-900">{(kmRestantes || 0).toLocaleString()} km</strong>
                             </span>
                           )}
-                          <span className="text-slate-400 text-[10px] ml-1.5">
-                            (Intervalo: cada {(Number(item.intervaloKm) || 5000).toLocaleString()} km)
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setItemParaAjustarIntervalo(item);
+                              setNuevoIntervaloVal((Number(item.intervaloKm) || 5000).toString());
+                            }}
+                            className="inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200/90 text-[10px] font-bold text-amber-900 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
+                            title={`Ajustar ciclo de ${item.nombre} solo para Bus ${activeBusDisco} (ej. cambiar a 6,000 km)`}
+                          >
+                            <span>Ciclo: cada {(Number(item.intervaloKm) || 5000).toLocaleString()} km</span>
+                            <Edit2 className="w-2.5 h-2.5 text-amber-700 shrink-0" />
+                          </button>
                         </div>
 
                         <Button
@@ -3076,6 +3168,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                             setNewUltimoKm(kmActual.toString());
                             setCostoRegistro(item.costoEstimado ? item.costoEstimado.toString() : "");
                             setFechaRegistro(new Date().toISOString().split("T")[0]);
+                            setIntervaloRegistro(item.intervaloKm.toString());
                           }}
                           className="h-7 px-2.5 text-[10px] font-extrabold uppercase rounded-lg border-slate-300 hover:bg-slate-100 text-slate-700"
                         >
@@ -3819,6 +3912,29 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
             </div>
 
             <div className="space-y-3">
+              <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200 flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <Label className="text-xs font-black text-amber-950">
+                      Ciclo de Cambio para Bus {activeBusDisco}
+                    </Label>
+                  </div>
+                  <p className="text-[10px] text-amber-800 font-medium">
+                    Ajusta aquí si compraste aceite sintético o repuesto de mayor duración
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Input
+                    type="number"
+                    step="500"
+                    value={intervaloRegistro}
+                    onChange={e => setIntervaloRegistro(e.target.value)}
+                    className="w-24 h-8 text-xs font-black text-right rounded-lg bg-white border-amber-300 text-amber-950"
+                  />
+                  <span className="text-xs font-bold text-amber-800">km</span>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs font-bold text-gray-700 block mb-1">
@@ -4541,20 +4657,21 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
       )}
 
       {/* MODAL DE POLÍTICAS DE FLOTA / PARÁMETROS DEL SOCIO */}
+            {/* Modal de Políticas de Servicio de Unidad (Autonomía del Socio) */}
       {isPoliticasModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 shadow-2xl space-y-4 max-h-[90vh] flex flex-col border border-slate-200">
             <div className="flex items-center justify-between border-b pb-3 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-2xl bg-amber-100 text-amber-800">
                   <Settings2 className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900">
-                    Políticas de Servicio de Unidad
+                    Políticas de Servicio — Unidad {activeBusDisco}
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Define los intervalos oficiales según las marcas y lubricantes que compras
+                    Define los intervalos según las marcas y especificaciones de lubricante que usas
                   </p>
                 </div>
               </div>
@@ -4566,46 +4683,64 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
               </button>
             </div>
 
-            <div className="space-y-4 overflow-y-auto pr-1 flex-1 text-xs">
+            <div className="space-y-3 overflow-y-auto pr-1 flex-1 text-xs">
               <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 leading-relaxed">
-                💡 <strong>Autonomía del Socio:</strong> Si utilizas aceite sintético de larga duración (ej. 7,000 km) o lubricas zapatas con mayor frecuencia, ajusta los parámetros aquí para que el odómetro del chofer calcule con exactitud la vida útil.
+                💡 <strong>Autonomía del Socio:</strong> Si utilizas aceite sintético de mayor duración (ej. 6,000 o 7,000 km) o lubricas zapatas con distinta frecuencia, ajusta los parámetros aquí. Los cambios se guardan exclusivamente para la <strong>Unidad {activeBusDisco}</strong> y se sincronizan en tiempo real con tu teléfono.
               </div>
 
-              <div className="space-y-3">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                <Input
+                  value={politicaBusqueda}
+                  onChange={e => setPoliticaBusqueda(e.target.value)}
+                  placeholder="Buscar componente (aceite, filtro, chasis, frenos...)"
+                  className="h-8 pl-8 text-xs rounded-xl bg-slate-50 border-slate-200"
+                />
+              </div>
+
+              <div className="space-y-2.5">
                 {items
-                  .filter(it => it.codigo && ["HINO-01", "HINO-04", "HINO-09", "HINO-10", "HINO-11", "HINO-13"].includes(it.codigo))
+                  .filter(it => {
+                    if (!politicaBusqueda.trim()) return true;
+                    const q = politicaBusqueda.toLowerCase();
+                    return (
+                      it.nombre.toLowerCase().includes(q) ||
+                      (it.codigo && it.codigo.toLowerCase().includes(q)) ||
+                      (it.categoria && it.categoria.toLowerCase().includes(q))
+                    );
+                  })
                   .map(it => (
-                    <div key={it.id} className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-3">
+                    <div
+                      key={it.id}
+                      className="p-3 rounded-2xl border border-slate-200 bg-slate-50/70 flex items-center justify-between gap-3 hover:bg-white transition-colors"
+                    >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
                           <span className="text-[9px] font-mono font-bold bg-white text-slate-700 px-1.5 py-0.2 rounded border">
-                            {it.codigo}
+                            {it.codigo || 'MNT'}
                           </span>
                           <span className="text-xs font-black text-slate-900 truncate">
                             {it.nombre}
                           </span>
                         </div>
-                        <p className="text-[10px] text-slate-500">
-                          {it.repuestoDetalle || "Parámetro crítico de flota"}
+                        <p className="text-[10px] text-slate-500 truncate">
+                          {it.repuestoDetalle || it.categoria.replace('_', ' ')}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
                         <Input
+                          key={`${it.id}_${it.intervaloKm}`}
                           type="number"
+                          step="500"
                           defaultValue={it.intervaloKm}
                           onBlur={e => {
                             const val = parseInt(e.target.value, 10);
-                            if (!isNaN(val) && val > 0) {
-                              const updated = items.map(x => x.id === it.id ? { ...x, intervaloKm: val } : x);
-                              saveItems(updated);
-                              toast({
-                                title: "Intervalo Actualizado",
-                                description: `${it.nombre} configurado para cambiarse cada ${val.toLocaleString()} km.`,
-                              });
+                            if (!isNaN(val) && val > 0 && val !== it.intervaloKm) {
+                              handleActualizarIntervaloUnidad(it.id, it.codigo, val);
                             }
                           }}
-                          className="w-24 h-8 text-xs font-black text-right rounded-xl bg-white border-slate-300"
+                          className="w-24 h-8 text-xs font-black text-right rounded-xl bg-white border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                         />
                         <span className="text-slate-500 font-bold text-[11px]">km</span>
                       </div>
@@ -4620,10 +4755,22 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  handleSincronizarBloqueMotor();
+                  const catalogoOficial = getCatalogoMaestroGlobal();
+                  const actualizados = items.map(it => {
+                    const ofi = catalogoOficial.find(c => c.codigo === it.codigo);
+                    if (ofi) {
+                      return { ...it, intervaloKm: ofi.intervaloKmOficial };
+                    }
+                    return it;
+                  });
+                  saveItems(actualizados);
+                  localStorage.removeItem(`rg_bus_intervalos_override_${activeBusId}`);
+                  pushMantenimientoConfigAlServidor(activeBusId, {
+                    intervalosPersonalizados: {},
+                  });
                   toast({
                     title: "Intervalos Restablecidos",
-                    description: "Se restauraron los parámetros oficiales de fábrica Hino AK.",
+                    description: `Se restauraron los ciclos oficiales para la Unidad ${activeBusDisco}.`,
                   });
                 }}
                 className="h-9 text-xs font-bold text-slate-600 rounded-xl"
@@ -4637,6 +4784,123 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                 className="h-9 px-5 text-xs font-black rounded-xl bg-slate-900 text-white hover:bg-slate-800"
               >
                 Listo y Aplicar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mini-Modal Rápido: Ajustar Ciclo Directamente desde la Tarjeta */}
+      {itemParaAjustarIntervalo && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-4 border border-slate-200">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
+                  <Settings2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">
+                    Ajustar Ciclo de Servicio
+                  </h3>
+                  <p className="text-[11px] font-bold text-amber-700">
+                    Unidad {activeBusDisco} (Autonomía del Socio)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setItemParaAjustarIntervalo(null)}
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  Mantenimiento:
+                </span>
+                <p className="text-xs font-black text-slate-900">
+                  {itemParaAjustarIntervalo.nombre}
+                </p>
+                <p className="text-[10px] text-slate-600">
+                  {itemParaAjustarIntervalo.repuestoDetalle || "Parámetro de desgaste de unidad"}
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Cada cuántos kilómetros se debe renovar:
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="500"
+                    value={nuevoIntervaloVal}
+                    onChange={e => setNuevoIntervaloVal(e.target.value)}
+                    className="h-11 rounded-2xl text-base font-black text-center bg-amber-50/60 border-amber-300 text-slate-900 pr-10"
+                    autoFocus
+                  />
+                  <span className="absolute right-3.5 top-3 text-xs font-black text-amber-800">
+                    km
+                  </span>
+                </div>
+              </div>
+
+              {/* Botones de sugerencias rápidas comunes */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-400">Sugerencias rápidas:</span>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[4000, 5000, 6000, 7000].map(kmVal => (
+                    <button
+                      key={kmVal}
+                      type="button"
+                      onClick={() => setNuevoIntervaloVal(kmVal.toString())}
+                      className={`py-1 text-[11px] font-black rounded-lg border transition-all ${
+                        nuevoIntervaloVal === kmVal.toString()
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                          : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                      }`}
+                    >
+                      {(kmVal / 1000).toFixed(0)}k km
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-[10px] text-slate-500 leading-tight">
+                💡 Este cambio aplicará <strong>únicamente para el Bus {activeBusDisco}</strong> y se sincronizará con tu celular.
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2 border-t">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setItemParaAjustarIntervalo(null)}
+                className="text-xs font-bold text-slate-500"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  const valNum = parseInt(nuevoIntervaloVal, 10);
+                  if (!isNaN(valNum) && valNum > 0) {
+                    handleActualizarIntervaloUnidad(
+                      itemParaAjustarIntervalo.id,
+                      itemParaAjustarIntervalo.codigo,
+                      valNum
+                    );
+                    setItemParaAjustarIntervalo(null);
+                  }
+                }}
+                className="text-xs font-black bg-amber-600 hover:bg-amber-700 text-white rounded-xl px-4"
+              >
+                Guardar Intervalo
               </Button>
             </div>
           </div>

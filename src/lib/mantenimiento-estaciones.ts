@@ -78,6 +78,7 @@ const STORAGE_PREFIX_ITEMS = 'rg_mnt_items_activos_';
 const STORAGE_PREFIX_MODULO = 'rg_mantenimiento_modulo_activo_';
 const STORAGE_PREFIX_DECISION = 'rg_mantenimiento_decision_';
 export const STORAGE_PREFIX_COMBO_UNIDAD = 'rg_combo_estacion_v1_';
+export const STORAGE_PREFIX_INTERVALOS = 'rg_bus_intervalos_override_';
 
 /**
  * Consulta y sincroniza la configuración de mantenimiento con el servidor central
@@ -102,6 +103,9 @@ export async function syncMantenimientoConfigConServidor(busId: string): Promise
       }
       if (typeof data.decisionTomada === 'boolean') {
         localStorage.setItem(`${STORAGE_PREFIX_DECISION}${busId}`, String(data.decisionTomada));
+      }
+      if (data.intervalosPersonalizados && typeof data.intervalosPersonalizados === 'object') {
+        localStorage.setItem(`${STORAGE_PREFIX_INTERVALOS}${busId}`, JSON.stringify(data.intervalosPersonalizados));
       }
       // FASE B: Hidratar combos personalizados descargados desde el servidor
       if (data.combosPersonalizados && typeof data.combosPersonalizados === 'object') {
@@ -141,6 +145,7 @@ export function pushMantenimientoConfigAlServidor(
     moduloActivo?: boolean;
     nivelControl?: NivelControlMantenimiento;
     itemsActivos?: Record<string, boolean>;
+    intervalosPersonalizados?: Record<string, number>;
     combosPersonalizados?: Record<string, ComboUnidadPersonalizado>;
     comboActualizado?: ComboUnidadPersonalizado;
     comboEliminadoEstacionId?: string;
@@ -1018,5 +1023,38 @@ export function resetComboUnidad(busId: string, estacionId: EstacionServicioId):
     );
   } catch (err) {
     console.error('Error restableciendo combo de unidad:', err);
+  }
+}
+
+export function getBusIntervalosConfig(busId: string): Record<string, number> {
+  if (typeof window === 'undefined' || !busId) return {};
+  try {
+    const raw = localStorage.getItem(`${STORAGE_PREFIX_INTERVALOS}${busId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed === 'object' && parsed !== null) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error('Error al leer intervalos configurados del bus:', err);
+  }
+  return {};
+}
+
+export function saveBusIntervaloOverride(busId: string, codigo: string, intervaloKm: number): void {
+  if (typeof window === 'undefined' || !busId || !codigo) return;
+  try {
+    const current = getBusIntervalosConfig(busId);
+    current[codigo] = intervaloKm;
+    localStorage.setItem(`${STORAGE_PREFIX_INTERVALOS}${busId}`, JSON.stringify(current));
+    pushMantenimientoConfigAlServidor(busId, {
+      intervalosPersonalizados: current,
+    });
+    window.dispatchEvent(new CustomEvent('rg_mantenimiento_intervalo_updated', {
+      detail: { busId, codigo, intervaloKm },
+    }));
+  } catch (err) {
+    console.error('Error guardando override de intervalo para bus:', err);
   }
 }
