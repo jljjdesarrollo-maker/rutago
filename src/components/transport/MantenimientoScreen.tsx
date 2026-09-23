@@ -223,7 +223,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           activo: true,
         };
       }
-      // Aire acondicionado: 13 de septiembre de 2026
+      // Aire acondicionado
       if (c.codigo === 'MNT-AIRE-ACONDICIONADO') {
         return {
           id: `mbus-${c.id}-calibrado`,
@@ -232,9 +232,9 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           nombre: c.nombre,
           categoria: c.categoria,
           intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
-          ultimoKm: 892000,
-          fechaUltimo: '2026-09-13',
-          costoEstimado: 60,
+          ultimoKm: 0,
+          fechaUltimo: '',
+          costoEstimado: 0,
           repuestoDetalle: c.especificacionLubricanteRepuesto,
           asignadoChofer: false,
           activo: true,

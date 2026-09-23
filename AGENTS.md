@@ -531,3 +531,21 @@
    - En la cabecera del modal *Historial de Mantenimientos*, el botón antes decía "Refrescar" pero en pantallas pequeñas (`hidden sm:inline`) solo mostraba un icono gris pequeño que pasaba desapercibido.
    - Se rediseñó con un botón dorado/ámbar destacado: **🔄 Sincronizar**, siempre visible tanto en móvil como en PC.
    - Al presionarlo ejecuta la sincronización bidireccional completa (sube pendientes y baja el estado depurado de la base de datos central).
+
+---
+
+## 🚀 ACTUALIZACIÓN (2026-09-23) - ACTUALIZACIÓN COMPONENTE PREVENTIVO ANUAL AIRE ACONDICIONADO
+
+### 📌 MOTIVO
+- El usuario solicitó actualizar el ítem de Aire Acondicionado (`MNT-AIRE-ACONDICIONADO`) con nuevo nombre ("Mantenimiento Preventivo Anual de Aire Acondicionado") e intervalo de 110.000 km (1 año aprox).
+- El alcance técnico del servicio consiste en: revisar cañerías, compresor, cambio de aceite del compresor (PAG/POE) y revisión/engrase de rulimán del compresor.
+
+### ⚙️ CAMBIOS APLICADOS
+1. **Catálogo Maestro (`mantenimiento-catalogo.ts`):**
+   - Nombre: **Mantenimiento Preventivo Anual de Aire Acondicionado**
+   - Intervalo Oficial: **110.000 km** (~365 días).
+   - Repuestos y rutina: Revisión de cañerías, inspección del compresor, cambio de aceite de compresor (PAG/POE) y revisión/engrase de rulimán de polea.
+2. **Justificación de Riesgo (`SocioMantenimientoWidget.tsx`):**
+   - "Protege el compresor de A/C contra gripado, evita fugas en cañerías y previene rotura de banda motriz por falla del rulimán."
+3. **Limpieza de Valores Precargados (`MantenimientoScreen.tsx` y `SocioMantenimientoWidget.tsx`):**
+   - Se removió el registro simulado previo para permitir al usuario asentar el mantenimiento limpio directamente desde la aplicación y verificar la reactividad.

@@ -106,7 +106,7 @@ function getImpactoOperativo(item: MantenimientoBusItem): string {
     return 'Protege crucetas de cardán, muñones y hojas de ballesta. Previene rotura de terminales y vibraciones severas a velocidad crucero.';
   }
   if (cod === 'MNT-AIRE-ACONDICIONADO') {
-    return 'Confort térmico de pasajeros y presurización de cabina. Evita sobrecalentamiento y trabado del compresor de A/C.';
+    return 'Protege el compresor de A/C contra gripado, evita fugas en cañerías y previene rotura de banda motriz por falla del rulimán.';
   }
   if (cod === 'MNT-ACEITE-CAJA' || cod === 'MNT-ACEITE-CORONA' || cat === 'TRANSMISION') {
     return 'Protección de engranajes y piñones hipoides sometidos a alto torque en circuitos interprovinciales y troncales.';
@@ -207,7 +207,7 @@ export function SocioMantenimientoWidget({
           activo: true,
         };
       }
-      // Aire acondicionado: 13 de septiembre de 2026
+      // Aire acondicionado
       if (c.codigo === 'MNT-AIRE-ACONDICIONADO') {
         return {
           id: `mbus-${c.id}-calibrado`,
@@ -216,9 +216,9 @@ export function SocioMantenimientoWidget({
           nombre: c.nombre,
           categoria: c.categoria,
           intervaloKm: c.intervaloKmOficial,
-          ultimoKm: 892000,
-          fechaUltimo: '2026-09-13',
-          costoEstimado: 60,
+          ultimoKm: 0,
+          fechaUltimo: '',
+          costoEstimado: 0,
           repuestoDetalle: c.especificacionLubricanteRepuesto,
           asignadoChofer: false,
           activo: true,
