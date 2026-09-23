@@ -982,6 +982,20 @@ export function saveComboUnidad(
 ): void {
   if (typeof window === 'undefined') return;
   try {
+    // Auto-activar repuestos extras agregados al combo en el inventario/odómetro de la unidad
+    if (codigosExtras && codigosExtras.length > 0) {
+      try {
+        const rawActivos = localStorage.getItem(`${STORAGE_PREFIX_ITEMS}${busId}`);
+        const activos = rawActivos ? JSON.parse(rawActivos) : {};
+        codigosExtras.forEach(cod => {
+          activos[cod] = true;
+        });
+        localStorage.setItem(`${STORAGE_PREFIX_ITEMS}${busId}`, JSON.stringify(activos));
+      } catch (e) {
+        console.warn("Aviso al vincular extras en itemsActivos:", e);
+      }
+    }
+
     const payload: ComboUnidadPersonalizado = {
       busId,
       estacionId,

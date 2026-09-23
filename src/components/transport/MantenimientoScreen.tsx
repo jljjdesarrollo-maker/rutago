@@ -413,6 +413,18 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
   const [estacionSeleccionada, setEstacionSeleccionada] = useState<EstacionServicioId | null>(null);
   // Fase 1: Modo configurador de receta de unidad para el socio
   const [modoConfigurarCombo, setModoConfigurarCombo] = useState(false);
+  const [isOnlineState, setIsOnlineState] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnlineState(true);
+    const handleOffline = () => setIsOnlineState(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
   const [comboUnidadItems, setComboUnidadItems] = useState<{ codigo: string; nombre: string; intervaloKm: number; preMarcado: boolean; opcionalTexto?: string }[]>([]);
   const [comboUnidadChecks, setComboUnidadChecks] = useState<Record<string, boolean>>({});
   const [comboUnidadExtras, setComboUnidadExtras] = useState<string[]>([]);
@@ -1465,6 +1477,14 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
 
   // Fase 1 y 2: Guardar Receta Personalizada del Combo para la Unidad
   const handleGuardarRecetaCombo = () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast({
+        title: "⚠️ Sin Conexión a Internet",
+        description: "Se requiere conexión estable a la nube para modificar las recetas oficiales del bus.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!estacionSeleccionada) return;
     saveComboUnidad(
       (currentBus?.id || activeBusId),
@@ -1490,6 +1510,14 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
 
   // Fase 1 y 2: Restablecer combo de estación a los valores predeterminados de fábrica
   const handleRestablecerComboBase = () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast({
+        title: "⚠️ Sin Conexión a Internet",
+        description: "Se requiere conexión a la nube para restablecer recetas oficiales.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!estacionSeleccionada) return;
     resetComboUnidad((currentBus?.id || activeBusId), estacionSeleccionada);
     const comboData = getComboUnidad((currentBus?.id || activeBusId), estacionSeleccionada);
@@ -3829,11 +3857,16 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                     </Button>
                     <Button
                       type="button"
+                      disabled={!isOnlineState}
                       onClick={handleGuardarRecetaCombo}
-                      className="flex-1 h-10 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                      className={`flex-1 h-10 rounded-xl font-black text-xs shadow-md flex items-center justify-center gap-1.5 transition-all ${
+                        !isOnlineState
+                          ? "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 shadow-none"
+                          : "bg-amber-500 hover:bg-amber-600 text-slate-950 cursor-pointer"
+                      }`}
                     >
                       <Save className="w-4 h-4" />
-                      Guardar Receta
+                      {isOnlineState ? "Guardar Receta" : "Sin Internet"}
                     </Button>
                   </>
                 ) : (
