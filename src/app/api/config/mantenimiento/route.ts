@@ -23,7 +23,7 @@ export interface BusMantenimientoConfig {
 // Ruta empaquetada (solo lectura en producción serverless)
 const BUNDLED_FILE_PATH = path.join(process.cwd(), "db", "mantenimiento-config.json");
 
-// Ruta escribible en tiempo de ejecución (en Vercel / AWS Lambda se usa os.tmpdir() que sí tiene permisos de escritura)
+// Ruta escribible en tiempo de ejecución
 function getRuntimeFilePath(): string {
   if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.cwd().startsWith("/var/task")) {
     return path.join(os.tmpdir(), "rutago-mantenimiento-config.json");
@@ -41,11 +41,11 @@ const DEFAULT_CONFIGS: Record<string, BusMantenimientoConfig> = {
     fechaDecision: "2026-09-21",
     origenDispositivo: "Socio Líder (José Leonardo Jaya Jaramillo)",
     combosPersonalizados: {},
+    intervalosPersonalizados: {},
     updatedAt: new Date().toISOString(),
   },
 };
 
-// Variable en memoria compartida por el runtime Node
 const globalStore = globalThis as unknown as {
   __rutago_mantenimiento_configs__?: Record<string, BusMantenimientoConfig>;
 };
@@ -65,7 +65,7 @@ function guardarEnArchivo(configs: Record<string, BusMantenimientoConfig>): void
         fs.writeFileSync(tmpPath, JSON.stringify(configs, null, 2), "utf8");
         return;
       } catch {
-        // En memoria sigue disponible
+        // Fallback en memoria
       }
     }
     console.warn("Aviso: Persistencia temporal en archivo no disponible, manteniendo en memoria:", err?.message || err);
@@ -90,7 +90,7 @@ async function cargarConfiguracionesAsync(): Promise<Record<string, BusMantenimi
       return configs;
     }
   } catch {
-    // Si la BD no está disponible, continuar con archivo
+    // Si la BD no está disponible en este instante, continuar con archivo
   }
 
   // 2. Fallback a archivos en disco
@@ -139,11 +139,13 @@ async function guardarConfiguracionesAsync(configs: Record<string, BusMantenimie
 }
 
 // GET /api/config/mantenimiento?busId=BUS-01
+// Resuelve en cascada: Catálogo Maestro Global + Overrides de Unidad + Combos de Unidad
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const busId = searchParams.get("busId");
     const globalCatalog = searchParams.get("globalCatalog");
+
     const configs = await cargarConfiguracionesAsync();
 
     if (globalCatalog) {
@@ -155,6 +157,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (busId) {
+      const globalCfg = configs["__GLOBAL_CATALOG__"];
       const busConfig = configs[busId] || {
         busId,
         moduloActivo: busId === "BUS-01",
@@ -162,11 +165,16 @@ export async function GET(req: NextRequest) {
         decisionTomada: busId === "BUS-01",
         fechaDecision: new Date().toISOString().split("T")[0],
         combosPersonalizados: {},
+        intervalosPersonalizados: {},
         updatedAt: new Date().toISOString(),
       };
+
       return NextResponse.json({
         success: true,
-        data: busConfig,
+        data: {
+          ...busConfig,
+          catalogoGlobalOficial: globalCfg?.catalogoPersonalizado || null,
+        },
       });
     }
 
@@ -189,9 +197,11 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
 
     // Caso 1: Actualización global del Catálogo Maestro Oficial (SuperAdministrador)
+    // Afecta a toda la cooperativa como plantilla de fábrica
     if (body.tipo === "GLOBAL_CATALOG" || body.catalogoGlobal) {
       const configs = await cargarConfiguracionesAsync();
       const catalogoGlobal = Array.isArray(body.catalogoGlobal) ? body.catalogoGlobal : [];
+
       configs["__GLOBAL_CATALOG__"] = {
         busId: "__GLOBAL_CATALOG__",
         moduloActivo: true,
@@ -199,10 +209,12 @@ export async function PUT(req: NextRequest) {
         decisionTomada: true,
         fechaDecision: new Date().toISOString().split("T")[0],
         catalogoPersonalizado: catalogoGlobal,
-        origenDispositivo: "SuperAdministrador",
+        origenDispositivo: "SuperAdministrador (PIN 9999)",
         updatedAt: new Date().toISOString(),
       };
+
       await guardarConfiguracionesAsync(configs);
+
       return NextResponse.json({
         success: true,
         data: catalogoGlobal,
@@ -210,13 +222,15 @@ export async function PUT(req: NextRequest) {
       });
     }
 
-    // Caso 2: Configuración individual de una unidad (Socio)
+    // Caso 2: Configuración individual y exclusiva de una unidad (Socio)
+    // AISLAMIENTO GARANTIZADO: Solo modifica configs[busId]
     const {
       busId,
       moduloActivo,
       nivelControl,
       itemsActivos,
       intervalosPersonalizados,
+      intervaloOverride, // { codigo: string, intervaloKm: number }
       combosPersonalizados,
       comboActualizado,
       comboEliminadoEstacionId,
@@ -241,26 +255,29 @@ export async function PUT(req: NextRequest) {
       decisionTomada: false,
       fechaDecision: new Date().toISOString().split("T")[0],
       combosPersonalizados: {},
+      intervalosPersonalizados: {},
       updatedAt: new Date().toISOString(),
     };
 
+    // Actualización de combos personalizados aislados para este bus
     const prevCombos = { ...(prev.combosPersonalizados || {}) };
-
     if (combosPersonalizados && typeof combosPersonalizados === "object") {
       Object.assign(prevCombos, combosPersonalizados);
     }
-
     if (comboActualizado && comboActualizado.estacionId) {
       prevCombos[comboActualizado.estacionId] = comboActualizado;
     }
-
     if (comboEliminadoEstacionId && prevCombos[comboEliminadoEstacionId]) {
       delete prevCombos[comboEliminadoEstacionId];
     }
 
+    // Actualización de durabilidad e intervalos aislados para este bus
     const prevIntervalos = { ...(prev.intervalosPersonalizados || {}) };
     if (intervalosPersonalizados && typeof intervalosPersonalizados === "object") {
       Object.assign(prevIntervalos, intervalosPersonalizados);
+    }
+    if (intervaloOverride && intervaloOverride.codigo && typeof intervaloOverride.intervaloKm === "number") {
+      prevIntervalos[intervaloOverride.codigo] = Math.max(100, Math.round(intervaloOverride.intervaloKm));
     }
 
     const updated: BusMantenimientoConfig = {
@@ -289,7 +306,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({
       success: true,
       data: updated,
-      message: `Configuración y recetas de mantenimiento para ${busId} guardadas en servidor con éxito`,
+      message: `Configuración y personalizaciones de mantenimiento para ${busId} guardadas en servidor con éxito`,
     });
   } catch (error) {
     console.error("Error al guardar configuracion de mantenimiento:", error);
