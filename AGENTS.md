@@ -1,14 +1,38 @@
 # BITÁCORA EN VIVO Y ESTADO DE IMPLEMENTACIÓN (HANDOVER LOG)
-> **FECHA:** 2026-09-22 | **SISTEMA:** RutaGo - Mantenimiento Jerárquico en Base de Datos
-> **PROPÓSITO:** Registro continuo del progreso para garantizar continuidad absoluta si cambia de sesión o cuenta en Google AI Studio.
+> **FECHA DE CIERRE:** 2026-09-22 | **SISTEMA:** RutaGo - Mantenimiento Jerárquico en Base de Datos
+> **ESTADO GLOBAL:** 🟢 PRODUCCIÓN LISTO Y TOTALMENTE VERIFICADO
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
 
-### 📍 ESTADO ACTUAL DEL DESARROLLO
-- **Fase 0 (Handover & Arquitectura):** ✅ COMPLETADA
-- **Fase 1 (Modelos Prisma & PostgreSQL):** ✅ COMPLETADA (Modelos CatalogoMaestroItem, BusRecetaCombo, BusItemOverride, BusMantenimientoConfig)
-- **Fase 2 (Endpoints API REST Jerárquicos):** ✅ COMPLETADA (/api/config/mantenimiento con resolución en cascada, aislamiento estricto por busId y overrides de km)
-- **Fase 3 (Gobernanza Online Socio con Validación de Red):** ✅ COMPLETADA (Alerta reactiva de falta de red, bloqueo de botón si offline, sincronización automática a BD y auto-activación de extras)
-- **Fase 4 (Descarga Silenciosa Login Chofer/Ayudante):** ✅ COMPLETADA (Trigger en segundo plano en LoginScreen para hidratar caché local del bus al iniciar sesión)
-- **Fase 5 (Pruebas E2E, Verificación y Handover Final):** ⏳ EN PROGRESO
+### 📍 RESUMEN DE FASES EJECUTADAS Y COMMITS REALIZADOS:
+1. **Fase 0 (Handover & Arquitectura):** ✅ COMPLETADA
+   - Commit: `docs(arch): actualizar AGENTS.md con logica de negocio y roadmap`
+2. **Fase 1 (Modelos Prisma & PostgreSQL):** ✅ COMPLETADA
+   - Modelos: `CatalogoMaestroItem`, `BusRecetaCombo`, `BusItemOverride`, `BusMantenimientoConfig`.
+   - Commit: `feat(db): modelos prisma para herencia de recetas y overrides de km`
+3. **Fase 2 (Endpoints API REST Jerárquicos):** ✅ COMPLETADA
+   - Archivo: `src/app/api/config/mantenimiento/route.ts`.
+   - Resolución en cascada: Catálogo Maestro Global + Overrides de Unidad + Combos por Bus. Aislamiento total por `busId`.
+   - Commit: `feat(api): endpoints de resolucion jerarquica y guardado aislado`
+4. **Fase 3 (Gobernanza Online Socio con Validación de Red):** ✅ COMPLETADA
+   - Archivos: `src/components/transport/MantenimientoScreen.tsx` y `src/lib/mantenimiento-estaciones.ts`.
+   - Bloqueo y aviso táctil en UI si el Socio no tiene internet: *"⚠️ Se requiere conexión a internet para alterar recetas oficiales en la base de datos"*.
+   - Auto-activación de repuestos extras agregados al combo en el inventario/odómetro de la unidad.
+   - Commit: `feat(socio): persistencia online en bd con validacion red`
+5. **Fase 4 (Descarga Silenciosa Login Chofer/Ayudante):** ✅ COMPLETADA
+   - Archivo: `src/components/transport/LoginScreen.tsx`.
+   - Disparo silencioso en background (`triggerBackgroundSyncMantenimiento`) al ingresar PIN para Chofer y Ayudante.
+   - Operación 100% offline en ruta una vez hidratada la memoria local.
+   - Commit: `feat(sync): descarga automatica al login chofer/ayudante`
+6. **Fase 5 (Pruebas E2E y Verificación):** ✅ COMPLETADA
+   - Pruebas de resolución ejecutadas con éxito: Aislamiento entre unidades comprobado (6,000 km en Bus 01 no afecta los 5,000 km de fábrica en Bus 02).
+   - Commit: `test(e2e): verificacion de herencia, aislamiento y bitacora final`
+
+---
+
+### 🏛️ REGLAS DE ARQUITECTURA OFICIAL IMPLEMENTADAS:
+- **SuperAdministrador (PIN 9999):** Escribe catálogo base y plantillas estándar en PostgreSQL.
+- **Socio Propietario (PIN Socio):** Personaliza combos y kilometrajes (`BusItemOverride`) exclusivamente para su `busId`. Requiere conexión a internet (validada reactivamente).
+- **Chofer / Ayudante:** Descarga transparente de recetas al loguearse; opera sin conexión en carretera y fosa.
 
 ---
 
