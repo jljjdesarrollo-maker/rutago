@@ -2579,11 +2579,11 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                   type="button"
                   onClick={ejecutarSincronizacionManual}
                   disabled={isSyncingManual}
-                  className="h-8 px-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
-                  title="Refrescar y sincronizar con la base de datos"
+                  className="h-8 px-2.5 rounded-full bg-amber-100/80 hover:bg-amber-200 text-amber-900 border border-amber-300 text-[11px] font-extrabold flex items-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-50 shadow-xs"
+                  title="Sincronizar subida y bajada con la base de datos central"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${isSyncingManual ? 'animate-spin text-amber-600' : ''}`} />
-                  <span className="hidden sm:inline">{isSyncingManual ? 'Sincronizando...' : 'Refrescar'}</span>
+                  <RefreshCw className={`w-3.5 h-3.5 text-amber-800 ${isSyncingManual ? 'animate-spin text-amber-600' : ''}`} />
+                  <span className="text-[11px]">{isSyncingManual ? 'Sincronizando...' : 'Sincronizar'}</span>
                 </button>
                 <button
                   type="button"

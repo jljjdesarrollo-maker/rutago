@@ -173,11 +173,42 @@ export async function syncMantenimientoBidireccional(busId?: string): Promise<{ 
     console.warn('Aviso descarga config mantenimiento diferido:', e);
   }
 
-  // 3. Descargar (Download) desde la BD central todos los mantenimientos/gastos registrados (por otros teléfonos o web)
+  // 3. Descargar (Download) y Armonizar Paradas Técnicas con la Base de Datos Central
   try {
     const remoteExpenses = await fetchOwnerExpensesFromApi(targetBusId);
     downloaded = Array.isArray(remoteExpenses) ? remoteExpenses.length : 0;
-    // Sincronizar paradas operativas a partir de los gastos descargados
+
+    // A. Reconciliar anulaciones: si una parada local fue anulada en la nube (su gasto ya no existe en remoteExpenses),
+    // removerla localmente para que el celular refleje las anulaciones hechas en la web.
+    if (Array.isArray(remoteExpenses)) {
+      const activeRemoteExpenseIds = new Set(remoteExpenses.map(r => r.id));
+      const rawParadas = localStorage.getItem('rg_paradas_pago_v1');
+      if (rawParadas) {
+        const localParadas: any[] = JSON.parse(rawParadas);
+        const filtered = localParadas.filter(p => {
+          // Si la parada está vinculada a un gasto de socio y la BD central ya no lo tiene, se elimina
+          if (p.ownerExpenseId && !activeRemoteExpenseIds.has(p.ownerExpenseId)) {
+            return false;
+          }
+          if (p.id && p.id.startsWith('PARADA-RETRO-')) {
+            const expId = p.id.replace('PARADA-RETRO-', '');
+            if (!activeRemoteExpenseIds.has(expId)) {
+              return false;
+            }
+          }
+          return true;
+        });
+
+        if (filtered.length !== localParadas.length) {
+          localStorage.setItem('rg_paradas_pago_v1', JSON.stringify(filtered));
+          window.dispatchEvent(new CustomEvent('rg_paradas_pago_updated', {
+            detail: { busId: targetBusId, purgedCount: localParadas.length - filtered.length }
+          }));
+        }
+      }
+    }
+
+    // B. Sincronizar nuevas paradas operativas a partir de los gastos descargados
     syncRetroactiveParadasFromExpenses(targetBusId);
   } catch (e) {
     console.warn('Aviso descarga gastos mantenimiento diferido:', e);

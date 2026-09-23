@@ -515,3 +515,19 @@
   1. Se añadió la detección explícita para la estación `RADIADOR` (*"Radiador y Sistema de Enfriamiento"*), así como para componentes de refrigeración (*radiador, coolant, enfriamiento, intercooler*).
   2. Se refinó la expresión regular de extracción de kilometraje para detectar `odómetro servicio: X km` y capturar con exactitud lecturas como `892.000 km` o `892.818 km`, evitando que quede en `0 km`.
   3. Se aseguraron las precedencias entre `LUBRICADORA`, `SISTEMA_AIRE`, `RADIADOR`, `LLANTERA`, `FRENOS_RODAJE` y `MANTENIMIENTO_MAYOR`.
+
+---
+
+## 🚀 ACTUALIZACIÓN (2026-09-23) - RECONCILIACIÓN BIDIRECCIONAL DE ANULACIONES Y BOTÓN VISIBLE DE SINCRONIZACIÓN
+
+### 📌 MOTIVO
+- El usuario reportó que tras anular registros de prueba desde la Web ("Historial de Paradas en Taller"), estos permanecían en el celular tras cerrar y abrir la app, consultando por un botón para sincronizar manualmente subida y bajada.
+
+### ⚙️ CAMBIOS APLICADOS
+1. **Reconciliación de Anulaciones en `syncMantenimientoBidireccional` (`mantenimiento-sync.ts`):**
+   - Ahora, al sincronizar hacia abajo desde PostgreSQL, se compara la lista remota activa con las paradas del almacenamiento local del teléfono.
+   - Si una parada registrada en el teléfono ya no existe en la base de datos central (porque fue anulada en la web), se purga automáticamente de `rg_paradas_pago_v1` y se notifica a la interfaz reactiva.
+2. **Botón de Sincronización Manual Visible en Móvil (`ChoferMantenimientoWidget.tsx`):**
+   - En la cabecera del modal *Historial de Mantenimientos*, el botón antes decía "Refrescar" pero en pantallas pequeñas (`hidden sm:inline`) solo mostraba un icono gris pequeño que pasaba desapercibido.
+   - Se rediseñó con un botón dorado/ámbar destacado: **🔄 Sincronizar**, siempre visible tanto en móvil como en PC.
+   - Al presionarlo ejecuta la sincronización bidireccional completa (sube pendientes y baja el estado depurado de la base de datos central).
