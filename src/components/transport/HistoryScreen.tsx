@@ -21,6 +21,7 @@ type FilterType = 'todos' | 'hoy' | 'semana' | 'mes';
 
 interface HistoryScreenProps {
   isAdmin: boolean;
+  userRole?: string;
   onBack: () => void;
   onViewRecord: (record: SavedRecord) => void;
 }
@@ -78,7 +79,8 @@ function getDateRange(filter: FilterType, monthValue?: string): { from: string; 
   }
 }
 
-export function HistoryScreen({ isAdmin, onBack, onViewRecord }: HistoryScreenProps) {
+export function HistoryScreen({ isAdmin, userRole, onBack, onViewRecord }: HistoryScreenProps) {
+  const isChofer = userRole === 'CONDUCTOR';
   const [allRecords, setAllRecords] = useState<SavedRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -87,16 +89,27 @@ export function HistoryScreen({ isAdmin, onBack, onViewRecord }: HistoryScreenPr
   const [monthValue, setMonthValue] = useState<string>(currentMonthStr);
   const [exporting, setExporting] = useState(false);
 
-  const dateRange = useMemo(() => getDateRange(filter, monthValue), [filter, monthValue]);
+  const dateRange = useMemo(() => {
+    if (isChofer) {
+      return { from: '', to: '' };
+    }
+    return getDateRange(filter, monthValue);
+  }, [filter, monthValue, isChofer]);
 
   const fetchRecords = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (dateRange.from) params.set('from', dateRange.from);
-      if (dateRange.to) params.set('to', dateRange.to);
-      params.set('limit', '90');
+      if (isChofer) {
+        // En la interfaz del chofer: traer de inmediato los ultimos 7 turnos sin rangos ni filtros
+        params.set('limit', '7');
+      } else {
+        if (dateRange.from) params.set('from', dateRange.from);
+        if (dateRange.to) params.set('to', dateRange.to);
+        params.set('limit', '90');
+      }
       params.set('include', 'trips');
+
       const query = params.toString() ? `?${params.toString()}` : '';
       const res = await fetch(`/api/records${query}`);
       const data = await res.json();
@@ -108,7 +121,7 @@ export function HistoryScreen({ isAdmin, onBack, onViewRecord }: HistoryScreenPr
     }
   };
 
-  useEffect(() => { fetchRecords(); }, [dateRange]);
+  useEffect(() => { fetchRecords(); }, [dateRange, isChofer]);
 
   const filteredRecords = useMemo(() => {
     return allRecords;
@@ -171,7 +184,7 @@ export function HistoryScreen({ isAdmin, onBack, onViewRecord }: HistoryScreenPr
           <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl text-[#3A3A3A]">
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-lg font-semibold text-[#3A3A3A]">{isAdmin ? 'Historial Completo' : 'Mi Historial'}</h1>
+          <h1 className="text-lg font-semibold text-[#3A3A3A]">{isAdmin ? 'Historial Completo' : isChofer ? 'Últimos Registros (Chofer)' : 'Mi Historial'}</h1>
         </header>
         <main className="flex-1 flex items-center justify-center">
           <Loader2 className="w-8 h-8 text-[#912D26] animate-spin" />
@@ -186,59 +199,77 @@ export function HistoryScreen({ isAdmin, onBack, onViewRecord }: HistoryScreenPr
         <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl text-[#3A3A3A]">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-lg font-semibold text-[#3A3A3A]">{isAdmin ? 'Historial Completo' : 'Mi Historial'}</h1>
+        <h1 className="text-lg font-semibold text-[#3A3A3A]">{isAdmin ? 'Historial Completo' : isChofer ? 'Últimos Registros (Chofer)' : 'Mi Historial'}</h1>
       </header>
 
       <main className="flex-1 overflow-y-auto pb-6">
-        {/* Filter bar */}
-        <div className="px-4 pt-4 pb-2 space-y-3">
-          <div className="flex gap-2">
-            {filterButtons.map(fb => (
-              <button
-                key={fb.key}
-                onClick={() => { setFilter(fb.key); if (fb.key === 'mes' && !monthValue) setMonthValue(currentMonthStr); }}
-                className={`flex-1 h-9 rounded-xl text-xs font-semibold transition-all active:scale-95 ${
-                  filter === fb.key
-                    ? 'bg-[#912D26] text-white shadow-sm'
-                    : 'bg-[#F5F5F5] text-[#3A3A3A]/60 hover:bg-[#E8E8E8]'
-                }`}
-              >
-                {fb.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Month picker (only when "Mes" selected) */}
-          {filter === 'mes' && (
-            <div className="flex items-center gap-2">
-              <Input
-                type="month"
-                value={monthValue}
-                onChange={e => setMonthValue(e.target.value)}
-                className="flex-1 h-10 rounded-xl border-[#D6D6D6] text-sm"
-              />
+        {/* Filter bar: Solo para Socio / Administrador. Para Chofer se oculta todo filtro y se muestra vista directa */}
+        {!isChofer ? (
+          <div className="px-4 pt-4 pb-2 space-y-3">
+            <div className="flex gap-2">
+              {filterButtons.map(fb => (
+                <button
+                  key={fb.key}
+                  onClick={() => { setFilter(fb.key); if (fb.key === 'mes' && !monthValue) setMonthValue(currentMonthStr); }}
+                  className={`flex-1 h-9 rounded-xl text-xs font-semibold transition-all active:scale-95 ${
+                    filter === fb.key
+                      ? 'bg-[#912D26] text-white shadow-sm'
+                      : 'bg-[#F5F5F5] text-[#3A3A3A]/60 hover:bg-[#E8E8E8]'
+                  }`}
+                >
+                  {fb.label}
+                </button>
+              ))}
             </div>
-          )}
 
-          {/* Results count + Export button */}
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-[#3A3A3A]/50">
-              {filteredRecords.length} registro{filteredRecords.length !== 1 ? 's' : ''}
-              {filter === 'todos' && dateRange.from ? ` (${formatDate(dateRange.from)} al ${formatDate(dateRange.to)} - máx 90 días)` : filter !== 'todos' && dateRange.from ? ` (${formatDate(dateRange.from)} al ${formatDate(dateRange.to)})` : ''}
-            </p>
-            {isAdmin && filteredRecords.length > 0 && (
-              <Button
-                onClick={handleExportXLS}
-                disabled={exporting}
-                size="sm"
-                className="h-8 rounded-lg text-xs bg-[#3A3A3A] hover:bg-[#2A2A2A] text-white"
-              >
-                {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Download className="w-3.5 h-3.5 mr-1" />}
-                {exporting ? 'Exportando...' : 'Exportar XLS'}
-              </Button>
+            {/* Month picker (only when "Mes" selected) */}
+            {filter === 'mes' && (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="month"
+                  value={monthValue}
+                  onChange={e => setMonthValue(e.target.value)}
+                  className="flex-1 h-10 rounded-xl border-[#D6D6D6] text-sm"
+                />
+              </div>
             )}
+
+            {/* Results count + Export button */}
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-[#3A3A3A]/50">
+                {filteredRecords.length} registro{filteredRecords.length !== 1 ? 's' : ''}
+                {filter === 'todos' && dateRange.from ? ` (${formatDate(dateRange.from)} al ${formatDate(dateRange.to)} - máx 90 días)` : filter !== 'todos' && dateRange.from ? ` (${formatDate(dateRange.from)} al ${formatDate(dateRange.to)})` : ''}
+              </p>
+              {isAdmin && filteredRecords.length > 0 && (
+                <Button
+                  onClick={handleExportXLS}
+                  disabled={exporting}
+                  size="sm"
+                  className="h-8 rounded-lg text-xs bg-[#3A3A3A] hover:bg-[#2A2A2A] text-white"
+                >
+                  {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Download className="w-3.5 h-3.5 mr-1" />}
+                  {exporting ? 'Exportando...' : 'Exportar XLS'}
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="px-4 pt-3 pb-1">
+            <div className="flex items-center justify-between bg-white px-3.5 py-2.5 rounded-2xl border border-gray-200 shadow-2xs">
+              <div>
+                <p className="text-xs font-bold text-[#3A3A3A]">
+                  Últimos 7 días de trabajo
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  Vista rápida directa de liquidaciones de ruta
+                </p>
+              </div>
+              <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+                {filteredRecords.length} {filteredRecords.length === 1 ? 'registro' : 'registros'}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Records list */}
         {filteredRecords.length === 0 ? (

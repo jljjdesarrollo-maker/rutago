@@ -517,6 +517,7 @@ export default function Home() {
       return (
         <HistoryScreen
           isAdmin={isAdmin}
+          userRole={user?.rol}
           onBack={() => setView('home')}
           onViewRecord={handleViewRecord}
         />

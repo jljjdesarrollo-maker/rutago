@@ -716,8 +716,8 @@ export function HomeScreen({
         </div>
 
         {/* ─── PILAR 2: REGULARIZACIÓN Y DATOS ANTERIORES ─── */}
-        {/* Aquí vive la opción solicitada: Pasar Cuadernos Anteriores */}
-        {onGoToCargaHistorica && (
+        {/* Exclusivo para el Socio Propietario / Administrador (Oculto para Chofer y Ayudante) */}
+        {isAdmin && onGoToCargaHistorica && (
           <div className="mt-1">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[11px] font-black text-amber-900/60 uppercase tracking-wider flex items-center gap-1.5">
