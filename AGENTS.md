@@ -499,3 +499,19 @@
      - 📡 **Guardado Local (Sin Conexión)** cuando no hay internet al momento de asentar.
 2. **MantenimientoScreen (`handleUpdateMantenimiento`):**
    - El formulario de edición/actualización individual del Socio ahora guarda la parada en historial y sincroniza el registro a la BD central con feedback en tiempo real.
+
+---
+
+## 🚀 ACTUALIZACIÓN (2026-09-23) - CORRECCIÓN DE CLASIFICACIÓN Y KILOMETRAJE EN HISTORIAL WEB vs CELULAR
+
+### 📌 DIAGNÓSTICO
+- El usuario reportó una discrepancia entre el celular y la web en el modal de Historial:
+  - En celular: se muestra *"Radiador y Sistema de Enfriamiento (892.000 km)"* y pagador *"Cubierto en Ruta por Ayudante"*.
+  - En web: se mostraba como *"Mantenimiento Mayor (0 km)"* y pagador *"Pagado por Socio (Transferencia 100%)"*.
+- **Causa raíz:** En el celular el registro se originó como parada técnica local con su objeto completo, pero al sincronizarse vía `/api/owner-expenses` hacia la nube, el algoritmo de deducción retroactiva (`syncRetroactiveParadasFromExpenses`) no contemplaba la estación específica de `RADIADOR` ni la captura del odómetro embebido en notas/comprobante, cayendo en la clasificación genérica de `MANTENIMIENTO_MAYOR` con `0 km`.
+
+### ⚙️ SOLUCIÓN IMPLEMENTADA
+- En `src/lib/paradas-vt-storage.ts`:
+  1. Se añadió la detección explícita para la estación `RADIADOR` (*"Radiador y Sistema de Enfriamiento"*), así como para componentes de refrigeración (*radiador, coolant, enfriamiento, intercooler*).
+  2. Se refinó la expresión regular de extracción de kilometraje para detectar `odómetro servicio: X km` y capturar con exactitud lecturas como `892.000 km` o `892.818 km`, evitando que quede en `0 km`.
+  3. Se aseguraron las precedencias entre `LUBRICADORA`, `SISTEMA_AIRE`, `RADIADOR`, `LLANTERA`, `FRENOS_RODAJE` y `MANTENIMIENTO_MAYOR`.

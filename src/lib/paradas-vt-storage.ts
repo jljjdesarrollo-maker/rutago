@@ -191,11 +191,20 @@ export function syncRetroactiveParadasFromExpenses(busId?: string): number {
         continue;
       }
 
-      // Deducir estación
+      // Deducir estación precisa
       let estacionId = 'LUBRICADORA';
       let estacionNombre = 'Lubricadora (Combo)';
 
       if (
+        desc.includes('radiador') ||
+        desc.includes('coolant') ||
+        desc.includes('enfriamiento') ||
+        desc.includes('intercooler') ||
+        prov.includes('radiador')
+      ) {
+        estacionId = 'RADIADOR';
+        estacionNombre = 'Radiador y Sistema de Enfriamiento';
+      } else if (
         exp.category === 'FRENOS_RODAJE' ||
         desc.includes('freno') ||
         desc.includes('zapata') ||
@@ -208,29 +217,49 @@ export function syncRetroactiveParadasFromExpenses(busId?: string): number {
             ? 'Combo 4 Ruedas (Frenos y Rodaje)'
             : 'Frenos y Rodaje';
       } else if (
+        desc.includes('aire') ||
+        desc.includes('tobera') ||
+        desc.includes('admisión') ||
+        desc.includes('admision')
+      ) {
+        estacionId = 'SISTEMA_AIRE';
+        estacionNombre = 'Sistema de Aire y Admisión';
+      } else if (exp.category === 'LLANTAS' || desc.includes('llanta') || desc.includes('alineaci')) {
+        estacionId = 'LLANTERA';
+        estacionNombre = 'Alineación y Llantas';
+      } else if (
         exp.category === 'MOTOR_CAJA_CORONA' ||
         desc.includes('caja') ||
         desc.includes('corona') ||
         desc.includes('embrague') ||
-        desc.includes('motor')
+        (desc.includes('motor') && !desc.includes('aceite'))
       ) {
         estacionId = 'MANTENIMIENTO_MAYOR';
         estacionNombre = 'Mantenimiento Mayor';
-      } else if (exp.category === 'LLANTAS' || desc.includes('llanta') || desc.includes('alineaci')) {
-        estacionId = 'LLANTERA';
-        estacionNombre = 'Alineación y Llantas';
-      } else if (desc.includes('aire') || desc.includes('tobera')) {
-        estacionId = 'SISTEMA_AIRE';
-        estacionNombre = 'Sistema de Aire y Admisión';
+      } else if (
+        desc.includes('aceite') ||
+        desc.includes('lubricador') ||
+        desc.includes('filtro') ||
+        desc.includes('trampa')
+      ) {
+        estacionId = 'LUBRICADORA';
+        estacionNombre = 'Lubricadora (Combo)';
       }
 
-      // Deducir Odómetro: si está en notes o en desc, ej. "893,100 km"
+      // Deducir Odómetro: buscar primero odómetro de servicio específico, luego general
       let odoKm = 0;
-      const matchOdo = `${exp.notes || ''} ${exp.description || ''}`.match(
-        /(\d{1,3}(?:[.,]\d{3})+|\d{5,7})\s*(?:km|kms)/i
-      );
-      if (matchOdo && matchOdo[1]) {
-        odoKm = parseInt(matchOdo[1].replace(/[.,]/g, ''), 10);
+      const textoBuscarKm = `${exp.notes || ''} ${exp.description || ''} ${exp.comprobanteRef || ''}`;
+      const matchServicio = textoBuscarKm.match(/od[óo]metro(?:\s+servicio)?[:\s]*(\d{1,3}(?:[.,]\d{3})+|\d{5,7})/i);
+      if (matchServicio && matchServicio[1]) {
+        const num = parseInt(matchServicio[1].replace(/[.,]/g, ''), 10);
+        if (num > 1000) odoKm = num;
+      }
+      if (!odoKm) {
+        const matchGen = textoBuscarKm.match(/(?:km|tac[óo]metro)?[:\s]*(\d{1,3}(?:[.,]\d{3})+|\d{5,7})\s*(?:km|kms)?/i);
+        if (matchGen && matchGen[1]) {
+          const num = parseInt(matchGen[1].replace(/[.,]/g, ''), 10);
+          if (num > 1000) odoKm = num;
+        }
       }
       if (!odoKm || isNaN(odoKm)) {
         try {
