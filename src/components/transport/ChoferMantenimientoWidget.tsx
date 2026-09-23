@@ -20,6 +20,8 @@ import {
   History,
   Building2,
   Calendar,
+  Wifi,
+  CloudSync,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -46,8 +48,10 @@ import {
   ESTACIONES_SERVICIO_CONFIG, 
   getComboUnidad, 
   resolverCascadaEstacion, 
-  getCategoriaContablePorEstacion 
+  getCategoriaContablePorEstacion,
+  syncMantenimientoConfigConServidor
 } from '@/lib/mantenimiento-estaciones';
+import { syncMantenimientoBidireccional, flushMantenimientoOutbox, getMantenimientoOutbox } from '@/lib/mantenimiento-sync';
 
 export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void }) {
   const { toast } = useToast();
@@ -194,6 +198,10 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   // Tareas asignadas al Chofer
   const [items, setItems] = useState<MantenimientoBusItem[]>(() => cargarItems(getActiveBusId()));
   const [, setComboSyncCounter] = useState<number>(0);
+  const [outboxCount, setOutboxCount] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    return getMantenimientoOutbox().length;
+  });
 
   // Suscripción reactiva al cambio de unidad física y al odómetro auditado (Arqueo de Llegada)
   useEffect(() => {
@@ -226,9 +234,51 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     };
     const handleCombosSync = () => {
       setComboSyncCounter(c => c + 1);
+      // Si el chofer tiene el modal de una estación abierto, actualizar la receta en vivo
+      setEstacionSeleccionadaChofer(currEst => {
+        if (currEst) {
+          const comboData = getComboUnidad(activeBusId, currEst);
+          setEstacionItemsChofer(comboData.items);
+          const checksMap: Record<string, boolean> = {};
+          comboData.items.forEach(it => {
+            checksMap[it.codigo] = it.preMarcado;
+          });
+          setEstacionChecksChofer(checksMap);
+        }
+        return currEst;
+      });
     };
     window.addEventListener('rg_paradas_pago_updated', handleParadasSync);
     window.addEventListener('rg_combo_unidad_actualizado', handleCombosSync);
+
+    const handleOutboxUpdate = () => {
+      setOutboxCount(getMantenimientoOutbox().length);
+    };
+    const handleSyncExito = (e: any) => {
+      const count = e?.detail?.count || 1;
+      setOutboxCount(getMantenimientoOutbox().length);
+      toast({
+        title: '✅ Mantenimientos Sincronizados',
+        description: `${count} servicio(s) pendiente(s) subidos a la nube con éxito.`,
+      });
+    };
+    window.addEventListener('rg_mantenimiento_outbox_updated', handleOutboxUpdate);
+    window.addEventListener('rg_mantenimiento_sincronizado_exito', handleSyncExito);
+
+    // Sincronización bidireccional automática al detectar conexión a internet (Frecuencia en Ruta)
+    const handleOnline = () => {
+      syncMantenimientoBidireccional(activeBusId).then(() => {
+        setItems(cargarItems(activeBusId));
+        setHistorialParadas(getParadasPagoByBus(activeBusId));
+        setOutboxCount(getMantenimientoOutbox().length);
+      }).catch(() => {});
+    };
+    window.addEventListener('online', handleOnline);
+
+    // Disparar sincronización silenciosa de entrada si el dispositivo ya está online
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      syncMantenimientoBidireccional(activeBusId).catch(() => {});
+    }
 
     return () => {
       unsubBus();
@@ -236,6 +286,9 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       window.removeEventListener('rg_mantenimiento_config_sync', handleConfigSync);
       window.removeEventListener('rg_paradas_pago_updated', handleParadasSync);
       window.removeEventListener('rg_combo_unidad_actualizado', handleCombosSync);
+      window.removeEventListener('rg_mantenimiento_outbox_updated', handleOutboxUpdate);
+      window.removeEventListener('rg_mantenimiento_sincronizado_exito', handleSyncExito);
+      window.removeEventListener('online', handleOnline);
     };
   }, [activeBusId, resolverKmActual, cargarItems]);
 
@@ -1060,13 +1113,20 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
           {/* Barra de Historial Operativo del Autobús para el Chofer (Fase A) */}
           <div className="pt-1.5 border-t border-white/10 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-[10px] text-slate-300 font-medium">
-              <History className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>
-                {historialParadas.length === 0
-                  ? 'Sin servicios registrados aún'
-                  : `${historialParadas.length} ${historialParadas.length === 1 ? 'servicio registrado' : 'servicios registrados'} en historial`}
-              </span>
+            <div className="flex items-center gap-2 text-[10px] text-slate-300 font-medium">
+              <div className="flex items-center gap-1">
+                <History className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>
+                  {historialParadas.length === 0
+                    ? 'Sin servicios en historial'
+                    : `${historialParadas.length} en historial`}
+                </span>
+              </div>
+              {outboxCount > 0 && (
+                <span className="flex items-center gap-1 text-[9px] font-black bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded-md animate-pulse" title="Mantenimientos pendientes por subir a la nube cuando haya señal">
+                  <CloudSync className="w-3 h-3" /> {outboxCount} en espera
+                </span>
+              )}
             </div>
             <button
               type="button"
@@ -1074,7 +1134,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
               className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-amber-300 hover:text-amber-200 text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer border border-white/15"
             >
               <History className="w-3 h-3" />
-              <span>Ver Historial del Bus ({historialParadas.length})</span>
+              <span>Ver Historial ({historialParadas.length})</span>
             </button>
           </div>
         </div>

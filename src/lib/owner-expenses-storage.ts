@@ -1,5 +1,6 @@
 import { OwnerExpense, PaymentAbono } from '../types/expenses';
 import { updateParadaPagoAbono } from './paradas-vt-storage';
+import { enqueueMantenimientoOutbox } from './mantenimiento-sync';
 
 const STORAGE_KEY = 'rutago_owner_expenses_v1';
 const INITIALIZED_KEY = 'rutago_owner_expenses_initialized_flag';
@@ -421,7 +422,17 @@ export async function saveOwnerExpenseToApi(expense: OwnerExpense): Promise<Owne
   // 1. Guardar de inmediato en local para respuesta táctil instantánea (optimistic UI)
   saveOwnerExpense(expense);
 
-  // 2. Enviar a la base de datos central
+  // 2. Enviar a la base de datos central o encolar si está offline
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    enqueueMantenimientoOutbox({
+      id: expense.id,
+      tipo: 'OWNER_EXPENSE',
+      payload: expense,
+      busId: expense.busId,
+    });
+    return expense;
+  }
+
   try {
     const res = await fetch('/api/owner-expenses', {
       method: 'POST',
@@ -436,9 +447,23 @@ export async function saveOwnerExpenseToApi(expense: OwnerExpense): Promise<Owne
           abonos: typeof json.data.abonos === 'string' ? JSON.parse(json.data.abonos || '[]') : (json.data.abonos || []),
         };
       }
+    } else {
+      // Si el servidor dio error temporal, encolar para reintento diferido
+      enqueueMantenimientoOutbox({
+        id: expense.id,
+        tipo: 'OWNER_EXPENSE',
+        payload: expense,
+        busId: expense.busId,
+      });
     }
   } catch (err) {
-    console.warn('Guardado en nube pendiente (se conservó localmente):', err);
+    console.warn('Guardado en nube diferido (encolado en outbox para reconexión):', err);
+    enqueueMantenimientoOutbox({
+      id: expense.id,
+      tipo: 'OWNER_EXPENSE',
+      payload: expense,
+      busId: expense.busId,
+    });
   }
   return expense;
 }
