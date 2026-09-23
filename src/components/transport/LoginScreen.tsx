@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Delete, Truck, Loader2, ShieldAlert } from 'lucide-react';
 import { getDeviceInfo } from '@/lib/device-storage';
+import { syncMantenimientoConfigConServidor } from '@/lib/mantenimiento-estaciones';
 
 interface LoginScreenProps {
   onLogin: (user: { id: string; nombre: string; rol: string }) => void;
@@ -30,6 +31,22 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
     setError('');
   };
 
+  
+  // Dispara la descarga silenciosa en segundo plano de las recetas del bus para chofer y ayudante
+  const triggerBackgroundSyncMantenimiento = (userSession: { id: string; nombre: string; rol: string }) => {
+    try {
+      // Obtener bus activo o por defecto BUS-01
+      const activeBus = localStorage.getItem("rg_active_bus_id") || "BUS-01";
+      if (typeof navigator !== "undefined" && navigator.onLine) {
+        syncMantenimientoConfigConServidor(activeBus).catch(err => {
+          console.warn("Aviso: Descarga en segundo plano de recetas diferida:", err);
+        });
+      }
+    } catch {
+      // Operación en segundo plano no bloqueante
+    }
+  };
+
   const submitPin = async (pinValue: string) => {
     setLoading(true);
 
@@ -42,6 +59,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         esActual: true,
       };
       localStorage.setItem('ct_session', JSON.stringify(saasAdminSession));
+      triggerBackgroundSyncMantenimiento(saasAdminSession);
       onLogin(saasAdminSession);
       setLoading(false);
       return;
@@ -55,6 +73,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         esActual: true,
       };
       localStorage.setItem('ct_session', JSON.stringify(socioSession));
+      triggerBackgroundSyncMantenimiento(socioSession);
       onLogin(socioSession);
       setLoading(false);
       return;
@@ -67,6 +86,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         if (cached) {
           const session = JSON.parse(cached);
           if (session && session.id && session.nombre) {
+            triggerBackgroundSyncMantenimiento(session);
             onLogin(session);
             return;
           }
@@ -80,6 +100,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           esActual: true,
         };
         localStorage.setItem('ct_session', JSON.stringify(adminSession));
+        triggerBackgroundSyncMantenimiento(adminSession);
         onLogin(adminSession);
         return;
       }
@@ -106,6 +127,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         const data = await res.json();
         // Save session to localStorage for offline use
         localStorage.setItem('ct_session', JSON.stringify(data));
+        triggerBackgroundSyncMantenimiento(data);
         onLogin(data);
         return;
       }
@@ -135,6 +157,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           esActual: true,
         };
         localStorage.setItem('ct_session', JSON.stringify(adminSession));
+        triggerBackgroundSyncMantenimiento(adminSession);
         onLogin(adminSession);
         return;
       }
@@ -151,6 +174,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           esActual: true,
         };
         localStorage.setItem('ct_session', JSON.stringify(adminSession));
+        triggerBackgroundSyncMantenimiento(adminSession);
         onLogin(adminSession);
         return;
       } else if (pinValue === '5555') {
@@ -161,6 +185,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           esActual: true,
         };
         localStorage.setItem('ct_session', JSON.stringify(ayudanteSession));
+        triggerBackgroundSyncMantenimiento(ayudanteSession);
         onLogin(ayudanteSession);
         return;
       }

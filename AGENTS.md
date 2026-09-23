@@ -7,8 +7,28 @@
 - **Fase 1 (Modelos Prisma & PostgreSQL):** ✅ COMPLETADA (Modelos CatalogoMaestroItem, BusRecetaCombo, BusItemOverride, BusMantenimientoConfig)
 - **Fase 2 (Endpoints API REST Jerárquicos):** ✅ COMPLETADA (/api/config/mantenimiento con resolución en cascada, aislamiento estricto por busId y overrides de km)
 - **Fase 3 (Gobernanza Online Socio con Validación de Red):** ✅ COMPLETADA (Alerta reactiva de falta de red, bloqueo de botón si offline, sincronización automática a BD y auto-activación de extras)
-- **Fase 4 (Descarga Silenciosa Login Chofer/Ayudante):** ⏳ EN PROGRESO (Hook en LoginScreen para descargar en background las recetas del bus)
-- **Fase 5 (Pruebas E2E y Verificación):** ⏳ PENDIENTE
+- **Fase 4 (Descarga Silenciosa Login Chofer/Ayudante):** ✅ COMPLETADA (Trigger en segundo plano en LoginScreen para hidratar caché local del bus al iniciar sesión)
+- **Fase 5 (Pruebas E2E, Verificación y Handover Final):** ⏳ EN PROGRESO
+
+---
+
+### 🏛️ ARQUITECTURA OFICIAL DE MANTENIMIENTO: HERENCIA Y AISLAMIENTO POR UNIDAD
+1. **Nivel 1 - SuperAdministrador (SaaS / Cooperativa - PIN 9999):**
+   - **Autoridad:** Define el `CatalogoMaestroItem` global y las plantillas estándar de combos por estación.
+   - **Alcance:** Aplica como base/fábrica para toda la flota.
+   - **Requisito Conectividad:** Online obligatorio (escribe directamente a PostgreSQL en tabla maestra).
+
+2. **Nivel 2 - Socio Propietario (Unidad / Bus - PIN Socio):**
+   - **Autoridad:** Soberanía exclusiva sobre su autobús físico (`busId`).
+   - **Personalización de Combos (`BusRecetaCombo`):** Puede activar/desactivar ítems por estación, añadir repuestos extras o excluir ítems de fábrica (respetando los protegidos de Lubricadora).
+   - **Personalización de Durabilidad (`BusItemOverride`):** Puede alterar el intervalo en km de cualquier ítem para su unidad (ej. Aceite a 6,000 km en lugar de 5,000 km).
+   - **Aislamiento Estricto:** Sus personalizaciones jamás modifican el catálogo global ni alteran las recetas de otros autobuses.
+   - **Requisito Conectividad:** Online obligatorio. Si no hay internet, la UI bloquea el botón y muestra alerta: *"Se requiere conexión a internet para alterar recetas oficiales de la unidad"*.
+
+3. **Nivel 3 - Operación en Ruta (Chofer / Conductor y Ayudante):**
+   - **Autoridad:** Consumidores puros y ejecutores de servicio.
+   - **Descarga Silenciosa al Login:** Al ingresar su PIN, la app descarga en segundo plano la receta resuelta: `(Catálogo Global + Overrides de Socio + Receta de Estación)` y la almacena en caché local del teléfono.
+   - **Operación 100% Offline:** En fosa o carretera sin señal celular, registra el servicio y odómetro sin trabas contra su almacenamiento local. Cuando retoma señal, sincroniza a la nube.
 
 ---
 
