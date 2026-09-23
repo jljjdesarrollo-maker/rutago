@@ -1021,7 +1021,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
-                onClick={handleAbrirComboLubricadora}
+                onClick={() => handleAbrirEstacionChofer('LUBRICADORA')}
                 className="px-2.5 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-[10px] font-black shadow-xs transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
               >
                 <span>🛢️</span>

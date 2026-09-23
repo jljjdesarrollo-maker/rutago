@@ -36,7 +36,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const triggerBackgroundSyncMantenimiento = (userSession: { id: string; nombre: string; rol: string }) => {
     try {
       // Obtener bus activo o por defecto BUS-01
-      const activeBus = localStorage.getItem("rg_active_bus_id") || "BUS-01";
+      const activeBus = localStorage.getItem("rutago_active_bus_id") || "BUS-01";
       if (typeof navigator !== "undefined" && navigator.onLine) {
         syncMantenimientoConfigConServidor(activeBus).catch(err => {
           console.warn("Aviso: Descarga en segundo plano de recetas diferida:", err);
