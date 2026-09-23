@@ -26,7 +26,13 @@ export function getOwnerExpenses(busId = 'BUS-01'): OwnerExpense[] {
         return reAll.filter((item) => item.busId === busId);
       }
     }
-    return busExpenses;
+    return busExpenses.map((item) => ({
+      ...item,
+      totalAmount: Number(item.totalAmount) || 0,
+      paidAmount: Number(item.paidAmount) || 0,
+      pendingBalance: Number(item.pendingBalance) || 0,
+      abonos: Array.isArray(item.abonos) ? item.abonos : [],
+    }));
   } catch (err) {
     console.error('Error cargando gastos de socio:', err);
     return [];
@@ -163,7 +169,14 @@ export function getExpensesByMonth(busId: string, yearMonth: string): OwnerExpen
  */
 export function getPendingDebts(busId: string): OwnerExpense[] {
   const list = getOwnerExpenses(busId);
-  return list.filter((e) => e.pendingBalance > 0);
+  return list
+    .filter((e) => (Number(e.pendingBalance) || 0) > 0)
+    .map((e) => ({
+      ...e,
+      totalAmount: Number(e.totalAmount) || 0,
+      paidAmount: Number(e.paidAmount) || 0,
+      pendingBalance: Number(e.pendingBalance) || 0,
+    }));
 }
 
 /**

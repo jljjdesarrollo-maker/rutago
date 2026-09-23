@@ -25,6 +25,7 @@ import { FlotaScreen } from '@/components/transport/FlotaScreen';
 import { BenchmarkScreen } from '@/components/transport/BenchmarkScreen';
 import { SaaSAdminScreen } from '@/components/transport/SaaSAdminScreen';
 import { MantenimientoScreen } from '@/components/transport/MantenimientoScreen';
+import { SafeErrorBoundary } from '@/components/transport/SafeErrorBoundary';
 import { type AppView, type RecordFormData, type SavedRecord, type UserSession, num } from '@/components/transport/types';
 import { type VTSession, type FrecuenciaEstado } from '@/components/transport/types-boletos';
 import { useToast } from '@/hooks/use-toast';
@@ -385,10 +386,15 @@ export default function Home() {
   // Mantenimiento Mecánico Preventivo (Socio / Chofer)
   if (view === 'mantenimiento') {
     return (
-      <MantenimientoScreen
-        onBack={() => setView('home')}
-        onGoToSocioGastos={() => setView('socio_gastos')}
-      />
+      <SafeErrorBoundary
+        fallbackTitle="Módulo de Mantenimiento Preventivo"
+        onGoHome={() => setView('home')}
+      >
+        <MantenimientoScreen
+          onBack={() => setView('home')}
+          onGoToSocioGastos={() => setView('socio_gastos')}
+        />
+      </SafeErrorBoundary>
     );
   }
 

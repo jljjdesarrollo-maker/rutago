@@ -316,7 +316,7 @@ export default function OwnerDebtsReportModal({
                             isPending ? 'text-rose-700' : 'text-emerald-700'
                           }`}
                         >
-                          ${item.pendingBalance.toFixed(2)}
+                          ${(Number(item.pendingBalance) || 0).toFixed(2)}
                         </div>
 
                         {isPending && (
@@ -338,7 +338,7 @@ export default function OwnerDebtsReportModal({
                     <div className="mt-3 pt-2.5 border-t border-gray-100 space-y-1">
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="text-gray-500 font-medium">
-                          Pagado: ${item.paidAmount.toFixed(2)} de ${item.totalAmount.toFixed(2)}
+                          Pagado: ${(Number(item.paidAmount) || 0).toFixed(2)} de ${(Number(item.totalAmount) || 0).toFixed(2)}
                         </span>
                         <span className="font-bold text-gray-700">{percentPaid}%</span>
                       </div>
@@ -389,7 +389,7 @@ export default function OwnerDebtsReportModal({
                                   )}
                                 </div>
                                 <span className="font-extrabold text-emerald-700">
-                                  +${abono.amount.toFixed(2)}
+                                  +${(Number(abono.amount) || 0).toFixed(2)}
                                 </span>
                               </div>
                             ))}

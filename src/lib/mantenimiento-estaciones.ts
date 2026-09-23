@@ -801,6 +801,7 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
   codigosPreMarcados: string[];
   codigosExcluidos: string[];
 } {
+  const safeBusId = busId || 'BUS-01';
   const estacionBase = ESTACIONES_SERVICIO_CONFIG[estacionId];
   if (!estacionBase) {
     return { items: [], codigosPreMarcados: [], codigosExcluidos: [] };
@@ -808,14 +809,14 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
 
   if (typeof window === 'undefined') {
     return {
-      items: estacionBase.items,
-      codigosPreMarcados: estacionBase.items.filter(it => it.preMarcado).map(it => it.codigo),
+      items: estacionBase.items || [],
+      codigosPreMarcados: (estacionBase.items || []).filter(it => it.preMarcado).map(it => it.codigo),
       codigosExcluidos: [],
     };
   }
 
   try {
-    const raw = localStorage.getItem(STORAGE_PREFIX_COMBO_UNIDAD + busId + "_" + estacionId);
+    const raw = localStorage.getItem(STORAGE_PREFIX_COMBO_UNIDAD + safeBusId + "_" + estacionId);
     if (!raw) {
       // DEFAULT OFICIAL DE FÁBRICA PARA NUEVOS SOCIOS / BUSES
       return {

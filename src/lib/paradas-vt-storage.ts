@@ -417,7 +417,18 @@ export function getParadasPagoByBus(busId: string): ParadaPagoRegistro[] {
     const raw = localStorage.getItem(STORAGE_PARADAS_KEY);
     if (!raw) return [];
     const list: ParadaPagoRegistro[] = JSON.parse(raw);
-    return list.filter(p => p.busId === busId);
+    const busDisco = busId.replace(/^BUS-/i, '');
+    return list
+      .filter(p => p.busId === busId || p.disco === busDisco || p.disco === busId)
+      .map(p => ({
+        ...p,
+        costoTotal: Number(p.costoTotal) || 0,
+        odometroKm: Number(p.odometroKm) || 0,
+        odometroServicio: p.odometroServicio ? Number(p.odometroServicio) : (Number(p.odometroKm) || 0),
+        montoCubiertoAyudante: Number(p.montoCubiertoAyudante) || 0,
+        socioMontoTransferido: p.socioMontoTransferido !== undefined ? (Number(p.socioMontoTransferido) || 0) : undefined,
+        socioSaldoPendiente: p.socioSaldoPendiente !== undefined ? (Number(p.socioSaldoPendiente) || 0) : undefined,
+      }));
   } catch {
     return [];
   }

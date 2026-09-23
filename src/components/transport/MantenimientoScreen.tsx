@@ -42,7 +42,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, setActiveBus, subscribeToActiveBus, subscribeToBusOdometer } from '@/lib/fleet-storage';
+import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, setActiveBus, subscribeToActiveBus, subscribeToBusOdometer, INITIAL_PILOT_BUS } from '@/lib/fleet-storage';
 import {
   saveOwnerExpense,
   saveOwnerExpenseToApi,
@@ -121,7 +121,10 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     return getActiveBusId();
   });
   const buses = getAllBuses();
-  const currentBus = buses.find(b => b.id === activeBusId);
+  const currentBus = buses.find(b => b.id === activeBusId) ||
+    buses.find(b => b.numeroDisco === activeBusId || `BUS-${b.numeroDisco}` === activeBusId) ||
+    buses[0] ||
+    INITIAL_PILOT_BUS;
   const activeBusDisco = currentBus?.numeroDisco || '01';
   const activeBusPlaca = currentBus?.placa || 'TAA-5152';
 
@@ -1339,7 +1342,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     if (!config) return;
 
     // Cargar combo configurado para esta unidad (Fase 1 y 2)
-    const comboData = getComboUnidad(currentBus.id, estacionId);
+    const comboData = getComboUnidad(currentBus?.id || activeBusId, estacionId);
     const iniciales = comboData.codigosPreMarcados;
     
     // Resolver cascada si aplica
@@ -1381,7 +1384,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
   const handleGuardarRecetaCombo = () => {
     if (!estacionSeleccionada) return;
     saveComboUnidad(
-      currentBus.id,
+      (currentBus?.id || activeBusId),
       estacionSeleccionada,
       comboUnidadChecks,
       comboUnidadExtras,
@@ -1395,7 +1398,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     setEstacionCodigosSeleccionados(seleccionados);
     setModoConfigurarCombo(false);
 
-    const descTexto = 'Se actualizó y sincronizó en la nube la receta para la unidad ' + (currentBus.numeroDisco || currentBus.id) + '.';
+    const descTexto = 'Se actualizó y sincronizó en la nube la receta para la unidad ' + (currentBus?.numeroDisco || activeBusDisco || '01') + '.';
     toast({
       title: '✅ Combo de Unidad Guardado',
       description: descTexto,
@@ -1405,8 +1408,8 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
   // Fase 1 y 2: Restablecer combo de estación a los valores predeterminados de fábrica
   const handleRestablecerComboBase = () => {
     if (!estacionSeleccionada) return;
-    resetComboUnidad(currentBus.id, estacionSeleccionada);
-    const comboData = getComboUnidad(currentBus.id, estacionSeleccionada);
+    resetComboUnidad((currentBus?.id || activeBusId), estacionSeleccionada);
+    const comboData = getComboUnidad((currentBus?.id || activeBusId), estacionSeleccionada);
     const checksMap: Record<string, boolean> = {};
     comboData.items.forEach(it => {
       checksMap[it.codigo] = it.preMarcado;
@@ -2291,7 +2294,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
           </div>
 
           <div className="px-1 text-[11px] text-slate-500 flex items-center justify-between">
-            <span>{PLANTILLAS_NIVEL_CONTROL[nivelControl].descripcion}</span>
+            <span>{PLANTILLAS_NIVEL_CONTROL[nivelControl]?.descripcion || PLANTILLAS_NIVEL_CONTROL.BASICO.descripcion}</span>
             <span className="text-[10px] font-extrabold text-slate-700 shrink-0 ml-2">
               {Object.values(itemsActivosConfig).filter(Boolean).length} activos
             </span>
@@ -2331,7 +2334,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                       {est.nombre.split(" ")[0]}
                     </span>
                     <span className="text-[9px] text-amber-400 font-semibold mt-0.5">
-                      {getComboUnidad(currentBus.id, estId).items.length} ítems
+                      {getComboUnidad((currentBus?.id || activeBusId), estId).items.length} ítems
                     </span>
                   </button>
                   <button
@@ -2388,7 +2391,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                 </div>
                 <p className="text-[10px] text-slate-500">
                   {deudasTalleres.length > 0
-                    ? `Total por saldar: $${deudasTalleres.reduce((sum, d) => sum + d.pendingBalance, 0).toFixed(2)}`
+                    ? `Total por saldar: $${deudasTalleres.reduce((sum, d) => sum + (Number(d?.pendingBalance) || 0), 0).toFixed(2)}`
                     : 'Cuentas liquidadas al 100% con talleres y proveedores'}
                 </p>
               </div>
@@ -2474,10 +2477,10 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                             Saldo por Pagar
                           </span>
                           <span className="text-sm font-black text-rose-600">
-                            ${debt.pendingBalance.toFixed(2)}
+                            ${(Number(debt.pendingBalance) || 0).toFixed(2)}
                           </span>
                           <span className="text-[9px] text-slate-400 block">
-                            de ${debt.totalAmount.toFixed(2)}
+                            de ${(Number(debt.totalAmount) || 0).toFixed(2)}
                           </span>
                         </div>
                       </div>
@@ -2485,7 +2488,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                       {/* Progreso y Botón de Abono */}
                       <div className="pt-2 border-t border-amber-200/50 flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                          <span>Abonado: <strong className="text-emerald-700">${debt.paidAmount.toFixed(2)}</strong></span>
+                          <span>Abonado: <strong className="text-emerald-700">${(Number(debt.paidAmount) || 0).toFixed(2)}</strong></span>
                           {debt.abonos && debt.abonos.length > 0 && (
                             <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold text-[9px]">
                               {debt.abonos.length} {debt.abonos.length === 1 ? 'abono' : 'abonos'}
@@ -2562,7 +2565,13 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                 <div className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
                   {paradasTallerHistorial.slice(0, 10).map(p => {
                     const esAyudante = p.pagador === 'AYUDANTE';
-                    const tieneSaldo = (p.socioSaldoPendiente || 0) > 0;
+                    const tieneSaldo = (Number(p.socioSaldoPendiente) || 0) > 0;
+                    const odoKmVal = Number(p.odometroKm) || 0;
+                    const odoServVal = p.odometroServicio ? Number(p.odometroServicio) : odoKmVal;
+                    const montoAyudanteVal = Number(p.montoCubiertoAyudante) || 0;
+                    const montoTransfVal = Number(p.socioMontoTransferido) || 0;
+                    const saldoPendVal = Number(p.socioSaldoPendiente) || 0;
+                    const costoVal = Number(p.costoTotal) || 0;
                     return (
                       <div
                         key={p.id}
@@ -2571,22 +2580,22 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-bold text-xs text-slate-900 truncate">
-                              {p.estacionNombre}
+                              {p.estacionNombre || 'Estación'}
                             </span>
                             <span className="text-[10px] font-mono text-slate-500">
-                              {p.odometroKm.toLocaleString()} km
+                              {odoKmVal.toLocaleString()} km
                             </span>
                             <span className="text-[9px] text-slate-400">
-                              {p.fecha}
+                              {p.fecha || ''}
                             </span>
                             {p.esRetroactivo && (
                               <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
-                                ⏱️ Regularizado ({p.odometroServicio?.toLocaleString() || p.odometroKm.toLocaleString()} km)
+                                ⏱️ Regularizado ({odoServVal.toLocaleString()} km)
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-600">
-                            <span>{p.taller}</span>
+                            <span>{p.taller || 'Taller Particular'}</span>
                             {p.factura && <span className="font-mono text-slate-400">• Fac: {p.factura}</span>}
                           </div>
                           
@@ -2594,7 +2603,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                           <div className="mt-1 flex items-center gap-1 flex-wrap">
                             {esAyudante ? (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-800">
-                                🚌 Pagado por Ayudante en Ruta (${p.montoCubiertoAyudante.toFixed(2)}) {p.descontadoEnVT ? '• Descontado en VT' : '• Pendiente de VT'}
+                                🚌 Pagado por Ayudante en Ruta (${montoAyudanteVal.toFixed(2)}) {p.descontadoEnVT ? '• Descontado en VT' : '• Pendiente de VT'}
                               </span>
                             ) : p.socioModalidad === 'TRANSFERENCIA_TOTAL' ? (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
@@ -2602,11 +2611,11 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                               </span>
                             ) : p.socioModalidad === 'TRANSFERENCIA_PARCIAL' ? (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900">
-                                ⚠️ Anticipo ${(p.socioMontoTransferido || 0).toFixed(2)} • Saldo: ${(p.socioSaldoPendiente || 0).toFixed(2)}
+                                ⚠️ Anticipo ${montoTransfVal.toFixed(2)} • Saldo: ${saldoPendVal.toFixed(2)}
                               </span>
                             ) : (
                               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-800">
-                                💳 Crédito Fiado • Saldo: ${(p.socioSaldoPendiente || 0).toFixed(2)}
+                                💳 Crédito Fiado • Saldo: ${saldoPendVal.toFixed(2)}
                               </span>
                             )}
                           </div>
@@ -2614,7 +2623,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
 
                         <div className="text-right shrink-0 flex flex-col items-end gap-1">
                           <span className="font-black text-xs text-slate-900">
-                            ${p.costoTotal.toFixed(2)}
+                            ${costoVal.toFixed(2)}
                           </span>
                           <div className="flex items-center gap-1">
                             {tieneSaldo && p.ownerExpenseId && (
@@ -3055,7 +3064,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                             </span>
                           )}
                           <span className="text-slate-400 text-[10px] ml-1.5">
-                            (Intervalo: cada {item.intervaloKm.toLocaleString()} km)
+                            (Intervalo: cada {(Number(item.intervaloKm) || 5000).toLocaleString()} km)
                           </span>
                         </div>
 
@@ -3156,7 +3165,7 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                   <div className="space-y-3.5 animate-in fade-in duration-150">
                     <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs text-amber-950">
                       <p className="font-extrabold flex items-center gap-1.5 text-amber-900">
-                        <span>🚌</span> Receta Oficial para Unidad {currentBus.numeroDisco || currentBus.id}
+                        <span>🚌</span> Receta Oficial para Unidad {currentBus?.numeroDisco || activeBusDisco || '01'}
                       </p>
                       <p className="text-[11px] text-amber-800 mt-1 leading-relaxed">
                         Marca los ítems que <strong>exiges</strong> que se hagan en tu autobús al parar en esta estación. Los que dejes marcados le aparecerán preseleccionados al chofer en su teléfono.
@@ -4832,11 +4841,11 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Odómetro:</span>
-                <span className="font-mono font-bold">{paradaParaEliminar.odometroKm?.toLocaleString()} km</span>
+                <span className="font-mono font-bold">{(Number(paradaParaEliminar.odometroKm) || 0).toLocaleString()} km</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Costo:</span>
-                <span className="font-black text-slate-900">${paradaParaEliminar.costoTotal.toFixed(2)}</span>
+                <span className="font-black text-slate-900">${(Number(paradaParaEliminar.costoTotal) || 0).toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Modalidad:</span>
