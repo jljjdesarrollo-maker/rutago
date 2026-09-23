@@ -1352,6 +1352,79 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     }
 
     saveItems(updated);
+
+    // Persistir parada técnica en historial y sincronizar a BD Central (soporta costo > 0 y $0)
+    try {
+      const paradaId = `parada-socio-${Date.now()}`;
+      const expenseId = `gasto-mnt-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+      const tallerStr = tallerRegistro.trim() || editingItem.tallerMecanico || 'Mecánica';
+      const esRetro = km < kmActual || (fechaFinal < today);
+
+      saveParadaPago({
+        id: paradaId,
+        busId: activeBusId,
+        disco: activeBusDisco,
+        fecha: fechaFinal,
+        estacionId: 'SERVICIO_INDIVIDUAL',
+        estacionNombre: editingItem.nombre,
+        taller: tallerStr,
+        odometroKm: km,
+        odometroServicio: km,
+        odometroActualBus: Math.max(kmActual, km),
+        esRetroactivo: esRetro,
+        kmRodadosDesdeServicio: Math.max(0, kmActual - km),
+        costoTotal: costoNum,
+        pagador: 'SOCIO',
+        montoCubiertoAyudante: 0,
+        descontadoEnVT: false,
+        socioModalidad: 'TRANSFERENCIA_TOTAL',
+        socioMontoTransferido: costoNum,
+        socioSaldoPendiente: 0,
+        ownerExpenseId: expenseId,
+        createdAt: new Date().toISOString(),
+      });
+
+      const descGasto = costoNum > 0
+        ? `${editingItem.nombre} (Km ${km.toLocaleString()}) - ${tallerStr}`
+        : `${editingItem.nombre} (Km ${km.toLocaleString()}) - ${tallerStr} [Sin costo / Garantía]`;
+
+      saveOwnerExpenseToApi({
+        id: expenseId,
+        busId: activeBusId,
+        category: 'OTROS',
+        description: descGasto,
+        provider: tallerStr,
+        totalAmount: costoNum,
+        paidAmount: costoNum,
+        pendingBalance: 0,
+        paymentMethod: 'TRANSFERENCIA',
+        status: 'PAGADO',
+        expenseDate: fechaFinal,
+        createdAt: new Date().toISOString(),
+      }).then(res => {
+        if (res.syncedToCloud) {
+          toast({
+            title: '☁️ Sincronizado en Base de Datos Central',
+            description: `${editingItem.nombre} guardado y sincronizado exitosamente en la nube.`,
+          });
+        } else {
+          toast({
+            title: '📡 Guardado Local (Sin Conexión)',
+            description: 'Sin internet al asentar. La información está segura en el equipo y se sincronizará a la base de datos al conectarse.',
+          });
+        }
+      }).catch(() => {
+        toast({
+          title: '📡 Guardado Local (Sin Conexión)',
+          description: 'Guardado localmente. Se sincronizará a la base de datos central al restablecer la conexión.',
+        });
+      });
+
+      recargarCarteraYParadas();
+    } catch (e) {
+      console.error('Error registrando parada individual del socio:', e);
+    }
+
     const esRetro = km < kmActual || (fechaFinal < today);
 
     if (itemsCascadaAfectados.length > 0) {

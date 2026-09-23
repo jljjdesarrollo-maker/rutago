@@ -338,6 +338,8 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   // Modal rápido de registro para el chofer
   const [modalItem, setModalItem] = useState<MantenimientoBusItem | null>(null);
   const [registroKm, setRegistroKm] = useState<string>('');
+  const [registroFecha, setRegistroFecha] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [registroCosto, setRegistroCosto] = useState<string>('');
   const [registroTaller, setRegistroTaller] = useState<string>('');
 
   const handleGuardarRegistroChofer = () => {
@@ -353,6 +355,9 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     }
 
     const today = new Date().toISOString().split('T')[0];
+    const fechaFinal = registroFecha || today;
+    const costoNum = parseFloat(registroCosto) || 0;
+    const tallerFinal = registroTaller.trim() || 'Servicio en Ruta (Chofer)';
     const storageKey = `rg_mantenimientos_v2_${activeBusId}`;
 
     // Actualizar en el storage completo del bus
@@ -367,8 +372,9 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         ? {
             ...it,
             ultimoKm: km,
-            fechaUltimo: today,
-            tallerMecanico: registroTaller.trim() || 'Servicio en Ruta (Chofer)',
+            fechaUltimo: fechaFinal,
+            costoEstimado: costoNum > 0 ? costoNum : it.costoEstimado,
+            tallerMecanico: tallerFinal,
           }
         : it
     );
@@ -382,17 +388,86 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           ? {
               ...it,
               ultimoKm: km,
-              fechaUltimo: today,
-              tallerMecanico: registroTaller.trim() || 'Servicio en Ruta (Chofer)',
+              fechaUltimo: fechaFinal,
+              costoEstimado: costoNum > 0 ? costoNum : it.costoEstimado,
+              tallerMecanico: tallerFinal,
             }
           : it
       )
     );
 
+    // Regla Inmutable: El odómetro del bus nunca retrocede
+    if (km > kmActual) {
+      saveBusOdometer(disco, km.toString(), 'Mantenimiento ' + modalItem.nombre);
+      setKmActual(km);
+    }
+
+    // Persistir parada técnica en historial y sincronizar a BD central
+    const paradaId = `parada-chofer-${Date.now()}`;
+    const expenseId = `gasto-mnt-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+
+    saveParadaPago({
+      id: paradaId,
+      busId: activeBusId,
+      disco,
+      fecha: fechaFinal,
+      estacionId: 'SERVICIO_INDIVIDUAL',
+      estacionNombre: modalItem.nombre,
+      taller: tallerFinal,
+      odometroKm: km,
+      odometroServicio: km,
+      odometroActualBus: Math.max(kmActual, km),
+      esRetroactivo: km < kmActual || fechaFinal < today,
+      kmRodadosDesdeServicio: Math.max(0, kmActual - km),
+      costoTotal: costoNum,
+      pagador: 'AYUDANTE',
+      montoCubiertoAyudante: costoNum,
+      descontadoEnVT: false,
+      ownerExpenseId: expenseId,
+      createdAt: new Date().toISOString(),
+    });
+
+    const descGasto = costoNum > 0
+      ? `${modalItem.nombre} (Km ${km.toLocaleString()}) - ${tallerFinal}`
+      : `${modalItem.nombre} (Km ${km.toLocaleString()}) - ${tallerFinal} [Sin costo / Garantía]`;
+
+    saveOwnerExpenseToApi({
+      id: expenseId,
+      busId: activeBusId,
+      category: 'OTROS',
+      description: descGasto,
+      provider: tallerFinal,
+      totalAmount: costoNum,
+      paidAmount: costoNum,
+      pendingBalance: 0,
+      paymentMethod: 'EFECTIVO',
+      status: 'PAGADO',
+      expenseDate: fechaFinal,
+      createdAt: new Date().toISOString(),
+    }).then(res => {
+      if (res.syncedToCloud) {
+        toast({
+          title: '☁️ Sincronizado en Base de Datos Central',
+          description: `${modalItem.nombre} asentado y guardado en la base de datos central exitosamente.`,
+        });
+      } else {
+        toast({
+          title: '📡 Guardado Local (Sin Conexión)',
+          description: 'Sin internet al asentar. La información está segura en el teléfono y se sincronizará a la base de datos automáticamente al recuperar la señal.',
+        });
+      }
+    }).catch(() => {
+      toast({
+        title: '📡 Guardado Local (Sin Conexión)',
+        description: 'Guardado localmente. Se sincronizará a la base de datos central al restablecer la conexión.',
+      });
+    });
+
     toast({
       title: 'Mantenimiento Asentado',
       description: `${modalItem.nombre} registrado con éxito en ${km.toLocaleString()} km.`,
     });
+
     setModalItem(null);
   };
 
@@ -1292,7 +1367,9 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                   onClick={() => {
                     setModalItem(tarea);
                     setRegistroKm(kmActual.toString());
-                    setRegistroTaller('');
+                    setRegistroFecha(new Date().toISOString().split('T')[0]);
+                    setRegistroCosto(tarea.costoEstimado ? tarea.costoEstimado.toString() : '');
+                    setRegistroTaller(tarea.tallerMecanico || '');
                   }}
                   className={`h-7 px-2 text-[10px] font-black rounded-lg shrink-0 border ${
                     tarea.esVencido

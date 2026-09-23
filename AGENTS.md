@@ -482,3 +482,20 @@
      > *Sin internet al asentar. La información está segura en el teléfono y se sincronizará a la base de datos automáticamente al recuperar la señal.*
 4. **Persistencia de Registros de $0 en BD Central:**
    - Tanto el combo rápido de lubricadora como cualquier estación con costo $0 ahora envían el payload a `saveOwnerExpenseToApi` con estado `PAGADO` (saldo pendiente $0) y descripción clara de *"Mantenimiento sin costo / Garantía"*, permitiendo que la base de datos central en la nube conserve el historial técnico sin generar deudas artificiales al socio.
+
+---
+
+## 🚀 ACTUALIZACIÓN (2026-09-23) - INTEGRACIÓN TOTAL DE PERSISTENCIA EN BD Y TOASTS EN ASENTAMIENTOS INDIVIDUALES
+
+### 📌 MOTIVO
+- En la prueba del usuario, el registro individual de aceite de motor se realizó desde el modal rápido unitario del Chofer/Socio, los cuales carecían de llamada a la Base de Datos central (`saveOwnerExpenseToApi`) y de los toasts informativos.
+
+### ⚙️ CAMBIOS APLICADOS
+1. **ChoferMantenimientoWidget (`handleGuardarRegistroChofer`):**
+   - Se añadió selección de **Fecha** y **Costo ($)** en el modal táctil individual del Chofer.
+   - Sincronización garantizada a la BD Central (`saveOwnerExpenseToApi`) tanto si el costo es $0 (garantía) como si tiene monto económico.
+   - Toasts informativos dinámicos:
+     - ☁️ **Sincronizado en Base de Datos Central** al completarse el guardado remoto.
+     - 📡 **Guardado Local (Sin Conexión)** cuando no hay internet al momento de asentar.
+2. **MantenimientoScreen (`handleUpdateMantenimiento`):**
+   - El formulario de edición/actualización individual del Socio ahora guarda la parada en historial y sincroniza el registro a la BD central con feedback en tiempo real.
