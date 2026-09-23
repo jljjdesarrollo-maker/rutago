@@ -298,6 +298,38 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
   // Historial de Mantenimientos y Paradas de Taller del Autobús (Fase A)
   const [isHistorialModalOpen, setIsHistorialModalOpen] = useState(false);
+  const [isSyncingManual, setIsSyncingManual] = useState(false);
+
+  const ejecutarSincronizacionManual = async () => {
+    if (isSyncingManual) return;
+    setIsSyncingManual(true);
+    try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        toast({
+          title: '📶 Modo Fuera de Línea',
+          description: 'No hay conexión a internet actualmente. Los datos se mantienen protegidos localmente.',
+          variant: 'destructive',
+        });
+        setIsSyncingManual(false);
+        return;
+      }
+      const res = await syncMantenimientoBidireccional(activeBusId);
+      setItems(cargarItems(activeBusId));
+      setHistorialParadas(getParadasPagoByBus(activeBusId));
+      setOutboxCount(getMantenimientoOutbox().length);
+      toast({
+        title: '☁️ Nube y Base de Datos Al Día',
+        description: `Sincronización completa. ${res.downloaded} registros consultados y respaldados en PostgreSQL.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Aviso de Red',
+        description: 'La sincronización se completará automáticamente en segundo plano.',
+      });
+    } finally {
+      setIsSyncingManual(false);
+    }
+  };
   const [historialParadas, setHistorialParadas] = useState<ParadaPagoRegistro[]>(() => {
     if (typeof window === 'undefined') return [];
     return getParadasPagoByBus(getActiveBusId());
@@ -1115,31 +1147,59 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             })}
           </div>
 
-          {/* Barra de Historial Operativo del Autobús para el Chofer (Fase A) */}
-          <div className="pt-1.5 border-t border-white/10 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[10px] text-slate-300 font-medium">
-              <div className="flex items-center gap-1">
+          {/* Barra de Historial Operativo y Sincronización en la Nube */}
+          <div className="pt-1.5 border-t border-white/10 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-[10px] text-slate-300 font-medium min-w-0">
+              <div className="flex items-center gap-1 truncate">
                 <History className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span>
                   {historialParadas.length === 0
-                    ? 'Sin servicios en historial'
+                    ? 'Sin servicios'
                     : `${historialParadas.length} en historial`}
                 </span>
               </div>
-              {outboxCount > 0 && (
-                <span className="flex items-center gap-1 text-[9px] font-black bg-amber-400 text-slate-950 px-1.5 py-0.5 rounded-md animate-pulse" title="Mantenimientos pendientes por subir a la nube cuando haya señal">
-                  <RefreshCw className="w-3 h-3 animate-spin" /> {outboxCount} en espera
+              {outboxCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={ejecutarSincronizacionManual}
+                  className="flex items-center gap-1 text-[9px] font-black bg-amber-400 hover:bg-amber-300 text-slate-950 px-1.5 py-0.5 rounded-md animate-pulse cursor-pointer shadow-xs"
+                  title="Toca para subir a la base de datos ahora"
+                >
+                  <RefreshCw className="w-3 h-3 animate-spin" /> {outboxCount} subir
+                </button>
+              ) : (
+                <span className="hidden sm:inline-flex items-center gap-0.5 text-[8px] text-emerald-400 font-semibold opacity-80">
+                  ● BD activa
                 </span>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => setIsHistorialModalOpen(true)}
-              className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-amber-300 hover:text-amber-200 text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer border border-white/15"
-            >
-              <History className="w-3 h-3" />
-              <span>Ver Historial ({historialParadas.length})</span>
-            </button>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Botón Sincronizar Bidireccional */}
+              <button
+                type="button"
+                onClick={ejecutarSincronizacionManual}
+                disabled={isSyncingManual}
+                className="px-2 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-200 hover:text-white text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer border border-white/15 disabled:opacity-50"
+                title="Sincronizar con la Base de Datos central en la nube"
+              >
+                <RefreshCw className={`w-3 h-3 text-cyan-300 ${isSyncingManual ? 'animate-spin text-amber-400' : ''}`} />
+                <span className="hidden xs:inline">{isSyncingManual ? 'Sincronizando...' : 'Sincronizar'}</span>
+              </button>
+
+              {/* Botón Ver Historial */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsHistorialModalOpen(true);
+                  ejecutarSincronizacionManual();
+                }}
+                className="px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 text-amber-300 hover:text-amber-200 text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer border border-amber-400/30"
+              >
+                <History className="w-3 h-3" />
+                <span>Ver Historial ({historialParadas.length})</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2377,14 +2437,14 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       {isHistorialModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white rounded-t-3xl sm:rounded-3xl border border-slate-200 w-full max-w-lg max-h-[88vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-200">
-            {/* Cabecera del Historial */}
+            {/* Cabecera del Historial con Sincronización a BD */}
             <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-900 flex items-center justify-center shrink-0">
                   <History className="w-5 h-5" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <h3 className="font-black text-sm text-slate-900">
                       Historial de Mantenimientos
                     </h3>
@@ -2392,18 +2452,30 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                       Bus {disco}
                     </Badge>
                   </div>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Servicios mecánicos, lubricaciones y fosas registradas
+                  <p className="text-[11px] text-slate-500 font-medium truncate">
+                    Respaldado en Base de Datos PostgreSQL central
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsHistorialModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={ejecutarSincronizacionManual}
+                  disabled={isSyncingManual}
+                  className="h-8 px-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
+                  title="Refrescar y sincronizar con la base de datos"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${isSyncingManual ? 'animate-spin text-amber-600' : ''}`} />
+                  <span className="hidden sm:inline">{isSyncingManual ? 'Sincronizando...' : 'Refrescar'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsHistorialModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Lista Cronológica Scrollable */}

@@ -17,7 +17,8 @@
 import { syncMantenimientoConfigConServidor } from './mantenimiento-estaciones';
 import { getActiveBusId } from './fleet-storage';
 import { OwnerExpense } from '../types/expenses';
-import { saveOwnerExpense } from './owner-expenses-storage';
+import { saveOwnerExpense, fetchOwnerExpensesFromApi } from './owner-expenses-storage';
+import { syncRetroactiveParadasFromExpenses } from './paradas-vt-storage';
 
 const OUTBOX_STORAGE_KEY = 'rg_mantenimiento_outbox_v1';
 
@@ -148,22 +149,39 @@ export async function flushMantenimientoOutbox(): Promise<{ processed: number; e
  * 1. Sube los mantenimientos/gastos locales pendientes (Upload).
  * 2. Descarga la última receta de combos del socio desde la nube (Download).
  */
-export async function syncMantenimientoBidireccional(busId?: string): Promise<void> {
-  if (typeof window === 'undefined' || !navigator.onLine) return;
+export async function syncMantenimientoBidireccional(busId?: string): Promise<{ uploaded: number; downloaded: number }> {
+  if (typeof window === 'undefined' || !navigator.onLine) {
+    return { uploaded: 0, downloaded: 0 };
+  }
 
   const targetBusId = busId || getActiveBusId();
+  let uploaded = 0;
+  let downloaded = 0;
 
-  // 1. Upload pendientes
+  // 1. Subir (Upload) pendientes de la cola outbox
   try {
-    await flushMantenimientoOutbox();
+    const res = await flushMantenimientoOutbox();
+    uploaded = res.processed;
   } catch (e) {
     console.warn('Aviso flush outbox diferido:', e);
   }
 
-  // 2. Download configuración de recetas actualizada del socio
+  // 2. Descargar (Download) configuración de recetas actualizada del socio
   try {
     await syncMantenimientoConfigConServidor(targetBusId);
   } catch (e) {
     console.warn('Aviso descarga config mantenimiento diferido:', e);
   }
+
+  // 3. Descargar (Download) desde la BD central todos los mantenimientos/gastos registrados (por otros teléfonos o web)
+  try {
+    const remoteExpenses = await fetchOwnerExpensesFromApi(targetBusId);
+    downloaded = Array.isArray(remoteExpenses) ? remoteExpenses.length : 0;
+    // Sincronizar paradas operativas a partir de los gastos descargados
+    syncRetroactiveParadasFromExpenses(targetBusId);
+  } catch (e) {
+    console.warn('Aviso descarga gastos mantenimiento diferido:', e);
+  }
+
+  return { uploaded, downloaded };
 }
