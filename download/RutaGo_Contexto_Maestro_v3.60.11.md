@@ -66,7 +66,34 @@ Si estás abriendo este proyecto desde una nueva cuenta de Google Studio o una n
 
 ---
 
+## 🚀 VERSIÓN 3.60.12: DETALLE PRECISO DE TRABAJOS Y ARREGLOS RÁPIDOS / NOVEDADES FUERA DE CATÁLOGO
+
+### 📌 Diagnóstico Operativo Aprobado:
+1. **Problema 1 (Falta de visibilidad de ítems/repuestos en el historial):** El historial solo mostraba el taller mecánico y la estación, pero no qué ítems exactos fueron cambiados (ej: qué filtros, aceites o piezas específicas se sustituyeron), especialmente en registros históricos o agrupados.
+2. **Problema 2 (Mantenimientos extraordinarios no catalogados):** Eventos imprevistos en ruta o patio (ejemplo real: *revisión del paquete delantero derecho por ruido y cambio de arandelas/enlainar*, soldaduras de escape, parches de llantas) no tenían un flujo ágil. Crear un ítem con kilometraje oficial burocratizaba el sistema para una labor que no tiene un ciclo fijo de km.
+
+### 📐 FASES DEL PLAN DE IMPLEMENTACIÓN v3.60.12:
+- **FASE 1 (Enriquecimiento del Modelo y Sincronizador de Datos):**
+  * Extender `ParadaPagoRegistro` con campos `detalleTrabajo?: string` y `codigosMantenimiento?: string[]`.
+  * Enriquecer `syncRetroactiveParadasFromExpenses` para que capture la descripción contable, notas y desglose de repuestos de cada gasto histórico.
+- **FASE 2 (Visibilidad Destacada en Tarjetas de Historial - Chofer y Socio):**
+  * Mostrar caja de descripción destacada con los repuestos/trabajos exactos en cada tarjeta de servicio (`detalleTrabajo` y micro-tags de piezas).
+  * Búsqueda reactiva optimizada en memoria que incluya las palabras clave de los trabajos realizados.
+- **FASE 3 (Modal Ergonómico "🛠️ Novedad / Arreglo Rápido" en 1 Toque):**
+  * Botón táctil ergonómico `[ 🛠️ Arreglo Rápido ]` en la botonera superior del widget del Chofer y panel del Socio.
+  * Modal Bottom Sheet con:
+    - ¿Qué se le realizó?: Campo de texto ágil con sugerencias táctiles rápidas (*"Enlainar paquete delantero"*, *"Parchada de llanta"*, *"Soldadura de soporte"*, *"Ajuste de terminales"*).
+    - Odómetro: Precargado con el tacómetro auditado actual del bus.
+    - Taller / Fosa: Nombre del proveedor o taller.
+    - Costo Total ($): Soporta $0 (revisión/garantía) o monto pagado.
+    - Pagador: `[ 🚌 Ayudante en Ruta ]` (se asienta en arqueo) vs `[ 👤 Socio Propietario ]` (gasto patrimonial).
+- **FASE 4 (Asentamiento Contable Blindado y Verificación E2E):**
+  * Guardado seguro en `ParadaPagoRegistro` y sincronización con `OwnerExpenses` sin alterar los intervalos de 5.000 km de mantenimiento preventivo.
+  * Verificación offline, compilación limpia y pruebas de extremo a extremo.
+
+---
+
 ## 📋 TAREAS PENDIENTES EN EL ROADMAP
-1. **PENDIENTE #8 (Rediseño y Optimización de la Interfaz del Chofer):** ✅ COMPLETADO AL 100% (Fases 1, 2, 3 y 4).
+1. **v3.60.12 (Detalle de Trabajos y Arreglos Fuera de Catálogo):** 🚀 EN DESARROLLO (Fases 1, 2, 3 y 4).
 2. **Verificación en Ambiente Móvil Real:** Comprobar la respuesta en el teléfono físico con una sola mano.
 3. **Módulo Institucional de Gerencia de Cooperativa (Pendiente #4).**

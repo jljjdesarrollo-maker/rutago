@@ -1396,6 +1396,9 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
         socioModalidad: 'TRANSFERENCIA_TOTAL',
         socioMontoTransferido: costoNum,
         socioSaldoPendiente: 0,
+        detalleTrabajo: `${editingItem.nombre} - Mantenimiento realizado`,
+        itemsRealizados: [editingItem.nombre],
+        codigosMantenimiento: editingItem.codigo ? [editingItem.codigo] : [],
         ownerExpenseId: expenseId,
         createdAt: new Date().toISOString(),
       });
@@ -1889,6 +1892,11 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
 
       const descripcionEgreso = `Parada en ${config.nombre}: ${nombresRealizados}${estacionCodigosSeleccionados.length > 3 ? " y más" : ""} (Km ${kmServicio.toLocaleString()}) - ${modalidadDesc}`;
 
+      const todosNombresRealizados = estacionCodigosSeleccionados
+        .map(c => mapCatalogo.get(c)?.nombre || c);
+
+      const detalleCompleto = `${config.nombre}: ${todosNombresRealizados.join(', ')}`;
+
       // 1. Guardar en Parada Técnica Operativa (Fase 3 y 4) - SIEMPRE para Historial
       saveParadaPago({
         id: 'parada-socio-' + Date.now(),
@@ -1911,6 +1919,9 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
         socioModalidad,
         socioMontoTransferido: paidAmount,
         socioSaldoPendiente: pendingBalance,
+        detalleTrabajo: detalleCompleto,
+        itemsRealizados: todosNombresRealizados,
+        codigosMantenimiento: estacionCodigosSeleccionados,
         ownerExpenseId: expenseId,
         createdAt: new Date().toISOString(),
       });
@@ -2838,6 +2849,37 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                             <span>{p.taller || 'Taller Particular'}</span>
                             {p.factura && <span className="font-mono text-slate-400">• Fac: {p.factura}</span>}
                           </div>
+
+                          {/* Detalle preciso del trabajo realizado o repuestos cambiados */}
+                          {p.detalleTrabajo && (
+                            <div className="mt-1 p-1.5 rounded-lg bg-white border border-slate-200/80 text-[10px] text-slate-800 leading-snug">
+                              <span className="font-bold text-slate-900 block text-[9px] uppercase tracking-wider text-slate-500 mb-0.5">
+                                🔧 Trabajo / Repuestos:
+                              </span>
+                              <span className="font-medium text-slate-800">
+                                {p.detalleTrabajo}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Chips de items realizados si existen y no hay detalleTrabajo */}
+                          {p.itemsRealizados && p.itemsRealizados.length > 0 && !p.detalleTrabajo && (
+                            <div className="flex items-center gap-1 flex-wrap mt-1">
+                              {p.itemsRealizados.slice(0, 5).map((itNom, idx) => (
+                                <span
+                                  key={idx}
+                                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200"
+                                >
+                                  ✓ {itNom}
+                                </span>
+                              ))}
+                              {p.itemsRealizados.length > 5 && (
+                                <span className="text-[9px] text-slate-400 font-bold">
+                                  +{p.itemsRealizados.length - 5} más
+                                </span>
+                              )}
+                            </div>
+                          )}
                           
                           {/* Sello de Modalidad */}
                           <div className="mt-1 flex items-center gap-1 flex-wrap">

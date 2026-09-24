@@ -36,6 +36,9 @@ export interface ParadaPagoRegistro {
   socioMontoTransferido?: number;
   socioSaldoPendiente?: number;
   ownerExpenseId?: string;
+  detalleTrabajo?: string; // Descripción precisa del trabajo o repuestos (ej. "Enlainar paquete delantero derecho y cambio de arandelas")
+  itemsRealizados?: string[]; // Nombres de ítems realizados (ej. ["Aceite Motor", "Filtro Aceite"])
+  codigosMantenimiento?: string[]; // Códigos de catálogo involucrados (ej. ["MNT-01", "MNT-02"])
   createdAt: string;
 }
 
@@ -288,6 +291,9 @@ export function syncRetroactiveParadasFromExpenses(busId?: string): number {
 
       const disco = (exp.busId || 'BUS-01').replace(/^BUS-0?/, '') || '01';
 
+      // Extraer detalle legible del trabajo realizado desde descripción o notas
+      const detalleTrabajo = exp.description || exp.notes || undefined;
+
       const nuevaParada: ParadaPagoRegistro = {
         id: generatedParadaId,
         busId: exp.busId || busId || 'BUS-01',
@@ -308,6 +314,7 @@ export function syncRetroactiveParadasFromExpenses(busId?: string): number {
         socioMontoTransferido: pagador === 'SOCIO' ? pagado : undefined,
         socioSaldoPendiente: pagador === 'SOCIO' ? saldo : undefined,
         ownerExpenseId: exp.id,
+        detalleTrabajo,
         createdAt: exp.createdAt || new Date().toISOString(),
       };
 
@@ -524,9 +531,10 @@ export function filtrarParadasPagoOffline(
     const textoCompleto = [
       p.estacionNombre || '',
       p.taller || '',
-      p.notas || '',
-      p.facturaNumero || '',
+      p.detalleTrabajo || '',
+      p.factura || '',
       p.pagador || '',
+      Array.isArray(p.itemsRealizados) ? p.itemsRealizados.join(' ') : '',
       Array.isArray(p.codigosMantenimiento) ? p.codigosMantenimiento.join(' ') : '',
       p.odometroServicio ? `${p.odometroServicio} km` : '',
       p.odometroKm ? `${p.odometroKm} km` : '',
