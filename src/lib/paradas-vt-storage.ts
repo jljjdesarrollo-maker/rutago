@@ -457,10 +457,85 @@ export function getParadasPagoByBus(busId: string): ParadaPagoRegistro[] {
         montoCubiertoAyudante: Number(p.montoCubiertoAyudante) || 0,
         socioMontoTransferido: p.socioMontoTransferido !== undefined ? (Number(p.socioMontoTransferido) || 0) : undefined,
         socioSaldoPendiente: p.socioSaldoPendiente !== undefined ? (Number(p.socioSaldoPendiente) || 0) : undefined,
-      }));
+      }))
+      .sort((a, b) => {
+        // 1. Criterio Maestro: Fecha descendente (más reciente arriba)
+        const dateA = a.fecha || '';
+        const dateB = b.fecha || '';
+        if (dateA !== dateB) {
+          return dateB.localeCompare(dateA);
+        }
+        // 2. Si la fecha es idéntica: Odómetro de servicio descendente (mayor km arriba)
+        const kmA = (a.odometroServicio && a.odometroServicio > 0) ? a.odometroServicio : (a.odometroKm || 0);
+        const kmB = (b.odometroServicio && b.odometroServicio > 0) ? b.odometroServicio : (b.odometroKm || 0);
+        if (kmA !== kmB) {
+          return kmB - kmA;
+        }
+        // 3. Fallback: Creación cronológica en base de datos descendente
+        const timeA = a.createdAt || a.id || '';
+        const timeB = b.createdAt || b.id || '';
+        return timeB.localeCompare(timeA);
+      });
   } catch {
     return [];
   }
+}
+
+/**
+ * Motor de búsqueda y filtrado multi-criterio 100% offline para el historial de paradas
+ * Cero llamadas a red, búsqueda predictiva instantánea (< 2ms)
+ */
+export function filtrarParadasPagoOffline(
+  paradas: ParadaPagoRegistro[],
+  criterioTexto: string = '',
+  filtroEstacion: string = 'TODAS'
+): ParadaPagoRegistro[] {
+  if (!Array.isArray(paradas) || paradas.length === 0) return [];
+
+  const queryNorm = criterioTexto.trim().toLowerCase();
+
+  return paradas.filter(p => {
+    // 1. Filtro por tipo o estación si no es 'TODAS'
+    if (filtroEstacion !== 'TODAS') {
+      const estId = (p.estacionId || '').toUpperCase();
+      const estNom = (p.estacionNombre || '').toUpperCase();
+      const desc = `${estNom} ${p.notas || ''} ${p.codigosMantenimiento?.join(' ') || ''}`.toUpperCase();
+
+      if (filtroEstacion === 'LUBRICADORA' && !estId.includes('LUBRICADORA') && !desc.includes('ACEITE') && !desc.includes('FILTRO')) {
+        return false;
+      }
+      if (filtroEstacion === 'FRENOS' && !estId.includes('FRENO') && !desc.includes('ZAPATA') && !desc.includes('RACHE') && !desc.includes('BOCINA')) {
+        return false;
+      }
+      if (filtroEstacion === 'AIRE' && !estId.includes('AIRE') && !desc.includes('ADMISION') && !desc.includes('TOBERA') && !desc.includes('COMPRESOR')) {
+        return false;
+      }
+      if (filtroEstacion === 'LLANTAS' && !estId.includes('LLANTA') && !desc.includes('ALINEAC') && !desc.includes('ROTAC')) {
+        return false;
+      }
+      if (filtroEstacion === 'MAYOR' && !estId.includes('MAYOR') && !desc.includes('CAJA') && !desc.includes('CORONA') && !desc.includes('EMBRAGUE')) {
+        return false;
+      }
+    }
+
+    // 2. Filtro predictivo de texto libre (busca en nombre, taller, notas, factura, codigos, pagador)
+    if (!queryNorm) return true;
+
+    const textoCompleto = [
+      p.estacionNombre || '',
+      p.taller || '',
+      p.notas || '',
+      p.facturaNumero || '',
+      p.pagador || '',
+      Array.isArray(p.codigosMantenimiento) ? p.codigosMantenimiento.join(' ') : '',
+      p.odometroServicio ? `${p.odometroServicio} km` : '',
+      p.odometroKm ? `${p.odometroKm} km` : '',
+      p.costoTotal ? `$${p.costoTotal}` : '',
+      p.fecha || '',
+    ].join(' ').toLowerCase();
+
+    return textoCompleto.includes(queryNorm);
+  });
 }
 
 /**

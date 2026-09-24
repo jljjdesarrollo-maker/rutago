@@ -22,6 +22,8 @@ import {
   Calendar,
   Wifi,
   RefreshCw,
+  Search,
+  Filter,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -37,6 +39,7 @@ import {
   saveParadaPago,
   getParadasPagoByBus,
   calcularDesgasteRegularizacion,
+  filtrarParadasPagoOffline,
   type ParadaPagoRegistro,
   type ParadaPagador,
   type SocioModalidadPago,
@@ -105,7 +108,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             (it: MantenimientoBusItem) => it.ultimoKm > 0 && Math.abs(currentKm - it.ultimoKm) > 100000
           );
           if (!desfaseExtremo) {
-            return parsed.filter((it: MantenimientoBusItem) => it.asignadoChofer && it.activo);
+            return parsed.filter((it: MantenimientoBusItem) => it.activo !== false);
           }
           console.warn('Detectado desfase histórico en widget del chofer. Re-calibrando a línea base real...');
         }
@@ -120,8 +123,8 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
     const catalogo = getCatalogoMaestroGlobal();
     return catalogo
-      .filter(c => c.asignadoChoferPorDefecto)
       .map(c => {
+        const esChofer = Boolean(c.asignadoChoferPorDefecto);
         // Aceite de motor y tríada de filtros: Cambiados anteayer (19 de septiembre de 2026) a 893,100 km
         if (
           c.codigo === 'MNT-ACEITE-MOT' ||
@@ -140,7 +143,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             fechaUltimo: '2026-09-19',
             costoEstimado: 0,
             repuestoDetalle: c.especificacionLubricanteRepuesto,
-            asignadoChofer: true,
+            asignadoChofer: esChofer,
             activo: true,
           };
         }
@@ -157,7 +160,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             fechaUltimo: '2026-09-19',
             costoEstimado: 0,
             repuestoDetalle: c.especificacionLubricanteRepuesto,
-            asignadoChofer: true,
+            asignadoChofer: esChofer,
             activo: true,
           };
         }
@@ -174,7 +177,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             fechaUltimo: '2026-09-15',
             costoEstimado: 0,
             repuestoDetalle: c.especificacionLubricanteRepuesto,
-            asignadoChofer: true,
+            asignadoChofer: esChofer,
             activo: true,
           };
         }
@@ -189,14 +192,19 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           fechaUltimo: '2026-09-10',
           costoEstimado: 0,
           repuestoDetalle: c.especificacionLubricanteRepuesto,
-          asignadoChofer: true,
+          asignadoChofer: esChofer,
           activo: true,
         };
       });
   }, [resolverKmActual]);
 
-  // Tareas asignadas al Chofer
+  // Tareas asignadas al Chofer y Catálogo Completo del Bus
   const [items, setItems] = useState<MantenimientoBusItem[]>(() => cargarItems(getActiveBusId()));
+  // FASE 1: Selector de Alcance en 1 Toque (Mis Tareas vs Todo el Bus)
+  const [filtroAlcance, setFiltroAlcance] = useState<'CHOFER' | 'TODOS'>('CHOFER');
+  // FASE 2: Búsqueda y Filtros Offline para el Historial (Zero Latency)
+  const [busquedaHistorial, setBusquedaHistorial] = useState<string>('');
+  const [filtroEstacionHistorial, setFiltroEstacionHistorial] = useState<string>('TODAS');
   const [, setComboSyncCounter] = useState<number>(0);
   const [outboxCount, setOutboxCount] = useState<number>(() => {
     if (typeof window === 'undefined') return 0;
@@ -1141,9 +1149,34 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   const currentBus = buses.find(b => b.id === activeBusId);
   const disco = currentBus?.numeroDisco || '01';
 
-  // Cálculos semafóricos
+  // Helper de badges para categorías mecánicas
+  const getCategoriaBadge = (categoria?: string) => {
+    switch (categoria) {
+      case 'MOTOR':
+        return { label: 'Motor', icon: '🛢️', color: 'bg-amber-100 text-amber-900 border-amber-300' };
+      case 'TRANSMISION':
+        return { label: 'Transmisión', icon: '⚙️', color: 'bg-indigo-100 text-indigo-900 border-indigo-300' };
+      case 'ADMISION_AIRE':
+      case 'SISTEMA_AIRE':
+        return { label: 'Aire / Admisión', icon: '💨', color: 'bg-cyan-100 text-cyan-900 border-cyan-300' };
+      case 'RODAJE_SUSPENSION':
+      case 'SUSPENSION':
+        return { label: 'Rodaje / Chasis', icon: '🛞', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' };
+      case 'FRENOS_NEUMATICO':
+      case 'FRENOS':
+        return { label: 'Frenos', icon: '🛑', color: 'bg-rose-100 text-rose-900 border-rose-300' };
+      default:
+        return { label: 'General', icon: '🔧', color: 'bg-slate-100 text-slate-800 border-slate-300' };
+    }
+  };
+
+  // Cálculos semafóricos con Priorización por Severidad Mecánica (Fase 1)
   const tareasCalculadas = useMemo(() => {
-    return items.map(item => {
+    const itemsFiltrados = filtroAlcance === 'CHOFER'
+      ? items.filter(it => it.asignadoChofer && it.activo !== false)
+      : items.filter(it => it.activo !== false);
+
+    const list = itemsFiltrados.map(item => {
       const kmRecorridos = kmActual - item.ultimoKm;
       const kmRestantes = item.intervaloKm - kmRecorridos;
       const esVencido = kmRestantes <= 0;
@@ -1159,10 +1192,52 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         porcentaje,
       };
     });
+
+    // PRIORIZACIÓN INTELIGENTE POR SEVERIDAD MECÁNICA:
+    // 1º Vencidos (esVencido === true), con mayor km excedido primero
+    // 2º Próximos / Urgentes (esUrgente === true), con menor km restante primero
+    // 3º En Regla, con menor km restante primero (lo que está más próximo a vencer primero)
+    return list.sort((a, b) => {
+      // Prioridad 1: Vencidos primero
+      if (a.esVencido && !b.esVencido) return -1;
+      if (!a.esVencido && b.esVencido) return 1;
+
+      // Si ambos están vencidos: el más excedido (menor kmRestantes negativo) va primero
+      if (a.esVencido && b.esVencido) {
+        return a.kmRestantes - b.kmRestantes;
+      }
+
+      // Prioridad 2: Urgentes (≤ 800 km)
+      if (a.esUrgente && !b.esUrgente) return -1;
+      if (!a.esUrgente && b.esUrgente) return 1;
+
+      // Prioridad 3: En regla: el que tiene MENOR km restante va primero
+      return a.kmRestantes - b.kmRestantes;
+    });
+  }, [items, kmActual, filtroAlcance]);
+
+  const criticosCount = useMemo(() => {
+    return items.filter(it => {
+      const kmRecorridos = kmActual - it.ultimoKm;
+      return (it.intervaloKm - kmRecorridos) <= 0 && it.activo !== false;
+    }).length;
   }, [items, kmActual]);
 
-  const criticosCount = tareasCalculadas.filter(t => t.esVencido).length;
-  const proximosCount = tareasCalculadas.filter(t => t.esUrgente).length;
+  const proximosCount = useMemo(() => {
+    return items.filter(it => {
+      const kmRecorridos = kmActual - it.ultimoKm;
+      const rest = it.intervaloKm - kmRecorridos;
+      return rest > 0 && rest <= 800 && it.activo !== false;
+    }).length;
+  }, [items, kmActual]);
+
+  const countChofer = useMemo(() => items.filter(it => it.asignadoChofer && it.activo !== false).length, [items]);
+  const countTodos = useMemo(() => items.filter(it => it.activo !== false).length, [items]);
+
+  // FASE 2: Filtrado Offline en memoria del Historial de Paradas
+  const paradasFiltradas = useMemo(() => {
+    return filtrarParadasPagoOffline(historialParadas, busquedaHistorial, filtroEstacionHistorial);
+  }, [historialParadas, busquedaHistorial, filtroEstacionHistorial]);
 
   // Si el módulo está apagado por el socio, no renderizar nada
   if (!getBusModuloMantenimientoActivo(activeBusId) || items.length === 0) return null;
@@ -1318,85 +1393,139 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           </div>
         </div>
 
-        {/* Lista de tareas tipo semáforo */}
-        <div className="space-y-2">
-          {tareasCalculadas.map(tarea => (
-            <div
-              key={tarea.id}
-              className={`p-2.5 rounded-xl border transition-all ${
-                tarea.esVencido
-                  ? 'bg-rose-50/80 border-rose-300'
-                  : tarea.esUrgente
-                  ? 'bg-amber-50/60 border-amber-300'
-                  : 'bg-white border-slate-200'
+        {/* FASE 1: Selector de Alcance en 1 Toque (Mis Tareas vs Todo el Bus) */}
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 w-full shadow-inner">
+            <button
+              type="button"
+              onClick={() => setFiltroAlcance('CHOFER')}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                filtroAlcance === 'CHOFER'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
             >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    {/* Semáforo visual táctil */}
-                    <span
-                      className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+              <UserCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>Mis Tareas ({countChofer})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setFiltroAlcance('TODOS')}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                filtroAlcance === 'TODOS'
+                  ? 'bg-amber-500 text-slate-950 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+              }`}
+            >
+              <Wrench className="w-3.5 h-3.5 shrink-0" />
+              <span>Todo el Bus ({countTodos})</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Lista de tareas tipo semáforo (Priorizada por severidad mecánica) */}
+        <div className="space-y-2">
+          {tareasCalculadas.length === 0 ? (
+            <div className="text-center py-6 px-4 bg-slate-50/80 rounded-xl border border-dashed border-slate-300">
+              <p className="text-xs font-bold text-slate-600">No hay tareas pendientes en este filtro</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Todos los componentes se encuentran calibrados y al día.</p>
+            </div>
+          ) : (
+            tareasCalculadas.map(tarea => {
+              const catBadge = getCategoriaBadge(tarea.categoria);
+              return (
+                <div
+                  key={tarea.id}
+                  className={`p-2.5 rounded-xl border transition-all ${
+                    tarea.esVencido
+                      ? 'bg-rose-50/80 border-rose-300 shadow-xs'
+                      : tarea.esUrgente
+                      ? 'bg-amber-50/60 border-amber-300'
+                      : 'bg-white border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Semáforo visual táctil */}
+                        <span
+                          className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                            tarea.esVencido
+                              ? 'bg-rose-600 animate-ping'
+                              : tarea.esUrgente
+                              ? 'bg-amber-500'
+                              : 'bg-emerald-500'
+                          }`}
+                        />
+                        <h5 className="font-black text-xs text-slate-900 truncate">
+                          {tarea.nombre}
+                        </h5>
+                        <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-md border flex items-center gap-0.5 ${catBadge.color}`}>
+                          <span>{catBadge.icon}</span>
+                          <span>{catBadge.label}</span>
+                        </span>
+                        {!tarea.asignadoChofer && (
+                          <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 border border-slate-300">
+                            🛠️ Taller/Socio
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 pl-4 mt-0.5">
+                        {tarea.esVencido ? (
+                          <span className="text-rose-700 font-black">
+                            ¡VENCIDO! Excedido por {Math.abs(tarea.kmRestantes).toLocaleString()} km
+                          </span>
+                        ) : tarea.esUrgente ? (
+                          <span className="text-amber-800 font-black">
+                            ⚠️ Urgente en ruta • Faltan {tarea.kmRestantes.toLocaleString()} km (de {tarea.intervaloKm.toLocaleString()} km)
+                          </span>
+                        ) : (
+                          <span>
+                            Faltan <strong className="text-slate-800">{tarea.kmRestantes.toLocaleString()} km</strong> (de {tarea.intervaloKm.toLocaleString()} km)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setModalItem(tarea);
+                        setRegistroKm(kmActual.toString());
+                        setRegistroFecha(new Date().toISOString().split('T')[0]);
+                        setRegistroCosto(tarea.costoEstimado ? tarea.costoEstimado.toString() : '');
+                        setRegistroTaller(tarea.tallerMecanico || '');
+                      }}
+                      className={`h-7 px-2 text-[10px] font-black rounded-lg shrink-0 border cursor-pointer ${
                         tarea.esVencido
-                          ? 'bg-rose-600 animate-ping'
+                          ? 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700'
+                          : 'bg-white text-slate-800 border-slate-300 hover:bg-slate-100'
+                      }`}
+                    >
+                      <RotateCcw className="w-3 h-3 mr-1" />
+                      Realizado
+                    </Button>
+                  </div>
+
+                  {/* Micro barra de progreso */}
+                  <div className="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden mt-2">
+                    <div
+                      className={`h-full rounded-full ${
+                        tarea.esVencido
+                          ? 'bg-rose-600'
                           : tarea.esUrgente
                           ? 'bg-amber-500'
                           : 'bg-emerald-500'
                       }`}
+                      style={{ width: `${tarea.porcentaje}%` }}
                     />
-                    <h5 className="font-bold text-xs text-slate-900 truncate">
-                      {tarea.nombre}
-                    </h5>
                   </div>
-                  <p className="text-[10px] text-slate-500 pl-4 mt-0.5">
-                    {tarea.esVencido ? (
-                      <span className="text-rose-700 font-black">
-                        ¡VENCIDO! Excedido por {Math.abs(tarea.kmRestantes).toLocaleString()} km
-                      </span>
-                    ) : (
-                      <span>
-                        Faltan <strong className="text-slate-800">{tarea.kmRestantes.toLocaleString()} km</strong> (de {tarea.intervaloKm.toLocaleString()} km)
-                      </span>
-                    )}
-                  </p>
                 </div>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setModalItem(tarea);
-                    setRegistroKm(kmActual.toString());
-                    setRegistroFecha(new Date().toISOString().split('T')[0]);
-                    setRegistroCosto(tarea.costoEstimado ? tarea.costoEstimado.toString() : '');
-                    setRegistroTaller(tarea.tallerMecanico || '');
-                  }}
-                  className={`h-7 px-2 text-[10px] font-black rounded-lg shrink-0 border ${
-                    tarea.esVencido
-                      ? 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700'
-                      : 'bg-white text-slate-800 border-slate-300 hover:bg-slate-100'
-                  }`}
-                >
-                  <RotateCcw className="w-3 h-3 mr-1" />
-                  Realizado
-                </Button>
-              </div>
-
-              {/* Micro barra de progreso */}
-              <div className="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden mt-2">
-                <div
-                  className={`h-full rounded-full ${
-                    tarea.esVencido
-                      ? 'bg-rose-600'
-                      : tarea.esUrgente
-                      ? 'bg-amber-500'
-                      : 'bg-emerald-500'
-                  }`}
-                  style={{ width: `${tarea.porcentaje}%` }}
-                />
-              </div>
-            </div>
-          ))}
+              );
+            })
+          )}
         </div>
 
         {onVerMas && (
@@ -2595,23 +2724,109 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
               </div>
             </div>
 
+            {/* FASE 2: BARRA DE BÚSQUEDA Y FILTRADO OFFLINE (ZERO LATENCY) */}
+            <div className="p-3 bg-slate-50 border-b border-slate-200/80 space-y-2 shrink-0">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Input
+                  type="text"
+                  value={busquedaHistorial}
+                  onChange={e => setBusquedaHistorial(e.target.value)}
+                  placeholder="Buscar por repuesto, aceite, taller, factura..."
+                  className="pl-9 pr-8 h-9 text-xs bg-white rounded-xl border-slate-300 font-medium placeholder:text-slate-400"
+                />
+                {busquedaHistorial.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setBusquedaHistorial('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-200 text-slate-600 hover:bg-slate-300 flex items-center justify-center text-xs cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Chips de Categorías / Estaciones de Taller */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar text-xs">
+                {[
+                  { id: 'TODAS', label: 'Todos', icon: '📋', count: historialParadas.length },
+                  { id: 'LUBRICADORA', label: 'Aceite / Filtros', icon: '🛢️' },
+                  { id: 'FRENOS', label: 'Frenos y Zapatas', icon: '🛑' },
+                  { id: 'AIRE', label: 'Aire y Toberas', icon: '💨' },
+                  { id: 'LLANTAS', label: 'Llantas / Alineación', icon: '🛞' },
+                  { id: 'MAYOR', label: 'Taller Mayor', icon: '🛠️' },
+                ].map(chip => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => setFiltroEstacionHistorial(chip.id)}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black shrink-0 transition-all flex items-center gap-1 cursor-pointer border ${
+                      filtroEstacionHistorial === chip.id
+                        ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-2xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>{chip.icon}</span>
+                    <span>{chip.label}</span>
+                    {chip.count !== undefined && (
+                      <span className="opacity-70 font-mono text-[9px]">({chip.count})</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Indicador de resultados */}
+              <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold px-0.5 pt-0.5">
+                <span>
+                  Mostrando <strong className="text-slate-900">{paradasFiltradas.length}</strong> de {historialParadas.length} servicios
+                </span>
+                <span className="text-emerald-700 font-extrabold flex items-center gap-1">
+                  <span>↓</span> Más reciente primero
+                </span>
+              </div>
+            </div>
+
             {/* Lista Cronológica Scrollable */}
             <div className="p-3 sm:p-4 overflow-y-auto space-y-2.5 flex-1">
-              {historialParadas.length === 0 ? (
+              {paradasFiltradas.length === 0 ? (
                 <div className="text-center py-10 px-4 space-y-2">
                   <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
-                    <History className="w-6 h-6" />
+                    {historialParadas.length === 0 ? (
+                      <History className="w-6 h-6" />
+                    ) : (
+                      <Search className="w-6 h-6" />
+                    )}
                   </div>
                   <p className="text-xs font-bold text-slate-700">
-                    Sin mantenimientos registrados aún
+                    {historialParadas.length === 0
+                      ? 'Sin mantenimientos registrados aún'
+                      : 'No se encontraron mantenimientos'}
                   </p>
                   <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-                    Cuando asientes una parada de taller o lubricadora, aparecerá aquí cronológicamente con su odómetro y pagador.
+                    {historialParadas.length === 0
+                      ? 'Cuando asientes una parada de taller o lubricadora, aparecerá aquí cronológicamente con su odómetro y pagador.'
+                      : `No hay resultados que coincidan con la búsqueda "${busquedaHistorial}" o filtro seleccionado.`}
                   </p>
+                  {historialParadas.length > 0 && (busquedaHistorial || filtroEstacionHistorial !== 'TODAS') && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setBusquedaHistorial('');
+                        setFiltroEstacionHistorial('TODAS');
+                      }}
+                      className="h-8 text-xs font-bold rounded-xl mt-2 cursor-pointer"
+                    >
+                      Limpiar Filtros
+                    </Button>
+                  )}
                 </div>
               ) : (
-                historialParadas.map((p, idx) => {
+                paradasFiltradas.map((p, idx) => {
                   const esAyudante = p.pagador === 'AYUDANTE';
+                  const odometroBase = p.odometroServicio && p.odometroServicio > 0 ? p.odometroServicio : (p.odometroKm || 0);
+                  const kmRodados = p.kmRodadosDesdeServicio ?? (odometroBase > 0 ? Math.max(0, kmActual - odometroBase) : 0);
+
                   return (
                     <div
                       key={p.id || idx}
@@ -2624,8 +2839,22 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                               {p.estacionNombre}
                             </span>
                             <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 font-mono">
-                              {p.odometroKm?.toLocaleString()} km
+                              {odometroBase.toLocaleString()} km
                             </span>
+                            {kmRodados > 0 ? (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100/80 text-amber-900 border border-amber-200 font-mono">
+                                Hace {kmRodados.toLocaleString()} km
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                En este odómetro
+                              </span>
+                            )}
+                            {p.esRetroactivo && (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300">
+                                ⏱️ Regularizado
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-600 flex-wrap">
