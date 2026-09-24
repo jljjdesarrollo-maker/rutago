@@ -601,4 +601,35 @@
 6. **Verificación:**
    - `compile_applet` y compilación de producción Next.js 16 (`22/22` rutas) verificadas exitosamente.
 
+---
+
+## 🚀 ACTUALIZACIÓN (2026-09-24) - FASE 1: MAPEO DE ESTACIÓN NATURAL (CERO HUÉRFANOS) Y MEMORIA DE COSTO $0 (v3.60.18)
+
+### 📌 MOTIVO Y DIAGNÓSTICO
+- Implementación de la Fase 1 del Plan Maestro v3.60.18:
+  - Eliminar los componentes huérfanos del catálogo Hino AK asignando a cada uno de los 30 ítems su estación de servicio oficial predeterminada.
+  - Blindar la contabilidad del socio propietario mediante la memoria inteligente de costo: las labores de rutina directa del conductor (calibración de raches, engrase rápido, soplado, lavado de malla, rotación de baterías) se asientan a costo $0 (mano de obra propia) sin crear deudas artificiales en `OwnerExpenses`.
+
+### ⚙️ CAMBIOS APLICADOS
+1. **Tipos e Interfaces Actualizados (`mantenimiento-catalogo.ts`):**
+   - Incorporación de `estacionNatural?: string`, `esRutinaChoferCeroCosto?: boolean` y `costoReferencial?: number` en `MantenimientoCatalogoItem` y `MantenimientoBusItem`.
+2. **Mapeo Bidireccional Cero Huérfanos (`mantenimiento-estaciones.ts`):**
+   - Constante `MAPA_ESTACION_NATURAL` cubriendo el 100% de los 30 componentes en las 7 estaciones:
+     * `LUBRICADORA` (6 ítems: fluidos de motor, filtros combustible y valvulinas).
+     * `CHOFER_RUTINA` (5 ítems: raches, engrase rápido, soplado, malla pasillo, rotación baterías).
+     * `FRENOS_RUEDAS` (5 ítems: zapatas post/del, bocinas post/del, muelles/bujes).
+     * `ADMISION_AIRE` (5 ítems: mangueras, filtros aire sec/grande, toberas, aire acondicionado).
+     * `ALINEACION` (1 ítem: alineación y balanceo 295/80R22.5).
+     * `MNT_MAYOR` (7 ítems: caja, corona, embrague, metales, termostato, bandas, baterías 24V).
+     * `RADIADOR` (1 ítem: baqueteo, lavado químico, coolant HD).
+3. **Memoria de Costo Inteligente ($0 vs Taller):**
+   - `CODIGOS_RUTINA_CHOFER_CERO_COSTO`: Set con los 5 códigos de mano de obra directa del chofer.
+   - `esLaborPropiaChofer(codigo)`: Función helper para determinar instantáneamente si es labor $0.
+   - `getEstacionNaturalItem(codigo)`: Función helper para resolver la estación natural.
+   - Adición de `MNT-SOPLADO-AIRE` a los ítems de `CHOFER_RUTINA` en `ESTACIONES_SERVICIO_CONFIG`.
+4. **Verificación de Compilación y Versión:**
+   - Versión `3.60.18` en `package.json`.
+   - `compile_applet` verificado exitosamente.
+
+
 

@@ -618,6 +618,12 @@ export const ESTACIONES_SERVICIO_CONFIG: Record<EstacionServicioId, EstacionServ
         preMarcado: false,
       },
       {
+        codigo: 'MNT-SOPLADO-AIRE',
+        nombre: 'Soplado Rápido Filtro de Aire',
+        intervaloKm: 5000,
+        preMarcado: false,
+      },
+      {
         codigo: 'MNT-LAVADO-MALLA-PASILLO',
         nombre: 'Lavado de Malla de Aire en Pasillo',
         intervaloKm: 5000,
@@ -632,6 +638,81 @@ export const ESTACIONES_SERVICIO_CONFIG: Record<EstacionServicioId, EstacionServ
     ],
   },
 };
+
+/**
+ * Mapeo Oficial de Estación Natural para el 100% de los ítems del Catálogo Hino AK (Cero Huérfanos)
+ * RutaGo v3.60.18
+ */
+export const MAPA_ESTACION_NATURAL: Record<string, EstacionServicioId> = {
+  // 1. LUBRICADORA
+  'MNT-ACEITE-MOT': 'LUBRICADORA',
+  'MNT-FILT-ACEITE': 'LUBRICADORA',
+  'MNT-FILT-TRAMPA': 'LUBRICADORA',
+  'MNT-FILT-DIESEL-SEC': 'LUBRICADORA',
+  'MNT-ACEITE-CAJA': 'LUBRICADORA',
+  'MNT-ACEITE-CORONA': 'LUBRICADORA',
+
+  // 2. CHOFER_RUTINA (Labores directas $0 de conductor)
+  'MNT-RACHES-FRENO': 'CHOFER_RUTINA',
+  'MNT-ENGRASE-CHASIS': 'CHOFER_RUTINA',
+  'MNT-SOPLADO-AIRE': 'CHOFER_RUTINA',
+  'MNT-LAVADO-MALLA-PASILLO': 'CHOFER_RUTINA',
+  'MNT-ROTACION-BATERIAS': 'CHOFER_RUTINA',
+
+  // 3. FRENOS_RUEDAS
+  'MNT-ZAPATAS-POST': 'FRENOS_RUEDAS',
+  'MNT-ZAPATAS-DEL': 'FRENOS_RUEDAS',
+  'MNT-BOCINAS-POST': 'FRENOS_RUEDAS',
+  'MNT-BOCINAS-DEL': 'FRENOS_RUEDAS',
+  'MNT-MUELLES-BUJES': 'FRENOS_RUEDAS',
+
+  // 4. ADMISION_AIRE
+  'MNT-MANGUERAS-ADMISION': 'ADMISION_AIRE',
+  'MNT-FILT-AIRE-SEC': 'ADMISION_AIRE',
+  'MNT-FILT-AIRE-GRANDE': 'ADMISION_AIRE',
+  'MNT-VALVULAS-TOBERAS': 'ADMISION_AIRE',
+  'MNT-AIRE-ACONDICIONADO': 'ADMISION_AIRE',
+
+  // 5. ALINEACION
+  'MNT-ALINEACION-LLANTAS': 'ALINEACION',
+
+  // 6. MNT_MAYOR
+  'MNT-BANDAS-MOTOR': 'MNT_MAYOR',
+  'MNT-TERMOSTATO-MOT': 'MNT_MAYOR',
+  'MNT-KIT-EMBRAGUE': 'MNT_MAYOR',
+  'MNT-MNT-CAJA': 'MNT_MAYOR',
+  'MNT-MNT-CORONA': 'MNT_MAYOR',
+  'MNT-BATERIAS-PAR': 'MNT_MAYOR',
+  'MNT-CHAPAS-MOTOR': 'MNT_MAYOR',
+
+  // 7. RADIADOR
+  'MNT-RADIADOR-COOLANT': 'RADIADOR',
+};
+
+/**
+ * Códigos de componentes que corresponden a la rutina directa y mano de obra del chofer a costo $0
+ */
+export const CODIGOS_RUTINA_CHOFER_CERO_COSTO = new Set<string>([
+  'MNT-RACHES-FRENO',
+  'MNT-ENGRASE-CHASIS',
+  'MNT-SOPLADO-AIRE',
+  'MNT-LAVADO-MALLA-PASILLO',
+  'MNT-ROTACION-BATERIAS',
+]);
+
+/**
+ * Retorna true si la labor es ejecutada directamente por el chofer sin costo contable de taller
+ */
+export function esLaborPropiaChofer(codigo: string): boolean {
+  return CODIGOS_RUTINA_CHOFER_CERO_COSTO.has(codigo);
+}
+
+/**
+ * Retorna la estación de servicio oficial a la que pertenece cualquier ítem del catálogo
+ */
+export function getEstacionNaturalItem(codigo: string): EstacionServicioId {
+  return MAPA_ESTACION_NATURAL[codigo] || 'LUBRICADORA';
+}
 
 /**
  * Resuelve automáticamente los ítems que deben marcarse por efecto cascada

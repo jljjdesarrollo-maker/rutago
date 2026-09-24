@@ -18,6 +18,9 @@ export interface MantenimientoCatalogoItem {
   prioridad: 'ALTA' | 'MEDIA' | 'CRITICA';
   observacionesMecanica?: string;
   efectoCascadaCodigos?: string[];
+  estacionNatural?: string;
+  esRutinaChoferCeroCosto?: boolean;
+  costoReferencial?: number;
 }
 
 export interface MantenimientoBusItem {
@@ -34,6 +37,9 @@ export interface MantenimientoBusItem {
   tallerMecanico?: string;
   asignadoChofer?: boolean;
   activo?: boolean;
+  estacionNatural?: string;
+  esRutinaChoferCeroCosto?: boolean;
+  ultimoLugar?: string;
 }
 
 export const EFECTO_CASCADA_TRANSMISION: Record<string, string[]> = {

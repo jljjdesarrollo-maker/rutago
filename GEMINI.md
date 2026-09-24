@@ -1,4 +1,4 @@
-# RutaGo - Directivas Operativas y Estado del Proyecto (v3.60.8)
+# RutaGo - Directivas Operativas y Estado del Proyecto (v3.60.18)
 
 ## Contexto Esencial
 - **Proyecto:** RutaGo (Control de transporte, boletaje, arqueos y mantenimiento para autobuses interprovinciales/cantonales).
@@ -247,3 +247,10 @@
     3. Notificación toast verde de éxito y recarga reactiva sin parpadeo de pantalla (loadVentas).
   * **Flexibilidad Operativa:** Se incorporó el botón "[ Reasignar ]" también en frecuencias regulares para solventar equivocaciones humanas de chofer o ayudante en despacho de carretera.
 - **Commit Oficial:** feat(ventas): v3.60.8 - fase c reasignacion contable de boletos huerfanos y vueltas regulares con modal ergonomico y sugerencia inteligente.
+
+## 27. Mapeo de Estación Natural (Cero Huérfanos) y Memoria de Costo $0 (v3.60.18 - Fase 1)
+- **Hito:** Conclusión de la Fase 1 del rediseño ergonómico de alta exigencia para cabina y fosa de chofer.
+- **Mapeo Bidireccional:** El 100% de los 30 ítems del catálogo Hino AK cuenta con su estación oficial predeterminada en `mantenimiento-estaciones.ts` (`MAPA_ESTACION_NATURAL`) eliminando componentes huérfanos.
+- **Memoria de Costo Inteligente ($0 vs Taller):** Identificación automática de labores de rutina directa del conductor (`CODIGOS_RUTINA_CHOFER_CERO_COSTO` y `esLaborPropiaChofer`) para asentar con costo $0 de mano de obra propia sin generar deudas artificiales en `OwnerExpenses`.
+- **Commit Oficial:** `feat(mantenimiento): v3.60.18 - fase 1 mapeo de estacion natural cero huerfanos y memoria de costo cero`.
+
