@@ -259,15 +259,14 @@
 
 ## 3. Pendientes Urgentes de Implementación Futura
 
-### PENDIENTE CRÍTICO #1: Vinculación Estricta de Dispositivo Físico (Device Binding)
+### PENDIENTE CRÍTICO #1 (COMPLETADO - v3.60.9 ✅): Vinculación Estricta de Dispositivo Físico (Device Binding)
 - **Problema Detectado:** Si un usuario malicioso o tercero conoce el PIN del Ayudante activo del día e inicia sesión desde otro dispositivo (teléfono personal o PC) de forma simultánea, se crea una sesión paralela que puede generar boletos fantasma y duplicar el arqueo general en la base de datos.
-- **Solución Técnica Acordada (Arquitectura Offline-First + Admin Control):**
-  1. **Huella Digital Local Única (`deviceId`):** Generar y almacenar de forma inmutable un UUID criptográfico en el almacenamiento del navegador (`localStorage` + `IndexedDB`) del teléfono físico del bus en su primera inicialización.
-  2. **Emparejamiento en BD:** Asignar el `deviceId` a la entidad `Persona` (rol `AYUDANTE`) en la base de datos.
-  3. **Validación de Login:** Al autenticarse con PIN, el endpoint `/api/auth` y el flujo local deben rechazar el acceso si el `deviceId` del equipo entrante no coincide con el `deviceId` registrado para ese ayudante oficial.
-  4. **Panel de Gestión de Dispositivo (Admin):** En la pantalla `PersonalScreen`, permitir al Administrador:
-     - Visualizar el estado del teléfono vinculado (ej. "Teléfono Oficial Vinculado").
-     - Botón de emergencia **"Desvincular / Resetear Teléfono"** para liberar el usuario en caso de robo, descarga o avería del terminal en carretera y permitir la vinculación inmediata de un teléfono de reemplazo.
+- **Solución Técnica Implementada y Blindada (Arquitectura Offline-First + Admin Control - v3.60.9 / Commit 3f6bc29):**
+  1. **Huella Digital Local Única (`deviceId`):** Generar y almacenar de forma inmutable un UUID criptográfico en el almacenamiento del navegador (`localStorage` + `IndexedDB`) del teléfono físico del bus en su primera inicialización (`device-storage.ts`).
+  2. **Emparejamiento y Persistencia en PostgreSQL:** Almacenar `deviceId`, `deviceName` y `deviceLinkedAt` en la tabla `Persona` y configuración global persistente en `db.busVT` (`SYS_CONFIG_DEVICE_BINDING`).
+  3. **Validación de Login en `/api/auth`:** Al autenticarse con PIN de rol `AYUDANTE`, rechazar con HTTP 403 (`deviceBlocked: true`) si el `deviceId` entrante no coincide con el terminal registrado.
+  4. **Panel de Gestión de Dispositivo (Admin):** En la pantalla `PersonalScreen`, visualización con badge de estado y botón táctil in-app **"Desvincular"** para liberación inmediata de teléfono de reemplazo sin recurrir a `window.confirm` / `alert`.
+  * Estado: [COMPLETADO v3.60.9 ✅]
 
 ### PENDIENTE #2: Escalabilidad a Flota de 19 Autobuses (Multi-Bus)
 - **Documento Maestro Completo:** Consultar `download/RutaGo_Contexto_Maestro_v3.56.0.md` para todo el detalle histórico, arquitectónico y operativo.
@@ -358,7 +357,7 @@
 
 
 
-### PENDIENTE #7: Módulo Operativo de Estaciones de Taller y Combos de Parada (v3.59.0)
+### PENDIENTE #7 (COMPLETADO - v3.59.6 ✅): Módulo Operativo de Estaciones de Taller y Combos de Parada (v3.59.0)
 - **Filosofía del Módulo:** Estricta separación de roles entre Socio (dueño/financiero), Chofer (operación mecánica) y Ayudante (caja y recaudación del viaje). Cero fricción operativa en ruta.
 - **Estructura en 4 Fases con Commits Atómicos:**
 
@@ -368,7 +367,7 @@
   * Marcar / desmarcar qué ítems son obligatorios para su autobús.
   * Añadir ítems adicionales del catálogo maestro a una estación específica.
   * Persistir la configuración personalizada por autobús (rg_combo_estacion_{busId}_{estacionId}).
-  * Estado: [COMPLETADO v3.59.1]
+  * Estado: [COMPLETADO v3.59.1 ✅]
 
 #### FASE 2: Ejecución de Parada Técnica por el Chofer (Commit: feat(chofer): v3.59.2 - ejecucion y asentamiento de combos de parada con reset inmediato de odometro)
 - **Alcance Chofer:** Desde ChoferMantenimientoWidget accede a los combos autorizados por su socio.
@@ -377,7 +376,7 @@
   * Si en fosa realizaron tareas adicionales no preseleccionadas (ej. soplado de filtro, lavado de malla pasillo, engrase de chasis), el chofer las marca con 1 tap.
   * Ingreso del Odómetro actual del velocímetro/tacómetro y costo total pactado.
 - **Regla Mecánica Inmutable:** El contador de kilometraje de todos los ítems marcados se resetea inmediatamente a 0 km transcurridos en el momento del asentamiento, independiente de cómo o cuándo se pague.
-  * Estado: [COMPLETADO v3.59.2]
+  * Estado: [COMPLETADO v3.59.2 ✅]
 
 #### FASE 3: Gestión del Pago y Arqueo por el Ayudante (Commit: feat(ayudante): v3.59.3 - bifurcacion de pago de parada, arrastre de saldo de VT y liquidacion en arqueo)
 - **Alcance Ayudante:** Responsable del dinero del bus. Registra quién y cómo se paga el servicio:
@@ -390,15 +389,15 @@
     1. Socio Transfiere Todo ($...)
     2. Socio Transfiere una Parte ($...) -> Digita lo transferido, la app calcula el saldo.
     3. Socio Saca Fiado ( $0 Hoy) -> 1 toque, crédito total.
-  * Estado: [COMPLETADO v3.59.3]
+  * Estado: [COMPLETADO v3.59.3 ✅]
 
-#### FASE 4: Asentamiento Automático en Libro de Gastos y Deudas del Socio (Commit: feat(finanzas): v3.59.4 - generacion automatica de asientos contables, cartera de deudas y abonos)
+#### FASE 4: Asentamiento Automático en Libro de Gastos y Deudas del Socio (Commit: feat(mantenimiento): Fase 4 - Asentamiento contable automatico, cartera de deudas con talleres y gestion de abonos - v3.59.6 / 2b68fe2)
 - **Alcance Contable Socio:** Integración automática con OwnerExpense y cartera de deudas:
   * Si la tripulación marcó Socio Transfiere Todo: Gasto total creado como PAGADO (Sello verde). El socio no tiene que transcribir nada.
   * Si marcó Socio Transfiere una Parte: Gasto total creado por el monto completo, con el valor transferido registrado y el saldo pendiente en estado PENDIENTE (Sello ámbar), reflejado en su cartera de deudas por pagar.
   * Si marcó Socio Saca Fiado: Gasto total creado con $0 pagados, saldo total en estado PENDIENTE.
-  * Opción de Registrar Abono directo para extinguir la deuda cuando el socio transfiera días después.
-  * Estado: [PENDIENTE TRAS FASE 3]
+  * Opción de Registrar Abono directo para extinguir la deuda cuando el socio transfiera días después desde el panel Cartera de Deudas con Talleres en MantenimientoScreen.
+  * Estado: [COMPLETADO v3.59.6 ✅]
 
 
 ### MODULO COMPLETADO: Regularización Retroactiva de Servicios de Mantenimiento con Odómetro Histórico (v3.60.5 ✅)
