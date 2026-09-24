@@ -52,7 +52,9 @@ import {
   getComboUnidad, 
   resolverCascadaEstacion, 
   getCategoriaContablePorEstacion,
-  syncMantenimientoConfigConServidor
+  syncMantenimientoConfigConServidor,
+  esLaborPropiaChofer,
+  getEstacionNaturalItem
 } from '@/lib/mantenimiento-estaciones';
 import { syncMantenimientoBidireccional, flushMantenimientoOutbox, getMantenimientoOutbox } from '@/lib/mantenimiento-sync';
 
@@ -512,8 +514,11 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   const [socioModalidadChofer, setSocioModalidadChofer] = useState<SocioModalidadPago>('TRANSFERENCIA_TOTAL');
   const [socioAbonoChofer, setSocioAbonoChofer] = useState<string>('');
 
-  // Abrir Modal de Parada de Taller cargando la receta oficial del socio
-  const handleAbrirEstacionChofer = (estacionId: EstacionServicioId) => {
+  // FASE 2: Micro-Modal de Rutina Propia $0 del Chofer
+  const [itemRutinaModal, setItemRutinaModal] = useState<MantenimientoBusItem | null>(null);
+
+  // Abrir Modal de Parada de Taller cargando la receta oficial del socio (con soporte para ítem pre-marcado)
+  const handleAbrirEstacionChofer = (estacionId: EstacionServicioId, itemCodigoInicial?: string) => {
     const config = ESTACIONES_SERVICIO_CONFIG[estacionId];
     if (!config) return;
 
@@ -525,6 +530,24 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     comboData.items.forEach(it => {
       checksMap[it.codigo] = it.preMarcado;
     });
+
+    // Si se abrió desde una tarjeta específica, pre-marcar el ítem y asegurar que esté en la lista
+    if (itemCodigoInicial) {
+      checksMap[itemCodigoInicial] = true;
+      const existeEnCombo = comboData.items.some(it => it.codigo === itemCodigoInicial);
+      if (!existeEnCombo) {
+        const catItem = getCatalogoMaestroGlobal().find(c => c.codigo === itemCodigoInicial);
+        if (catItem) {
+          comboData.items.push({
+            codigo: catItem.codigo,
+            nombre: catItem.nombre,
+            intervaloKm: catItem.intervaloKmOficial,
+            preMarcado: true,
+            opcionalTexto: 'Seleccionado desde lista',
+          });
+        }
+      }
+    }
 
     setEstacionSeleccionadaChofer(estacionId);
     setEstacionItemsChofer(comboData.items);
@@ -546,6 +569,186 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       estacionId === 'ALINEACION' ? 'Serviteca y Alineación Continental' :
       estacionId === 'RADIADOR' ? 'Taller Radiadores Loja' : 'Terminal / Taller Parada'
     );
+  };
+
+  // Asentar labor directa de chofer a costo $0 con soporte para Deshacer
+  const handleAsentarLaborPropiaChofer = (item: MantenimientoBusItem) => {
+    const today = new Date().toISOString().split('T')[0];
+    const prevUltimoKm = item.ultimoKm;
+    const prevFechaUltimo = item.fechaUltimo;
+    const prevTaller = item.tallerMecanico;
+    const storageKey = `rg_mantenimientos_v2_${activeBusId}`;
+
+    let fullList: MantenimientoBusItem[] = [];
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) fullList = JSON.parse(saved);
+    } catch {}
+
+    const updatedFull = fullList.map(it =>
+      it.id === item.id
+        ? {
+            ...it,
+            ultimoKm: kmActual,
+            fechaUltimo: today,
+            costoEstimado: 0,
+            tallerMecanico: 'Chofer (Mano de obra propia)',
+          }
+        : it
+    );
+    localStorage.setItem(storageKey, JSON.stringify(updatedFull));
+
+    setItems(prev =>
+      prev.map(it =>
+        it.id === item.id
+          ? {
+              ...it,
+              ultimoKm: kmActual,
+              fechaUltimo: today,
+              costoEstimado: 0,
+              tallerMecanico: 'Chofer (Mano de obra propia)',
+            }
+          : it
+      )
+    );
+
+    const paradaId = `parada-chofer-rutina-${Date.now()}`;
+    const expenseId = `gasto-rutina-${Date.now()}`;
+
+    saveParadaPago({
+      id: paradaId,
+      busId: activeBusId,
+      disco,
+      fecha: today,
+      estacionId: 'CHOFER_RUTINA',
+      estacionNombre: 'Rutina Directa de Chofer',
+      taller: 'Chofer (Mano de obra propia)',
+      odometroKm: kmActual,
+      odometroServicio: kmActual,
+      odometroActualBus: kmActual,
+      esRetroactivo: false,
+      kmRodadosDesdeServicio: 0,
+      costoTotal: 0,
+      pagador: 'AYUDANTE',
+      montoCubiertoAyudante: 0,
+      descontadoEnVT: true,
+      detalleTrabajo: `${item.nombre} - Mano de obra propia ($0)`,
+      itemsRealizados: [item.nombre],
+      codigosMantenimiento: item.codigo ? [item.codigo] : [],
+      ownerExpenseId: expenseId,
+      createdAt: new Date().toISOString(),
+    });
+
+    saveOwnerExpenseToApi({
+      id: expenseId,
+      busId: activeBusId,
+      category: 'OTROS',
+      description: `${item.nombre} (Km ${kmActual.toLocaleString()}) - Chofer [Mano de obra propia $0]`,
+      provider: 'Chofer (Mano de obra propia)',
+      totalAmount: 0,
+      paidAmount: 0,
+      pendingBalance: 0,
+      paymentMethod: 'EFECTIVO',
+      status: 'PAGADO',
+      expenseDate: today,
+      createdAt: new Date().toISOString(),
+    }).catch(() => {});
+
+    try {
+      setHistorialParadas(getParadasPagoByBus(activeBusId));
+    } catch {}
+
+    window.dispatchEvent(new CustomEvent('rg_mantenimiento_actualizado', { detail: { busId: activeBusId } }));
+
+    toast({
+      title: '✓ Labor Propia Calibrada ($0)',
+      description: `${item.nombre} calibrado hoy en ${kmActual.toLocaleString()} km.`,
+      action: (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => handleDeshacerAsentamiento(item.id, prevUltimoKm, prevFechaUltimo, prevTaller, paradaId, expenseId)}
+          className="h-7 px-2.5 text-[10px] font-black bg-white text-slate-900 border-slate-300 hover:bg-slate-100 cursor-pointer shadow-xs"
+        >
+          Deshacer
+        </Button>
+      ),
+      duration: 5000,
+    });
+  };
+
+  const handleDeshacerAsentamiento = (
+    itemId: string,
+    prevUltimoKm: number,
+    prevFechaUltimo: string | undefined,
+    prevTaller: string | undefined,
+    paradaId: string,
+    _expenseId: string
+  ) => {
+    const storageKey = `rg_mantenimientos_v2_${activeBusId}`;
+    let fullList: MantenimientoBusItem[] = [];
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) fullList = JSON.parse(saved);
+    } catch {}
+
+    const restored = fullList.map(it =>
+      it.id === itemId
+        ? {
+            ...it,
+            ultimoKm: prevUltimoKm,
+            fechaUltimo: prevFechaUltimo,
+            tallerMecanico: prevTaller,
+          }
+        : it
+    );
+    localStorage.setItem(storageKey, JSON.stringify(restored));
+    setItems(prev =>
+      prev.map(it =>
+        it.id === itemId
+          ? {
+              ...it,
+              ultimoKm: prevUltimoKm,
+              fechaUltimo: prevFechaUltimo,
+              tallerMecanico: prevTaller,
+            }
+          : it
+      )
+    );
+
+    try {
+      const paradasGuardadas = getParadasPagoByBus(activeBusId);
+      const filtradas = paradasGuardadas.filter(p => p.id !== paradaId);
+      localStorage.setItem(`rg_paradas_pago_v1_${activeBusId}`, JSON.stringify(filtradas));
+      setHistorialParadas(filtradas);
+    } catch {}
+
+    toast({
+      title: '↺ Acción Deshecha',
+      description: 'Se restauró el odómetro anterior del componente.',
+    });
+  };
+
+  const handleCardClick = (tarea: (typeof tareasCalculadas)[0]) => {
+    if (esLaborPropiaChofer(tarea.codigo)) {
+      const busItem = items.find(it => it.id === tarea.id) || {
+        id: tarea.id,
+        catalogoId: tarea.id,
+        codigo: tarea.codigo,
+        nombre: tarea.nombre,
+        categoria: tarea.categoria,
+        intervaloKm: tarea.intervaloKm,
+        ultimoKm: tarea.ultimoKm,
+        fechaUltimo: tarea.fechaUltimo,
+        tallerMecanico: tarea.tallerMecanico,
+        asignadoChofer: tarea.asignadoChofer,
+        activo: tarea.activo,
+      };
+      setItemRutinaModal(busItem);
+    } else {
+      const estacion = getEstacionNaturalItem(tarea.codigo);
+      handleAbrirEstacionChofer(estacion, tarea.codigo);
+    }
   };
 
   // Alternar ítem con 1 solo toque en fosa (soporta resolver cascada)
@@ -1774,18 +1977,20 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           ) : (
             tareasCalculadas.map(tarea => {
               const catBadge = getCategoriaBadge(tarea.categoria);
+              const esChoferRutina = esLaborPropiaChofer(tarea.codigo);
               return (
                 <div
                   key={tarea.id}
-                  className={`p-2.5 rounded-xl border transition-all ${
+                  onClick={() => handleCardClick(tarea)}
+                  className={`p-3 rounded-2xl border transition-all cursor-pointer active:scale-[0.99] select-none hover:shadow-xs ${
                     tarea.esVencido
-                      ? 'bg-rose-50/80 border-rose-300 shadow-xs'
+                      ? 'bg-rose-50/80 border-rose-300 shadow-xs ring-1 ring-rose-200'
                       : tarea.esUrgente
                       ? 'bg-amber-50/60 border-amber-300'
-                      : 'bg-white border-slate-200'
+                      : 'bg-white border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2.5">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {/* Semáforo visual táctil */}
@@ -1801,16 +2006,22 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                         <h5 className="font-black text-xs text-slate-900 truncate">
                           {tarea.nombre}
                         </h5>
-                        <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-md border flex items-center gap-0.5 ${catBadge.color}`}>
+                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border flex items-center gap-0.5 ${catBadge.color}`}>
                           <span>{catBadge.icon}</span>
                           <span>{catBadge.label}</span>
                         </span>
-                        {!tarea.asignadoChofer && (
-                          <span className="text-[9px] font-black px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 border border-slate-300">
+                        {esChoferRutina ? (
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            🚌 Labor Chofer $0
+                          </span>
+                        ) : !tarea.asignadoChofer ? (
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-300">
                             🛠️ Taller/Socio
                           </span>
-                        )}
+                        ) : null}
                       </div>
+
+                      {/* Kilometraje y Alerta */}
                       <p className="text-[10px] text-slate-500 pl-4 mt-0.5">
                         {tarea.esVencido ? (
                           <span className="text-rose-700 font-black">
@@ -1826,26 +2037,56 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                           </span>
                         )}
                       </p>
+
+                      {/* Historial Rápido del Componente a la Vista (Fase 2) */}
+                      <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1.5 flex-wrap mt-0.5 pl-4">
+                        <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span>
+                          Último: <strong className="text-slate-700">{tarea.fechaUltimo || 'Sin registro'}</strong> ({tarea.ultimoKm.toLocaleString()} km)
+                          {tarea.tallerMecanico ? ` en ${tarea.tallerMecanico}` : esChoferRutina ? ' (Mano de obra propia $0)' : ''}
+                        </span>
+                      </div>
                     </div>
 
+                    {/* Botón contextual ergonómico */}
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => {
-                        setModalItem(tarea);
-                        setRegistroKm(kmActual.toString());
-                        setRegistroFecha(new Date().toISOString().split('T')[0]);
-                        setRegistroCosto(tarea.costoEstimado ? tarea.costoEstimado.toString() : '');
-                        setRegistroTaller(tarea.tallerMecanico || '');
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCardClick(tarea);
                       }}
-                      className={`h-7 px-2 text-[10px] font-black rounded-lg shrink-0 border cursor-pointer ${
+                      className={`h-8 px-2.5 text-[10px] font-black rounded-xl shrink-0 border cursor-pointer active:scale-95 transition-all shadow-xs ${
                         tarea.esVencido
-                          ? 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700'
-                          : 'bg-white text-slate-800 border-slate-300 hover:bg-slate-100'
+                          ? 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700 shadow-rose-200'
+                          : tarea.esUrgente
+                          ? 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600 shadow-amber-200'
+                          : esChoferRutina
+                          ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                          : 'bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100'
                       }`}
                     >
-                      <RotateCcw className="w-3 h-3 mr-1" />
-                      Realizado
+                      {esChoferRutina ? (
+                        <>
+                          <Check className="w-3 h-3 mr-1 text-indigo-600" />
+                          <span>Calibrar $0</span>
+                        </>
+                      ) : tarea.esVencido ? (
+                        <>
+                          <Wrench className="w-3 h-3 mr-1" />
+                          <span>Taller</span>
+                        </>
+                      ) : tarea.esUrgente ? (
+                        <>
+                          <AlertTriangle className="w-3 h-3 mr-1" />
+                          <span>Atender</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-3 h-3 mr-1 text-emerald-600" />
+                          <span>Al Día</span>
+                        </>
+                      )}
                     </Button>
                   </div>
 
@@ -1880,6 +2121,68 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           </div>
         )}
       </CardContent>
+
+      {/* Micro-modal Bottom Sheet de 1 Toque para Labor Propia $0 del Chofer (FASE 2) */}
+      {itemRutinaModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
+          <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl p-5 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700 text-lg">
+                  🚌
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-slate-900 leading-tight">Labor Propia de Chofer ($0)</h4>
+                  <span className="text-[10px] text-indigo-700 font-bold">Mano de Obra Propia • Cero Fricción Contable</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setItemRutinaModal(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800">{itemRutinaModal.nombre}</span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                  Cada {itemRutinaModal.intervaloKm.toLocaleString()} km
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                ¿Realizaste tú mismo esta labor hoy en terminal o parada? Se actualizará el tacómetro a{' '}
+                <strong className="text-slate-900 font-black">{kmActual.toLocaleString()} km</strong> sin generar gastos ficticios ni descontar dinero al socio.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <Button
+                type="button"
+                onClick={() => {
+                  const item = itemRutinaModal;
+                  setItemRutinaModal(null);
+                  handleAsentarLaborPropiaChofer(item);
+                }}
+                className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm rounded-xl shadow-md cursor-pointer active:scale-98 transition-all flex items-center justify-center gap-2"
+              >
+                <Check className="w-5 h-5" />
+                <span>✓ Sí, calibrado $0 hoy</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setItemRutinaModal(null)}
+                className="w-full h-10 text-xs font-bold text-slate-500 hover:text-slate-800 rounded-xl cursor-pointer"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal táctil rápido para el Chofer */}
       {modalItem && (

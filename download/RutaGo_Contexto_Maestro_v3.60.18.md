@@ -44,14 +44,14 @@ Este plan atiende directamente las condiciones extremas de operación en campo:
 
 ---
 
-### 🔹 FASE 2: Enrutamiento Inteligente desde la Tarjeta, Acción Rápida $0 e Historial [PENDIENTE]
+### 🔹 FASE 2: Enrutamiento Inteligente desde la Tarjeta, Acción Rápida $0 e Historial [✅ COMPLETADA]
 - **Touch Target Total en Tarjeta:**
-  * Toda el área de la tarjeta táctil e interactiva.
+  * Toda el área de la tarjeta se transformó en un botón táctil de alta respuesta (`cursor-pointer active:scale-[0.99]`).
 - **Bifurcación de Enrutamiento Inteligente:**
-  * **Si es Rutina Chofer ($0):** Micro-modal Bottom Sheet de 1 toque: *"¿Calibraste tú mismo esta labor hoy? [ ✓ Sí, calibrado $0 hoy ]"*. Reinicia el ciclo sin costo contable.
-  * **Si es de Taller / Fosa:** Abre el modal oficial de su Estación con ese ítem preseleccionado, odómetro auditado, modalidades simétricas de pago socio y blindaje de fechas pasadas.
+  * **Si es Rutina Chofer ($0):** Micro-modal Bottom Sheet de 1 toque: *"¿Realizaste tú mismo esta labor hoy? [ ✓ Sí, calibrado $0 hoy ]"*. Reinicia el ciclo sin generar gastos ficticios ni deudas al socio, con soporte para deshacer.
+  * **Si es de Taller / Fosa:** Al tocar la tarjeta o el botón contextual, abre directamente el modal oficial de su Estación con ese ítem preseleccionado, odómetro auditado, modalidades simétricas de pago socio (`Transfiere Todo`, `Una Parte`, `Saca Fiado`) y blindaje de fechas pasadas.
 - **Historial Rápido del Componente a la Vista:**
-  * `Último: [Fecha] ([Km] km) en [Taller/Chofer]`
+  * Cada tarjeta muestra en tipografía nítida: `Último: [Fecha] ([Km] km) en [Taller/Chofer]` para certidumbre inmediata del conductor.
 
 ---
 

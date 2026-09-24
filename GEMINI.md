@@ -254,3 +254,11 @@
 - **Memoria de Costo Inteligente ($0 vs Taller):** Identificación automática de labores de rutina directa del conductor (`CODIGOS_RUTINA_CHOFER_CERO_COSTO` y `esLaborPropiaChofer`) para asentar con costo $0 de mano de obra propia sin generar deudas artificiales en `OwnerExpenses`.
 - **Commit Oficial:** `feat(mantenimiento): v3.60.18 - fase 1 mapeo de estacion natural cero huerfanos y memoria de costo cero`.
 
+## 28. Enrutamiento Inteligente desde Tarjeta, Historial y Acción $0 (v3.60.18 - Fase 2)
+- **Hito:** Conclusión de la Fase 2 del rediseño ergonómico para el chofer.
+- **Touch Target Total:** Cada tarjeta se vuelve táctil e interactiva, suprimiendo la necesidad de apuntar a botones minúsculos.
+- **Bifurcación Inmediata:** Si es rutina propia de chofer, abre micro-modal Bottom Sheet de 1 toque para asentar a $0 con opción de Deshacer de 5s; si es de taller/fosa, abre directamente la estación correspondiente con el ítem preseleccionado.
+- **Historial Rápido:** Indicador visible `Último: [Fecha] ([Km] km) en [Taller/Chofer]` en la tarjeta.
+- **Commit Oficial:** `feat(mantenimiento): v3.60.18 - fase 2 enrutamiento inteligente desde tarjeta, historial y accion cero costo`.
+
+

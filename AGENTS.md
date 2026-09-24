@@ -631,5 +631,33 @@
    - Versión `3.60.18` en `package.json`.
    - `compile_applet` verificado exitosamente.
 
+---
+
+## 🚀 ACTUALIZACIÓN (2026-09-24) - FASE 2: ENRUTAMIENTO INTELIGENTE DESDE TARJETA, HISTORIAL Y ACCIÓN $0 (v3.60.18)
+
+### 📌 MOTIVO Y DIAGNÓSTICO
+- Implementación de la Fase 2 del Plan Maestro v3.60.18:
+  - Eliminar el falso botón genérico que obligaba a pulsar en botones minúsculos.
+  - Transformar toda la tarjeta en un Touch Target interactivo de alta ergonomía.
+  - Bifurcar de inmediato la acción según el tipo de mantenimiento:
+    * Si es labor directa del chofer ($0): Micro-modal Bottom Sheet de 1 toque que actualiza el odómetro sin crear deudas ni afectar la caja del socio.
+    * Si es parada en taller/fosa: Abre el modal oficial de su estación natural con el ítem pre-marcado, odómetro precargado y opciones de liquidación.
+  - Historial rápido a la vista bajo cada ítem: `Último: [Fecha] ([Km] km) en [Taller/Chofer]`.
+
+### ⚙️ CAMBIOS APLICADOS
+1. **Touch Target Total en `ChoferMantenimientoWidget.tsx`:**
+   - Toda la tarjeta con `onClick={() => handleCardClick(tarea)}`, efecto táctil `active:scale-[0.99]` y botón contextual lateral adaptado a la severidad mecánica (`Calibrar $0`, `Taller`, `Atender`, `Al Día`).
+2. **Micro-Modal Bottom Sheet de Labor Propia $0 (`itemRutinaModal`):**
+   - Interfaz simplificada de 1 toque: *"¿Realizaste tú mismo esta labor hoy en terminal o parada? [ ✓ Sí, calibrado $0 hoy ]"*.
+   - Función `handleAsentarLaborPropiaChofer`: Actualiza odómetro, registra parada con costo $0 y envía a la API con saldo pendiente $0.
+   - Botón `[ Deshacer ]` integrado en el Toast de confirmación con 5 segundos de vigencia.
+3. **Enrutamiento Dinámico hacia Modales de Taller:**
+   - Función `handleAbrirEstacionChofer(estacionId, itemCodigoInicial)`: Abre el taller especializado correspondiente pre-marcando el ítem consultado y agregándolo al combo si no estaba pre-cargado.
+4. **Historial a la Vista:**
+   - Renglón dedicado en micro-tipografía con icono `Clock`: `Último: [Fecha] ([Km] km) en [Taller/Chofer]`.
+5. **Verificación:**
+   - `compile_applet` exitoso sin errores de TypeScript.
+
+
 
 
