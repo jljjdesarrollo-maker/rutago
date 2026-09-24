@@ -48,6 +48,18 @@ Si estás abriendo este proyecto desde una nueva cuenta de Google Studio o una n
 
 ---
 
+## 🛠️ IMPLEMENTACIÓN EJECUTADA: Auto-Curación y Reconciliación Silenciosa (Self-Healing Odometers) v3.60.10
+- **Commit Local:** `3e399c5 feat(mantenimiento): v3.60.10 - reconciliacion silenciosa (self-healing) de odometros historicos y aire acondicionado`
+- **Problema Corregido:** Falsa alerta roja (Vencido > 800%) en el Mantenimiento Preventivo Anual de Aire Acondicionado y otros componentes debido a `ultimoKm: 0` desfasado respecto al odómetro acumulado del bus (~893.485 km).
+- **Archivos Modificados:**
+  * `src/lib/mantenimiento-catalogo.ts`: Exportación de la interfaz `MantenimientoBusItem`.
+  * `src/lib/mantenimiento-estaciones.ts`: Adición de `MNT-AIRE-ACONDICIONADO` a la estación `ADMISION_AIRE` (110.000 km) y creación del motor `reconciliarMantenimientosConHistorial`.
+  * `src/components/transport/SocioMantenimientoWidget.tsx`: Auto-curación de odómetros y conciliación reactiva con historial.
+  * `src/components/transport/MantenimientoScreen.tsx`: Actualización de calibradores y auto-curación silenciosa.
+  * `src/lib/mantenimiento-sync.ts`: Ejecución de reconciliación automática tras descarga bidireccional de gastos.
+
+---
+
 ## 📋 TAREAS PENDIENTES EN EL ROADMAP
 1. **Verificación en Ambiente Móvil Real:** Comprobar la respuesta visual de la alerta de bloqueo 403 al simular cambio de terminal con el switch activado (`deviceBlocked: true` en `LoginScreen.tsx`).
 2. **Auditoría de Transacciones Offline en Ruta:** Asegurar que si el ayudante autenticado pierde cobertura en carretera, la sesión cacheada local mantenga la emisión normal de boletos y el arqueo se sincronice al recuperar señal.

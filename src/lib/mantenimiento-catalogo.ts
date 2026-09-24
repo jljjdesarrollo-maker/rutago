@@ -20,6 +20,22 @@ export interface MantenimientoCatalogoItem {
   efectoCascadaCodigos?: string[];
 }
 
+export interface MantenimientoBusItem {
+  id: string;
+  catalogoId: string;
+  codigo: string;
+  nombre: string;
+  categoria: string;
+  intervaloKm: number;
+  ultimoKm: number;
+  fechaUltimo?: string;
+  costoEstimado?: number;
+  repuestoDetalle?: string;
+  tallerMecanico?: string;
+  asignadoChofer?: boolean;
+  activo?: boolean;
+}
+
 export const EFECTO_CASCADA_TRANSMISION: Record<string, string[]> = {
   'MNT-MNT-CAJA': ['MNT-ACEITE-CAJA', 'MNT-VALVULINA-CAJA', 'MNT-KIT-EMBRAGUE'],
   'MNT-MNT-CORONA': ['MNT-ACEITE-CORONA', 'MNT-VALVULINA-CORONA'],

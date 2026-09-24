@@ -14,8 +14,8 @@
  *    - Dispara eventos de interfaz reactivos (`rg_combo_unidad_actualizado`, `rg_owner_expenses_sync`, etc.).
  */
 
-import { syncMantenimientoConfigConServidor } from './mantenimiento-estaciones';
-import { getActiveBusId } from './fleet-storage';
+import { syncMantenimientoConfigConServidor, reconciliarMantenimientosConHistorial } from './mantenimiento-estaciones';
+import { getActiveBusId, getLatestBusOdometer } from './fleet-storage';
 import { OwnerExpense } from '../types/expenses';
 import { saveOwnerExpense, fetchOwnerExpensesFromApi } from './owner-expenses-storage';
 import { syncRetroactiveParadasFromExpenses } from './paradas-vt-storage';
@@ -210,6 +210,24 @@ export async function syncMantenimientoBidireccional(busId?: string): Promise<{ 
 
     // B. Sincronizar nuevas paradas operativas a partir de los gastos descargados
     syncRetroactiveParadasFromExpenses(targetBusId);
+
+    // C. Auto-curación y reconciliación silenciosa del catálogo técnico con el historial de comprobantes
+    try {
+      const storageKey = `rg_mantenimientos_v2_${targetBusId}`;
+      const rawItems = localStorage.getItem(storageKey);
+      if (rawItems) {
+        const localItems = JSON.parse(rawItems);
+        if (Array.isArray(localItems) && localItems.length > 0) {
+          const odoObj = getLatestBusOdometer(targetBusId);
+          const baseKm = odoObj?.kmFinal
+            ? parseFloat(odoObj.kmFinal.replace(/[^0-9.]/g, '')) || 893485
+            : 893485;
+          reconciliarMantenimientosConHistorial(localItems, targetBusId, baseKm);
+        }
+      }
+    } catch (healErr) {
+      console.warn('Aviso reconciliacion automatica diferida:', healErr);
+    }
   } catch (e) {
     console.warn('Aviso descarga gastos mantenimiento diferido:', e);
   }

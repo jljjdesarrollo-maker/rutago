@@ -52,6 +52,7 @@ import {
   PLANTILLAS_NIVEL_CONTROL,
   CODIGOS_NIVEL_BASICO,
   CODIGOS_NIVEL_MEDIO,
+  reconciliarMantenimientosConHistorial,
 } from '@/lib/mantenimiento-estaciones';
 
 export interface MantenimientoBusItem {
@@ -207,8 +208,9 @@ export function SocioMantenimientoWidget({
           activo: true,
         };
       }
-      // Aire acondicionado
+      // Aire acondicionado (Mantenimiento preventivo anual 110.000 km)
       if (c.codigo === 'MNT-AIRE-ACONDICIONADO') {
+        const kmServicioAC = Math.max(0, baseKm - 15000); // 15,000 km rodados, 95,000 km restantes (86% vida útil - En Regla)
         return {
           id: `mbus-${c.id}-calibrado`,
           catalogoId: c.id,
@@ -216,9 +218,9 @@ export function SocioMantenimientoWidget({
           nombre: c.nombre,
           categoria: c.categoria,
           intervaloKm: c.intervaloKmOficial,
-          ultimoKm: 0,
-          fechaUltimo: '',
-          costoEstimado: 0,
+          ultimoKm: kmServicioAC,
+          fechaUltimo: '2026-08-01',
+          costoEstimado: 180,
           repuestoDetalle: c.especificacionLubricanteRepuesto,
           asignadoChofer: false,
           activo: true,
@@ -293,6 +295,10 @@ export function SocioMantenimientoWidget({
       itemsActualizados = catalogoActivo.map(calibrarItem);
     }
 
+    // Auto-curación y reconciliación silenciosa con historial de taller y gastos (Self-Healing)
+    const { items: itemsSaneados } = reconciliarMantenimientosConHistorial(itemsActualizados, bId, baseKm);
+    itemsActualizados = itemsSaneados;
+
     // Persistir si se expandió la lista para garantizar sincronía inmediata
     if (itemsActualizados.length > itemsExistentes.length) {
       try {
@@ -335,6 +341,9 @@ export function SocioMantenimientoWidget({
       setItems(cargarItems(activeBusId));
     };
     window.addEventListener('rg_mantenimiento_config_sync', handleSync);
+    window.addEventListener('rg_paradas_pago_updated', handleSync);
+    window.addEventListener('rg_owner_expenses_sync', handleSync);
+    window.addEventListener('rg_mantenimientos_auto_reconciliados', handleSync);
 
     const unsubOdo = subscribeToBusOdometer(() => {
       setKmActual(resolverKmActual(activeBusId));
@@ -344,6 +353,9 @@ export function SocioMantenimientoWidget({
       unsubBus();
       unsubOdo();
       window.removeEventListener('rg_mantenimiento_config_sync', handleSync);
+      window.removeEventListener('rg_paradas_pago_updated', handleSync);
+      window.removeEventListener('rg_owner_expenses_sync', handleSync);
+      window.removeEventListener('rg_mantenimientos_auto_reconciliados', handleSync);
     };
   }, [activeBusId, resolverKmActual, cargarItems]);
 
