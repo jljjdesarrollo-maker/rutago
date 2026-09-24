@@ -549,3 +549,24 @@
    - "Protege el compresor de A/C contra gripado, evita fugas en cañerías y previene rotura de banda motriz por falla del rulimán."
 3. **Limpieza de Valores Precargados (`MantenimientoScreen.tsx` y `SocioMantenimientoWidget.tsx`):**
    - Se removió el registro simulado previo para permitir al usuario asentar el mantenimiento limpio directamente desde la aplicación y verificar la reactividad.
+
+---
+
+## 🚀 ACTUALIZACIÓN (2026-09-24) - PENDIENTE CRÍTICO #1: VINCULACIÓN ESTRICTA DE DISPOSITIVO FÍSICO (v3.60.9)
+
+### 📌 MOTIVO
+- Evitar sesiones paralelas no autorizadas cuando un tercero conoce el PIN del ayudante de cobro activo.
+
+### ⚙️ CAMBIOS APLICADOS
+1. **Persistencia Central en PostgreSQL (`/api/config/device-binding`):**
+   - El estado del switch global `enabled` se almacena de forma durable en PostgreSQL en `db.busVT` con clave `SYS_CONFIG_DEVICE_BINDING`, garantizando resistencia total a *cold starts* de Vercel Serverless.
+2. **Validación Asíncrona de Login (`/api/auth`):**
+   - Se migró a `await getDeviceBindingGlobalConfigAsync()`.
+   - Se vincula automáticamente el `deviceId` del teléfono oficial al primer inicio de sesión del ayudante.
+   - En caso de acceso desde un dispositivo no autorizado, responde con 403 (`deviceBlocked: true`) detallando el equipo oficial enlazado.
+3. **Desvinculación Ergonómica sin Bloqueos de Navegador (`PersonalScreen.tsx`):**
+   - Sustitución de `window.confirm` y `window.alert` por un modal interactivo nativo in-app, previniendo bloqueos de iframe.
+   - Botón *"Desvincular"* que ejecuta `PUT /api/personas/[id]` con `{ resetDevice: true }` y actualiza la lista en tiempo real.
+4. **Verificación de Compilación:**
+   - Compilación exitosa en `compile_applet` y `npm run build` sin errores.
+

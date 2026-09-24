@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPin, isPlaintextPin } from '@/lib/pin-hash';
-import { getDeviceBindingGlobalConfig } from '@/app/api/config/device-binding/route';
+import { getDeviceBindingGlobalConfigAsync } from '@/app/api/config/device-binding/route';
 
 const FIRST_ADMIN_PINS = ['2107', '1234'];
 
@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
     // Controlado por el Switch Maestro del SuperAdmin 9999 (por defecto DESACTIVADO/OFF).
     // Solo aplica para tripulantes de cobro operativo (AYUDANTE) para evitar sesiones simultáneas no autorizadas.
     // Los administradores y socios pueden acceder desde cualquier dispositivo para supervisión y gestión.
-    const deviceBindingConfig = getDeviceBindingGlobalConfig();
+    const deviceBindingConfig = await getDeviceBindingGlobalConfigAsync();
     if (deviceBindingConfig.enabled && persona.rol === 'AYUDANTE' && deviceId) {
       if (!persona.deviceId) {
         // Primer login del ayudante: Enlazar automáticamente este teléfono como su dispositivo oficial

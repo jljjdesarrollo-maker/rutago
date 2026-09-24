@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,53 @@ function getRuntimeFilePath(): string {
 const globalStore = globalThis as unknown as {
   __rutago_device_binding_config__?: DeviceBindingGlobalConfig;
 };
+
+export async function getDeviceBindingGlobalConfigAsync(): Promise<DeviceBindingGlobalConfig> {
+  if (globalStore.__rutago_device_binding_config__) {
+    return globalStore.__rutago_device_binding_config__;
+  }
+
+  let config: DeviceBindingGlobalConfig = { ...DEFAULT_DEVICE_BINDING_CONFIG };
+
+  // 1. Intentar consultar desde PostgreSQL en la nube vía BusVT (SYS_CONFIG_DEVICE_BINDING)
+  try {
+    const record = await (db as any).busVT.findUnique({
+      where: { codigo: 'SYS_CONFIG_DEVICE_BINDING' },
+    });
+    if (record?.frecuencias && typeof record.frecuencias === 'object' && !Array.isArray(record.frecuencias)) {
+      const stored = record.frecuencias as unknown as DeviceBindingGlobalConfig;
+      if (typeof stored.enabled === 'boolean') {
+        config = { ...DEFAULT_DEVICE_BINDING_CONFIG, ...stored };
+        globalStore.__rutago_device_binding_config__ = config;
+        return config;
+      }
+    }
+  } catch {
+    // Si la BD no está disponible en este instante, continuar con archivo / memoria
+  }
+
+  // 2. Fallback de archivo local
+  const runtimePath = getRuntimeFilePath();
+  const pathsToTry = [runtimePath, BUNDLED_FILE_PATH];
+
+  for (const p of pathsToTry) {
+    try {
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.enabled === 'boolean') {
+          config = parsed;
+          break;
+        }
+      }
+    } catch {
+      // Ignorar fallback
+    }
+  }
+
+  globalStore.__rutago_device_binding_config__ = config;
+  return config;
+}
 
 export function getDeviceBindingGlobalConfig(): DeviceBindingGlobalConfig {
   if (globalStore.__rutago_device_binding_config__) {
@@ -58,6 +106,30 @@ export function getDeviceBindingGlobalConfig(): DeviceBindingGlobalConfig {
   return config;
 }
 
+export async function saveDeviceBindingGlobalConfigAsync(config: DeviceBindingGlobalConfig): Promise<void> {
+  globalStore.__rutago_device_binding_config__ = config;
+  saveDeviceBindingGlobalConfig(config);
+
+  // Persistir en PostgreSQL de forma durable (sobrevive a Vercel Serverless cold starts)
+  try {
+    await (db as any).busVT.upsert({
+      where: { codigo: 'SYS_CONFIG_DEVICE_BINDING' },
+      create: {
+        codigo: 'SYS_CONFIG_DEVICE_BINDING',
+        nombre: 'Sistema Config Device Binding (Global)',
+        activo: config.enabled,
+        frecuencias: config as any,
+      },
+      update: {
+        activo: config.enabled,
+        frecuencias: config as any,
+      },
+    });
+  } catch (err) {
+    console.error('Error persistiendo device-binding en PostgreSQL:', err);
+  }
+}
+
 export function saveDeviceBindingGlobalConfig(config: DeviceBindingGlobalConfig): void {
   globalStore.__rutago_device_binding_config__ = config;
   const runtimePath = getRuntimeFilePath();
@@ -75,7 +147,7 @@ export function saveDeviceBindingGlobalConfig(config: DeviceBindingGlobalConfig)
 // GET /api/config/device-binding
 export async function GET() {
   try {
-    const config = getDeviceBindingGlobalConfig();
+    const config = await getDeviceBindingGlobalConfigAsync();
     return NextResponse.json({
       success: true,
       config,
@@ -95,14 +167,14 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const { enabled } = body;
 
-    const current = getDeviceBindingGlobalConfig();
+    const current = await getDeviceBindingGlobalConfigAsync();
     const updated: DeviceBindingGlobalConfig = {
       enabled: Boolean(enabled),
       updatedAt: new Date().toISOString(),
       updatedBy: 'SuperAdmin 9999',
     };
 
-    saveDeviceBindingGlobalConfig(updated);
+    await saveDeviceBindingGlobalConfigAsync(updated);
 
     return NextResponse.json({
       success: true,

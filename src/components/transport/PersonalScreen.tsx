@@ -36,6 +36,7 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
   const [formPin, setFormPin] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [resetDevicePersona, setResetDevicePersona] = useState<PersonaItem | null>(null);
 
   const fetchPersonas = useCallback(async () => {
     try {
@@ -128,24 +129,21 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
     } catch { /* ignore */ }
   };
 
-  const handleResetDevice = async (persona: PersonaItem) => {
-    if (!confirm(`¿Deseas desvincular el teléfono actual de "${persona.nombre}"?\n\nEsto liberará su PIN para que pueda iniciar sesión en el teléfono oficial o de reemplazo.`)) {
-      return;
-    }
+  const handleConfirmResetDevice = async () => {
+    if (!resetDevicePersona) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/personas/${persona.id}`, {
+      const res = await fetch(`/api/personas/${resetDevicePersona.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resetDevice: true }),
       });
-      if (!res.ok) {
-        alert('No se pudo desvincular el dispositivo.');
-      } else {
+      if (res.ok) {
         fetchPersonas();
+        setResetDevicePersona(null);
       }
     } catch {
-      alert('Error al comunicarse con el servidor.');
+      // ignore
     } finally {
       setSaving(false);
     }
@@ -243,7 +241,7 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
                   {p.deviceId && (
                     <button
                       type="button"
-                      onClick={() => handleResetDevice(p)}
+                      onClick={() => setResetDevicePersona(p)}
                       disabled={saving}
                       title="Desvincular teléfono para permitir login en otro equipo"
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold border border-rose-200 active:scale-95 transition text-[10px] cursor-pointer"
@@ -387,6 +385,43 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
             <div className="flex gap-2 mt-4">
               <Button onClick={() => setDeleteId(null)} variant="outline" className="flex-1 h-11 rounded-xl border-[#D6D6D6]">Cancelar</Button>
               <Button onClick={() => handleDelete(deleteId)} className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold">Eliminar</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Device Binding confirmation overlay */}
+      {resetDevicePersona && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-6 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-100">
+            <div className="flex items-center gap-2.5 text-amber-600 mb-2">
+              <div className="p-2 rounded-xl bg-amber-50 border border-amber-200">
+                <Unlock className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900">Desvincular Teléfono</h3>
+            </div>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              ¿Deseas desvincular el teléfono <span className="font-semibold text-slate-800">({resetDevicePersona.deviceName || 'Oficial'})</span> de <span className="font-bold text-slate-900">{resetDevicePersona.nombre}</span>?
+            </p>
+            <p className="text-[11px] text-slate-500 mt-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+              Esto liberará su PIN para que pueda registrar e iniciar sesión en el teléfono oficial o en un equipo de reemplazo de emergencia.
+            </p>
+            <div className="flex gap-2 mt-5">
+              <Button
+                onClick={() => setResetDevicePersona(null)}
+                variant="outline"
+                disabled={saving}
+                className="flex-1 h-10 rounded-xl border-slate-200 text-xs font-semibold"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleConfirmResetDevice}
+                disabled={saving}
+                className="flex-1 h-10 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs"
+              >
+                {saving ? 'Desvinculando...' : 'Sí, Desvincular'}
+              </Button>
             </div>
           </div>
         </div>
