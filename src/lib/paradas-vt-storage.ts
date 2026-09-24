@@ -37,6 +37,7 @@ export interface ParadaPagoRegistro {
   socioSaldoPendiente?: number;
   ownerExpenseId?: string;
   detalleTrabajo?: string; // Descripción precisa del trabajo o repuestos (ej. "Enlainar paquete delantero derecho y cambio de arandelas")
+  notas?: string; // Notas o comentarios adicionales del taller
   itemsRealizados?: string[]; // Nombres de ítems realizados (ej. ["Aceite Motor", "Filtro Aceite"])
   codigosMantenimiento?: string[]; // Códigos de catálogo involucrados (ej. ["MNT-01", "MNT-02"])
   createdAt: string;

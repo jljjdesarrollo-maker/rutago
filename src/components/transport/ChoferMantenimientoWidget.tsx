@@ -216,6 +216,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   const [isArregloModalOpen, setIsArregloModalOpen] = useState<boolean>(false);
   const [arregloDescripcion, setArregloDescripcion] = useState<string>('');
   const [arregloKm, setArregloKm] = useState<string>('');
+  const [arregloFecha, setArregloFecha] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [arregloTaller, setArregloTaller] = useState<string>('');
   const [arregloFactura, setArregloFactura] = useState<string>('');
   const [arregloCosto, setArregloCosto] = useState<string>('');
@@ -1194,6 +1195,8 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     const tallerFinal = arregloTaller.trim() || 'Taller Particular';
     const facturaFinal = arregloFactura.trim();
     const today = new Date().toISOString().split('T')[0];
+    const fechaFinal = arregloFecha.trim() || today;
+    const esRetro = fechaFinal < today || (kmNum < kmActual);
 
     setArregloIsSaving(true);
 
@@ -1236,7 +1239,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                 {
                   id: `abono-${Date.now()}`,
                   amount: paidAmount,
-                  date: today,
+                  date: fechaFinal,
                   paymentMethod: 'TRANSFERENCIA',
                   comprobanteRef: facturaFinal ? `Fac: ${facturaFinal}` : undefined,
                   notes: 'Anticipo/Transferencia inicial de socio en arreglo extraordinario',
@@ -1254,12 +1257,16 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         }
       }
 
+      // Blindaje Contable: Si la fecha es de días anteriores y pagó el ayudante,
+      // se marca descontadoEnVT = true para NO descontarle injustamente al ayudante de hoy en su Arqueo General
+      const yaDescontado = arregloPagador === 'AYUDANTE' && fechaFinal < today;
+
       // Guardar en el historial operativo de paradas VT (se refleja en Chofer y Socio)
       saveParadaPago({
         id: paradaId,
         busId: activeBusId,
         disco,
-        fecha: today,
+        fecha: fechaFinal,
         estacionId: 'ARREGLO_EXTRAORDINARIO',
         estacionNombre: 'Arreglo / Novedad Extraordinaria',
         taller: tallerFinal,
@@ -1267,12 +1274,12 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         odometroKm: kmNum,
         odometroServicio: kmNum,
         odometroActualBus: Math.max(kmActual, kmNum),
-        esRetroactivo: false,
-        kmRodadosDesdeServicio: 0,
+        esRetroactivo: esRetro,
+        kmRodadosDesdeServicio: Math.max(0, kmActual - kmNum),
         costoTotal: costoNum,
         pagador: arregloPagador,
         montoCubiertoAyudante: arregloPagador === 'AYUDANTE' ? paidAmount : 0,
-        descontadoEnVT: false,
+        descontadoEnVT: yaDescontado,
         socioModalidad: arregloPagador === 'SOCIO' ? arregloSocioModalidad : undefined,
         socioMontoTransferido: arregloPagador === 'SOCIO' ? paidAmount : undefined,
         socioSaldoPendiente: arregloPagador === 'SOCIO' ? pendingBalance : undefined,
@@ -1297,7 +1304,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         pendingBalance,
         paymentMethod,
         status: expenseStatus,
-        expenseDate: today,
+        expenseDate: fechaFinal,
         description: descContable,
         provider: tallerFinal,
         comprobanteRef: facturaFinal ? `Fac: ${facturaFinal}` : undefined,
@@ -1310,11 +1317,12 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
       toast({
         title: '✅ Arreglo Registrado con Éxito',
-        description: `Se guardó "${descTrim}" a ${kmNum.toLocaleString()} km en el historial del bus.`,
+        description: `Se guardó "${descTrim}" (${fechaFinal}) a ${kmNum.toLocaleString()} km en el historial del bus.`,
       });
 
       setIsArregloModalOpen(false);
       setArregloDescripcion('');
+      setArregloFecha(new Date().toISOString().split('T')[0]);
       setArregloTaller('');
       setArregloFactura('');
       setArregloCosto('');
@@ -3365,7 +3373,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                 </p>
               </div>
 
-              {/* Grid Tacómetro y Costo */}
+              {/* Grid Tacómetro, Costo y Fecha */}
               <div className="grid grid-cols-2 gap-3">
                 {/* Odómetro */}
                 <div>
@@ -3401,6 +3409,36 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                     $0 si fue garantía o cortesía
                   </span>
                 </div>
+              </div>
+
+              {/* Fecha del Servicio con Auditoría */}
+              <div>
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">
+                  Fecha del Arreglo / Servicio
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={arregloFecha}
+                    onChange={(e) => setArregloFecha(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-bold font-mono text-slate-900 focus:ring-2 focus:ring-orange-500 shadow-2xs"
+                  />
+                  {arregloFecha !== new Date().toISOString().split('T')[0] && (
+                    <button
+                      type="button"
+                      onClick={() => setArregloFecha(new Date().toISOString().split('T')[0])}
+                      className="px-2.5 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 transition-colors"
+                    >
+                      Hoy
+                    </button>
+                  )}
+                </div>
+                {arregloFecha < new Date().toISOString().split('T')[0] && (
+                  <p className="text-[10px] text-blue-700 font-semibold mt-1 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1">
+                    🛡️ <span className="font-bold">Fecha anterior:</span> Quedará registrado en el historial sin afectar la caja del ayudante en el arqueo de hoy.
+                  </p>
+                )}
               </div>
 
               {/* Taller y Factura */}
