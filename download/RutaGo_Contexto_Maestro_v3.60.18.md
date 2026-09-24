@@ -55,15 +55,28 @@ Este plan atiende directamente las condiciones extremas de operación en campo:
 
 ---
 
-### 🔹 FASE 3: Rediseño Visual en 3 Zonas Limpias y Botón Deshacer Anti-Torpeza [PENDIENTE]
-- **Zona 1: El Tablero de Comando (Header Compacto):**
-  * Odómetro destacado (`Tacómetro: 893.485 km`) + Semáforo Táctil Reactivo en 3 Chips (🔴 Vencidos, 🟡 Por Vencer, 🟢 Al Día, Todos).
-- **Zona 2: Acceso Rápido a Paradas:**
-  * 2 botones destacados (`🛢️ Fosa / Lubricadora` y `🔧 Arreglo Rápido`) + acordeón colapsable para talleres especializados.
+### 🔹 FASE 3: Rediseño Visual en 3 Zonas Limpias y Botón Deshacer Anti-Torpeza [✅ COMPLETADA]
+- **Zona 1: El Tablero de Comando (Header Compacto Digital):**
+  * Odómetro destacado en formato digital (`Tacómetro: 893.485 KM`) con badge de unidad y estado de sincronización.
+  * **Semáforo Táctil Reactivo en 4 Chips:**
+    * 🔴 `Vencidos (X)`: Filtra instantáneamente la lista a los ítems en rojo con animación de alerta.
+    * 🟡 `Próximos (Y)`: Aísla de inmediato las tareas urgentes (≤ 800 km) sin scroll innecesario.
+    * 🟢 `Al Día (Z)`: Muestra exclusivamente los componentes en regla.
+    * Chip neutro `Total (X)` para restaurar la vista completa del filtro de alcance.
+- **Zona 2: Acceso Rápido a Paradas (Zona del Pulgar):**
+  * 2 grandes botones de acción principal ergonómicos:
+    * **Botón A:** `🛢️ Fosa / Lubricadora (Combo Rápido)` ➔ Servicio recurrente cada 5.000 km.
+    * **Botón B:** `🔧 Arreglo Rápido / Imprevisto` ➔ Soldadura, mangueras, llanta pinchada.
+  * Botón sutil desplegable `[ 🛠️ Talleres Especializados ▾ ]` con los 5 talleres restantes (Frenos, Caja, Admisión, Serviteca, Radiador).
 - **Zona 3: El Radar de Tareas con Jerarquía Visual:**
-  * Botones contextuales según severidad (Verde: `✓ Al Día`, Ámbar: `⚠️ Calibrar / Atender`, Rojo: `🚨 Registrar Cambio`).
+  * Eliminación del falso botón `[ 🔄 Realizado ]`.
+  * Botones contextuales según severidad:
+    * Labor directa de chofer: `[ ✓ Calibrar $0 ]` (ícono check índigo).
+    * Rojo (Vencido): `[ 🚨 Taller ]` (alta visibilidad con pulso).
+    * Ámbar (Por vencer): `[ ⚠️ Atender ]` (alerta contrastada).
+    * Verde (Al día): `[ ✓ Al Día ]` (reposo visual).
 - **Botón Deshacer Inmediato (Anti-Torpeza):**
-  * Toast flotante de 5 segundos con botón `[ Deshacer ]`.
+  * Notificación flotante de 5 segundos con botón `[ Deshacer ]` ante cualquier asentamiento involuntario.
 
 ---
 

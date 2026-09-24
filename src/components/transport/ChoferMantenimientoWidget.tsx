@@ -204,6 +204,9 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   const [items, setItems] = useState<MantenimientoBusItem[]>(() => cargarItems(getActiveBusId()));
   // FASE 1: Selector de Alcance en 1 Toque (Mis Tareas vs Todo el Bus)
   const [filtroAlcance, setFiltroAlcance] = useState<'CHOFER' | 'TODOS'>('CHOFER');
+  // FASE 3: Semáforo Táctil Reactivo (3 Chips) y Acordeón de Talleres
+  const [filtroSemaforo, setFiltroSemaforo] = useState<'TODOS' | 'VENCIDOS' | 'POR_VENCER' | 'AL_DIA'>('TODOS');
+  const [mostrarTalleresEspecializados, setMostrarTalleresEspecializados] = useState<boolean>(false);
   // FASE 2 y 3: Búsqueda, Filtros de Estación y Pagador Offline para el Historial
   const [busquedaHistorial, setBusquedaHistorial] = useState<string>('');
   const [filtroEstacionHistorial, setFiltroEstacionHistorial] = useState<string>('TODAS');
@@ -1631,22 +1634,42 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       // Prioridad 3: En regla: el que tiene MENOR km restante va primero
       return a.kmRestantes - b.kmRestantes;
     });
+
+    if (filtroSemaforo === 'VENCIDOS') {
+      return sorted.filter(t => t.esVencido);
+    }
+    if (filtroSemaforo === 'POR_VENCER') {
+      return sorted.filter(t => t.esUrgente);
+    }
+    if (filtroSemaforo === 'AL_DIA') {
+      return sorted.filter(t => !t.esVencido && !t.esUrgente);
+    }
+    return sorted;
+  }, [items, kmActual, filtroAlcance, filtroSemaforo]);
+
+  const countVencidos = useMemo(() => {
+    return items.filter(it => {
+      const rest = it.intervaloKm - (kmActual - it.ultimoKm);
+      return rest <= 0 && (filtroAlcance === 'CHOFER' ? it.asignadoChofer : true) && it.activo !== false;
+    }).length;
   }, [items, kmActual, filtroAlcance]);
 
-  const criticosCount = useMemo(() => {
+  const countPorVencer = useMemo(() => {
     return items.filter(it => {
-      const kmRecorridos = kmActual - it.ultimoKm;
-      return (it.intervaloKm - kmRecorridos) <= 0 && it.activo !== false;
+      const rest = it.intervaloKm - (kmActual - it.ultimoKm);
+      return rest > 0 && rest <= 800 && (filtroAlcance === 'CHOFER' ? it.asignadoChofer : true) && it.activo !== false;
     }).length;
-  }, [items, kmActual]);
+  }, [items, kmActual, filtroAlcance]);
 
-  const proximosCount = useMemo(() => {
+  const countAlDia = useMemo(() => {
     return items.filter(it => {
-      const kmRecorridos = kmActual - it.ultimoKm;
-      const rest = it.intervaloKm - kmRecorridos;
-      return rest > 0 && rest <= 800 && it.activo !== false;
+      const rest = it.intervaloKm - (kmActual - it.ultimoKm);
+      return rest > 800 && (filtroAlcance === 'CHOFER' ? it.asignadoChofer : true) && it.activo !== false;
     }).length;
-  }, [items, kmActual]);
+  }, [items, kmActual, filtroAlcance]);
+
+  const criticosCount = countVencidos;
+  const proximosCount = countPorVencer;
 
   const countChofer = useMemo(() => items.filter(it => it.asignadoChofer && it.activo !== false).length, [items]);
   const countTodos = useMemo(() => items.filter(it => it.activo !== false).length, [items]);
@@ -1698,163 +1721,219 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   return (
     <Card className="rounded-2xl border-2 border-amber-300/80 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20 shadow-xs overflow-hidden">
       <CardContent className="p-3.5 space-y-3">
-        {/* Cabecera del Widget */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shadow-xs">
-              <Wrench className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-black text-xs text-slate-900 uppercase tracking-tight">
-                  Mantenimientos a Realizar (Conductor)
-                </span>
-                <Badge className="bg-amber-100 text-amber-900 border-amber-300 text-[9px] px-1.5 py-0 font-extrabold">
-                  Bus {disco}
-                </Badge>
+        {/* ZONA 1: TABLERO DE COMANDO DIGITAL & SEMÁFORO TÁCTIL REACTIVO */}
+        <div className="bg-slate-950 rounded-2xl p-3.5 border border-slate-800 text-white shadow-md space-y-3">
+          <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-800/80">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shadow-xs shrink-0">
+                <Gauge className="w-5 h-5" />
               </div>
-              <p className="text-[10px] text-slate-500 font-medium">
-                Tacómetro actual: <strong className="text-slate-800">{(kmActual ?? 187420).toLocaleString()} km</strong> • Alimentado del arqueo de llegada
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-black tracking-wider text-slate-400">
+                    Tacómetro Oficial
+                  </span>
+                  <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-[9px] font-black px-1.5 py-0">
+                    Bus {disco}
+                  </Badge>
+                </div>
+                <div className="text-xl font-black text-white tracking-tight flex items-baseline gap-1">
+                  <span>{(kmActual ?? 187420).toLocaleString()}</span>
+                  <span className="text-xs font-bold text-amber-400">KM</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {outboxCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={ejecutarSincronizacionManual}
+                  className="flex items-center gap-1 text-[9px] font-black bg-amber-400 hover:bg-amber-300 text-slate-950 px-2 py-1 rounded-lg animate-pulse cursor-pointer shadow-xs"
+                  title="Subir pendientes a la base de datos"
+                >
+                  <RefreshCw className="w-3 h-3 animate-spin" /> {outboxCount} subir
+                </button>
+              ) : (
+                <span className="hidden xs:inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-1 rounded-lg border border-emerald-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Nube OK
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsHistorialModalOpen(true);
+                  ejecutarSincronizacionManual();
+                }}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 cursor-pointer transition-colors"
+                title="Ver Historial de Mantenimientos"
+              >
+                <History className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          {criticosCount > 0 ? (
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-600 text-white flex items-center gap-1 animate-pulse">
-              <AlertTriangle className="w-3 h-3" /> {criticosCount} Urgentes
-            </span>
-          ) : proximosCount > 0 ? (
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {proximosCount} Próximos
-            </span>
-          ) : (
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Al Día
-            </span>
-          )}
+          {/* SEMÁFORO TÁCTIL REACTIVO (4 CHIPS DE FILTRADO INSTANTÁNEO) */}
+          <div className="grid grid-cols-4 gap-1.5">
+            {/* 🔴 Vencidos */}
+            <button
+              type="button"
+              onClick={() => setFiltroSemaforo(f => f === 'VENCIDOS' ? 'TODOS' : 'VENCIDOS')}
+              className={`py-1.5 px-1 rounded-xl text-center transition-all cursor-pointer border select-none ${
+                filtroSemaforo === 'VENCIDOS'
+                  ? 'bg-rose-600 text-white border-rose-400 shadow-md ring-2 ring-rose-400/50'
+                  : countVencidos > 0
+                  ? 'bg-rose-950/50 text-rose-300 border-rose-800/60 hover:bg-rose-900/60'
+                  : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:bg-slate-800/40'
+              }`}
+            >
+              <span className="text-[10px] font-black block leading-tight flex items-center justify-center gap-1">
+                <span className={`w-1.5 h-1.5 rounded-full ${countVencidos > 0 ? 'bg-rose-500 animate-ping' : 'bg-slate-500'}`} />
+                Vencidos
+              </span>
+              <span className="text-sm font-black block leading-tight mt-0.5">{countVencidos}</span>
+            </button>
+
+            {/* 🟡 Por Vencer */}
+            <button
+              type="button"
+              onClick={() => setFiltroSemaforo(f => f === 'POR_VENCER' ? 'TODOS' : 'POR_VENCER')}
+              className={`py-1.5 px-1 rounded-xl text-center transition-all cursor-pointer border select-none ${
+                filtroSemaforo === 'POR_VENCER'
+                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-md ring-2 ring-amber-400/50'
+                  : countPorVencer > 0
+                  ? 'bg-amber-950/50 text-amber-300 border-amber-800/60 hover:bg-amber-900/60'
+                  : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:bg-slate-800/40'
+              }`}
+            >
+              <span className="text-[10px] font-black block leading-tight flex items-center justify-center gap-1">
+                <span className={`w-1.5 h-1.5 rounded-full ${countPorVencer > 0 ? 'bg-amber-400' : 'bg-slate-500'}`} />
+                Próximos
+              </span>
+              <span className="text-sm font-black block leading-tight mt-0.5">{countPorVencer}</span>
+            </button>
+
+            {/* 🟢 Al Día */}
+            <button
+              type="button"
+              onClick={() => setFiltroSemaforo(f => f === 'AL_DIA' ? 'TODOS' : 'AL_DIA')}
+              className={`py-1.5 px-1 rounded-xl text-center transition-all cursor-pointer border select-none ${
+                filtroSemaforo === 'AL_DIA'
+                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-md ring-2 ring-emerald-400/50'
+                  : 'bg-emerald-950/40 text-emerald-300 border-emerald-800/50 hover:bg-emerald-900/50'
+              }`}
+            >
+              <span className="text-[10px] font-black block leading-tight flex items-center justify-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                Al Día
+              </span>
+              <span className="text-sm font-black block leading-tight mt-0.5">{countAlDia}</span>
+            </button>
+
+            {/* Chip Neutro: Todos */}
+            <button
+              type="button"
+              onClick={() => setFiltroSemaforo('TODOS')}
+              className={`py-1.5 px-1 rounded-xl text-center transition-all cursor-pointer border select-none ${
+                filtroSemaforo === 'TODOS'
+                  ? 'bg-slate-700 text-white border-slate-500 shadow-md ring-2 ring-slate-400/50'
+                  : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:bg-slate-800/50'
+              }`}
+            >
+              <span className="text-[10px] font-black block leading-tight">Total</span>
+              <span className="text-sm font-black block leading-tight mt-0.5">
+                {filtroAlcance === 'CHOFER' ? countChofer : countTodos}
+              </span>
+            </button>
+          </div>
         </div>
 
-        {/* PARADAS DE TALLER Y OPERACIONES EN RUTA - REDISEÑO BASADO EN CARDS CON CÓDIGO DE COLOR */}
-        <div className="space-y-2.5">
-          {/* CARD 1: OPERACIONES RÁPIDAS EN RUTA (VERDE ESMERALDA) */}
-          <Card className="bg-slate-900 border-emerald-500/35 shadow-md overflow-hidden py-0 gap-0 text-white">
-            <div className="p-3 bg-gradient-to-r from-emerald-950/50 via-slate-900 to-slate-900 border-b border-emerald-500/20 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="p-1 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center shadow-xs">
-                  <Zap className="w-3.5 h-3.5 fill-slate-950" />
+        {/* ZONA 2: ACCESO RÁPIDO A PARADAS FRECUENTES (ZONA DEL PULGAR) */}
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            {/* Botón A: 🛢️ Fosa / Lubricadora (Combo Rápido) */}
+            <button
+              type="button"
+              onClick={() => handleAbrirEstacionChofer('LUBRICADORA')}
+              className="flex items-center gap-2.5 p-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 active:scale-[0.98] text-white shadow-md cursor-pointer transition-all hover:brightness-105 select-none"
+            >
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">
+                🛢️
+              </div>
+              <div className="text-left min-w-0">
+                <span className="text-[9px] font-black uppercase tracking-wider text-emerald-200 block leading-tight">
+                  Cada 5.000 KM
                 </span>
-                <div>
-                  <span className="text-xs font-black uppercase tracking-tight text-emerald-400 block leading-tight">
-                    Paradas en Ruta (Servicios Rápidos)
-                  </span>
-                  <span className="text-[10px] text-slate-300 font-medium block leading-tight">
-                    Combos frecuentes durante el turno y carretera
-                  </span>
-                </div>
-              </div>
-              <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-[9px] font-bold shrink-0">
-                🟢 En Ruta
-              </Badge>
-            </div>
-
-            <CardContent className="p-2.5">
-              <div className="grid grid-cols-2 gap-2">
-                {/* Combo 1: Lubricadora Rápida */}
-                <button
-                  type="button"
-                  onClick={() => handleAbrirEstacionChofer('LUBRICADORA')}
-                  className="group flex flex-col justify-between p-2.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/60 active:scale-[0.98] border border-emerald-500/40 hover:border-emerald-400 text-left transition-all cursor-pointer shadow-xs min-h-[72px]"
-                >
-                  <div className="flex items-start justify-between w-full gap-1">
-                    <span className="text-2xl p-1 rounded-lg bg-emerald-500/20 text-emerald-300 group-hover:scale-105 transition-transform">
-                      🛢️
-                    </span>
-                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-400 text-slate-950 shadow-2xs">
-                      1 Toque ⚡
-                    </span>
-                  </div>
-                  <div className="mt-1">
-                    <span className="text-xs font-black text-white group-hover:text-emerald-200 transition-colors block leading-tight">
-                      Lubricadora Rápida
-                    </span>
-                    <span className="text-[10px] text-emerald-300/80 font-medium block truncate leading-tight mt-0.5">
-                      Aceite + 4 Filtros
-                    </span>
-                  </div>
-                </button>
-
-                {/* Combo 2: Arreglo Rápido */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setArregloDescripcion('');
-                    setArregloKm(kmActual.toString());
-                    setArregloTaller('');
-                    setArregloFactura('');
-                    setArregloCosto('');
-                    setArregloPagador('AYUDANTE');
-                    setArregloSocioModalidad('TRANSFERENCIA_TOTAL');
-                    setArregloSocioAbono('');
-                    setArregloFecha(new Date().toISOString().split('T')[0]);
-                    setIsArregloModalOpen(true);
-                  }}
-                  className="group flex flex-col justify-between p-2.5 rounded-xl bg-emerald-950/30 hover:bg-emerald-900/50 active:scale-[0.98] border border-emerald-500/30 hover:border-emerald-400 text-left transition-all cursor-pointer shadow-xs min-h-[72px]"
-                  title="Registrar un trabajo puntual fuera de catálogo (enlainar paquetes, soldaduras, arreglos rápidos)"
-                >
-                  <div className="flex items-start justify-between w-full gap-1">
-                    <span className="text-2xl p-1 rounded-lg bg-orange-500/20 text-orange-300 group-hover:scale-105 transition-transform">
-                      🔧
-                    </span>
-                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-orange-400/90 text-slate-950 shadow-2xs">
-                      Imprevisto
-                    </span>
-                  </div>
-                  <div className="mt-1">
-                    <span className="text-xs font-black text-white group-hover:text-orange-200 transition-colors block leading-tight">
-                      Arreglo Rápido
-                    </span>
-                    <span className="text-[10px] text-slate-300 font-medium block truncate leading-tight mt-0.5">
-                      Soldaduras, mangueras...
-                    </span>
-                  </div>
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* CARD 2: TALLERES ESPECIALIZADOS Y SERVITECAS (AZUL CYAN) */}
-          <Card className="bg-slate-900 border-blue-500/35 shadow-md overflow-hidden py-0 gap-0 text-white">
-            <div className="p-3 bg-gradient-to-r from-blue-950/50 via-slate-900 to-slate-900 border-b border-blue-500/20 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="p-1 rounded-lg bg-blue-500 text-white flex items-center justify-center shadow-xs">
-                  <Wrench className="w-3.5 h-3.5" />
+                <span className="text-xs font-black text-white block leading-tight mt-0.5">
+                  Fosa / Lubricadora
                 </span>
-                <div>
-                  <span className="text-xs font-black uppercase tracking-tight text-blue-400 block leading-tight">
-                    Talleres Especializados (Por Receta)
-                  </span>
-                  <span className="text-[10px] text-slate-300 font-medium block leading-tight">
-                    Catálogo oficial Hino AK y configuración del socio
-                  </span>
-                </div>
+                <span className="text-[10px] text-emerald-100 font-medium truncate block leading-tight">
+                  Aceite + Filtros
+                </span>
               </div>
-              <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/40 text-[9px] font-bold shrink-0">
-                🔵 Taller
-              </Badge>
-            </div>
+            </button>
 
-            <CardContent className="p-2.5 space-y-2.5">
-              {/* Grid Responsive Consistente (3 cols en móvil, 6 en desktop) */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                {(['LUBRICADORA', 'FRENOS_RUEDAS', 'MNT_MAYOR', 'ADMISION_AIRE', 'ALINEACION', 'RADIADOR'] as EstacionServicioId[]).map(estId => {
+            {/* Botón B: 🔧 Arreglo Rápido / Imprevisto */}
+            <button
+              type="button"
+              onClick={() => {
+                setArregloDescripcion('');
+                setArregloKm(kmActual.toString());
+                setArregloTaller('');
+                setArregloFactura('');
+                setArregloCosto('');
+                setArregloPagador('AYUDANTE');
+                setArregloSocioModalidad('TRANSFERENCIA_TOTAL');
+                setArregloSocioAbono('');
+                setArregloFecha(new Date().toISOString().split('T')[0]);
+                setIsArregloModalOpen(true);
+              }}
+              className="flex items-center gap-2.5 p-3 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-700 active:scale-[0.98] text-white shadow-md cursor-pointer transition-all hover:brightness-105 select-none"
+            >
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">
+                🔧
+              </div>
+              <div className="text-left min-w-0">
+                <span className="text-[9px] font-black uppercase tracking-wider text-amber-200 block leading-tight">
+                  Imprevisto en Ruta
+                </span>
+                <span className="text-xs font-black text-white block leading-tight mt-0.5">
+                  Arreglo Rápido
+                </span>
+                <span className="text-[10px] text-amber-100 font-medium truncate block leading-tight">
+                  Soldadura, mangueras...
+                </span>
+              </div>
+            </button>
+          </div>
+
+          {/* Acordeón Colapsable Sutil para Talleres Especializados */}
+          <div className="rounded-xl border border-slate-200 bg-white/90 overflow-hidden shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setMostrarTalleresEspecializados(prev => !prev)}
+              className="w-full py-2 px-3 flex items-center justify-between text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Wrench className="w-3.5 h-3.5 text-blue-600" />
+                <span>Talleres Especializados (Frenos, Caja, Admisión, Llantas, Radiador)</span>
+              </div>
+              <span className="text-slate-500 text-[11px] font-black">
+                {mostrarTalleresEspecializados ? '▲ Ocultar' : '▼ Ver Talleres'}
+              </span>
+            </button>
+
+            {mostrarTalleresEspecializados && (
+              <div className="p-2.5 pt-1 border-t border-slate-100 bg-slate-50/70 grid grid-cols-3 sm:grid-cols-5 gap-2 animate-in fade-in duration-150">
+                {(['FRENOS_RUEDAS', 'ADMISION_AIRE', 'ALINEACION', 'MNT_MAYOR', 'RADIADOR'] as EstacionServicioId[]).map(estId => {
                   const est = ESTACIONES_SERVICIO_CONFIG[estId];
                   const comboUnidad = getComboUnidad(activeBusId, estId);
-                  const nombresCortos: Record<EstacionServicioId, string> = {
-                    LUBRICADORA: 'Fosa / Aceite',
+                  const nombresCortos: Record<string, string> = {
                     FRENOS_RUEDAS: 'Frenos / Ruedas',
-                    MNT_MAYOR: 'Mantenim. Mayor',
                     ADMISION_AIRE: 'Admisión / Aire',
                     ALINEACION: 'Serviteca / Llantas',
+                    MNT_MAYOR: 'Mantenim. Mayor',
                     RADIADOR: 'Radiador / Coolant',
                   };
                   return (
@@ -1862,113 +1941,85 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                       key={estId}
                       type="button"
                       onClick={() => handleAbrirEstacionChofer(estId)}
-                      className="flex flex-col items-center justify-center p-2 rounded-xl bg-blue-950/30 hover:bg-blue-900/50 active:scale-95 border border-blue-500/25 hover:border-blue-400/50 transition-all cursor-pointer text-center group min-h-[74px]"
+                      className="flex flex-col items-center justify-center p-2 rounded-xl bg-white hover:bg-blue-50 active:scale-95 border border-slate-200 hover:border-blue-300 transition-all cursor-pointer text-center group shadow-2xs"
                     >
-                      <span className="text-xl mb-1 group-hover:scale-110 transition-transform">
+                      <span className="text-xl mb-0.5 group-hover:scale-110 transition-transform">
                         {est.icono}
                       </span>
-                      <span className="text-[10px] font-black text-slate-100 group-hover:text-blue-200 leading-tight truncate w-full">
-                        {nombresCortos[estId] || est.nombre.split(' ')[0]}
+                      <span className="text-[10px] font-black text-slate-800 group-hover:text-blue-700 leading-tight truncate w-full">
+                        {nombresCortos[estId] || est.nombre}
                       </span>
-                      <span className="text-[8px] text-blue-300 font-bold mt-0.5">
-                        {comboUnidad.items.length} ítems
+                      <span className="text-[9px] text-slate-400 font-semibold mt-0.5">
+                        {comboUnidad.items.length} tareas
                       </span>
                     </button>
                   );
                 })}
               </div>
-
-              {/* Barra de Historial Operativo y Sincronización en la Nube */}
-              <div className="pt-2 border-t border-blue-500/20 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-[10px] text-slate-300 font-medium min-w-0">
-                  <div className="flex items-center gap-1 truncate">
-                    <History className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                    <span>
-                      {historialParadas.length === 0
-                        ? 'Sin servicios'
-                        : `${historialParadas.length} en historial`}
-                    </span>
-                  </div>
-                  {outboxCount > 0 ? (
-                    <button
-                      type="button"
-                      onClick={ejecutarSincronizacionManual}
-                      className="flex items-center gap-1 text-[9px] font-black bg-amber-400 hover:bg-amber-300 text-slate-950 px-1.5 py-0.5 rounded-md animate-pulse cursor-pointer shadow-xs"
-                      title="Toca para subir a la base de datos ahora"
-                    >
-                      <RefreshCw className="w-3 h-3 animate-spin" /> {outboxCount} subir
-                    </button>
-                  ) : (
-                    <span className="hidden sm:inline-flex items-center gap-0.5 text-[8px] text-emerald-400 font-semibold opacity-80">
-                      ● BD activa
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Botón Sincronizar Bidireccional */}
-                  <button
-                    type="button"
-                    onClick={ejecutarSincronizacionManual}
-                    disabled={isSyncingManual}
-                    className="px-2 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-200 hover:text-white text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer border border-white/15 disabled:opacity-50"
-                    title="Sincronizar con la Base de Datos central en la nube"
-                  >
-                    <RefreshCw className={`w-3 h-3 text-cyan-300 ${isSyncingManual ? 'animate-spin text-amber-400' : ''}`} />
-                    <span className="hidden xs:inline">{isSyncingManual ? 'Sincronizando...' : 'Sincronizar'}</span>
-                  </button>
-
-                  {/* Botón Ver Historial */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsHistorialModalOpen(true);
-                      ejecutarSincronizacionManual();
-                    }}
-                    className="px-2.5 py-1 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 text-blue-300 hover:text-blue-200 text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer border border-blue-400/30"
-                  >
-                    <History className="w-3 h-3" />
-                    <span>Ver Historial ({historialParadas.length})</span>
-                  </button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* FASE 1: Selector de Alcance en 1 Toque (Mis Tareas vs Todo el Bus) */}
-        <div className="flex items-center justify-between gap-2 pt-0.5">
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 w-full shadow-inner">
-            <button
-              type="button"
-              onClick={() => setFiltroAlcance('CHOFER')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                filtroAlcance === 'CHOFER'
-                  ? 'bg-amber-500 text-slate-950 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-              }`}
-            >
-              <UserCheck className="w-3.5 h-3.5 shrink-0" />
-              <span>Mis Tareas ({countChofer})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setFiltroAlcance('TODOS')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                filtroAlcance === 'TODOS'
-                  ? 'bg-amber-500 text-slate-950 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
-              }`}
-            >
-              <Wrench className="w-3.5 h-3.5 shrink-0" />
-              <span>Todo el Bus ({countTodos})</span>
-            </button>
+            )}
           </div>
         </div>
 
-        {/* Lista de tareas tipo semáforo (Priorizada por severidad mecánica) */}
-        <div className="space-y-2">
+        {/* ZONA 3: EL RADAR DE TAREAS MECÁNICAS */}
+        <div className="space-y-2 pt-0.5">
+          {/* Selector de Alcance en 1 Toque y Filtro Activo */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 w-full shadow-inner">
+              <button
+                type="button"
+                onClick={() => setFiltroAlcance('CHOFER')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  filtroAlcance === 'CHOFER'
+                    ? 'bg-amber-500 text-slate-950 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <UserCheck className="w-3.5 h-3.5 shrink-0" />
+                <span>Mis Tareas ({countChofer})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFiltroAlcance('TODOS')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  filtroAlcance === 'TODOS'
+                    ? 'bg-amber-500 text-slate-950 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                }`}
+              >
+                <Wrench className="w-3.5 h-3.5 shrink-0" />
+                <span>Todo el Bus ({countTodos})</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Badge de Filtro de Semáforo Activo */}
+          {filtroSemaforo !== 'TODOS' && (
+            <div className="flex items-center justify-between px-2.5 py-1 rounded-xl bg-slate-100 border border-slate-200 text-xs">
+              <span className="text-slate-600 font-bold flex items-center gap-1.5">
+                <span>Filtrando por:</span>
+                <strong className={
+                  filtroSemaforo === 'VENCIDOS' ? 'text-rose-700 font-black' :
+                  filtroSemaforo === 'POR_VENCER' ? 'text-amber-800 font-black' :
+                  'text-emerald-700 font-black'
+                }>
+                  {filtroSemaforo === 'VENCIDOS' ? '🔴 Vencidos' :
+                   filtroSemaforo === 'POR_VENCER' ? '🟡 Próximos' :
+                   '🟢 Al Día'}
+                </strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => setFiltroSemaforo('TODOS')}
+                className="text-[10px] font-black text-slate-500 hover:text-slate-900 px-1.5 py-0.5 rounded-md hover:bg-slate-200 cursor-pointer"
+              >
+                ✕ Mostrar Todos
+              </button>
+            </div>
+          )}
+
+          {/* Lista de tareas tipo semáforo */}
+          <div className="space-y-2">
           {tareasCalculadas.length === 0 ? (
             <div className="text-center py-6 px-4 bg-slate-50/80 rounded-xl border border-dashed border-slate-300">
               <p className="text-xs font-bold text-slate-600">No hay tareas pendientes en este filtro</p>
@@ -2108,8 +2159,9 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             })
           )}
         </div>
+      </div>
 
-        {onVerMas && (
+      {onVerMas && (
           <div className="pt-1 flex justify-end">
             <button
               type="button"

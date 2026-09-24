@@ -261,4 +261,12 @@
 - **Historial Rápido:** Indicador visible `Último: [Fecha] ([Km] km) en [Taller/Chofer]` en la tarjeta.
 - **Commit Oficial:** `feat(mantenimiento): v3.60.18 - fase 2 enrutamiento inteligente desde tarjeta, historial y accion cero costo`.
 
+## 29. Rediseño Visual en 3 Zonas Limpias y Semáforo Táctil Reactivo (v3.60.18 - Fase 3)
+- **Hito:** Conclusión de la Fase 3 del rediseño ergonómico para el chofer.
+- **Zona 1 (Comando):** Header oscuro compacto con tacómetro digital en negrita (`Tacómetro: 893.485 KM`), estado de sincronización y Semáforo Reactivo de 4 chips (🔴 Vencidos, 🟡 Próximos, 🟢 Al Día, Total) que filtran la lista con 1 toque sin scroll.
+- **Zona 2 (Paradas Clave):** 2 botones directos en la zona del pulgar: `🛢️ Fosa / Lubricadora` (cada 5.000 km) y `🔧 Arreglo Rápido` (imprevistos), más acordeón colapsable para talleres especializados.
+- **Zona 3 (Radar Mecánico):** Micro-cards completas interactivas con botones contextuales por severidad (`Calibrar $0`, `🚨 Taller`, `⚠️ Atender`, `✓ Al Día`).
+- **Commit Oficial:** `feat(mantenimiento): v3.60.18 - fase 3 rediseno visual en 3 zonas limpias y semaforo reactivo`.
+
+
 

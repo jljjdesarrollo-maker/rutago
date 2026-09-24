@@ -658,6 +658,37 @@
 5. **Verificación:**
    - `compile_applet` exitoso sin errores de TypeScript.
 
+---
+
+## 🚀 ACTUALIZACIÓN (2026-09-24) - FASE 3: REDISEÑO VISUAL EN 3 ZONAS LIMPIAS Y BOTÓN DESHACER (v3.60.18)
+
+### 📌 MOTIVO Y DIAGNÓSTICO
+- Implementación de la Fase 3 del Plan Maestro v3.60.18:
+  - Erradicar la "Guerra de Secciones" (franjas compitiendo por atención).
+  - Estructurar la interfaz del conductor en 3 zonas claras de alta ergonomía.
+  - Dotar al semáforo de interactividad táctil para aislar componentes urgentes sin scroll.
+  - Ofrecer acceso rápido a las dos paradas de mayor frecuencia (Lubricadora y Arreglo Rápido) en la zona natural del pulgar.
+
+### ⚙️ CAMBIOS APLICADOS
+1. **Zona 1 (Tablero de Comando Digital & Semáforo Reactivo):**
+   - Header unificado en fondo oscuro de alto contraste (`bg-slate-950`) con tacómetro digital grande (`Tacómetro: 893.485 KM`), badge de unidad, estado de sincronización a la nube y acceso directo al historial.
+   - Semáforo reactivo con 4 chips táctiles con conteos en tiempo real:
+     * 🔴 `Vencidos (X)`: Filtra instantáneamente la lista a los componentes con kilometraje excedido.
+     * 🟡 `Próximos (Y)`: Aísla las tareas urgentes que vencen en ≤ 800 km.
+     * 🟢 `Al Día (Z)`: Muestra los ítems con ciclo normal.
+     * `Total (X)`: Restaura la vista completa.
+2. **Zona 2 (Acceso Rápido a Paradas - Thumb Zone):**
+   - 2 botones principales destacados:
+     * `🛢️ Fosa / Lubricadora (Combo Rápido)`: Dispara la receta oficial de fosa cada 5.000 km.
+     * `🔧 Arreglo Rápido / Imprevisto`: Modal para soldaduras, mangueras y reparaciones fuera de catálogo.
+   - Acordeón colapsable sutil `[ 🛠️ Talleres Especializados ▾ ]` con las 5 estaciones mayores (Frenos, Caja, Admisión, Serviteca, Radiador).
+3. **Zona 3 (Radar de Tareas con Jerarquía Visual):**
+   - Selector de alcance (`Mis Tareas` vs `Todo el Bus`) + chip indicador del filtro activo del semáforo con botón para limpiar filtro.
+   - Micro-cards táctiles completas con botones contextuales adaptados según severidad (`Calibrar $0`, `🚨 Taller`, `⚠️ Atender`, `✓ Al Día`).
+4. **Verificación:**
+   - `compile_applet` verificado exitosamente.
+
+
 
 
 
