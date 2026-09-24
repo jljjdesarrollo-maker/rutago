@@ -569,3 +569,31 @@
 4. **Verificación de Compilación:**
    - Compilación exitosa en `compile_applet` y `npm run build` sin errores.
 
+---
+
+## 🚀 ACTUALIZACIÓN (2026-09-24) - MODAL DE ASENTAMIENTO DE TALLER: ARQUITECTURA POR CARDS DE 3 BLOQUES Y DINAMISMO CROMÁTICO (v3.60.14)
+
+### 📌 MOTIVO Y DIAGNÓSTICO
+- Continuidad de diseño y madurez UI/UX en `ChoferMantenimientoWidget.tsx`:
+  - **Desconexión Cromática Resuelta:** Previamente, al pulsar un taller especializado con tarjeta azul, el modal abría con fondos y acentos ámbar. Ahora el modal adopta dinamismo cromático automático heredando la identidad de origen: **Verde Esmeralda** (`isRuta`: Lubricadora Rápida) o **Azul Cobalto** (Talleres Especializados: Mantenimiento Mayor, Frenos, Admisión, Llantas, Radiador).
+  - **Ergonomía Táctil en Smartphone (Thumb Zone):** Se eliminó el scroll vertical excesivo mediante una estructura modular compacta y un **botón de confirmación fijo al pulgar (`sticky bottom`)**.
+  - **Grid Responsive de Micro-Cards:** Los ítems de receta se organizan en un grid de 1 o 2 columnas con tarjetas de altura uniforme (mínimo 54px), con checkboxes amplios, nombres en negrita, ciclos en km y badges de receta del socio.
+  - **Bloque Financiero Simétrico:** Grid 2x2 para importes y selección táctil de pagador (Ayudante vs. Socio) con modalidades interactivas de liquidación.
+
+### ⚙️ CAMBIOS APLICADOS
+1. **Dinamismo Cromático Automático (`ChoferMantenimientoWidget.tsx`):**
+   - Detección reactiva de origen: `const isRuta = estacionSeleccionadaChofer === 'LUBRICADORA'`.
+   - Si es parada en ruta: Cabecera degradada en Verde Esmeralda/Slate, badge `🟢 EN RUTA`, bordes `border-emerald-500/40` y botón principal esmeralda.
+   - Si es taller especializado: Cabecera degradada en Azul Cobalto/Slate, badge `🔵 TALLER`, bordes `border-blue-500/40` y botón principal azul.
+2. **Card 1: Odómetro del Tablero:**
+   - Input de tacómetro en negrita con sufijo KM y acceso discreto a regularización retroactiva con candados de seguridad en vivo.
+3. **Card 2: Micro-Cards de Tareas y Repuestos:**
+   - Grid responsive `grid-cols-1 sm:grid-cols-2 gap-2` con selección al toque en cualquier parte de la micro-card, feedback visual y conteo en tiempo real (`X de Y`).
+4. **Card 3: Comprobante, Costo y Pagador:**
+   - Inputs simétricos para costo y comprobante, junto con tarjetas táctiles simétricas para `🚌 Paga Ayudante (Ruta)` y `👤 Paga Socio (Taller)`. Modalidades de Socio (Transferencia Total, Anticipo + Saldo, Saca Fiado) con cálculo en vivo de la cartera de deuda.
+5. **Botonera Sticky Bottom:**
+   - Botón fijo `[ 💾 Asentar Mantenimiento de Taller (X tareas) ]` anclado en la parte inferior para confirmación inmediata sin desplazamientos forzados.
+6. **Verificación:**
+   - `compile_applet` y compilación de producción Next.js 16 (`22/22` rutas) verificadas exitosamente.
+
+

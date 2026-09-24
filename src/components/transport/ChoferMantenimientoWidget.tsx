@@ -1920,491 +1920,506 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         </div>
       )}
 
-            {/* FASE 2: MODAL EJECUCIÓN DE PARADA DE TALLER DEL CHOFER (RESETEO INMUTABLE) */}
+            {/* FASE 2: MODAL EJECUCIÓN DE PARADA DE TALLER DEL CHOFER (ARQUITECTURA POR CARDS DE 3 BLOQUES) */}
       {estacionSeleccionadaChofer && (() => {
         const config = ESTACIONES_SERVICIO_CONFIG[estacionSeleccionadaChofer];
         if (!config) return null;
         const totalItems = estacionItemsChofer.length;
         const totalMarcados = Object.values(estacionChecksChofer).filter(Boolean).length;
+        const isRuta = estacionSeleccionadaChofer === 'LUBRICADORA';
 
         return (
           <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto flex flex-col">
-              {/* Cabecera */}
-              <div className="flex items-start justify-between border-b pb-3 shrink-0">
+            <div className={`w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden border ${isRuta ? 'border-emerald-500/40' : 'border-blue-500/40'} animate-in slide-in-from-bottom duration-200`}>
+              {/* CABECERA ERGONÓMICA CON CÓDIGO CROMÁTICO (Verde Ruta vs Azul Taller) */}
+              <div className={`p-4 ${isRuta ? 'bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-900 border-b border-emerald-500/30' : 'bg-gradient-to-r from-blue-950 via-slate-900 to-slate-900 border-b border-blue-500/30'} text-white flex items-center justify-between shrink-0 shadow-md`}>
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-2xl bg-slate-900 text-amber-400 flex items-center justify-center text-xl shadow-xs">
+                  <div className={`w-10 h-10 rounded-2xl ${isRuta ? 'bg-emerald-500 text-slate-950' : 'bg-blue-600 text-white'} flex items-center justify-center text-xl shadow-xs font-black`}>
                     {config.icono}
                   </div>
                   <div>
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="text-base font-black text-slate-900 leading-tight">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h3 className="text-base font-black text-white leading-tight">
                         {config.nombre}
                       </h3>
-                      <Badge className="bg-amber-100 text-amber-900 border-0 text-[10px] font-black">
+                      <Badge className={`text-[10px] font-black border-0 ${isRuta ? 'bg-emerald-400/20 text-emerald-300' : 'bg-blue-400/20 text-blue-300'}`}>
+                        {isRuta ? '🟢 EN RUTA' : '🔵 TALLER'}
+                      </Badge>
+                      <Badge className="bg-white/10 text-slate-200 border-0 text-[10px] font-black">
                         Bus {disco}
                       </Badge>
                     </div>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      Receta autorizada por tu socio • Toca tareas extras si se hicieron en fosa
+                    <p className={`text-[11px] font-medium leading-tight mt-0.5 ${isRuta ? 'text-emerald-300/80' : 'text-blue-300/80'}`}>
+                      {isRuta
+                        ? 'Servicio rápido en carretera • Receta oficial autorizada por el Socio'
+                        : 'Taller Especializado • Receta oficial autorizada por el Socio'}
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setEstacionSeleccionadaChofer(null)}
-                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Tacómetro / Odómetro actual del bus */}
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2 shrink-0">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-black text-amber-950 flex items-center gap-1.5">
-                    <Gauge className="w-4 h-4 text-amber-700" />
-                    Tacómetro del Tablero (Km)
-                  </Label>
-                  <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-tight">
-                    Lectura Obligatoria
-                  </span>
-                </div>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    value={estacionKmChofer}
-                    onChange={e => {
-                      setEstacionKmChofer(e.target.value);
-                      if (!estacionModoRetroactivoChofer) {
-                        setEstacionKmServicioChofer(e.target.value);
-                      }
-                    }}
-                    placeholder={kmActual.toString()}
-                    className="h-11 rounded-xl text-lg font-black bg-white border-amber-300 pr-12 text-slate-900"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-extrabold text-slate-500">
-                    KM
-                  </span>
-                </div>
-
-                {/* Enlace sutil no invasivo anti-fricción */}
-                <div className="pt-0.5 flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nuevoModo = !estacionModoRetroactivoChofer;
-                      setEstacionModoRetroactivoChofer(nuevoModo);
-                      if (nuevoModo && (!estacionKmServicioChofer || estacionKmServicioChofer === estacionKmChofer)) {
-                        setEstacionKmServicioChofer(estacionKmChofer || kmActual.toString());
-                      }
-                    }}
-                    className="text-[11px] font-bold text-amber-900 hover:text-amber-950 flex items-center gap-1 cursor-pointer transition-colors"
-                  >
-                    <span>⏱️ ¿Se realizó antes?</span>
-                    <span className="underline decoration-amber-600 underline-offset-2">
-                      {estacionModoRetroactivoChofer ? "Ocultar regularización (Hoy)" : "Toca aquí para regularizar fecha o km"}
-                    </span>
-                  </button>
-                </div>
-
-                {/* Bloque desplegable de Regularización Retroactiva */}
-                {estacionModoRetroactivoChofer && (() => {
-                  const odoBus = parseInt(estacionKmChofer, 10) || kmActual;
-                  const odoServicio = parseInt(estacionKmServicioChofer, 10) || 0;
-                  const calculo = calcularDesgasteRegularizacion(odoBus, odoServicio, 5000);
-
-                  return (
-                    <div className="mt-2 pt-2.5 border-t border-amber-300/60 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-950 flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-amber-700" /> Regularizar Servicio Anterior
-                        </span>
-                        <Badge className="bg-amber-200 text-amber-900 border-amber-300 text-[9px] font-black">
-                          Cálculo en Vivo
-                        </Badge>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-[10px] font-black text-slate-700 block mb-1">
-                            Km al momento del cambio *
-                          </Label>
-                          <Input
-                            type="number"
-                            value={estacionKmServicioChofer}
-                            onChange={e => setEstacionKmServicioChofer(e.target.value)}
-                            placeholder="ej. 892491"
-                            className="h-9 rounded-xl text-xs font-black bg-white border-amber-300"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-[10px] font-black text-slate-700 block mb-1">
-                            Fecha del servicio *
-                          </Label>
-                          <Input
-                            type="date"
-                            value={estacionFechaServicioChofer}
-                            onChange={e => setEstacionFechaServicioChofer(e.target.value)}
-                            className="h-9 rounded-xl text-xs font-bold bg-white border-amber-300"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Tarjeta de Cálculo en Vivo y Candado de Seguridad */}
-                      {odoServicio > 0 && (
-                        <div
-                          className={
-                            "p-2.5 rounded-xl border text-xs leading-relaxed " +
-                            (calculo.esInvalido
-                              ? "bg-rose-50 border-rose-300 text-rose-900 font-bold"
-                              : calculo.esVencido
-                              ? "bg-amber-100 border-amber-400 text-amber-950"
-                              : "bg-emerald-50 border-emerald-300 text-emerald-950")
-                          }
-                        >
-                          {calculo.esInvalido ? (
-                            <div className="flex items-start gap-1.5">
-                              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                              <div>
-                                <p className="font-black text-[11px] text-rose-800">Kilometraje Inválido</p>
-                                <p className="text-[10px] text-rose-700 font-medium">{calculo.mensajeError}</p>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between font-black text-[11px]">
-                                <span className="flex items-center gap-1 text-emerald-800">
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                  ✓ Hace {calculo.kmRodados.toLocaleString()} km
-                                </span>
-                                <span className="text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded-full text-[10px]">
-                                  Restan {calculo.kmRestantes.toLocaleString()} km ({calculo.porcentajeRestante}%)
-                                </span>
-                              </div>
-                              <p className="text-[10px] text-slate-600 font-medium">
-                                • El odómetro del autobús se mantendrá en <strong>{odoBus.toLocaleString()} km</strong>
-                              </p>
-                              {calculo.advertencia && (
-                                <p className="text-[10px] text-amber-800 font-bold mt-1">
-                                  {calculo.advertencia}
-                                </p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                <p className="text-[10px] text-amber-900 font-medium leading-tight">
-                  {estacionModoRetroactivoChofer
-                    ? "Los componentes seleccionados se calibrarán al kilometraje histórico ingresado."
-                    : "Al guardar, todos los componentes marcados se resetearán inmediatamente a 0 km recorridos."}
-                </p>
-              </div>
-              {/* Lista de Componentes del Combo con 1 solo toque */}
-              <div className="space-y-1.5 flex-1 min-h-[140px]">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-[11px] font-black text-slate-800 uppercase tracking-wider">
-                    Tareas Realizadas ({totalMarcados}/{totalItems})
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const todos = totalMarcados === totalItems;
-                      const nuevoMap: Record<string, boolean> = {};
-                      estacionItemsChofer.forEach(it => {
-                        nuevoMap[it.codigo] = !todos;
-                      });
-                      setEstacionChecksChofer(nuevoMap);
-                    }}
-                    className="text-[10px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
-                  >
-                    {totalMarcados === totalItems ? 'Desmarcar todos' : 'Marcar todos'}
-                  </button>
-                </div>
-
-                <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto p-2 pb-3 bg-slate-50/80 rounded-2xl border border-slate-200 shadow-inner/5">
-                  {estacionItemsChofer.map(it => {
-                    const estaActivo = !!estacionChecksChofer[it.codigo];
-                    return (
-                      <div
-                        key={it.codigo}
-                        onClick={() => handleToggleItemChofer(it.codigo)}
-                        className={'p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 select-none ' + (
-                          estaActivo
-                            ? 'bg-emerald-50/80 border-emerald-400 text-emerald-950 shadow-2xs'
-                            : 'bg-white border-slate-200 text-slate-500 opacity-60 hover:opacity-100'
-                        )}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div
-                            className={'w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-all ' + (
-                              estaActivo
-                                ? 'bg-emerald-600 border-emerald-600 text-white'
-                                : 'border-slate-300 bg-white'
-                            )}
-                          >
-                            {estaActivo && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                          </div>
-                          <div className="min-w-0">
-                            <span className={'text-xs font-black block truncate ' + (estaActivo ? 'text-slate-900' : 'text-slate-500')}>
-                              {it.nombre}
-                            </span>
-                            <span className="text-[9px] text-slate-500 block truncate">
-                              Ciclo: {it.intervaloKm.toLocaleString()} km {it.opcionalTexto ? '• ' + it.opcionalTexto : ''}
-                            </span>
-                          </div>
-                        </div>
-
-                        {it.preMarcado ? (
-                          <Badge className="bg-amber-100 text-amber-900 border-0 text-[8px] py-0 px-1 font-bold shrink-0">
-                            Receta Socio
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-slate-100 text-slate-600 border-0 text-[8px] py-0 px-1 font-medium shrink-0">
-                            Extra Fosa
-                          </Badge>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Datos de Comprobante / Factura */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2.5 shrink-0 mt-2">
-                <div className="flex items-center justify-between pb-1 border-b border-slate-200/80">
-                  <Label className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>🧾</span>
-                    Comprobante y Costo del Servicio
-                  </Label>
-                  <span className="text-[10px] font-bold text-slate-500 bg-slate-200/60 px-2 py-0.5 rounded-full">
-                    Opcional
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div>
-                    <Label className="text-[11px] font-bold text-slate-700 block mb-1">
-                      Valor Total Factura / Nota ($)
+              {/* CONTENIDO PRINCIPAL SCROLLABLE (3 CARDS MODULARES) */}
+              <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3.5">
+                {/* 🔵 CARD 1: TACÓMETRO Y FECHA (Lectura de Tablero) */}
+                <div className={`p-3.5 rounded-2xl border ${isRuta ? 'bg-emerald-50/50 border-emerald-500/30' : 'bg-blue-50/50 border-blue-500/30'} shadow-2xs space-y-2.5`}>
+                  <div className="flex items-center justify-between">
+                    <Label className={`text-xs font-black flex items-center gap-1.5 ${isRuta ? 'text-emerald-950' : 'text-blue-950'}`}>
+                      <Gauge className={`w-4 h-4 ${isRuta ? 'text-emerald-700' : 'text-blue-700'}`} />
+                      Tacómetro del Tablero (Km)
                     </Label>
+                    <span className={`text-[10px] font-extrabold uppercase tracking-tight px-2 py-0.5 rounded-full ${isRuta ? 'bg-emerald-200/80 text-emerald-900' : 'bg-blue-200/80 text-blue-900'}`}>
+                      Lectura Obligatoria
+                    </span>
+                  </div>
+
+                  <div className="relative">
                     <Input
                       type="number"
-                      step="0.01"
-                      value={estacionCostoChofer}
-                      onChange={e => setEstacionCostoChofer(e.target.value)}
-                      placeholder="0.00"
-                      className="h-10 rounded-xl text-xs bg-white border-slate-300 font-black text-emerald-800 shadow-2xs focus:border-emerald-500"
+                      value={estacionKmChofer}
+                      onChange={e => {
+                        setEstacionKmChofer(e.target.value);
+                        if (!estacionModoRetroactivoChofer) {
+                          setEstacionKmServicioChofer(e.target.value);
+                        }
+                      }}
+                      placeholder={kmActual.toString()}
+                      className={`h-11 rounded-xl text-lg font-black bg-white pr-12 text-slate-900 ${isRuta ? 'border-emerald-300 focus:border-emerald-500' : 'border-blue-300 focus:border-blue-500'}`}
                     />
-                  </div>
-                  <div>
-                    <Label className="text-[11px] font-bold text-slate-700 block mb-1">
-                      Nº Factura / Nota
-                    </Label>
-                    <Input
-                      value={estacionFacturaChofer}
-                      onChange={e => setEstacionFacturaChofer(e.target.value)}
-                      placeholder="ej. 001-002-1458"
-                      className="h-10 rounded-xl text-xs bg-white border-slate-300 shadow-2xs"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-[11px] font-bold text-slate-700 block mb-1">
-                    Taller / Lugar de Servicio
-                  </Label>
-                  <Input
-                    value={estacionTallerChofer}
-                    onChange={e => setEstacionTallerChofer(e.target.value)}
-                    placeholder="Nombre del taller o lubricadora"
-                    className="h-10 rounded-xl text-xs bg-white border-slate-300 shadow-2xs"
-                  />
-                </div>
-              </div>
-
-              {/* Sub-fase 3.1: Bifurcación de Pagador si hay un costo pactado */}
-              {(parseFloat(estacionCostoChofer) || 0) > 0 && (
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2.5 shrink-0 animate-in fade-in duration-150">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                      <span>💳</span>
-                      ¿Quién cubre este gasto de taller? *
-                    </Label>
-                    <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      ${(parseFloat(estacionCostoChofer) || 0).toFixed(2)}
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-extrabold text-slate-500">
+                      KM
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* Opción A: Paga Ayudante */}
+                  {/* Enlace sutil no invasivo anti-fricción */}
+                  <div className="pt-0.5 flex items-center justify-between">
                     <button
                       type="button"
-                      onClick={() => setPagadorChofer('AYUDANTE')}
-                      className={
-                        'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ' +
-                        (pagadorChofer === 'AYUDANTE'
-                          ? 'bg-amber-500/15 border-amber-500 text-amber-950 font-black ring-1 ring-amber-500 shadow-xs'
-                          : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-100/60')
-                      }
+                      onClick={() => {
+                        const nuevoModo = !estacionModoRetroactivoChofer;
+                        setEstacionModoRetroactivoChofer(nuevoModo);
+                        if (nuevoModo && (!estacionKmServicioChofer || estacionKmServicioChofer === estacionKmChofer)) {
+                          setEstacionKmServicioChofer(estacionKmChofer || kmActual.toString());
+                        }
+                      }}
+                      className={`text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors ${isRuta ? 'text-emerald-900 hover:text-emerald-950' : 'text-blue-900 hover:text-blue-950'}`}
                     >
-                      <div className="flex items-center gap-1.5 font-black text-xs mb-1">
-                        <span>🚌</span>
-                        <span>Paga Ayudante</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 leading-tight">
-                        Efectivo de la vuelta en ruta. Se descuenta en el Arqueo General hoy.
-                      </p>
-                    </button>
-
-                    {/* Opción B: Paga Socio */}
-                    <button
-                      type="button"
-                      onClick={() => setPagadorChofer('SOCIO')}
-                      className={
-                        'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ' +
-                        (pagadorChofer === 'SOCIO'
-                          ? 'bg-purple-600/15 border-purple-600 text-purple-950 font-black ring-1 ring-purple-600 shadow-xs'
-                          : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-100/60')
-                      }
-                    >
-                      <div className="flex items-center gap-1.5 font-black text-xs mb-1">
-                        <span>👤</span>
-                        <span>Paga el Socio</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 leading-tight">
-                        Acordado por WhatsApp/llamada. Arqueo del ayudante queda en $0.
-                      </p>
+                      <span>⏱️ ¿Se realizó antes?</span>
+                      <span className={`underline underline-offset-2 ${isRuta ? 'decoration-emerald-600' : 'decoration-blue-600'}`}>
+                        {estacionModoRetroactivoChofer ? "Ocultar regularización (Hoy)" : "Toca aquí para regularizar fecha o km"}
+                      </span>
                     </button>
                   </div>
 
-                  {/* Si PAGA EL SOCIO: 3 Botones de 1 toque (Sub-fase 3.3) */}
-                  {pagadorChofer === 'SOCIO' && (
-                    <div className="bg-purple-50/70 border border-purple-200 rounded-2xl p-3 space-y-2 animate-in fade-in duration-150">
-                      <Label className="text-[10px] font-black text-purple-950 uppercase tracking-wider block">
-                        Modalidad acordada con el Socio:
-                      </Label>
+                  {/* Bloque desplegable de Regularización Retroactiva */}
+                  {estacionModoRetroactivoChofer && (() => {
+                    const odoBus = parseInt(estacionKmChofer, 10) || kmActual;
+                    const odoServicio = parseInt(estacionKmServicioChofer, 10) || 0;
+                    const calculo = calcularDesgasteRegularizacion(odoBus, odoServicio, 5000);
 
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {/* Botón 1: Transfiere Todo */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSocioModalidadChofer('TRANSFERENCIA_TOTAL');
-                            setSocioAbonoChofer('');
-                          }}
-                          className={
-                            'p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ' +
-                            (socioModalidadChofer === 'TRANSFERENCIA_TOTAL'
-                              ? 'bg-emerald-600 border-emerald-700 text-white font-black shadow-xs'
-                              : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-50')
-                          }
-                        >
-                          <span className="text-[10px] uppercase block">Transfiere Todo</span>
-                          <span className="text-xs font-black block mt-0.5">
-                            {'$' + (parseFloat(estacionCostoChofer) || 0).toFixed(2)}
+                    return (
+                      <div className={`mt-2 pt-2.5 border-t ${isRuta ? 'border-emerald-200' : 'border-blue-200'} space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200`}>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${isRuta ? 'text-emerald-950' : 'text-blue-950'}`}>
+                            <Calendar className={`w-3 h-3 ${isRuta ? 'text-emerald-700' : 'text-blue-700'}`} /> Regularizar Servicio Anterior
                           </span>
-                        </button>
+                          <Badge className={`text-[9px] font-black ${isRuta ? 'bg-emerald-200 text-emerald-900 border-emerald-300' : 'bg-blue-200 text-blue-900 border-blue-300'}`}>
+                            Cálculo en Vivo
+                          </Badge>
+                        </div>
 
-                        {/* Botón 2: Transfiere una Parte */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSocioModalidadChofer('TRANSFERENCIA_PARCIAL');
-                            if (!socioAbonoChofer) {
-                              const total = parseFloat(estacionCostoChofer) || 0;
-                              setSocioAbonoChofer(total > 0 ? (Math.round((total / 2) * 100) / 100).toString() : '');
-                            }
-                          }}
-                          className={
-                            'p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ' +
-                            (socioModalidadChofer === 'TRANSFERENCIA_PARCIAL'
-                              ? 'bg-amber-500 border-amber-600 text-slate-950 font-black shadow-xs'
-                              : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-50')
-                          }
-                        >
-                          <span className="text-[10px] uppercase block">Una Parte</span>
-                          <span className="text-[11px] block mt-0.5">Anticipo + Saldo</span>
-                        </button>
-
-                        {/* Botón 3: Saca Fiado ($0 hoy) */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSocioModalidadChofer('CREDITO_FIADO');
-                            setSocioAbonoChofer('0');
-                          }}
-                          className={
-                            'p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ' +
-                            (socioModalidadChofer === 'CREDITO_FIADO'
-                              ? 'bg-rose-600 border-rose-700 text-white font-black shadow-xs'
-                              : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-50')
-                          }
-                        >
-                          <span className="text-[10px] uppercase block">Saca Fiado</span>
-                          <span className="text-xs font-black block mt-0.5">$0 Hoy (Crédito)</span>
-                        </button>
-                      </div>
-
-                      {/* Detalle si es pago parcial */}
-                      {socioModalidadChofer === 'TRANSFERENCIA_PARCIAL' && (
-                        <div className="pt-2 border-t border-purple-200 space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <Label className="text-[10px] font-bold text-purple-950 shrink-0">
-                              Monto transferido por el socio hoy ($):
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-[10px] font-black text-slate-700 block mb-1">
+                              Km al momento del cambio *
                             </Label>
                             <Input
                               type="number"
-                              step="0.01"
-                              value={socioAbonoChofer}
-                              onChange={e => setSocioAbonoChofer(e.target.value)}
-                              placeholder="0.00"
-                              className="h-8 rounded-lg text-xs bg-white border-purple-300 font-black text-amber-900"
+                              value={estacionKmServicioChofer}
+                              onChange={e => setEstacionKmServicioChofer(e.target.value)}
+                              placeholder="ej. 892491"
+                              className={`h-9 rounded-xl text-xs font-black bg-white ${isRuta ? 'border-emerald-300' : 'border-blue-300'}`}
                             />
                           </div>
-                          {(() => {
-                            const total = parseFloat(estacionCostoChofer) || 0;
-                            const abono = parseFloat(socioAbonoChofer) || 0;
-                            const saldo = Math.max(0, total - abono);
-                            return (
-                              <div className="flex items-center justify-between text-[11px] bg-white/90 p-2 rounded-xl border border-purple-200">
-                                <span className="text-emerald-700 font-bold">Transferido: ${abono.toFixed(2)}</span>
-                                <span className="text-amber-800 font-black">Saldo Deuda Taller: ${saldo.toFixed(2)}</span>
-                              </div>
-                            );
-                          })()}
+                          <div>
+                            <Label className="text-[10px] font-black text-slate-700 block mb-1">
+                              Fecha del servicio *
+                            </Label>
+                            <Input
+                              type="date"
+                              value={estacionFechaServicioChofer}
+                              onChange={e => setEstacionFechaServicioChofer(e.target.value)}
+                              className={`h-9 rounded-xl text-xs font-bold bg-white ${isRuta ? 'border-emerald-300' : 'border-blue-300'}`}
+                            />
+                          </div>
                         </div>
-                      )}
 
-                      {socioModalidadChofer === 'TRANSFERENCIA_TOTAL' && (
-                        <p className="text-[10px] text-emerald-800 bg-emerald-100/80 p-1.5 rounded-lg text-center font-bold">
-                          ✓ Transferencia completa por ${(parseFloat(estacionCostoChofer) || 0).toFixed(2)}. Gasto liquidado.
-                        </p>
-                      )}
+                        {/* Tarjeta de Cálculo en Vivo y Candado de Seguridad */}
+                        {odoServicio > 0 && (
+                          <div
+                            className={
+                              "p-2.5 rounded-xl border text-xs leading-relaxed " +
+                              (calculo.esInvalido
+                                ? "bg-rose-50 border-rose-300 text-rose-900 font-bold"
+                                : calculo.esVencido
+                                ? "bg-amber-100 border-amber-400 text-amber-950"
+                                : "bg-emerald-50 border-emerald-300 text-emerald-950")
+                            }
+                          >
+                            {calculo.esInvalido ? (
+                              <div className="flex items-start gap-1.5">
+                                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="font-black text-[11px] text-rose-800">Kilometraje Inválido</p>
+                                  <p className="text-[10px] text-rose-700 font-medium">{calculo.mensajeError}</p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between font-black text-[11px]">
+                                  <span className="flex items-center gap-1 text-emerald-800">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                    ✓ Hace {calculo.kmRodados.toLocaleString()} km
+                                  </span>
+                                  <span className="text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded-full text-[10px]">
+                                    Restan {calculo.kmRestantes.toLocaleString()} km ({calculo.porcentajeRestante}%)
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-slate-600 font-medium">
+                                  • El odómetro del autobús se mantendrá en <strong>{odoBus.toLocaleString()} km</strong>
+                                </p>
+                                {calculo.advertencia && (
+                                  <p className="text-[10px] text-amber-800 font-bold mt-1">
+                                    {calculo.advertencia}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
-                      {socioModalidadChofer === 'CREDITO_FIADO' && (
-                        <p className="text-[10px] text-rose-800 bg-rose-100/80 p-1.5 rounded-lg text-center font-bold">
-                          ⚠️ Deuda completa por ${(parseFloat(estacionCostoChofer) || 0).toFixed(2)} asentada a crédito pendiente.
-                        </p>
+                  <p className={`text-[10px] font-medium leading-tight ${isRuta ? 'text-emerald-900' : 'text-blue-900'}`}>
+                    {estacionModoRetroactivoChofer
+                      ? "Los componentes seleccionados se calibrarán al kilometraje histórico ingresado."
+                      : "Al guardar, todos los componentes marcados se resetearán inmediatamente a 0 km recorridos."}
+                  </p>
+                </div>
+
+                {/* 📋 CARD 2: TAREAS Y REPUESTOS DE RECETA (Grid Responsive de Micro-Cards) */}
+                <div className={`p-3.5 rounded-2xl border ${isRuta ? 'bg-slate-50/80 border-emerald-500/25' : 'bg-slate-50/80 border-blue-500/25'} shadow-2xs space-y-2.5`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>📋</span> Tareas de Receta ({totalMarcados} de {totalItems})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const todos = totalMarcados === totalItems;
+                        const nuevoMap: Record<string, boolean> = {};
+                        estacionItemsChofer.forEach(it => {
+                          nuevoMap[it.codigo] = !todos;
+                        });
+                        setEstacionChecksChofer(nuevoMap);
+                      }}
+                      className={`text-[11px] font-bold cursor-pointer transition-colors ${isRuta ? 'text-emerald-700 hover:text-emerald-900' : 'text-blue-700 hover:text-blue-900'}`}
+                    >
+                      {totalMarcados === totalItems ? 'Desmarcar todos' : 'Marcar todos'}
+                    </button>
+                  </div>
+
+                  {/* Grid Responsive de Micro-Cards (1 col en pantallas muy estrechas, 2 cols estándar) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1">
+                    {estacionItemsChofer.map(it => {
+                      const estaActivo = !!estacionChecksChofer[it.codigo];
+                      return (
+                        <div
+                          key={it.codigo}
+                          onClick={() => handleToggleItemChofer(it.codigo)}
+                          className={`min-h-[54px] p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 select-none active:scale-[0.99] ${
+                            estaActivo
+                              ? isRuta
+                                ? 'bg-emerald-50 border-emerald-400 text-emerald-950 ring-1 ring-emerald-400/40 shadow-2xs'
+                                : 'bg-blue-50 border-blue-400 text-blue-950 ring-1 ring-blue-400/40 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-500 opacity-70 hover:opacity-100 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <div
+                              className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-all ${
+                                estaActivo
+                                  ? isRuta
+                                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                                    : 'bg-blue-600 border-blue-600 text-white'
+                                  : 'border-slate-300 bg-white'
+                              }`}
+                            >
+                              {estaActivo && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <span className={`text-xs font-black block truncate leading-tight ${estaActivo ? 'text-slate-900' : 'text-slate-600'}`}>
+                                {it.nombre}
+                              </span>
+                              <span className="text-[10px] text-slate-500 block truncate leading-tight mt-0.5">
+                                {it.intervaloKm.toLocaleString()} km {it.opcionalTexto ? '• ' + it.opcionalTexto : ''}
+                              </span>
+                            </div>
+                          </div>
+
+                          {it.preMarcado ? (
+                            <Badge className={`text-[8px] py-0 px-1 font-bold shrink-0 border-0 ${isRuta ? 'bg-emerald-100 text-emerald-900' : 'bg-blue-100 text-blue-900'}`}>
+                              Receta Socio
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-slate-100 text-slate-600 border-0 text-[8px] py-0 px-1 font-medium shrink-0">
+                              Extra Fosa
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 🧾 CARD 3: COSTO, COMPROBANTE Y PAGADOR (Grid Simétrico) */}
+                <div className={`p-3.5 rounded-2xl border ${isRuta ? 'bg-slate-50 border-emerald-500/25' : 'bg-slate-50 border-blue-500/25'} shadow-2xs space-y-3`}>
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-200">
+                    <Label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>🧾</span>
+                      Comprobante y Costo del Servicio
+                    </Label>
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-full">
+                      Opcional
+                    </span>
+                  </div>
+
+                  {/* Fila 1: Inputs Simétricos 2 Columnas */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        Total Factura / Nota ($)
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={estacionCostoChofer}
+                        onChange={e => setEstacionCostoChofer(e.target.value)}
+                        placeholder="0.00"
+                        className={`h-10 rounded-xl text-xs bg-white border-slate-300 font-black shadow-2xs ${isRuta ? 'text-emerald-800 focus:border-emerald-500' : 'text-blue-800 focus:border-blue-500'}`}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        Nº Factura / Comprobante
+                      </Label>
+                      <Input
+                        value={estacionFacturaChofer}
+                        onChange={e => setEstacionFacturaChofer(e.target.value)}
+                        placeholder="ej. 001-002-1458"
+                        className="h-10 rounded-xl text-xs bg-white border-slate-300 shadow-2xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-[11px] font-bold text-slate-700 block mb-1">
+                      Taller / Lugar de Servicio
+                    </Label>
+                    <Input
+                      value={estacionTallerChofer}
+                      onChange={e => setEstacionTallerChofer(e.target.value)}
+                      placeholder="Nombre del taller o lubricadora"
+                      className="h-9 rounded-xl text-xs bg-white border-slate-300 shadow-2xs"
+                    />
+                  </div>
+
+                  {/* Fila 2: Selección Simétrica de Pagador */}
+                  <div className="space-y-2 pt-1 border-t border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>💳</span>
+                        ¿Quién cubre este valor?
+                      </Label>
+                      {(parseFloat(estacionCostoChofer) || 0) > 0 && (
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${isRuta ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}`}>
+                          ${(parseFloat(estacionCostoChofer) || 0).toFixed(2)}
+                        </span>
                       )}
                     </div>
-                  )}
-                </div>
-              )}
 
-              {/* Botones de Acción */}
-              <div className="flex items-center gap-2 pt-2 border-t shrink-0">
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Opción A: Paga Ayudante (Ruta) */}
+                      <button
+                        type="button"
+                        onClick={() => setPagadorChofer('AYUDANTE')}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[64px] ${
+                          pagadorChofer === 'AYUDANTE'
+                            ? 'bg-amber-500/15 border-amber-500 text-amber-950 font-black ring-1 ring-amber-500 shadow-2xs'
+                            : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-100/60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="font-black text-xs flex items-center gap-1">
+                            <span>🚌</span> Paga Ayudante (Ruta)
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-tight">
+                          Se liquida en caja hoy con el arqueo del viaje.
+                        </p>
+                      </button>
+
+                      {/* Opción B: Paga Socio (Taller) */}
+                      <button
+                        type="button"
+                        onClick={() => setPagadorChofer('SOCIO')}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[64px] ${
+                          pagadorChofer === 'SOCIO'
+                            ? 'bg-blue-600/15 border-blue-600 text-blue-950 font-black ring-1 ring-blue-600 shadow-2xs'
+                            : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-100/60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="font-black text-xs flex items-center gap-1">
+                            <span>👤</span> Paga Socio (Taller)
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-tight">
+                          Transferencia o crédito directo del dueño.
+                        </p>
+                      </button>
+                    </div>
+
+                    {/* Si PAGA EL SOCIO: Modalidades Simétricas */}
+                    {pagadorChofer === 'SOCIO' && (
+                      <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-3 space-y-2 animate-in fade-in duration-150">
+                        <Label className="text-[10px] font-black text-blue-950 uppercase tracking-wider block">
+                          Modalidad acordada con el Socio:
+                        </Label>
+
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {/* Transfiere Todo */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSocioModalidadChofer('TRANSFERENCIA_TOTAL');
+                              setSocioAbonoChofer('');
+                            }}
+                            className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center min-h-[52px] ${
+                              socioModalidadChofer === 'TRANSFERENCIA_TOTAL'
+                                ? 'bg-emerald-600 border-emerald-700 text-white font-black shadow-xs'
+                                : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-50'
+                            }`}
+                          >
+                            <span className="text-[10px] uppercase block">Transfiere Todo</span>
+                            <span className="text-xs font-black block mt-0.5">
+                              {'$' + (parseFloat(estacionCostoChofer) || 0).toFixed(2)}
+                            </span>
+                          </button>
+
+                          {/* Transfiere una Parte */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSocioModalidadChofer('TRANSFERENCIA_PARCIAL');
+                              if (!socioAbonoChofer) {
+                                const total = parseFloat(estacionCostoChofer) || 0;
+                                setSocioAbonoChofer(total > 0 ? (Math.round((total / 2) * 100) / 100).toString() : '');
+                              }
+                            }}
+                            className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center min-h-[52px] ${
+                              socioModalidadChofer === 'TRANSFERENCIA_PARCIAL'
+                                ? 'bg-amber-500 border-amber-600 text-slate-950 font-black shadow-xs'
+                                : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-50'
+                            }`}
+                          >
+                            <span className="text-[10px] uppercase block">Una Parte</span>
+                            <span className="text-[11px] block mt-0.5">Anticipo + Saldo</span>
+                          </button>
+
+                          {/* Saca Fiado */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSocioModalidadChofer('CREDITO_FIADO');
+                              setSocioAbonoChofer('0');
+                            }}
+                            className={`p-2 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center min-h-[52px] ${
+                              socioModalidadChofer === 'CREDITO_FIADO'
+                                ? 'bg-rose-600 border-rose-700 text-white font-black shadow-xs'
+                                : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-50'
+                            }`}
+                          >
+                            <span className="text-[10px] uppercase block">Saca Fiado</span>
+                            <span className="text-xs font-black block mt-0.5">$0 Hoy</span>
+                          </button>
+                        </div>
+
+                        {/* Detalle si es pago parcial */}
+                        {socioModalidadChofer === 'TRANSFERENCIA_PARCIAL' && (
+                          <div className="pt-2 border-t border-blue-200 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <Label className="text-[10px] font-bold text-blue-950 shrink-0">
+                                Monto transferido por el socio hoy ($):
+                              </Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={socioAbonoChofer}
+                                onChange={e => setSocioAbonoChofer(e.target.value)}
+                                placeholder="0.00"
+                                className="h-8 rounded-lg text-xs bg-white border-blue-300 font-black text-amber-900"
+                              />
+                            </div>
+                            {(() => {
+                              const total = parseFloat(estacionCostoChofer) || 0;
+                              const abono = parseFloat(socioAbonoChofer) || 0;
+                              const saldo = Math.max(0, total - abono);
+                              return (
+                                <div className="flex items-center justify-between text-[11px] bg-white/90 p-2 rounded-xl border border-blue-200">
+                                  <span className="text-emerald-700 font-bold">Transferido: ${abono.toFixed(2)}</span>
+                                  <span className="text-amber-800 font-black">Saldo Deuda Taller: ${saldo.toFixed(2)}</span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+
+                        {socioModalidadChofer === 'TRANSFERENCIA_TOTAL' && (
+                          <p className="text-[10px] text-emerald-800 bg-emerald-100/80 p-1.5 rounded-lg text-center font-bold">
+                            ✓ Transferencia completa por ${(parseFloat(estacionCostoChofer) || 0).toFixed(2)}. Gasto liquidado.
+                          </p>
+                        )}
+
+                        {socioModalidadChofer === 'CREDITO_FIADO' && (
+                          <p className="text-[10px] text-rose-800 bg-rose-100/80 p-1.5 rounded-lg text-center font-bold">
+                            ⚠️ Deuda completa por ${(parseFloat(estacionCostoChofer) || 0).toFixed(2)} asentada a crédito pendiente.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* BOTONERA FIJA AL PULGAR (Sticky Bottom Zero Fricción) */}
+              <div className="shrink-0 p-3 sm:p-4 bg-white/95 backdrop-blur-xs border-t border-slate-200 flex items-center gap-2 shadow-lg">
                 <Button
                   type="button"
                   onClick={() => setEstacionSeleccionadaChofer(null)}
                   variant="ghost"
-                  className="flex-1 h-11 rounded-xl text-gray-600 font-bold text-xs cursor-pointer"
+                  className="h-12 px-4 rounded-xl text-slate-600 font-bold text-xs cursor-pointer hover:bg-slate-100"
                 >
                   Cancelar
                 </Button>
+
                 {(() => {
                   const odoBus = parseInt(estacionKmChofer, 10) || kmActual;
                   const odoServicio = parseInt(estacionKmServicioChofer, 10) || 0;
@@ -2416,12 +2431,13 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                       type="button"
                       disabled={esInvalido}
                       onClick={handleAsentarParadaChofer}
-                      className={
-                        "flex-1 h-11 rounded-xl font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all " +
-                        (esInvalido
+                      className={`flex-1 h-12 rounded-xl font-black text-xs shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                        esInvalido
                           ? "bg-rose-300 text-rose-800 cursor-not-allowed"
-                          : "bg-amber-500 hover:bg-amber-600 text-slate-950")
-                      }
+                          : isRuta
+                          ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/25"
+                          : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/25"
+                      }`}
                     >
                       {esInvalido ? (
                         <>
@@ -2430,13 +2446,13 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                         </>
                       ) : estacionModoRetroactivoChofer && calculo && !calculo.esInvalido ? (
                         <>
-                          <Save className="w-4 h-4 fill-slate-950" />
+                          <Save className="w-4 h-4" />
                           Calibrar a {calculo.kmRestantes.toLocaleString()} km Restantes
                         </>
                       ) : (
                         <>
-                          <Zap className="w-4 h-4 fill-slate-950" />
-                          Asentar y Resetear (0 km)
+                          <Save className="w-4 h-4" />
+                          Asentar {isRuta ? 'Parada en Ruta' : 'Mantenimiento de Taller'} ({totalMarcados} tarea{totalMarcados === 1 ? '' : 's'})
                         </>
                       )}
                     </Button>
