@@ -51,15 +51,22 @@ Si estás abriendo este proyecto desde una nueva cuenta de Google Studio o una n
   1. Orden cronológico descendente riguroso en `getParadasPagoByBus`: `Fecha más reciente` ➔ `Mayor Odómetro`.
   2. Motor de búsqueda multi-criterio en memoria (texto, taller, componente, factura).
   3. Cero dependencia de internet: Local-first con latencia de 0 ms.
-- **FASE 3 (Rediseño Ergonómico del Modal de Historial - Zona del Pulgar):**
-  * Chips táctiles de 1 toque (`[ Todos ]`, `[ 🛢️ Aceite ]`, `[ 🛑 Frenos ]`, `[ 💨 Aire ]`, `[ 🛞 Llantas ]`, `[ 🛠️ Mayor ]`), tarjetas legibles con kilómetros rodados desde el servicio y sello pagador.
-- **FASE 4 (Sincronización Silenciosa y Verificación):**
-  * Sincronización en segundo plano, pruebas en modo avión, compilación y push a GitHub.
+- **FASE 3 (Rediseño Ergonómico del Modal de Historial - Zona del Pulgar):** ✅ COMPLETADA
+  * Tirador táctil ergonómico superior (`drag handle`) para smartphones.
+  * Tarjeta de Resumen Ejecutivo en cabecera: Total gastado ($), desglose de cubierto en ruta por Ayudante ($) y cubierto por Socio Propietario ($).
+  * Selector rápido de pagador en 1 toque: `[ Todos ]`, `[ 🚌 Ruta (Ayudante) ]`, `[ 👤 Socio Propietario ]`.
+  * Chips táctiles de 1 toque por estación (`[ Todos ]`, `[ 🛢️ Aceite ]`, `[ 🛑 Frenos ]`, `[ 💨 Aire ]`, `[ 🛞 Llantas ]`, `[ 🛠️ Mayor ]`).
+  * Micro-tags de repuestos realizados (`✓ Aceite Motor`, `✓ Filtro Diésel`, etc.).
+  * Tarjetas de servicio enriquecidas con odómetro, indicador de kilómetros transcurridos (`Hace X km`), taller, factura y sello de pagador con estado contable.
+  * Botón táctil ergonómico inferior de 48px (`h-12`) optimizado para el pulgar.
+- **FASE 4 (Sincronización Silenciosa y Verificación Offline):** ✅ COMPLETADA
+  * Sincronización transparente en segundo plano con PostgreSQL central (`syncMantenimientoBidireccional`).
+  * Blindaje offline para operación en fosa y carretera sin cobertura celular: encola en outbox local si no hay internet y no bloquea al usuario.
+  * Verificación de compilación exitosa (cero errores) y servidor de desarrollo respondiendo `HTTP 200 OK`.
 
 ---
 
 ## 📋 TAREAS PENDIENTES EN EL ROADMAP
-1. **Fase 1 y 2 en Ejecución:** Reorganización de pantalla principal del Chofer y motor de orden cronológico/búsqueda offline.
-2. **Fase 3 y 4:** Modal ergonómico con chips táctiles y verificación offline en campo.
-3. **Verificación en Ambiente Móvil Real:** Comprobar la respuesta visual de la alerta de bloqueo 403 con `deviceBlocked: true`.
-4. **Módulo Institucional de Gerencia de Cooperativa (Pendiente #4).**
+1. **PENDIENTE #8 (Rediseño y Optimización de la Interfaz del Chofer):** ✅ COMPLETADO AL 100% (Fases 1, 2, 3 y 4).
+2. **Verificación en Ambiente Móvil Real:** Comprobar la respuesta en el teléfono físico con una sola mano.
+3. **Módulo Institucional de Gerencia de Cooperativa (Pendiente #4).**

@@ -202,9 +202,10 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   const [items, setItems] = useState<MantenimientoBusItem[]>(() => cargarItems(getActiveBusId()));
   // FASE 1: Selector de Alcance en 1 Toque (Mis Tareas vs Todo el Bus)
   const [filtroAlcance, setFiltroAlcance] = useState<'CHOFER' | 'TODOS'>('CHOFER');
-  // FASE 2: Búsqueda y Filtros Offline para el Historial (Zero Latency)
+  // FASE 2 y 3: Búsqueda, Filtros de Estación y Pagador Offline para el Historial
   const [busquedaHistorial, setBusquedaHistorial] = useState<string>('');
   const [filtroEstacionHistorial, setFiltroEstacionHistorial] = useState<string>('TODAS');
+  const [filtroPagadorHistorial, setFiltroPagadorHistorial] = useState<'TODOS' | 'AYUDANTE' | 'SOCIO'>('TODOS');
   const [, setComboSyncCounter] = useState<number>(0);
   const [outboxCount, setOutboxCount] = useState<number>(() => {
     if (typeof window === 'undefined') return 0;
@@ -1234,10 +1235,46 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   const countChofer = useMemo(() => items.filter(it => it.asignadoChofer && it.activo !== false).length, [items]);
   const countTodos = useMemo(() => items.filter(it => it.activo !== false).length, [items]);
 
-  // FASE 2: Filtrado Offline en memoria del Historial de Paradas
+  // FASE 2 y 3: Filtrado Offline en memoria del Historial de Paradas con Pagador
   const paradasFiltradas = useMemo(() => {
-    return filtrarParadasPagoOffline(historialParadas, busquedaHistorial, filtroEstacionHistorial);
-  }, [historialParadas, busquedaHistorial, filtroEstacionHistorial]);
+    let list = filtrarParadasPagoOffline(historialParadas, busquedaHistorial, filtroEstacionHistorial);
+    if (filtroPagadorHistorial === 'AYUDANTE') {
+      list = list.filter(p => p.pagador === 'AYUDANTE');
+    } else if (filtroPagadorHistorial === 'SOCIO') {
+      list = list.filter(p => p.pagador !== 'AYUDANTE');
+    }
+    return list;
+  }, [historialParadas, busquedaHistorial, filtroEstacionHistorial, filtroPagadorHistorial]);
+
+  // FASE 3: Resumen Ejecutivo del Historial para la Zona del Pulgar
+  const resumenHistorial = useMemo(() => {
+    let totalInvertido = 0;
+    let pagadoAyudante = 0;
+    let pagadoSocio = 0;
+    let countAyudante = 0;
+    let countSocio = 0;
+
+    historialParadas.forEach(p => {
+      const costo = p.costoTotal || 0;
+      totalInvertido += costo;
+      if (p.pagador === 'AYUDANTE') {
+        pagadoAyudante += costo;
+        countAyudante++;
+      } else {
+        pagadoSocio += costo;
+        countSocio++;
+      }
+    });
+
+    return {
+      totalServicios: historialParadas.length,
+      totalInvertido,
+      pagadoAyudante,
+      pagadoSocio,
+      countAyudante,
+      countSocio,
+    };
+  }, [historialParadas]);
 
   // Si el módulo está apagado por el socio, no renderizar nada
   if (!getBusModuloMantenimientoActivo(activeBusId) || items.length === 0) return null;
@@ -2678,13 +2715,16 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       )}
 
       {/* ========================================================= */}
-      {/* FASE A: MODAL DE HISTORIAL CRONOLÓGICO PARA EL CHOFER      */}
+      {/* FASE A & 3: MODAL ERGONÓMICO DE HISTORIAL EN ZONA DEL PULGAR */}
       {/* ========================================================= */}
       {isHistorialModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-3xl sm:rounded-3xl border border-slate-200 w-full max-w-lg max-h-[88vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-200">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl border border-slate-200 w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-200">
+            {/* Tirador táctil ergonómico para smartphones */}
+            <div className="w-12 h-1.5 rounded-full bg-slate-300 mx-auto mt-2.5 sm:hidden shrink-0" />
+
             {/* Cabecera del Historial con Sincronización a BD */}
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+            <div className="p-3.5 sm:p-4 border-b border-slate-100 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-900 flex items-center justify-center shrink-0">
                   <History className="w-5 h-5" />
@@ -2699,7 +2739,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                     </Badge>
                   </div>
                   <p className="text-[11px] text-slate-500 font-medium truncate">
-                    Respaldado en Base de Datos PostgreSQL central
+                    Control operativo y financiero del vehículo
                   </p>
                 </div>
               </div>
@@ -2721,6 +2761,64 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                 >
                   <X className="w-4 h-4" />
                 </button>
+              </div>
+            </div>
+
+            {/* FASE 3: TARJETA DE RESUMEN EJECUTIVO (ZONA DEL PULGAR) */}
+            <div className="px-3.5 pt-3 pb-2 bg-gradient-to-r from-amber-500/10 via-slate-50 to-emerald-500/10 border-b border-slate-200/80 shrink-0">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-2 rounded-xl bg-white border border-slate-200 shadow-2xs text-center">
+                  <span className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Total Gastado</span>
+                  <span className="text-xs sm:text-sm font-black text-slate-900 font-mono">
+                    ${resumenHistorial.totalInvertido.toFixed(2)}
+                  </span>
+                  <span className="text-[9px] text-slate-400 block font-medium">
+                    {resumenHistorial.totalServicios} servicios
+                  </span>
+                </div>
+
+                <div className="p-2 rounded-xl bg-blue-50/70 border border-blue-200 shadow-2xs text-center">
+                  <span className="text-[10px] font-bold text-blue-700 block uppercase tracking-wider">En Ruta (Ayud.)</span>
+                  <span className="text-xs sm:text-sm font-black text-blue-900 font-mono">
+                    ${resumenHistorial.pagadoAyudante.toFixed(2)}
+                  </span>
+                  <span className="text-[9px] text-blue-600 block font-medium">
+                    {resumenHistorial.countAyudante} paradas
+                  </span>
+                </div>
+
+                <div className="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200 shadow-2xs text-center">
+                  <span className="text-[10px] font-bold text-emerald-700 block uppercase tracking-wider">Socio Propietario</span>
+                  <span className="text-xs sm:text-sm font-black text-emerald-900 font-mono">
+                    ${resumenHistorial.pagadoSocio.toFixed(2)}
+                  </span>
+                  <span className="text-[9px] text-emerald-600 block font-medium">
+                    {resumenHistorial.countSocio} servicios
+                  </span>
+                </div>
+              </div>
+
+              {/* FASE 3: SELECTOR DE PAGADOR RÁPIDO (1 TOQUE CON EL PULGAR) */}
+              <div className="flex items-center gap-1.5 mt-2 bg-slate-200/60 p-1 rounded-xl">
+                {[
+                  { id: 'TODOS', label: 'Todos', count: resumenHistorial.totalServicios },
+                  { id: 'AYUDANTE', label: '🚌 Ruta (Ayudante)', count: resumenHistorial.countAyudante },
+                  { id: 'SOCIO', label: '👤 Socio Propietario', count: resumenHistorial.countSocio },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setFiltroPagadorHistorial(tab.id as any)}
+                    className={`flex-1 py-1 px-2 rounded-lg text-[10px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                      filtroPagadorHistorial === tab.id
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    <span className="opacity-70 font-mono text-[9px]">({tab.count})</span>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -2807,13 +2905,14 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                       ? 'Cuando asientes una parada de taller o lubricadora, aparecerá aquí cronológicamente con su odómetro y pagador.'
                       : `No hay resultados que coincidan con la búsqueda "${busquedaHistorial}" o filtro seleccionado.`}
                   </p>
-                  {historialParadas.length > 0 && (busquedaHistorial || filtroEstacionHistorial !== 'TODAS') && (
+                  {historialParadas.length > 0 && (busquedaHistorial || filtroEstacionHistorial !== 'TODAS' || filtroPagadorHistorial !== 'TODOS') && (
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => {
                         setBusquedaHistorial('');
                         setFiltroEstacionHistorial('TODAS');
+                        setFiltroPagadorHistorial('TODOS');
                       }}
                       className="h-8 text-xs font-bold rounded-xl mt-2 cursor-pointer"
                     >
@@ -2830,7 +2929,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                   return (
                     <div
                       key={p.id || idx}
-                      className="p-3 rounded-2xl border border-slate-200/90 bg-slate-50/70 hover:bg-slate-50 transition-all space-y-2"
+                      className="p-3 rounded-2xl border border-slate-200/90 bg-white hover:bg-slate-50/70 transition-all space-y-2 shadow-2xs"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -2838,7 +2937,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                             <span className="font-black text-xs text-slate-900 truncate">
                               {p.estacionNombre}
                             </span>
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 font-mono">
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-mono border border-slate-200">
                               {odometroBase.toLocaleString()} km
                             </span>
                             {kmRodados > 0 ? (
@@ -2863,26 +2962,49 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                               <strong className="text-slate-800">{p.taller || 'Taller sin nombre'}</strong>
                             </span>
                             {p.factura && (
-                              <span className="font-mono text-slate-500 bg-white px-1.5 py-0.5 rounded-md border border-slate-200 text-[10px]">
+                              <span className="font-mono text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded-md border border-slate-200 text-[10px]">
                                 Fac: {p.factura}
                               </span>
                             )}
                           </div>
+
+                          {/* Detalle o repuestos asociados si existen */}
+                          {p.codigosMantenimiento && p.codigosMantenimiento.length > 0 && (
+                            <div className="flex items-center gap-1 flex-wrap mt-1.5">
+                              {p.codigosMantenimiento.slice(0, 5).map((cod) => {
+                                const matchedItem = items.find(it => it.codigo === cod);
+                                const nombreCorto = matchedItem?.nombre || cod.replace('MNT-', '');
+                                return (
+                                  <span
+                                    key={cod}
+                                    className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-slate-100 text-slate-600 border border-slate-200"
+                                  >
+                                    ✓ {nombreCorto}
+                                  </span>
+                                );
+                              })}
+                              {p.codigosMantenimiento.length > 5 && (
+                                <span className="text-[9px] text-slate-400 font-bold">
+                                  +{p.codigosMantenimiento.length - 5} más
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Costo total */}
                         <div className="text-right shrink-0">
-                          <span className="text-xs font-black text-slate-900 block">
+                          <span className="text-sm font-black text-slate-900 block font-mono">
                             ${(p.costoTotal || 0).toFixed(2)}
                           </span>
-                          <span className="text-[9px] font-bold text-slate-400">
+                          <span className="text-[9px] font-bold text-slate-400 block">
                             {p.fecha}
                           </span>
                         </div>
                       </div>
 
                       {/* Barra de Modalidad / Quién pagó */}
-                      <div className="pt-1.5 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
                         {esAyudante ? (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-blue-100 text-blue-900 border border-blue-200 flex items-center gap-1">
                             <span>🚌</span>
@@ -2918,12 +3040,12 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
               )}
             </div>
 
-            {/* Pie del Modal con botón ergonómico de cierre */}
-            <div className="p-3 border-t border-slate-100 bg-slate-50/50 rounded-b-3xl shrink-0">
+            {/* FASE 3: Pie del Modal con botón táctil ergonómico de 48px para el pulgar */}
+            <div className="p-3 border-t border-slate-200/80 bg-slate-50/80 rounded-b-3xl shrink-0">
               <Button
                 type="button"
                 onClick={() => setIsHistorialModalOpen(false)}
-                className="w-full h-11 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm"
+                className="w-full h-12 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs cursor-pointer shadow-md active:scale-[0.99] transition-transform"
               >
                 Cerrar Historial
               </Button>
