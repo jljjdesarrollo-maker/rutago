@@ -16,7 +16,7 @@ import { type BusItem } from '../types/fleet';
 import {
   ChevronLeft, DollarSign, Camera, X, Save, Loader2,
   CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles, Pencil, XCircle, Gauge,
-  CalendarDays, Bus, Zap, Info
+  CalendarDays, Bus, Zap, Info, Wrench, Check
 } from 'lucide-react';
 import { getLocalRutasKmConfig, syncRutasKmConfig } from '@/lib/rutas-km-storage';
 import {
@@ -26,6 +26,7 @@ import {
   saveDeficitArrastradoVT,
   clearDeficitArrastradoVT,
   type DeficitArrastradoVT,
+  type ParadaPagoRegistro,
 } from '@/lib/paradas-vt-storage';
 import {
   validarLecturaOdometro,
@@ -159,7 +160,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const [guardadoOffline, setGuardadoOffline] = useState(false);
 
   // Sub-fase 3.2: Paradas de Taller cubiertas por Ayudante y Arrastre de Déficit de VT
-  const [paradasTallerCargadas, setParadasTallerCargadas] = useState<string[]>([]);
+  const [paradasTaller, setParadasTaller] = useState<ParadaPagoRegistro[]>([]);
+  const [paradasExcluidas, setParadasExcluidas] = useState<Record<string, boolean>>({});
   const [deficitPrevio, setDeficitPrevio] = useState<DeficitArrastradoVT | null>(null);
   const [deficitIncluidoEnGastos, setDeficitIncluidoEnGastos] = useState(false);
 
@@ -169,21 +171,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     // 1. Paradas de taller que el ayudante pagó en ruta hoy
     const paradas = getParadasAyudantePendientesArqueo(currentBus.id, fechaTrabajo);
     if (paradas.length > 0) {
-      setGastos(prev => {
-        const next = [...prev];
-        paradas.forEach(p => {
-          const desc = 'Taller: ' + p.taller + ' (' + p.estacionNombre + ')';
-          const yaExiste = next.some(g => g.description.toLowerCase().includes(p.taller.toLowerCase()));
-          if (!yaExiste) {
-            next.push({
-              description: desc,
-              amount: p.costoTotal.toString(),
-            });
-          }
-        });
-        return next;
-      });
-      setParadasTallerCargadas(paradas.map(p => p.id));
+      setParadasTaller(paradas);
     }
 
     // 2. Saldo de déficit arrastrado de una jornada / VT anterior
@@ -473,10 +461,16 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     frecuencias.reduce((s, f) => s + (f.cajaComunMonto || 0), 0),
     [frecuencias]
   );
-  const totalGastos = useMemo(() =>
-    gastos.reduce((s, g) => s + (parseFloat(g.amount) || 0), 0),
-    [gastos]
+  const totalParadasTaller = useMemo(() =>
+    paradasTaller
+      .filter(p => !paradasExcluidas[p.id])
+      .reduce((s, p) => s + p.costoTotal, 0),
+    [paradasTaller, paradasExcluidas]
   );
+  const totalGastos = useMemo(() => {
+    const manuales = gastos.reduce((s, g) => s + (parseFloat(g.amount) || 0), 0);
+    return manuales + totalParadasTaller;
+  }, [gastos, totalParadasTaller]);
   const ticketsNum = parseFloat(tickets) || 0;
   const sobranteNum = parseFloat(sobrante) || 0;
   // PRODUCCION = efectivo real contado por el ayudante + caja comun + sobrante ajuste manual
@@ -570,6 +564,15 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           notaEspecial: f.ingresoEspecialNota || undefined,
         };
       });
+      const paradasAprobadas = paradasTaller.filter(p => !paradasExcluidas[p.id]);
+      const expensesToSave = [
+        ...gastos,
+        ...paradasAprobadas.map(p => ({
+          description: 'Taller: ' + p.taller + ' (' + p.estacionNombre + ')',
+          amount: p.costoTotal.toString(),
+        })),
+      ];
+
       const body = {
         date: workDate(session),
         km: recorridoCalculado,
@@ -582,7 +585,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         numeroDisco: currentBus.numeroDisco,
         placaBus: currentBus.placa,
         trips,
-        expenses: gastos,
+        expenses: expensesToSave,
         tickets: tickets || '0',
         cajaComun: totalCajaComunMonto,
         sobrante: sobrante || '0',
@@ -610,9 +613,9 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         }
       }
 
-      // Marcar paradas de taller del ayudante como formalmente procesadas en el arqueo
-      if (paradasTallerCargadas.length > 0) {
-        markParadasComoDescontadas(paradasTallerCargadas);
+      // Marcar paradas de taller del ayudante aprobadas como formalmente procesadas en el arqueo
+      if (paradasAprobadas.length > 0) {
+        markParadasComoDescontadas(paradasAprobadas.map(p => p.id));
       }
 
       const isOnline = navigator.onLine;
@@ -670,7 +673,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
             notaEspecial: f.ingresoEspecialNota || undefined,
           };
         }),
-        expenses: gastos, tickets: tickets || '0', sobrante: sobrante || '0', photoUrl: fotoPreview,
+        expenses: expensesToSave, tickets: tickets || '0', sobrante: sobrante || '0', photoUrl: fotoPreview,
       }));
       setGuardadoOffline(true);
       setSaved(true);
@@ -1285,6 +1288,116 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                   ✓ Aplicado
                 </span>
               )}
+            </div>
+          )}
+
+          {/* Sub-fase 3.2: Paradas de Taller / Mantenimientos con Switch de Inclusión */}
+          {paradasTaller.length > 0 && (
+            <div className="mb-4 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                  <Wrench className="w-3.5 h-3.5 text-blue-600" />
+                  Mantenimiento / Taller en Ruta
+                </span>
+                <span className="text-[10px] text-gray-400 font-medium">
+                  {paradasTaller.length} {paradasTaller.length === 1 ? 'registro' : 'registros'}
+                </span>
+              </div>
+              {paradasTaller.map(p => {
+                const excluida = !!paradasExcluidas[p.id];
+                return (
+                  <div
+                    key={p.id}
+                    className={`p-3 rounded-xl border transition-all ${
+                      excluida
+                        ? 'bg-gray-50/80 border-gray-200'
+                        : 'bg-emerald-50/60 border-emerald-200 shadow-xs'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-black text-gray-900 truncate">
+                            {p.taller}
+                          </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
+                            {p.estacionNombre}
+                          </span>
+                          {p.odometroKm ? (
+                            <span className="text-[10px] font-medium text-gray-500">
+                              {p.odometroKm.toLocaleString('es-EC')} km
+                            </span>
+                          ) : null}
+                        </div>
+                        {p.detalleTrabajo && (
+                          <p className="text-[11px] text-gray-600 truncate mt-0.5">
+                            {p.detalleTrabajo}
+                          </p>
+                        )}
+                        <p className="text-[10px] mt-1">
+                          {excluida ? (
+                            <span className="text-amber-800 font-medium">
+                              ✕ No considerado en este arqueo (Pagó otra persona / Otra cuenta)
+                            </span>
+                          ) : (
+                            <span className="text-emerald-700 font-semibold">
+                              ✓ Descontado de pasajes de este turno
+                            </span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span
+                          className={`text-sm font-black ${
+                            excluida ? 'text-gray-400 line-through' : 'text-emerald-700'
+                          }`}
+                        >
+                          ${p.costoTotal.toFixed(2)}
+                        </span>
+                        {excluida && (
+                          <div className="text-[10px] font-bold text-gray-500">
+                            $0.00
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Switch táctil / Botón de exclusión o inclusión */}
+                    <div className="mt-2.5 pt-2 border-t border-gray-200/60 flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-gray-500">
+                        {excluida ? 'Excluido del total de gastos' : '¿No pagaste tú este gasto?'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setParadasExcluidas(prev => ({
+                            ...prev,
+                            [p.id]: !prev[p.id],
+                          }));
+                        }}
+                        className={`h-8 px-3 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0 ${
+                          excluida
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                            : 'bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300'
+                        }`}
+                      >
+                        {excluida ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            Incluir en este arqueo
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-3.5 h-3.5 text-amber-800" />
+                            No considerar en este arqueo
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
