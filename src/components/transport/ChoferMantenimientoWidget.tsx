@@ -2331,7 +2331,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                         );
                       })()}
 
-                      {/* Opción B: Gasto directo del Socio */}
+                      {/* Opción B: Paga Socio (Taller) */}
                       <button
                         type="button"
                         onClick={() => setPagadorChofer('SOCIO')}
@@ -2343,11 +2343,11 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                       >
                         <div className="flex items-center justify-between gap-1 mb-1">
                           <span className="font-black text-xs flex items-center gap-1">
-                            <span>👤</span> Gasto directo del Socio
+                            <span>👤</span> Paga Socio (Taller)
                           </span>
                         </div>
                         <p className="text-[10px] text-slate-500 leading-tight">
-                          Transferencia o crédito directo del dueño con sus opciones de pago.
+                          Transferencia o crédito directo del dueño.
                         </p>
                       </button>
                     </div>
@@ -2914,7 +2914,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                     );
                   })()}
 
-                  {/* Opción B: Gasto directo del Socio */}
+                  {/* Opción B: Paga Socio */}
                   <button
                     type="button"
                     onClick={() => setComboPagador('SOCIO')}
@@ -2927,10 +2927,10 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                   >
                     <div className="flex items-center gap-1.5 font-black text-xs mb-1">
                       <span>👤</span>
-                      <span>Gasto directo del Socio</span>
+                      <span>Paga el Socio</span>
                     </div>
                     <p className="text-[10px] text-slate-500 leading-tight">
-                      Transferencia o crédito directo del dueño con sus opciones de pago.
+                      Acordado por WhatsApp/llamada. Arqueo del ayudante queda en $0.
                     </p>
                   </button>
                 </div>
@@ -3702,24 +3702,18 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                     );
                   })()}
 
-                  {/* Opción B: Gasto directo del Socio */}
+                  {/* Opción B: Socio Propietario */}
                   <button
                     type="button"
                     onClick={() => setArregloPagador('SOCIO')}
-                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[64px] ${
+                    className={`py-2 px-3 rounded-xl border text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                       arregloPagador === 'SOCIO'
-                        ? 'bg-emerald-600/15 border-emerald-600 text-emerald-950 font-black ring-1 ring-emerald-600 shadow-2xs'
-                        : 'bg-slate-50 border-slate-200 text-slate-700 font-bold hover:bg-slate-100'
+                        ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <span className="font-black text-xs flex items-center gap-1">
-                        <span>👤</span> Gasto directo del Socio
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 leading-tight">
-                      Transferencia o crédito directo del dueño con sus opciones de pago.
-                    </p>
+                    <span>👤</span>
+                    <span>Socio Propietario</span>
                   </button>
                 </div>
 
