@@ -772,39 +772,46 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       });
 
       // 2. Sincronizar en Base de Datos Central (soporta tanto costo > 0 como costo $0 de garantía)
-      saveOwnerExpenseToApi({
-        id: expenseId,
-        busId: activeBusId,
-        category: getCategoriaContablePorEstacion(estacionSeleccionadaChofer) as any,
-        totalAmount: valorTotal,
-        paidAmount,
-        pendingBalance,
-        paymentMethod,
-        status: expenseStatus,
-        expenseDate: fechaEfectiva,
-        description: descripcionContable,
-        provider: tallerStr,
-        comprobanteRef: estacionFacturaChofer.trim() ? 'Fac: ' + estacionFacturaChofer.trim() : undefined,
-        abonos: abonosList,
-        createdAt: new Date().toISOString(),
-      }).then(res => {
-        if (res.syncedToCloud) {
-          toast({
-            title: '☁️ Sincronizado en Base de Datos Central',
-            description: `El mantenimiento en ${config.nombre} ha sido guardado exitosamente en la nube de RutaGo.`,
-          });
-        } else {
+      // BLINDAJE CONTABLE EXPERTO: Si el pagador fue el ayudante y la fecha es anterior a hoy,
+      // esos valores YA fueron liquidados y pagados en ruta por el ayudante ese día histórico.
+      // Por ende, NO se crea un nuevo gasto deducible al socio para evitar duplicar el cobro.
+      const esFechaAnteriorAyudante = pagadorChofer === 'AYUDANTE' && fechaEfectiva < today;
+
+      if (!esFechaAnteriorAyudante) {
+        saveOwnerExpenseToApi({
+          id: expenseId,
+          busId: activeBusId,
+          category: getCategoriaContablePorEstacion(estacionSeleccionadaChofer) as any,
+          totalAmount: valorTotal,
+          paidAmount,
+          pendingBalance,
+          paymentMethod,
+          status: expenseStatus,
+          expenseDate: fechaEfectiva,
+          description: descripcionContable,
+          provider: tallerStr,
+          comprobanteRef: estacionFacturaChofer.trim() ? 'Fac: ' + estacionFacturaChofer.trim() : undefined,
+          abonos: abonosList,
+          createdAt: new Date().toISOString(),
+        }).then(res => {
+          if (res.syncedToCloud) {
+            toast({
+              title: '☁️ Sincronizado en Base de Datos Central',
+              description: `El mantenimiento en ${config.nombre} ha sido guardado exitosamente en la nube de RutaGo.`,
+            });
+          } else {
+            toast({
+              title: '📡 Guardado Local (Sin Conexión)',
+              description: `Sin internet al asentar. La información está segura en el teléfono y se sincronizará a la base de datos automáticamente al recuperar la señal.`,
+            });
+          }
+        }).catch(() => {
           toast({
             title: '📡 Guardado Local (Sin Conexión)',
-            description: `Sin internet al asentar. La información está segura en el teléfono y se sincronizará a la base de datos automáticamente al recuperar la señal.`,
+            description: `Guardado localmente. Se sincronizará a la base de datos central cuando haya conexión estable.`,
           });
-        }
-      }).catch(() => {
-        toast({
-          title: '📡 Guardado Local (Sin Conexión)',
-          description: `Guardado localmente. Se sincronizará a la base de datos central cuando haya conexión estable.`,
         });
-      });
+      }
     } catch (err) {
       console.error('Error registrando parada técnica:', err);
     }
@@ -1121,43 +1128,50 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       });
 
       // 2. Sincronizar en Base de Datos Central (soporta tanto costo > 0 como costo $0 de garantía)
-      const descServicio = valorFactura > 0 
-        ? `Servicio Rápido Lubricadora [${itemsSeleccionados.map(i => i.nombre).join(', ')}]`
-        : `Servicio Rápido Lubricadora [${itemsSeleccionados.map(i => i.nombre).join(', ')}] - Mantenimiento sin costo / Garantía`;
+      // BLINDAJE CONTABLE EXPERTO: Si el pagador fue el ayudante y la fecha es anterior a hoy,
+      // esos valores YA fueron liquidados y pagados en ruta por el ayudante ese día histórico.
+      // Por ende, NO se crea un nuevo gasto deducible al socio para evitar duplicar el cobro.
+      const esFechaAnteriorAyudante = comboPagador === 'AYUDANTE' && fechaEfectiva < today;
 
-      saveOwnerExpenseToApi({
-        id: expenseId,
-        busId: activeBusId,
-        category: 'ACEITES_FILTROS',
-        description: descServicio,
-        provider: tallerStr,
-        totalAmount: valorFactura,
-        paidAmount,
-        pendingBalance,
-        paymentMethod,
-        comprobanteRef: comboFacturaNum.trim() ? `Fac: ${comboFacturaNum.trim()}` : undefined,
-        status: expenseStatus,
-        expenseDate: fechaEfectiva,
-        abonos: abonosList,
-        createdAt: new Date().toISOString(),
-      }).then(res => {
-        if (res.syncedToCloud) {
-          toast({
-            title: '☁️ Sincronizado en Base de Datos Central',
-            description: 'El cambio de lubricadora y filtros ha sido guardado exitosamente en la nube de RutaGo.',
-          });
-        } else {
+      if (!esFechaAnteriorAyudante) {
+        const descServicio = valorFactura > 0 
+          ? `Servicio Rápido Lubricadora [${itemsSeleccionados.map(i => i.nombre).join(', ')}]`
+          : `Servicio Rápido Lubricadora [${itemsSeleccionados.map(i => i.nombre).join(', ')}] - Mantenimiento sin costo / Garantía`;
+
+        saveOwnerExpenseToApi({
+          id: expenseId,
+          busId: activeBusId,
+          category: 'ACEITES_FILTROS',
+          description: descServicio,
+          provider: tallerStr,
+          totalAmount: valorFactura,
+          paidAmount,
+          pendingBalance,
+          paymentMethod,
+          comprobanteRef: comboFacturaNum.trim() ? `Fac: ${comboFacturaNum.trim()}` : undefined,
+          status: expenseStatus,
+          expenseDate: fechaEfectiva,
+          abonos: abonosList,
+          createdAt: new Date().toISOString(),
+        }).then(res => {
+          if (res.syncedToCloud) {
+            toast({
+              title: '☁️ Sincronizado en Base de Datos Central',
+              description: 'El cambio de lubricadora y filtros ha sido guardado exitosamente en la nube de RutaGo.',
+            });
+          } else {
+            toast({
+              title: '📡 Guardado Local (Sin Conexión)',
+              description: 'Sin internet al asentar. La información está segura en el teléfono y se sincronizará a la base de datos automáticamente al recuperar la señal.',
+            });
+          }
+        }).catch(() => {
           toast({
             title: '📡 Guardado Local (Sin Conexión)',
-            description: 'Sin internet al asentar. La información está segura en el teléfono y se sincronizará a la base de datos automáticamente al recuperar la señal.',
+            description: 'Guardado localmente. Se sincronizará a la base de datos central cuando haya conexión estable.',
           });
-        }
-      }).catch(() => {
-        toast({
-          title: '📡 Guardado Local (Sin Conexión)',
-          description: 'Guardado localmente. Se sincronizará a la base de datos central cuando haya conexión estable.',
         });
-      });
+      }
     } catch (err) {
       console.error('Error registrando servicio de lubricadora:', err);
     }
@@ -1291,26 +1305,33 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       });
 
       // Sincronizar gasto contable con la base de datos central
-      const descContable = costoNum > 0
-        ? `Novedad / Arreglo: ${descTrim} (Km ${kmNum.toLocaleString()}) - ${tallerFinal}`
-        : `Revisión / Garantía: ${descTrim} (Km ${kmNum.toLocaleString()}) - ${tallerFinal} [Sin costo]`;
+      // BLINDAJE CONTABLE EXPERTO: Si el pagador fue el ayudante y la fecha es anterior a hoy,
+      // esos valores YA fueron liquidados y pagados en ruta por el ayudante ese día histórico.
+      // Por ende, NO se crea un nuevo gasto deducible al socio para evitar duplicar el cobro.
+      const esFechaAnteriorAyudante = arregloPagador === 'AYUDANTE' && fechaFinal < today;
 
-      await saveOwnerExpenseToApi({
-        id: expenseId,
-        busId: activeBusId,
-        category: 'OTROS',
-        totalAmount: costoNum,
-        paidAmount,
-        pendingBalance,
-        paymentMethod,
-        status: expenseStatus,
-        expenseDate: fechaFinal,
-        description: descContable,
-        provider: tallerFinal,
-        comprobanteRef: facturaFinal ? `Fac: ${facturaFinal}` : undefined,
-        abonos: abonosList,
-        createdAt: new Date().toISOString(),
-      });
+      if (!esFechaAnteriorAyudante) {
+        const descContable = costoNum > 0
+          ? `Novedad / Arreglo: ${descTrim} (Km ${kmNum.toLocaleString()}) - ${tallerFinal}`
+          : `Revisión / Garantía: ${descTrim} (Km ${kmNum.toLocaleString()}) - ${tallerFinal} [Sin costo]`;
+
+        await saveOwnerExpenseToApi({
+          id: expenseId,
+          busId: activeBusId,
+          category: 'OTROS',
+          totalAmount: costoNum,
+          paidAmount,
+          pendingBalance,
+          paymentMethod,
+          status: expenseStatus,
+          expenseDate: fechaFinal,
+          description: descContable,
+          provider: tallerFinal,
+          comprobanteRef: facturaFinal ? `Fac: ${facturaFinal}` : undefined,
+          abonos: abonosList,
+          createdAt: new Date().toISOString(),
+        });
+      }
 
       // Refrescar historial en vivo
       setHistorialParadas(getParadasPagoByBus(activeBusId));
@@ -2243,6 +2264,30 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
                   {/* Fila 2: Selección Simétrica de Pagador */}
                   <div className="space-y-2 pt-1 border-t border-slate-200">
+                    {/* Alerta inteligente de Fecha Anterior */}
+                    {(() => {
+                      const today = new Date().toISOString().split('T')[0];
+                      const fechaServicio = estacionModoRetroactivoChofer ? (estacionFechaServicioChofer || today) : today;
+                      const esFechaAnterior = fechaServicio < today;
+
+                      if (esFechaAnterior && pagadorChofer === 'AYUDANTE') {
+                        return (
+                          <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-400/40 text-amber-900 text-xs flex items-start gap-2 animate-in fade-in duration-150">
+                            <span className="text-base shrink-0">🛡️</span>
+                            <div className="space-y-0.5">
+                              <p className="font-black text-[11px] leading-tight text-amber-950">
+                                Mantenimiento de fecha anterior ({fechaServicio})
+                              </p>
+                              <p className="text-[10px] text-amber-800 leading-tight">
+                                Solo se registrarán los datos del mantenimiento porque esos valores ya los pagó el ayudante el día del mantenimiento. No se descontará en el arqueo de hoy ni se duplicará al socio.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
                     <div className="flex items-center justify-between">
                       <Label className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                         <span>💳</span>
@@ -2256,27 +2301,37 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
-                      {/* Opción A: Paga Ayudante (Ruta) */}
-                      <button
-                        type="button"
-                        onClick={() => setPagadorChofer('AYUDANTE')}
-                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[64px] ${
-                          pagadorChofer === 'AYUDANTE'
-                            ? 'bg-amber-500/15 border-amber-500 text-amber-950 font-black ring-1 ring-amber-500 shadow-2xs'
-                            : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-100/60'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-1 mb-1">
-                          <span className="font-black text-xs flex items-center gap-1">
-                            <span>🚌</span> Paga Ayudante (Ruta)
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-500 leading-tight">
-                          Se liquida en caja hoy con el arqueo del viaje.
-                        </p>
-                      </button>
+                      {/* Opción A: Descontar en caja del ayudante */}
+                      {(() => {
+                        const today = new Date().toISOString().split('T')[0];
+                        const fechaServicio = estacionModoRetroactivoChofer ? (estacionFechaServicioChofer || today) : today;
+                        const esFechaAnterior = fechaServicio < today;
 
-                      {/* Opción B: Paga Socio (Taller) */}
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setPagadorChofer('AYUDANTE')}
+                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[64px] ${
+                              pagadorChofer === 'AYUDANTE'
+                                ? 'bg-amber-500/15 border-amber-500 text-amber-950 font-black ring-1 ring-amber-500 shadow-2xs'
+                                : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-100/60'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className="font-black text-xs flex items-center gap-1">
+                                <span>🚌</span> {esFechaAnterior ? 'Pagó Ayudante (Ruta)' : 'Descontar en caja ayudante'}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 leading-tight">
+                              {esFechaAnterior
+                                ? 'Solo se registrarán los datos del mantenimiento porque esos valores ya los pagó el ayudante el día del mantenimiento.'
+                                : 'Se liquida en caja hoy con el arqueo del viaje.'}
+                            </p>
+                          </button>
+                        );
+                      })()}
+
+                      {/* Opción B: Gasto directo del Socio */}
                       <button
                         type="button"
                         onClick={() => setPagadorChofer('SOCIO')}
@@ -2288,11 +2343,11 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                       >
                         <div className="flex items-center justify-between gap-1 mb-1">
                           <span className="font-black text-xs flex items-center gap-1">
-                            <span>👤</span> Paga Socio (Taller)
+                            <span>👤</span> Gasto directo del Socio
                           </span>
                         </div>
                         <p className="text-[10px] text-slate-500 leading-tight">
-                          Transferencia o crédito directo del dueño.
+                          Transferencia o crédito directo del dueño con sus opciones de pago.
                         </p>
                       </button>
                     </div>
@@ -2794,6 +2849,30 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             {/* Bifurcación de Pagador si hay un costo pactado en el Combo */}
             {(parseFloat(comboFacturaValor) || 0) > 0 && (
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2.5 shrink-0 animate-in fade-in duration-150">
+                {/* Alerta inteligente de Fecha Anterior */}
+                {(() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  const fechaServicio = comboModoRetroactivo ? (comboFechaServicio || today) : today;
+                  const esFechaAnterior = fechaServicio < today;
+
+                  if (esFechaAnterior && comboPagador === 'AYUDANTE') {
+                    return (
+                      <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-400/40 text-amber-900 text-xs flex items-start gap-2 animate-in fade-in duration-150">
+                        <span className="text-base shrink-0">🛡️</span>
+                        <div className="space-y-0.5">
+                          <p className="font-black text-[11px] leading-tight text-amber-950">
+                            Mantenimiento de fecha anterior ({fechaServicio})
+                          </p>
+                          <p className="text-[10px] text-amber-800 leading-tight">
+                            Solo se registrarán los datos del mantenimiento porque esos valores ya los pagó el ayudante el día del mantenimiento. No se descontará en el arqueo de hoy ni se duplicará al socio.
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
                 <div className="flex items-center justify-between">
                   <Label className="text-[11px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                     <span>💳</span>
@@ -2805,32 +2884,42 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  {/* Opción A: Paga Ayudante */}
-                  <button
-                    type="button"
-                    onClick={() => setComboPagador('AYUDANTE')}
-                    className={
-                      'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ' +
-                      (comboPagador === 'AYUDANTE'
-                        ? 'bg-amber-500/15 border-amber-500 text-amber-950 font-black ring-1 ring-amber-500 shadow-xs'
-                        : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-100/60')
-                    }
-                  >
-                    <div className="flex items-center gap-1.5 font-black text-xs mb-1">
-                      <span>🚌</span>
-                      <span>Paga Ayudante</span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 leading-tight">
-                      Efectivo de la vuelta en ruta. Se descuenta en el Arqueo General hoy.
-                    </p>
-                  </button>
+                  {/* Opción A: Descontar en caja del ayudante */}
+                  {(() => {
+                    const today = new Date().toISOString().split('T')[0];
+                    const fechaServicio = comboModoRetroactivo ? (comboFechaServicio || today) : today;
+                    const esFechaAnterior = fechaServicio < today;
 
-                  {/* Opción B: Paga Socio */}
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setComboPagador('AYUDANTE')}
+                        className={
+                          'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[64px] ' +
+                          (comboPagador === 'AYUDANTE'
+                            ? 'bg-amber-500/15 border-amber-500 text-amber-950 font-black ring-1 ring-amber-500 shadow-xs'
+                            : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-100/60')
+                        }
+                      >
+                        <div className="flex items-center gap-1.5 font-black text-xs mb-1">
+                          <span>🚌</span>
+                          <span>{esFechaAnterior ? 'Pagó Ayudante (Ruta)' : 'Descontar en caja ayudante'}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-tight">
+                          {esFechaAnterior
+                            ? 'Solo se registrarán los datos del mantenimiento porque esos valores ya los pagó el ayudante el día del mantenimiento.'
+                            : 'Se liquida en caja hoy con el arqueo del viaje.'}
+                        </p>
+                      </button>
+                    );
+                  })()}
+
+                  {/* Opción B: Gasto directo del Socio */}
                   <button
                     type="button"
                     onClick={() => setComboPagador('SOCIO')}
                     className={
-                      'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ' +
+                      'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[64px] ' +
                       (comboPagador === 'SOCIO'
                         ? 'bg-purple-600/15 border-purple-600 text-purple-950 font-black ring-1 ring-purple-600 shadow-xs'
                         : 'bg-white border-slate-200 text-slate-700 font-bold hover:bg-slate-100/60')
@@ -2838,10 +2927,10 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                   >
                     <div className="flex items-center gap-1.5 font-black text-xs mb-1">
                       <span>👤</span>
-                      <span>Paga el Socio</span>
+                      <span>Gasto directo del Socio</span>
                     </div>
                     <p className="text-[10px] text-slate-500 leading-tight">
-                      Acordado por WhatsApp/llamada. Arqueo del ayudante queda en $0.
+                      Transferencia o crédito directo del dueño con sus opciones de pago.
                     </p>
                   </button>
                 </div>
@@ -3556,35 +3645,81 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
               </div>
 
               {/* Quién asumió el pago */}
-              <div className="pt-2 border-t border-slate-200">
-                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
+              <div className="pt-2 border-t border-slate-200 space-y-2">
+                {/* Alerta inteligente de Fecha Anterior */}
+                {(() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  const esFechaAnterior = arregloFecha < today;
+
+                  if (esFechaAnterior && arregloPagador === 'AYUDANTE') {
+                    return (
+                      <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-400/40 text-amber-900 text-xs flex items-start gap-2 animate-in fade-in duration-150">
+                        <span className="text-base shrink-0">🛡️</span>
+                        <div className="space-y-0.5">
+                          <p className="font-black text-[11px] leading-tight text-amber-950">
+                            Mantenimiento de fecha anterior ({arregloFecha})
+                          </p>
+                          <p className="text-[10px] text-amber-800 leading-tight">
+                            Solo se registrarán los datos del mantenimiento porque esos valores ya los pagó el ayudante el día del mantenimiento. No se descontará en el arqueo de hoy ni se duplicará al socio.
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider">
                   ¿Quién asume el valor?
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setArregloPagador('AYUDANTE')}
-                    className={`py-2 px-3 rounded-xl border text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                      arregloPagador === 'AYUDANTE'
-                        ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span>🚌</span>
-                    <span>Ayudante en Ruta</span>
-                  </button>
+                  {/* Opción A: Descontar en caja del ayudante */}
+                  {(() => {
+                    const today = new Date().toISOString().split('T')[0];
+                    const esFechaAnterior = arregloFecha < today;
 
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setArregloPagador('AYUDANTE')}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[64px] ${
+                          arregloPagador === 'AYUDANTE'
+                            ? 'bg-blue-600/15 border-blue-600 text-blue-950 font-black ring-1 ring-blue-600 shadow-2xs'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 font-bold hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="font-black text-xs flex items-center gap-1">
+                            <span>🚌</span> {esFechaAnterior ? 'Pagó Ayudante (Ruta)' : 'Descontar en caja ayudante'}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-tight">
+                          {esFechaAnterior
+                            ? 'Solo se registrarán los datos del mantenimiento porque esos valores ya los pagó el ayudante el día del mantenimiento.'
+                            : 'Se liquida en caja hoy con el arqueo del viaje.'}
+                        </p>
+                      </button>
+                    );
+                  })()}
+
+                  {/* Opción B: Gasto directo del Socio */}
                   <button
                     type="button"
                     onClick={() => setArregloPagador('SOCIO')}
-                    className={`py-2 px-3 rounded-xl border text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between min-h-[64px] ${
                       arregloPagador === 'SOCIO'
-                        ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        ? 'bg-emerald-600/15 border-emerald-600 text-emerald-950 font-black ring-1 ring-emerald-600 shadow-2xs'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 font-bold hover:bg-slate-100'
                     }`}
                   >
-                    <span>👤</span>
-                    <span>Socio Propietario</span>
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <span className="font-black text-xs flex items-center gap-1">
+                        <span>👤</span> Gasto directo del Socio
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 leading-tight">
+                      Transferencia o crédito directo del dueño con sus opciones de pago.
+                    </p>
                   </button>
                 </div>
 

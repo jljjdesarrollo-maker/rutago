@@ -26,6 +26,11 @@
 6. **Fase 5 (Pruebas E2E y Verificación):** ✅ COMPLETADA
    - Pruebas de resolución ejecutadas con éxito: Aislamiento entre unidades comprobado (6,000 km en Bus 01 no afecta los 5,000 km de fábrica en Bus 02).
    - Commit: `test(e2e): verificacion de herencia, aislamiento y bitacora final`
+7. **v3.60.15 (Blindaje Inteligente de Fecha Anterior y Anti-Duplicidad Socio):** ✅ COMPLETADA
+   - Control en paradas de taller, combos de lubricadora y arreglos rápidos: si la fecha del servicio es anterior a hoy, la opción del ayudante cambia a *"Pagó Ayudante (Ruta)"* con el mensaje explícito: *"Solo se registrarán los datos del mantenimiento porque esos valores ya los pagó el ayudante el día del mantenimiento"*.
+   - Mantiene activa la opción *"Gasto directo del Socio"* con sus modalidades.
+   - Se suprime la creación de gastos redundantes en `OwnerExpenses` para no volver a descontarle al dueño por pagos ya liquidados en ruta.
+   - Commit: `feat(mantenimiento): v3.60.15 - blindaje inteligente fecha anterior anti-duplicidad socio y texto explicativo`
 
 ---
 
