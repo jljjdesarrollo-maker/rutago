@@ -1510,136 +1510,206 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           )}
         </div>
 
-        {/* FASE 2: BOTONERA DE ESTACIONES DE TALLER / COMBOS EN RUTA PARA CHOFER */}
-        <div className="bg-slate-900 text-white rounded-2xl p-3 shadow-md space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="p-1 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center shadow-xs">
-                <Zap className="w-3.5 h-3.5 fill-slate-950" />
-              </span>
-              <div>
-                <span className="text-xs font-black uppercase tracking-tight text-amber-300 block leading-tight">
-                  Paradas de Taller y Combos (Ruta)
+        {/* PARADAS DE TALLER Y OPERACIONES EN RUTA - REDISEÑO BASADO EN CARDS CON CÓDIGO DE COLOR */}
+        <div className="space-y-2.5">
+          {/* CARD 1: OPERACIONES RÁPIDAS EN RUTA (VERDE ESMERALDA) */}
+          <Card className="bg-slate-900 border-emerald-500/35 shadow-md overflow-hidden py-0 gap-0 text-white">
+            <div className="p-3 bg-gradient-to-r from-emerald-950/50 via-slate-900 to-slate-900 border-b border-emerald-500/20 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="p-1 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center shadow-xs">
+                  <Zap className="w-3.5 h-3.5 fill-slate-950" />
                 </span>
-                <span className="text-[10px] text-slate-300 font-medium block leading-tight">
-                  Toca la estación para asentar tareas con receta de tu socio
-                </span>
+                <div>
+                  <span className="text-xs font-black uppercase tracking-tight text-emerald-400 block leading-tight">
+                    Paradas en Ruta (Servicios Rápidos)
+                  </span>
+                  <span className="text-[10px] text-slate-300 font-medium block leading-tight">
+                    Combos frecuentes durante el turno y carretera
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setArregloDescripcion('');
-                  setArregloKm(kmActual.toString());
-                  setArregloTaller('');
-                  setArregloFactura('');
-                  setArregloCosto('');
-                  setArregloPagador('AYUDANTE');
-                  setArregloSocioModalidad('TRANSFERENCIA_TOTAL');
-                  setArregloSocioAbono('');
-                  setIsArregloModalOpen(true);
-                }}
-                className="px-2.5 py-1 rounded-xl bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 hover:text-orange-200 border border-orange-400/40 text-[10px] font-black transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
-                title="Registrar un trabajo puntual fuera de catálogo (enlainar paquetes, soldaduras, arreglos rápidos)"
-              >
-                <span>🔧</span>
-                <span>Arreglo Rápido</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleAbrirEstacionChofer('LUBRICADORA')}
-                className="px-2.5 py-1 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-[10px] font-black shadow-xs transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
-              >
-                <span>🛢️</span>
-                <span>Lubricadora Rápida</span>
-              </button>
-              <Badge className="bg-white/10 text-slate-200 text-[10px] font-bold border-white/20 shrink-0">
-                1 Toque ⚡
+              <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-[9px] font-bold shrink-0">
+                🟢 En Ruta
               </Badge>
             </div>
-          </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 pt-1">
-            {(['LUBRICADORA', 'FRENOS_RUEDAS', 'MNT_MAYOR', 'ADMISION_AIRE', 'ALINEACION', 'RADIADOR'] as EstacionServicioId[]).map(estId => {
-              const est = ESTACIONES_SERVICIO_CONFIG[estId];
-              const comboUnidad = getComboUnidad(activeBusId, estId);
-              return (
+            <CardContent className="p-2.5">
+              <div className="grid grid-cols-2 gap-2">
+                {/* Combo 1: Lubricadora Rápida */}
                 <button
-                  key={estId}
                   type="button"
-                  onClick={() => handleAbrirEstacionChofer(estId)}
-                  className="flex flex-col items-center justify-center p-2 rounded-xl bg-white/5 hover:bg-white/15 active:scale-95 border border-white/10 transition-all cursor-pointer text-center group"
+                  onClick={() => handleAbrirEstacionChofer('LUBRICADORA')}
+                  className="group flex flex-col justify-between p-2.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/60 active:scale-[0.98] border border-emerald-500/40 hover:border-emerald-400 text-left transition-all cursor-pointer shadow-xs min-h-[72px]"
                 >
-                  <span className="text-lg mb-0.5 group-hover:scale-110 transition-transform">
-                    {est.icono}
-                  </span>
-                  <span className="text-[10px] font-black text-slate-100 leading-tight truncate w-full">
-                    {est.nombre.split(' ')[0]}
-                  </span>
-                  <span className="text-[8px] text-amber-400 font-bold mt-0.5">
-                    {comboUnidad.items.length} ítems
-                  </span>
+                  <div className="flex items-start justify-between w-full gap-1">
+                    <span className="text-2xl p-1 rounded-lg bg-emerald-500/20 text-emerald-300 group-hover:scale-105 transition-transform">
+                      🛢️
+                    </span>
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-emerald-400 text-slate-950 shadow-2xs">
+                      1 Toque ⚡
+                    </span>
+                  </div>
+                  <div className="mt-1">
+                    <span className="text-xs font-black text-white group-hover:text-emerald-200 transition-colors block leading-tight">
+                      Lubricadora Rápida
+                    </span>
+                    <span className="text-[10px] text-emerald-300/80 font-medium block truncate leading-tight mt-0.5">
+                      Aceite + 4 Filtros
+                    </span>
+                  </div>
                 </button>
-              );
-            })}
-          </div>
 
-          {/* Barra de Historial Operativo y Sincronización en la Nube */}
-          <div className="pt-1.5 border-t border-white/10 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-[10px] text-slate-300 font-medium min-w-0">
-              <div className="flex items-center gap-1 truncate">
-                <History className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span>
-                  {historialParadas.length === 0
-                    ? 'Sin servicios'
-                    : `${historialParadas.length} en historial`}
-                </span>
+                {/* Combo 2: Arreglo Rápido */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setArregloDescripcion('');
+                    setArregloKm(kmActual.toString());
+                    setArregloTaller('');
+                    setArregloFactura('');
+                    setArregloCosto('');
+                    setArregloPagador('AYUDANTE');
+                    setArregloSocioModalidad('TRANSFERENCIA_TOTAL');
+                    setArregloSocioAbono('');
+                    setArregloFecha(new Date().toISOString().split('T')[0]);
+                    setIsArregloModalOpen(true);
+                  }}
+                  className="group flex flex-col justify-between p-2.5 rounded-xl bg-emerald-950/30 hover:bg-emerald-900/50 active:scale-[0.98] border border-emerald-500/30 hover:border-emerald-400 text-left transition-all cursor-pointer shadow-xs min-h-[72px]"
+                  title="Registrar un trabajo puntual fuera de catálogo (enlainar paquetes, soldaduras, arreglos rápidos)"
+                >
+                  <div className="flex items-start justify-between w-full gap-1">
+                    <span className="text-2xl p-1 rounded-lg bg-orange-500/20 text-orange-300 group-hover:scale-105 transition-transform">
+                      🔧
+                    </span>
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md bg-orange-400/90 text-slate-950 shadow-2xs">
+                      Imprevisto
+                    </span>
+                  </div>
+                  <div className="mt-1">
+                    <span className="text-xs font-black text-white group-hover:text-orange-200 transition-colors block leading-tight">
+                      Arreglo Rápido
+                    </span>
+                    <span className="text-[10px] text-slate-300 font-medium block truncate leading-tight mt-0.5">
+                      Soldaduras, mangueras...
+                    </span>
+                  </div>
+                </button>
               </div>
-              {outboxCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={ejecutarSincronizacionManual}
-                  className="flex items-center gap-1 text-[9px] font-black bg-amber-400 hover:bg-amber-300 text-slate-950 px-1.5 py-0.5 rounded-md animate-pulse cursor-pointer shadow-xs"
-                  title="Toca para subir a la base de datos ahora"
-                >
-                  <RefreshCw className="w-3 h-3 animate-spin" /> {outboxCount} subir
-                </button>
-              ) : (
-                <span className="hidden sm:inline-flex items-center gap-0.5 text-[8px] text-emerald-400 font-semibold opacity-80">
-                  ● BD activa
+            </CardContent>
+          </Card>
+
+          {/* CARD 2: TALLERES ESPECIALIZADOS Y SERVITECAS (AZUL CYAN) */}
+          <Card className="bg-slate-900 border-blue-500/35 shadow-md overflow-hidden py-0 gap-0 text-white">
+            <div className="p-3 bg-gradient-to-r from-blue-950/50 via-slate-900 to-slate-900 border-b border-blue-500/20 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="p-1 rounded-lg bg-blue-500 text-white flex items-center justify-center shadow-xs">
+                  <Wrench className="w-3.5 h-3.5" />
                 </span>
-              )}
+                <div>
+                  <span className="text-xs font-black uppercase tracking-tight text-blue-400 block leading-tight">
+                    Talleres Especializados (Por Receta)
+                  </span>
+                  <span className="text-[10px] text-slate-300 font-medium block leading-tight">
+                    Catálogo oficial Hino AK y configuración del socio
+                  </span>
+                </div>
+              </div>
+              <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/40 text-[9px] font-bold shrink-0">
+                🔵 Taller
+              </Badge>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* Botón Sincronizar Bidireccional */}
-              <button
-                type="button"
-                onClick={ejecutarSincronizacionManual}
-                disabled={isSyncingManual}
-                className="px-2 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-200 hover:text-white text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer border border-white/15 disabled:opacity-50"
-                title="Sincronizar con la Base de Datos central en la nube"
-              >
-                <RefreshCw className={`w-3 h-3 text-cyan-300 ${isSyncingManual ? 'animate-spin text-amber-400' : ''}`} />
-                <span className="hidden xs:inline">{isSyncingManual ? 'Sincronizando...' : 'Sincronizar'}</span>
-              </button>
+            <CardContent className="p-2.5 space-y-2.5">
+              {/* Grid Responsive Consistente (3 cols en móvil, 6 en desktop) */}
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                {(['LUBRICADORA', 'FRENOS_RUEDAS', 'MNT_MAYOR', 'ADMISION_AIRE', 'ALINEACION', 'RADIADOR'] as EstacionServicioId[]).map(estId => {
+                  const est = ESTACIONES_SERVICIO_CONFIG[estId];
+                  const comboUnidad = getComboUnidad(activeBusId, estId);
+                  const nombresCortos: Record<EstacionServicioId, string> = {
+                    LUBRICADORA: 'Fosa / Aceite',
+                    FRENOS_RUEDAS: 'Frenos / Ruedas',
+                    MNT_MAYOR: 'Mantenim. Mayor',
+                    ADMISION_AIRE: 'Admisión / Aire',
+                    ALINEACION: 'Serviteca / Llantas',
+                    RADIADOR: 'Radiador / Coolant',
+                  };
+                  return (
+                    <button
+                      key={estId}
+                      type="button"
+                      onClick={() => handleAbrirEstacionChofer(estId)}
+                      className="flex flex-col items-center justify-center p-2 rounded-xl bg-blue-950/30 hover:bg-blue-900/50 active:scale-95 border border-blue-500/25 hover:border-blue-400/50 transition-all cursor-pointer text-center group min-h-[74px]"
+                    >
+                      <span className="text-xl mb-1 group-hover:scale-110 transition-transform">
+                        {est.icono}
+                      </span>
+                      <span className="text-[10px] font-black text-slate-100 group-hover:text-blue-200 leading-tight truncate w-full">
+                        {nombresCortos[estId] || est.nombre.split(' ')[0]}
+                      </span>
+                      <span className="text-[8px] text-blue-300 font-bold mt-0.5">
+                        {comboUnidad.items.length} ítems
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
-              {/* Botón Ver Historial */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsHistorialModalOpen(true);
-                  ejecutarSincronizacionManual();
-                }}
-                className="px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 text-amber-300 hover:text-amber-200 text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer border border-amber-400/30"
-              >
-                <History className="w-3 h-3" />
-                <span>Ver Historial ({historialParadas.length})</span>
-              </button>
-            </div>
-          </div>
+              {/* Barra de Historial Operativo y Sincronización en la Nube */}
+              <div className="pt-2 border-t border-blue-500/20 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-[10px] text-slate-300 font-medium min-w-0">
+                  <div className="flex items-center gap-1 truncate">
+                    <History className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                    <span>
+                      {historialParadas.length === 0
+                        ? 'Sin servicios'
+                        : `${historialParadas.length} en historial`}
+                    </span>
+                  </div>
+                  {outboxCount > 0 ? (
+                    <button
+                      type="button"
+                      onClick={ejecutarSincronizacionManual}
+                      className="flex items-center gap-1 text-[9px] font-black bg-amber-400 hover:bg-amber-300 text-slate-950 px-1.5 py-0.5 rounded-md animate-pulse cursor-pointer shadow-xs"
+                      title="Toca para subir a la base de datos ahora"
+                    >
+                      <RefreshCw className="w-3 h-3 animate-spin" /> {outboxCount} subir
+                    </button>
+                  ) : (
+                    <span className="hidden sm:inline-flex items-center gap-0.5 text-[8px] text-emerald-400 font-semibold opacity-80">
+                      ● BD activa
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Botón Sincronizar Bidireccional */}
+                  <button
+                    type="button"
+                    onClick={ejecutarSincronizacionManual}
+                    disabled={isSyncingManual}
+                    className="px-2 py-1 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-200 hover:text-white text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer border border-white/15 disabled:opacity-50"
+                    title="Sincronizar con la Base de Datos central en la nube"
+                  >
+                    <RefreshCw className={`w-3 h-3 text-cyan-300 ${isSyncingManual ? 'animate-spin text-amber-400' : ''}`} />
+                    <span className="hidden xs:inline">{isSyncingManual ? 'Sincronizando...' : 'Sincronizar'}</span>
+                  </button>
+
+                  {/* Botón Ver Historial */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsHistorialModalOpen(true);
+                      ejecutarSincronizacionManual();
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-blue-500/20 hover:bg-blue-500/30 active:scale-95 text-blue-300 hover:text-blue-200 text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer border border-blue-400/30"
+                  >
+                    <History className="w-3 h-3" />
+                    <span>Ver Historial ({historialParadas.length})</span>
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* FASE 1: Selector de Alcance en 1 Toque (Mis Tareas vs Todo el Bus) */}
