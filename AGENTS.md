@@ -31,6 +31,15 @@
    - Mantiene activa la opción *"Gasto directo del Socio"* con sus modalidades.
    - Se suprime la creación de gastos redundantes en `OwnerExpenses` para no volver a descontarle al dueño por pagos ya liquidados en ruta.
    - Commit: `feat(mantenimiento): v3.60.15 - blindaje inteligente fecha anterior anti-duplicidad socio y texto explicativo`
+8. **v3.60.16 (Sincronización Reactiva de Abonos en Cartera de Talleres):** ✅ COMPLETADA
+   - Archivo: `src/components/socio/OwnerExpensesScreen.tsx`.
+   - Diagnóstico: Los abonos en "Gastos y Negocio del Bus" -> "SALDOS PENDIENTES CON TALLERES" se guardaban solo en caché local síncrona y al ejecutarse `loadData()`, la respuesta de la nube sobreescribía el saldo pendiente con el valor anterior de la BD.
+   - Solución implementada:
+     * Conexión asíncrona dual con `registerAbonoToApi` (persiste a PostgreSQL vía `PUT /api/owner-expenses`).
+     * Mecanismo de actualización atómica del estado reactivo (`setAllExpenses`) con el objeto devuelto por la API tras confirmación.
+     * Prevención de concurrencia y doble submit con estado `isSubmittingAbono` y texto descriptivo en botón ("Asentando Abono...").
+     * Extinción instantánea de la deuda de la lista "Saldos Pendientes con Talleres" cuando `pendingBalance <= 0` sin recargas ni parpadeos.
+   - Commit: `fix(socio): v3.60.16 - sincronizacion de estado reactivo y persistencia api en abono de talleres`
 
 ---
 

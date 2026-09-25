@@ -103,6 +103,7 @@ export default function OwnerExpensesScreen({
   const [abonoMethod, setAbonoMethod] = useState<'TRANSFERENCIA' | 'EFECTIVO'>('TRANSFERENCIA');
   const [abonoRef, setAbonoRef] = useState('');
   const [abonoNotes, setAbonoNotes] = useState('');
+  const [isSubmittingAbono, setIsSubmittingAbono] = useState(false);
 
   // Toast / Mensaje feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -457,9 +458,10 @@ export default function OwnerExpensesScreen({
   };
 
   // Guardar abono
+  // Guardar abono con sincronización garantizada de estado reactivo y persistencia API
   const handleSaveAbono = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!abonoTargetExpense) return;
+    if (!abonoTargetExpense || isSubmittingAbono) return;
 
     const amount = parseFloat(abonoAmount);
     if (isNaN(amount) || amount <= 0) {
@@ -472,17 +474,49 @@ export default function OwnerExpensesScreen({
       return;
     }
 
-    registerAbonoToExpense(abonoTargetExpense.id, {
-      date: abonoDate,
-      amount,
-      paymentMethod: abonoMethod,
-      comprobanteRef: abonoRef.trim() || undefined,
-      notes: abonoNotes.trim() || undefined,
-    });
+    setIsSubmittingAbono(true);
+    const targetId = abonoTargetExpense.id;
 
-    loadData();
-    setAbonoTargetExpense(null);
-    showToast(`✅ Abono de $${amount.toFixed(2)} registrado correctamente`);
+    try {
+      // 1. Persistencia dual (local inmediata + PUT a /api/owner-expenses)
+      const updatedExpense = await registerAbonoToApi(targetId, {
+        date: abonoDate,
+        amount,
+        paymentMethod: abonoMethod,
+        comprobanteRef: abonoRef.trim() || undefined,
+        notes: abonoNotes.trim() || undefined,
+      });
+
+      // 2. Actualización atómica del estado para garantizar sincronización de la interfaz
+      if (updatedExpense) {
+        setAllExpenses((prev) =>
+          prev.map((e) => (e.id === targetId ? updatedExpense : e))
+        );
+      } else {
+        // Fallback optimista si no se obtuvo el objeto de retorno
+        setAllExpenses((prev) =>
+          prev.map((e) => {
+            if (e.id !== targetId) return e;
+            const newPaid = e.paidAmount + amount;
+            const newPending = Math.max(0, e.totalAmount - newPaid);
+            return {
+              ...e,
+              paidAmount: newPaid,
+              pendingBalance: newPending,
+              status: newPending <= 0 ? 'PAGADO' : 'PENDIENTE',
+            };
+          })
+        );
+      }
+
+      setAbonoTargetExpense(null);
+      showToast(`✅ Abono de $${amount.toFixed(2)} registrado y sincronizado`);
+    } catch (err) {
+      console.error('Error al registrar abono:', err);
+      showToast('⚠️ Error al registrar abono, se conservó localmente');
+    } finally {
+      setIsSubmittingAbono(false);
+    }
   };
 
   // Eliminar gasto por Fases (Fase 1: Optimistic UI sin bucle, Fase 2: Persistencia local y remota)
@@ -1559,10 +1593,10 @@ export default function OwnerExpensesScreen({
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full min-h-[48px] rounded-2xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg transition"
-                >
+                  disabled={isSubmittingAbono}
+                  className="w-full min-h-[48px] rounded-2xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg transition cursor-pointer"
                   <Check className="w-5 h-5 stroke-[2.5]" />
-                  <span>Confirmar Abono de ${parseFloat(abonoAmount || '0').toFixed(2)}</span>
+                  <span>{isSubmittingAbono ? 'Asentando Abono...' : `Confirmar Abono de $${parseFloat(abonoAmount || '0').toFixed(2)}`}</span>
                 </button>
               </div>
             </form>
