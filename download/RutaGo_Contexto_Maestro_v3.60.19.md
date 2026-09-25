@@ -97,3 +97,15 @@ El usuario solicitó optimizar la interfaz del chofer abordando la agrupación d
 - **Rutas Optimizadas:** 22 de 22 rutas estáticas y dinámicas (`/`, `/_not-found`, `/print-test`, `/api/*`) verificadas sin errores.
 - **Prisma Client (v6.19.2):** Generado e integrado.
 - **TypeScript:** Cero errores de tipos en `mantenimiento-estaciones.ts`, `ChoferMantenimientoWidget.tsx` y `MantenimientoScreen.tsx`.
+
+---
+
+## 🕒 5. Registro y Consulta de Regularización Retroactiva ($0)
+- **Consulta Planteada:** ¿Cómo registrar un mantenimiento ya realizado (ej. Rotación de baterías el 1 de septiembre a costo $0) sin tener que esperar a su fecha programada del 1 de octubre?
+- **Resolución Documentada:**
+  1. En el semáforo superior, verificar que el filtro esté en `Total` o `🟢 Al Día` para visibilizar componentes no vencidos.
+  2. Para fechas históricas (pasadas): ingresar por el Taller Especializado (`⚡ Electroauto y Baterías` o `🛢️ Lubricadora`), activar el enlace **`⏱️ ¿Se realizó antes? [ Toca aquí para regularizar fecha o km ]`**, colocar la fecha `2026-09-01`, el odómetro histórico y costo `$0.00`.
+  3. El motor protege el odómetro actual del bus (no retrocede), calcula los km rodados en los días intermedios, recalibra el siguiente vencimiento para el 1 de octubre (o +8.600 km) y asienta la bitácora técnica sin afectar la caja del chofer ni generar deudas al socio.
+- **Punto de Continuidad para Mañana:**
+  - Evaluar la incorporación del selector de fecha retroactiva dentro del micro-modal de 1 toque del chofer (`itemRutinaModal`) para que no requiera abrir el taller especializado cuando se trate de labores propias históricas a costo $0.
+  - Validación del flujo operativo con choferes reales en ruta.

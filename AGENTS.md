@@ -746,3 +746,10 @@
    - `package.json` actualizado a versión `3.60.19`.
    - Compilación en producción exitosa (22/22 rutas Next.js 16).
    - Generado archivo maestro `download/RutaGo_Contexto_Maestro_v3.60.19.md`.
+
+### 📝 Sesión de Consulta y Pausa de Análisis (2026-09-24)
+- **Análisis de Regularización Retroactiva a Costo $0:** Documentado el procedimiento para asentar mantenimientos anticipados o ejecutados en fechas previas (ej. rotación de baterías efectuada el 1 de septiembre con vencimiento el 1 de octubre).
+- **Punto de Retorno para Mañana:**
+  1. Proponer/implementar selector de fecha histórica en el micro-modal de 1 toque del chofer.
+  2. Continuar con las revisiones y optimizaciones solicitadas por el usuario.
+  3. Estado de compilación: 100% verificado en producción (v3.60.19 - Commit 42e9cc9).
