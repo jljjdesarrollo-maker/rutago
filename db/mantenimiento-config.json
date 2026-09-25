@@ -8,5 +8,30 @@
     "origenDispositivo": "Socio Líder (José Leonardo Jaya Jaramillo)",
     "updatedAt": "2026-09-21T15:00:00.000Z",
     "combosPersonalizados": {}
+  },
+  "__GLOBAL_CATALOG__": {
+    "busId": "__GLOBAL_CATALOG__",
+    "moduloActivo": true,
+    "nivelControl": "TOTAL",
+    "decisionTomada": true,
+    "fechaDecision": "2026-09-25",
+    "catalogoPersonalizado": [
+      {
+        "id": "hino-zapatas-post",
+        "codigo": "MNT-ZAPATAS-POST",
+        "nombre": "Zapatas y Tambores Posteriores",
+        "categoria": "FRENOS",
+        "intervaloKmOficial": 12500,
+        "intervaloDiasAprox": 78,
+        "especificacionLubricanteRepuesto": "Visita al maestro de frenos: remachado de zapatas traseras (compuesto pesado) y rebaje de ceja en tambores",
+        "codigoRepuestoReferencia": "Zapatas Posteriores + Torno Tambores",
+        "asignadoChoferPorDefecto": false,
+        "activoBiblioteca": true,
+        "prioridad": "CRITICA",
+        "observacionesMecanica": "Norma actualizada por SuperAdmin (PIN 9999): calibrado a 12,500 km para toda la flota."
+      }
+    ],
+    "origenDispositivo": "SuperAdministrador (PIN 9999)",
+    "updatedAt": "2026-09-25T15:41:37.512Z"
   }
 }

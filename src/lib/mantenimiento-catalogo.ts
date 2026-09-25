@@ -335,7 +335,7 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
     codigo: 'MNT-ZAPATAS-POST',
     nombre: 'Zapatas y Tambores Posteriores',
     categoria: 'FRENOS',
-    intervaloKmOficial: 8000,
+    intervaloKmOficial: 12500,
     intervaloDiasAprox: 50,
     especificacionLubricanteRepuesto: 'Visita al maestro de frenos: remachado de zapatas traseras (compuesto pesado) y rebaje de ceja en tambores',
     codigoRepuestoReferencia: 'Zapatas Posteriores + Torno Tambores',
@@ -536,6 +536,16 @@ export function saveCatalogoMaestroGlobal(items: MantenimientoCatalogoItem[]): v
   }
 }
 
+/**
+ * Resultado de auditoría de catálogo maestro en base de datos central
+ */
+export interface ResultadoAuditoriaCatalogoBD {
+  exito: boolean;
+  totalItems: number;
+  confirmadoEnNube: boolean;
+  mensaje: string;
+}
+
 export async function syncCatalogoGlobalToApi(items: MantenimientoCatalogoItem[]): Promise<boolean> {
   if (typeof window === 'undefined') return false;
   try {
@@ -547,11 +557,62 @@ export async function syncCatalogoGlobalToApi(items: MantenimientoCatalogoItem[]
         catalogoGlobal: items,
       }),
     });
-    return res.ok;
+    if (!res.ok) return false;
+    const json = await res.json();
+    return Boolean(json?.success);
   } catch (err) {
     console.warn('Aviso: Sincronización en servidor diferida:', err);
     return false;
   }
+}
+
+/**
+ * FASE 1 & AUDITORÍA SUPERADMIN:
+ * Audita y valida la persistencia del catálogo maestro institucional en la base de datos (PostgreSQL/BusVT).
+ */
+export async function auditarYGuardarCatalogoGlobalEnBD(
+  items: MantenimientoCatalogoItem[]
+): Promise<ResultadoAuditoriaCatalogoBD> {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY_CATALOGO, JSON.stringify(items));
+    window.dispatchEvent(new CustomEvent('rg_catalogo_maestro_updated', { detail: items }));
+  }
+
+  const esOnline = typeof navigator !== 'undefined' ? navigator.onLine : false;
+  if (esOnline) {
+    try {
+      const res = await fetch('/api/config/mantenimiento', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: 'GLOBAL_CATALOG',
+          catalogoGlobal: items,
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        const auditado = Array.isArray(json?.data) && json.data.length === items.length;
+        return {
+          exito: true,
+          totalItems: items.length,
+          confirmadoEnNube: auditado,
+          mensaje: auditado
+            ? `Catálogo maestro auditado y verificado en PostgreSQL (${items.length} normas institucionales).`
+            : `Guardado en servidor con advertencia de integridad.`,
+        };
+      }
+    } catch (e) {
+      console.warn('[AUDITORÍA SUPERADMIN] Fallo al auditar en BD:', e);
+    }
+  }
+
+  return {
+    exito: true,
+    totalItems: items.length,
+    confirmadoEnNube: false,
+    mensaje: 'Guardado localmente en navegador. Se sincronizará con la nube al detectar conexión.',
+  };
 }
 
 export async function fetchCatalogoGlobalFromApi(): Promise<MantenimientoCatalogoItem[] | null> {

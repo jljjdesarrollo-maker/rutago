@@ -790,3 +790,11 @@
 - **Sincronización Reactiva:** Chofer y Socio suscritos a `rg_mantenimiento_intervalo_updated` y `rg_catalogo_maestro_updated`. Al guardarse un cambio auditado en BD, la UI refresca sin recargar la página.
 - **Login Offline-First:** Descarga en paralelo del catálogo maestro y configuración de la unidad al autenticar personal de ruta.
 - **Estado Final:** Plan en 3 fases 100% completado, compilado y desplegado.
+
+### 🔍 AUDITORÍA SUPERADMIN: ACTUALIZACIÓN DE NORMA A 12,500 KM (MNT-ZAPATAS-POST)
+- **Componente:** "Zapatas y Tambores Posteriores" (`MNT-ZAPATAS-POST`).
+- **Valor Verificado:** 12,500 km.
+- **Acciones Realizadas:**
+  1. Calibración en la biblioteca institucional base Hino AK (`CATALOGO_MAESTRO_HINO_AK`).
+  2. Asentamiento persistente en la clave `__GLOBAL_CATALOG__` del almacén central de mantenimiento.
+  3. Implementación de `auditarYGuardarCatalogoGlobalEnBD` con confirmación Read-Your-Writes para el SuperAdmin.

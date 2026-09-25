@@ -62,3 +62,16 @@ El sistema cuenta con tres niveles de actores en el ciclo de vida del mantenimie
   - `SocioMantenimientoWidget.tsx`: Conectado a `resolveMantenimientoItemsParaBus`, actualiza el semáforo y diagnósticos inmediatamente al persistirse un override en PostgreSQL.
   - `LoginScreen.tsx`: Descarga silenciosa en paralelo (`syncMantenimientoConfigConServidor` + `fetchCatalogoGlobalFromApi`) garantizando disponibilidad 100% offline para chofer y ayudante en ruta.
 - **Compilación Turbopack y TypeScript:** 0 errores.
+
+---
+
+## 🔍 Auditoría de Base de Datos Solicitada por SuperAdmin (2026-09-25)
+- **Ítem Auditado:** `MNT-ZAPATAS-POST` ("Zapatas y Tambores Posteriores").
+- **Nuevo Kilometraje Oficial de Fábrica:** `12,500 km` (anterior: 8,000 km).
+- **Persistencia en Almacenamiento Central y Respaldo:**
+  - Asentado en `src/lib/mantenimiento-catalogo.ts` (CATALOGO_MAESTRO_HINO_AK).
+  - Asentado en `db/mantenimiento-config.json` bajo la clave institucional `__GLOBAL_CATALOG__`.
+  - Mecanismo de persistencia en PostgreSQL vía endpoint `/api/config/mantenimiento` con `tipo: "GLOBAL_CATALOG"`.
+- **Efecto Jerárquico en Cascada:**
+  - Las unidades sin override específico adoptan de inmediato la nueva norma institucional de 12,500 km.
+  - El Chofer y el Socio visualizan el intervalo actualizado de 12,500 km en sus respectivos paneles.
