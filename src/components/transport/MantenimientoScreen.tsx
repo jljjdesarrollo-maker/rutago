@@ -2569,9 +2569,10 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
             </span>
           </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            {(["LUBRICADORA", "FRENOS_RUEDAS", "MNT_MAYOR", "ADMISION_AIRE", "ALINEACION", "RADIADOR"] as EstacionServicioId[]).map(estId => {
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+            {(["LUBRICADORA", "MNT_MAYOR", "MOTOR_MECANICO", "FRENOS_RUEDAS", "ADMISION_AIRE", "ALINEACION", "ELECTROAUTO"] as EstacionServicioId[]).map(estId => {
               const est = ESTACIONES_SERVICIO_CONFIG[estId];
+              if (!est) return null;
               return (
                 <div key={estId} className="flex flex-col">
                   <button

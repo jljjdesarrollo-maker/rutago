@@ -1917,7 +1917,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             >
               <div className="flex items-center gap-2">
                 <Wrench className="w-3.5 h-3.5 text-blue-600" />
-                <span>Talleres Especializados (Frenos, Caja, Admisión, Llantas, Radiador)</span>
+                <span>Talleres Especializados (Caja, Motor, Frenos, Aire, Llantas, Electroauto)</span>
               </div>
               <span className="text-slate-500 text-[11px] font-black">
                 {mostrarTalleresEspecializados ? '▲ Ocultar' : '▼ Ver Talleres'}
@@ -1925,15 +1925,18 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             </button>
 
             {mostrarTalleresEspecializados && (
-              <div className="p-2.5 pt-1 border-t border-slate-100 bg-slate-50/70 grid grid-cols-3 sm:grid-cols-5 gap-2 animate-in fade-in duration-150">
-                {(['FRENOS_RUEDAS', 'ADMISION_AIRE', 'ALINEACION', 'MNT_MAYOR', 'RADIADOR'] as EstacionServicioId[]).map(estId => {
+              <div className="p-2.5 pt-1 border-t border-slate-100 bg-slate-50/70 grid grid-cols-3 sm:grid-cols-6 gap-2 animate-in fade-in duration-150">
+                {(['MNT_MAYOR', 'MOTOR_MECANICO', 'FRENOS_RUEDAS', 'ADMISION_AIRE', 'ALINEACION', 'ELECTROAUTO'] as EstacionServicioId[]).map(estId => {
                   const est = ESTACIONES_SERVICIO_CONFIG[estId];
+                  if (!est) return null;
                   const comboUnidad = getComboUnidad(activeBusId, estId);
                   const nombresCortos: Record<string, string> = {
+                    MNT_MAYOR: 'Caja y Corona',
+                    MOTOR_MECANICO: 'Maestro Motor',
                     FRENOS_RUEDAS: 'Frenos / Ruedas',
                     ADMISION_AIRE: 'Admisión / Aire',
                     ALINEACION: 'Serviteca / Llantas',
-                    MNT_MAYOR: 'Mantenim. Mayor',
+                    ELECTROAUTO: 'Electroauto',
                     RADIADOR: 'Radiador / Coolant',
                   };
                   return (

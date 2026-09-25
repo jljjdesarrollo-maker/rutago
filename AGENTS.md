@@ -714,3 +714,35 @@
 
 
 
+
+---
+
+## 🚀 ACTUALIZACIÓN (2026-09-24) - REORGANIZACIÓN ERGONÓMICA DE TALLERES ESPECIALIZADOS Y LUBRICADORA COMPLETA (v3.60.19)
+
+### 📌 MOTIVO Y DIAGNÓSTICO
+- Optimización ergonómica de la interfaz del chofer y panel del socio basada en la realidad automotriz ecuatoriana:
+  1. Mantener la **Lubricadora Completa (Fosa)** con sus 11 componentes (4 pre-marcados de motor + 7 opcionales de revisión y engrase), reconociendo que es la parada técnica de mayor frecuencia.
+  2. Desagregar el cajón genérico de `MNT_MAYOR` en talleres naturales de especialidad:
+     * `MNT_MAYOR`: Especialista en Transmisión Pesada (Caja, Corona, Embrague y Valvulinas).
+     * `MOTOR_MECANICO`: Maestro Mecánico y Motor (Afinamiento, Toberas Denso, Termostato, Radiador/Coolant, Bandas y Metales).
+     * `FRENOS_RUEDAS`: El Frenista y Muellero (Zapatas, Tambores, Raches, Bocinas y Muelles/Bujes).
+     * `ADMISION_AIRE`: Taller de Neumática, Filtros de Aire, Mangueras y Aire Acondicionado.
+     * `ALINEACION`: Serviteca y Llantera (Alineación láser 295/80R22.5 y chequeo de rodado).
+     * `ELECTROAUTO`: Electricista Automotriz y Acumuladores 24V (Renovación de Baterías, Rotación mensual y Bandas).
+  3. Reubicar únicamente los 30 ítems existentes del catálogo oficial Hino AK, sin inventar ni renombrar ninguno.
+  4. Actualizar `MAPA_ESTACION_NATURAL` para enrutar el 100% de los 30 ítems hacia su taller correspondiente al tocar la tarjeta táctil en el semáforo.
+
+### ⚙️ CAMBIOS APLICADOS
+1. **Tipos y Mapeo en `src/lib/mantenimiento-estaciones.ts`:**
+   - Incorporación de `MOTOR_MECANICO` y `ELECTROAUTO` al tipo `EstacionServicioId`.
+   - Definición completa de `ESTACIONES_SERVICIO_CONFIG` con los 7 talleres y la rutina directa del chofer.
+   - Mapeo bidireccional en `MAPA_ESTACION_NATURAL` para los 30 ítems del catálogo Hino AK.
+   - Categorías contables asignadas en `getCategoriaContablePorEstacion`.
+2. **Interfaz del Chofer en `src/components/transport/ChoferMantenimientoWidget.tsx`:**
+   - Acordeón de Talleres Especializados reestructurado con 6 accesos táctiles balanceados con ícono, nombre corto y contador de tareas.
+3. **Interfaz del Socio en `src/components/transport/MantenimientoScreen.tsx`:**
+   - Grilla gerencial adaptada a las 7 estaciones oficiales.
+4. **Verificación y Despliegue:**
+   - `package.json` actualizado a versión `3.60.19`.
+   - Compilación en producción exitosa (22/22 rutas Next.js 16).
+   - Generado archivo maestro `download/RutaGo_Contexto_Maestro_v3.60.19.md`.

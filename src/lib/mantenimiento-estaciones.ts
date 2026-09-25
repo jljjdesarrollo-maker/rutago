@@ -288,10 +288,12 @@ export type EstacionServicioId =
   | 'LUBRICADORA'
   | 'FRENOS_RUEDAS'
   | 'MNT_MAYOR'
+  | 'MOTOR_MECANICO'
   | 'ADMISION_AIRE'
   | 'ALINEACION'
+  | 'ELECTROAUTO'
   | 'RADIADOR'
-  | 'CHOFER_RUTINA';
+  | 'CHOFER_RUTINA;
 
 export interface ItemEstacionConfig {
   codigo: string;
@@ -315,383 +317,419 @@ export interface EstacionServicioDef {
 
 export const ESTACIONES_SERVICIO_CONFIG: Record<EstacionServicioId, EstacionServicioDef> = {
   LUBRICADORA: {
-    id: 'LUBRICADORA',
-    nombre: 'Lubricadora',
-    subtitulo: 'Regla 4 obligatorios + 7 opcionales de fosa',
-    icono: '🛢️',
-    colorBorder: 'border-amber-500',
-    colorBg: 'bg-amber-50',
+    id: "LUBRICADORA",
+    nombre: "Lubricadora",
+    subtitulo: "Fosa / Regla 4 obligatorios + 7 opcionales de fluidos y engrase",
+    icono: "🛢️",
+    colorBorder: "border-amber-500",
+    colorBg: "bg-amber-50",
     items: [
       // 4 Pre-marcados por defecto
       {
-        codigo: 'MNT-ACEITE-MOT',
-        nombre: 'Aceite de Motor (15W-40 Mobil Delvac)',
+        codigo: "MNT-ACEITE-MOT",
+        nombre: "Aceite de Motor (Fluido 15W-40)",
         intervaloKm: 5000,
         preMarcado: true,
       },
       {
-        codigo: 'MNT-FILT-ACEITE',
-        nombre: 'Filtro de Aceite de Motor',
+        codigo: "MNT-FILT-ACEITE",
+        nombre: "Filtro de Aceite de Motor",
         intervaloKm: 5000,
         preMarcado: true,
       },
       {
-        codigo: 'MNT-FILT-TRAMPA',
-        nombre: 'Filtro Trampa de Agua (Separador Diésel)',
+        codigo: "MNT-FILT-TRAMPA",
+        nombre: "Filtro Trampa de Agua (Separador Diésel)",
         intervaloKm: 5000,
         preMarcado: true,
       },
       {
-        codigo: 'MNT-FILT-DIESEL-SEC',
-        nombre: 'Filtro Diésel Secundario',
+        codigo: "MNT-FILT-DIESEL-SEC",
+        nombre: "Filtro de Combustible Secundario",
         intervaloKm: 5000,
         preMarcado: true,
       },
-      // 7 Opcionales para selección consciente
+      // 7 Opcionales para selección consciente en fosa
       {
-        codigo: 'MNT-SOPLADO-AIRE',
-        nombre: 'Soplado de Filtro de Aire',
-        intervaloKm: 5000,
+        codigo: "MNT-ACEITE-CAJA",
+        nombre: "Aceite de Caja (SAE 80W-90 / 85W-140 GL-4)",
+        intervaloKm: 30000,
         preMarcado: false,
-        opcionalTexto: 'Aprovechamiento en fosa',
+        opcionalTexto: "Revisión periódica en fosa",
       },
       {
-        codigo: 'MNT-LAVADO-MALLA-PASILLO',
-        nombre: 'Lavado Malla Aire Pasillo',
-        intervaloKm: 5000,
+        codigo: "MNT-ACEITE-CORONA",
+        nombre: "Aceite de Corona (SAE 85W-140 GL-5)",
+        intervaloKm: 30000,
         preMarcado: false,
-        opcionalTexto: 'Aprovechamiento en fosa',
+        opcionalTexto: "Revisión periódica en fosa",
       },
       {
-        codigo: 'MNT-ENGRASE-CHASIS',
-        nombre: 'Engrase de Chasis en Fosa',
+        codigo: "MNT-ENGRASE-CHASIS",
+        nombre: "Engrase de Chasis en Fosa",
         intervaloKm: 1500,
         preMarcado: false,
-        opcionalTexto: 'Engrase completo con pistola neumática',
+        opcionalTexto: "Engrase completo con pistola neumática",
       },
       {
-        codigo: 'MNT-FILT-AIRE-SEC',
-        nombre: 'Filtro de Aire Pequeño / Seguridad',
+        codigo: "MNT-SOPLADO-AIRE",
+        nombre: "Soplado Filtro Aire",
+        intervaloKm: 5000,
+        preMarcado: false,
+        opcionalTexto: "Aprovechamiento en fosa",
+      },
+      {
+        codigo: "MNT-LAVADO-MALLA-PASILLO",
+        nombre: "Lavado Malla Aire Pasillo",
+        intervaloKm: 5000,
+        preMarcado: false,
+        opcionalTexto: "Aprovechamiento en fosa",
+      },
+      {
+        codigo: "MNT-FILT-AIRE-SEC",
+        nombre: "Filtro Aire Pequeño",
         intervaloKm: 20000,
         preMarcado: false,
-        opcionalTexto: 'Cada 4 cambios de aceite',
+        opcionalTexto: "Cada 4 cambios de aceite",
       },
       {
-        codigo: 'MNT-FILT-AIRE-GRANDE',
-        nombre: 'Filtro de Aire Grande / Exterior',
+        codigo: "MNT-FILT-AIRE-GRANDE",
+        nombre: "Filtro Aire Grande",
         intervaloKm: 40000,
         preMarcado: false,
-        opcionalTexto: 'Cada 8 cambios de aceite',
-      },
-      {
-        codigo: 'MNT-ACEITE-CAJA',
-        nombre: 'Nivel / Cambio Valvulina Caja (GL-4)',
-        intervaloKm: 30000,
-        preMarcado: false,
-        opcionalTexto: 'Revisión periódica en fosa',
-      },
-      {
-        codigo: 'MNT-ACEITE-CORONA',
-        nombre: 'Nivel / Cambio Valvulina Corona (GL-5)',
-        intervaloKm: 30000,
-        preMarcado: false,
-        opcionalTexto: 'Revisión periódica en fosa',
+        opcionalTexto: "Cada 8 cambios de aceite",
       },
     ],
   },
-
-  FRENOS_RUEDAS: {
-    id: 'FRENOS_RUEDAS',
-    nombre: 'Frenos, Ruedas y Suspensión',
-    subtitulo: 'Taller del Frenista y Rodaje (Tambores y Ruedas)',
-    icono: '🛑',
-    colorBorder: 'border-red-500',
-    colorBg: 'bg-red-50',
-    items: [
-      {
-        codigo: 'MNT-ZAPATAS-POST',
-        nombre: 'Zapatas y Tambores Posteriores',
-        intervaloKm: 8000,
-        preMarcado: false,
-      },
-      {
-        codigo: 'MNT-ZAPATAS-DEL',
-        nombre: 'Zapatas y Tambores Delanteros',
-        intervaloKm: 11000,
-        preMarcado: false,
-      },
-      {
-        codigo: 'MNT-BOCINAS-POST',
-        nombre: 'Engrase Bocinas Posteriores (+ 4 Retenes)',
-        intervaloKm: 50000,
-        preMarcado: false,
-      },
-      {
-        codigo: 'MNT-BOCINAS-DEL',
-        nombre: 'Engrase Bocinas Delanteras (+ 2 Retenes)',
-        intervaloKm: 60000,
-        preMarcado: false,
-      },
-      {
-        codigo: 'MNT-MUELLES-BUJES',
-        nombre: 'Revisión de Muelles y Bujes de Bronce',
-        intervaloKm: 50000,
-        preMarcado: false,
-      },
-      {
-        codigo: 'MNT-RACHES-FRENO',
-        nombre: 'Calibración de Raches de Freno',
-        intervaloKm: 8000,
-        preMarcado: false,
-      },
-    ],
-  },
-
   MNT_MAYOR: {
-    id: 'MNT_MAYOR',
-    nombre: 'Mantenimiento Mayor',
-    subtitulo: 'Taller Especializado / Bajada General (Mesías)',
-    icono: '🛠️',
-    colorBorder: 'border-purple-500',
-    colorBg: 'bg-purple-50',
+    id: "MNT_MAYOR",
+    nombre: "Caja y Corona (Transmisión)",
+    subtitulo: "Taller de Transmisión Pesada y Embrague",
+    icono: "⚙️",
+    colorBorder: "border-purple-500",
+    colorBg: "bg-purple-50",
     items: [
       {
-        codigo: 'MNT-MNT-CAJA',
-        nombre: 'Mantenimiento General de Caja de Cambios',
+        codigo: "MNT-MNT-CAJA",
+        nombre: "Mantenimiento de Caja",
         intervaloKm: 150000,
         preMarcado: false,
         esCascadaTrigger: true,
-        cascadaAfecta: ['MNT-KIT-EMBRAGUE', 'MNT-ACEITE-CAJA'],
+        cascadaAfecta: ["MNT-KIT-EMBRAGUE", "MNT-ACEITE-CAJA"],
       },
       {
-        codigo: 'MNT-MNT-CORONA',
-        nombre: 'Mantenimiento General de Corona / Diferencial',
+        codigo: "MNT-MNT-CORONA",
+        nombre: "Mantenimiento de Corona",
         intervaloKm: 150000,
         preMarcado: false,
         esCascadaTrigger: true,
-        cascadaAfecta: ['MNT-ACEITE-CORONA'],
+        cascadaAfecta: ["MNT-ACEITE-CORONA"],
       },
       {
-        codigo: 'MNT-KIT-EMBRAGUE',
-        nombre: 'Kit de Embrague 350mm (Disco, Prensa, Rulimán)',
+        codigo: "MNT-KIT-EMBRAGUE",
+        nombre: "Kit de Embrague",
         intervaloKm: 100000,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-ACEITE-CAJA',
-        nombre: 'Cambio de Aceite de Caja (GL-4)',
+        codigo: "MNT-ACEITE-CAJA",
+        nombre: "Aceite de Caja",
         intervaloKm: 30000,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-ACEITE-CORONA',
-        nombre: 'Cambio de Aceite de Corona (GL-5 85W-140)',
+        codigo: "MNT-ACEITE-CORONA",
+        nombre: "Aceite de Corona",
         intervaloKm: 30000,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-MANGUERAS-ADMISION',
-        nombre: 'Ajuste de Mangueras de Admisión e Intercooler',
-        intervaloKm: 10000,
+        codigo: "MNT-ACEITE-MOT",
+        nombre: "Aceite de Motor (Fluido)",
+        intervaloKm: 5000,
+        preMarcado: false,
+        opcionalTexto: "Aprovechamiento por estadía en taller",
+      },
+    ],
+  },
+  MOTOR_MECANICO: {
+    id: "MOTOR_MECANICO",
+    nombre: "Maestro Mecánico y Motor",
+    subtitulo: "Afinamiento, Enfriamiento y Motor Mayor",
+    icono: "🔧",
+    colorBorder: "border-blue-600",
+    colorBg: "bg-blue-50",
+    items: [
+      {
+        codigo: "MNT-VALVULAS-TOBERAS",
+        nombre: "Calibración de Válvulas y Toberas",
+        intervaloKm: 50000,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-BANDAS-MOTOR',
-        nombre: 'Juego de Bandas del Motor',
+        codigo: "MNT-TERMOSTATO-MOT",
+        nombre: "Termostato del Motor",
         intervaloKm: 100000,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-TERMOSTATO-MOT',
-        nombre: 'Termostato del Motor',
+        codigo: "MNT-RADIADOR-COOLANT",
+        nombre: "Lavado de Radiador, Intercooler y Refrigerante",
         intervaloKm: 100000,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-BATERIAS-PAR',
-        nombre: 'Renovación de Baterías (Juego Par 24V - 2 Años)',
-        intervaloKm: 200000,
+        codigo: "MNT-BANDAS-MOTOR",
+        nombre: "Bandas del Motor",
+        intervaloKm: 100000,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-CHAPAS-MOTOR',
-        nombre: 'Metales de Motor (Biela y Bancada Estándar)',
+        codigo: "MNT-CHAPAS-MOTOR",
+        nombre: "Metales de Motor (Biela y Bancada)",
         intervaloKm: 800000,
         preMarcado: false,
       },
     ],
   },
-
-  ADMISION_AIRE: {
-    id: 'ADMISION_AIRE',
-    nombre: 'Sistema de Aire y Admisión',
-    subtitulo: 'Taller del Aire, Válvulas y Fuerza de Motor',
-    icono: '💨',
-    colorBorder: 'border-cyan-500',
-    colorBg: 'bg-cyan-50',
+  FRENOS_RUEDAS: {
+    id: "FRENOS_RUEDAS",
+    nombre: "Frenos, Rodaje y Suspensión",
+    subtitulo: "El Frenista y Muellero (Tambores, Muelles y Ruedas)",
+    icono: "🛑",
+    colorBorder: "border-red-500",
+    colorBg: "bg-red-50",
     items: [
       {
-        codigo: 'MNT-VALVULAS-TOBERAS',
-        nombre: 'Calibración de Válvulas y Toberas Denso',
+        codigo: "MNT-ZAPATAS-POST",
+        nombre: "Zapatas y Tambores Posteriores",
+        intervaloKm: 8000,
+        preMarcado: false,
+      },
+      {
+        codigo: "MNT-ZAPATAS-DEL",
+        nombre: "Zapatas y Tambores Delanteros",
+        intervaloKm: 11000,
+        preMarcado: false,
+      },
+      {
+        codigo: "MNT-RACHES-FRENO",
+        nombre: "Calibración de Raches de Freno",
+        intervaloKm: 8000,
+        preMarcado: false,
+      },
+      {
+        codigo: "MNT-BOCINAS-POST",
+        nombre: "Engrase Bocinas Posteriores",
         intervaloKm: 50000,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-MANGUERAS-ADMISION',
-        nombre: 'Ajuste de Mangueras de Admisión',
+        codigo: "MNT-BOCINAS-DEL",
+        nombre: "Engrase Bocinas Delanteras",
+        intervaloKm: 60000,
+        preMarcado: false,
+      },
+      {
+        codigo: "MNT-MUELLES-BUJES",
+        nombre: "Revisión de Muelles y Bujes",
+        intervaloKm: 50000,
+        preMarcado: false,
+      },
+    ],
+  },
+  ADMISION_AIRE: {
+    id: "ADMISION_AIRE",
+    nombre: "Sistema de Aire y Admisión",
+    subtitulo: "Taller de Neumática, Alimentación y Climatización",
+    icono: "💨",
+    colorBorder: "border-cyan-500",
+    colorBg: "bg-cyan-50",
+    items: [
+      {
+        codigo: "MNT-MANGUERAS-ADMISION",
+        nombre: "Ajuste Mangueras Admisión",
         intervaloKm: 10000,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-FILT-AIRE-SEC',
-        nombre: 'Filtro de Aire Pequeño / Seguridad',
+        codigo: "MNT-FILT-AIRE-SEC",
+        nombre: "Filtro Aire Pequeño",
         intervaloKm: 20000,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-FILT-AIRE-GRANDE',
-        nombre: 'Filtro de Aire Grande / Exterior',
+        codigo: "MNT-FILT-AIRE-GRANDE",
+        nombre: "Filtro Aire Grande",
         intervaloKm: 40000,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-AIRE-ACONDICIONADO',
-        nombre: 'Mantenimiento Preventivo Anual de Aire Acondicionado',
+        codigo: "MNT-AIRE-ACONDICIONADO",
+        nombre: "Mantenimiento Preventivo Anual de Aire Acondicionado",
         intervaloKm: 110000,
         preMarcado: false,
       },
     ],
   },
-
   ALINEACION: {
-    id: 'ALINEACION',
-    nombre: 'Alineación y Llantas',
-    subtitulo: 'Serviteca Especializada de Neumáticos',
-    icono: '🛞',
-    colorBorder: 'border-emerald-500',
-    colorBg: 'bg-emerald-50',
+    id: "ALINEACION",
+    nombre: "Serviteca y Llantera",
+    subtitulo: "Serviteca de Neumáticos 295/80R22.5",
+    icono: "🛞",
+    colorBorder: "border-emerald-500",
+    colorBg: "bg-emerald-50",
     items: [
       {
-        codigo: 'MNT-ALINEACION-LLANTAS',
-        nombre: 'Alineación Láser y Chequeo de Llantas 295/80R22.5',
+        codigo: "MNT-ALINEACION-LLANTAS",
+        nombre: "Alineación y Chequeo Llantas",
         intervaloKm: 15000,
         preMarcado: false,
       },
     ],
   },
-
-  RADIADOR: {
-    id: 'RADIADOR',
-    nombre: 'Radiador y Sistema de Enfriamiento',
-    subtitulo: 'Lavado Químico, Intercooler y Coolant HD',
-    icono: '🧼',
-    colorBorder: 'border-blue-500',
-    colorBg: 'bg-blue-50',
+  ELECTROAUTO: {
+    id: "ELECTROAUTO",
+    nombre: "Electroauto y Baterías",
+    subtitulo: "Electricista Automotriz y Acumuladores 24V",
+    icono: "⚡",
+    colorBorder: "border-amber-600",
+    colorBg: "bg-amber-50",
     items: [
       {
-        codigo: 'MNT-RADIADOR-COOLANT',
-        nombre: 'Lavado de Radiador, Intercooler y Coolant Larga Vida',
+        codigo: "MNT-BATERIAS-PAR",
+        nombre: "Renovación de Baterías (Juego Par 24V - 2 Años)",
+        intervaloKm: 200000,
+        preMarcado: false,
+      },
+      {
+        codigo: "MNT-ROTACION-BATERIAS",
+        nombre: "Rotación Mensual de Baterías (Intercambio A⇄B y Bornes)",
+        intervaloKm: 8600,
+        preMarcado: false,
+      },
+      {
+        codigo: "MNT-BANDAS-MOTOR",
+        nombre: "Bandas del Motor",
         intervaloKm: 100000,
         preMarcado: false,
       },
     ],
   },
-
-  CHOFER_RUTINA: {
-    id: 'CHOFER_RUTINA',
-    nombre: 'Rutina Directa de Chofer',
-    subtitulo: 'Operación Diaria en Terminal o Parada (3 Toques)',
-    icono: '🚌',
-    colorBorder: 'border-indigo-500',
-    colorBg: 'bg-indigo-50',
+  RADIADOR: {
+    id: "RADIADOR",
+    nombre: "Radiador y Enfriamiento",
+    subtitulo: "Lavado Químico y Refrigerante",
+    icono: "🧼",
+    colorBorder: "border-blue-500",
+    colorBg: "bg-blue-50",
     items: [
       {
-        codigo: 'MNT-RACHES-FRENO',
-        nombre: 'Calibración Manual de Raches de Freno',
+        codigo: "MNT-RADIADOR-COOLANT",
+        nombre: "Lavado de Radiador, Intercooler y Refrigerante",
+        intervaloKm: 100000,
+        preMarcado: false,
+      },
+      {
+        codigo: "MNT-TERMOSTATO-MOT",
+        nombre: "Termostato del Motor",
+        intervaloKm: 100000,
+        preMarcado: false,
+      },
+    ],
+  },
+  CHOFER_RUTINA: {
+    id: "CHOFER_RUTINA",
+    nombre: "Rutina Directa de Chofer",
+    subtitulo: "Operación Diaria en Terminal o Parada ($0 Mano de Obra Propia)",
+    icono: "🚌",
+    colorBorder: "border-indigo-500",
+    colorBg: "bg-indigo-50",
+    items: [
+      {
+        codigo: "MNT-RACHES-FRENO",
+        nombre: "Calibración de Raches de Freno",
         intervaloKm: 800,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-ENGRASE-CHASIS',
-        nombre: 'Engrase Rápido de Chasis',
+        codigo: "MNT-ENGRASE-CHASIS",
+        nombre: "Engrase de Chasis",
         intervaloKm: 1500,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-SOPLADO-AIRE',
-        nombre: 'Soplado Rápido Filtro de Aire',
+        codigo: "MNT-SOPLADO-AIRE",
+        nombre: "Soplado Filtro Aire",
         intervaloKm: 5000,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-LAVADO-MALLA-PASILLO',
-        nombre: 'Lavado de Malla de Aire en Pasillo',
+        codigo: "MNT-LAVADO-MALLA-PASILLO",
+        nombre: "Lavado Malla Aire Pasillo",
         intervaloKm: 5000,
         preMarcado: false,
       },
       {
-        codigo: 'MNT-ROTACION-BATERIAS',
-        nombre: 'Rotación Mensual de Baterías (Intercambio A⇄B y Bornes)',
+        codigo: "MNT-ROTACION-BATERIAS",
+        nombre: "Rotación Mensual de Baterías (Intercambio A⇄B y Bornes)",
         intervaloKm: 8600,
         preMarcado: false,
       },
     ],
   },
 };
-
 /**
  * Mapeo Oficial de Estación Natural para el 100% de los ítems del Catálogo Hino AK (Cero Huérfanos)
  * RutaGo v3.60.18
  */
 export const MAPA_ESTACION_NATURAL: Record<string, EstacionServicioId> = {
   // 1. LUBRICADORA
-  'MNT-ACEITE-MOT': 'LUBRICADORA',
-  'MNT-FILT-ACEITE': 'LUBRICADORA',
-  'MNT-FILT-TRAMPA': 'LUBRICADORA',
-  'MNT-FILT-DIESEL-SEC': 'LUBRICADORA',
-  'MNT-ACEITE-CAJA': 'LUBRICADORA',
-  'MNT-ACEITE-CORONA': 'LUBRICADORA',
+  "MNT-ACEITE-MOT": "LUBRICADORA",
+  "MNT-FILT-ACEITE": "LUBRICADORA",
+  "MNT-FILT-TRAMPA": "LUBRICADORA",
+  "MNT-FILT-DIESEL-SEC": "LUBRICADORA",
+  "MNT-ACEITE-CAJA": "LUBRICADORA",
+  "MNT-ACEITE-CORONA": "LUBRICADORA",
 
   // 2. CHOFER_RUTINA (Labores directas $0 de conductor)
-  'MNT-RACHES-FRENO': 'CHOFER_RUTINA',
-  'MNT-ENGRASE-CHASIS': 'CHOFER_RUTINA',
-  'MNT-SOPLADO-AIRE': 'CHOFER_RUTINA',
-  'MNT-LAVADO-MALLA-PASILLO': 'CHOFER_RUTINA',
-  'MNT-ROTACION-BATERIAS': 'CHOFER_RUTINA',
+  "MNT-RACHES-FRENO": "CHOFER_RUTINA",
+  "MNT-ENGRASE-CHASIS": "CHOFER_RUTINA",
+  "MNT-SOPLADO-AIRE": "CHOFER_RUTINA",
+  "MNT-LAVADO-MALLA-PASILLO": "CHOFER_RUTINA",
+  "MNT-ROTACION-BATERIAS": "CHOFER_RUTINA",
 
   // 3. FRENOS_RUEDAS
-  'MNT-ZAPATAS-POST': 'FRENOS_RUEDAS',
-  'MNT-ZAPATAS-DEL': 'FRENOS_RUEDAS',
-  'MNT-BOCINAS-POST': 'FRENOS_RUEDAS',
-  'MNT-BOCINAS-DEL': 'FRENOS_RUEDAS',
-  'MNT-MUELLES-BUJES': 'FRENOS_RUEDAS',
+  "MNT-ZAPATAS-POST": "FRENOS_RUEDAS",
+  "MNT-ZAPATAS-DEL": "FRENOS_RUEDAS",
+  "MNT-BOCINAS-POST": "FRENOS_RUEDAS",
+  "MNT-BOCINAS-DEL": "FRENOS_RUEDAS",
+  "MNT-MUELLES-BUJES": "FRENOS_RUEDAS",
 
   // 4. ADMISION_AIRE
-  'MNT-MANGUERAS-ADMISION': 'ADMISION_AIRE',
-  'MNT-FILT-AIRE-SEC': 'ADMISION_AIRE',
-  'MNT-FILT-AIRE-GRANDE': 'ADMISION_AIRE',
-  'MNT-VALVULAS-TOBERAS': 'ADMISION_AIRE',
-  'MNT-AIRE-ACONDICIONADO': 'ADMISION_AIRE',
+  "MNT-MANGUERAS-ADMISION": "ADMISION_AIRE",
+  "MNT-FILT-AIRE-SEC": "ADMISION_AIRE",
+  "MNT-FILT-AIRE-GRANDE": "ADMISION_AIRE",
+  "MNT-AIRE-ACONDICIONADO": "ADMISION_AIRE",
 
   // 5. ALINEACION
-  'MNT-ALINEACION-LLANTAS': 'ALINEACION',
+  "MNT-ALINEACION-LLANTAS": "ALINEACION",
 
-  // 6. MNT_MAYOR
-  'MNT-BANDAS-MOTOR': 'MNT_MAYOR',
-  'MNT-TERMOSTATO-MOT': 'MNT_MAYOR',
-  'MNT-KIT-EMBRAGUE': 'MNT_MAYOR',
-  'MNT-MNT-CAJA': 'MNT_MAYOR',
-  'MNT-MNT-CORONA': 'MNT_MAYOR',
-  'MNT-BATERIAS-PAR': 'MNT_MAYOR',
-  'MNT-CHAPAS-MOTOR': 'MNT_MAYOR',
+  // 6. MNT_MAYOR (Caja y Corona)
+  "MNT-KIT-EMBRAGUE": "MNT_MAYOR",
+  "MNT-MNT-CAJA": "MNT_MAYOR",
+  "MNT-MNT-CORONA": "MNT_MAYOR",
 
-  // 7. RADIADOR
-  'MNT-RADIADOR-COOLANT': 'RADIADOR',
+  // 7. MOTOR_MECANICO (Maestro Mecánico y Motor)
+  "MNT-VALVULAS-TOBERAS": "MOTOR_MECANICO",
+  "MNT-TERMOSTATO-MOT": "MOTOR_MECANICO",
+  "MNT-RADIADOR-COOLANT": "MOTOR_MECANICO",
+  "MNT-BANDAS-MOTOR": "MOTOR_MECANICO",
+  "MNT-CHAPAS-MOTOR": "MOTOR_MECANICO",
+
+  // 8. ELECTROAUTO
+  "MNT-BATERIAS-PAR": "ELECTROAUTO",
 };
-
-/**
- * Códigos de componentes que corresponden a la rutina directa y mano de obra del chofer a costo $0
- */
 export const CODIGOS_RUTINA_CHOFER_CERO_COSTO = new Set<string>([
   'MNT-RACHES-FRENO',
   'MNT-ENGRASE-CHASIS',
@@ -748,21 +786,18 @@ export function getCategoriaContablePorEstacion(estacionId: EstacionServicioId):
     case "FRENOS_RUEDAS":
       return "FRENOS_RODAJE";
     case "MNT_MAYOR":
-      return "MOTOR_CAJA_CORONA";
-    case "ADMISION_AIRE":
+    case "MOTOR_MECANICO":
       return "MOTOR_CAJA_CORONA";
     case "ALINEACION":
       return "LLANTAS";
+    case "ADMISION_AIRE":
+    case "ELECTROAUTO":
     case "RADIADOR":
-      return "MOTOR_CAJA_CORONA";
     case "CHOFER_RUTINA":
-      return "OTROS";
     default:
       return "OTROS";
   }
 }
-
-
 // ============================================================================
 // ACTIVACIÓN OPTATIVA DEL MÓDULO DE MANTENIMIENTO POR UNIDAD (DECISIÓN DEL SOCIO)
 // ============================================================================
