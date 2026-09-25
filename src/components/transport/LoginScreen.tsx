@@ -41,7 +41,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       if (typeof navigator !== "undefined" && navigator.onLine) {
         // FASE 3: Descarga paralela del Catálogo Institucional y Configuración del Bus
         Promise.allSettled([
-          syncMantenimientoConfigConServidor(activeBus),
+          syncMantenimientoConfigConServidor(activeBus, true),
           fetchCatalogoGlobalFromApi(),
         ]).catch(err => {
           console.warn("Aviso: Descarga en segundo plano diferida:", err);

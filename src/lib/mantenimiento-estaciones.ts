@@ -125,6 +125,29 @@ export async function syncMantenimientoConfigConServidor(busId: string, force = 
         }
         if (data.intervalosPersonalizados && typeof data.intervalosPersonalizados === 'object') {
           localStorage.setItem(`${STORAGE_PREFIX_INTERVALOS}${busId}`, JSON.stringify(data.intervalosPersonalizados));
+          // Sincronizar simultáneamente con la lista plana local para evitar discrepancia en vistas secundarias
+          try {
+            const rawMnts = localStorage.getItem(`rg_mantenimientos_v2_${busId}`);
+            if (rawMnts) {
+              const list = JSON.parse(rawMnts);
+              if (Array.isArray(list)) {
+                let changed = false;
+                const updatedList = list.map((item: any) => {
+                  if (item.codigo && typeof data.intervalosPersonalizados[item.codigo] === "number") {
+                    const nuevo = data.intervalosPersonalizados[item.codigo];
+                    if (item.intervaloKm !== nuevo) {
+                      changed = true;
+                      return { ...item, intervaloKm: nuevo };
+                    }
+                  }
+                  return item;
+                });
+                if (changed) {
+                  localStorage.setItem(`rg_mantenimientos_v2_${busId}`, JSON.stringify(updatedList));
+                }
+              }
+            }
+          } catch {}
         }
         // FASE B: Hidratar combos personalizados descargados desde el servidor
         if (data.combosPersonalizados && typeof data.combosPersonalizados === 'object') {
@@ -1303,6 +1326,22 @@ export async function auditarYGuardarIntervaloEnBD(
         const current = getBusIntervalosConfig(busId);
         current[codigo] = kmValido;
         localStorage.setItem(`${STORAGE_PREFIX_INTERVALOS}${busId}`, JSON.stringify(current));
+
+        // Sincronizar simultáneamente la lista plana del bus para evitar desfase en vistas secundarias
+        try {
+          const rawMnts = localStorage.getItem(`rg_mantenimientos_v2_${busId}`);
+          if (rawMnts) {
+            const list = JSON.parse(rawMnts);
+            if (Array.isArray(list)) {
+              const updatedList = list.map((item: any) => 
+                item.codigo === codigo ? { ...item, intervaloKm: kmValido } : item
+              );
+              localStorage.setItem(`rg_mantenimientos_v2_${busId}`, JSON.stringify(updatedList));
+            }
+          }
+        } catch (e) {
+          console.warn("Aviso actualizando lista plana en auditoria:", e);
+        }
 
         // Disparar sincronización auditada de interfaz reactiva
         window.dispatchEvent(

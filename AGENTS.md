@@ -805,3 +805,8 @@
   - Implementada función `resolverKmItem` en `getComboUnidad` que interpola en caliente los intervalos desde el catálogo maestro global y la configuración por unidad.
   - Actualizado el fallback de fábrica en `ESTACIONES_SERVICIO_CONFIG` a `12500 km`.
 - **Efecto:** El modal de parada de taller (Frenista y Muellero) muestra de forma reactiva y exacta "Ciclo: 12.500 km".
+
+### 🚀 PROPAGACIÓN JERÁRQUICA INFALIBLE: CATALOGO, OVERRIDES Y VISTAS (v3.60.21)
+- **Caché Versionada:** Purgada caché estancada mediante `rutago_mantenimiento_catalogo_maestro_v3_60_21`.
+- **Descarga Inmediata:** Activado `force = true` en sincronización bidireccional y login móvil para saltar el cooldown de 20s.
+- **Sincronización Dual:** `auditarYGuardarIntervaloEnBD` y `syncMantenimientoConfigConServidor` actualizan de forma atómica tanto los overrides del bus como la lista plana `rg_mantenimientos_v2_${busId}`.

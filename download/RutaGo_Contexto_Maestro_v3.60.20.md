@@ -87,3 +87,13 @@ El sistema cuenta con tres niveles de actores en el ciclo de vida del mantenimie
      - Si no hay override particular, consulta el catálogo oficial actualizado por el SuperAdmin (`getCatalogoMaestroGlobal()`).
      - Asegura que cualquier cambio de kilometraje se refleje de inmediato tanto en el modal del socio como en el del chofer.
 - **Resultado:** En el modal ahora aparece **"Ciclo: 12.500 km"** de forma inmediata y consistente.
+
+---
+
+## 🚀 Saneamiento y Propagación Jerárquica Infalible (v3.60.21)
+1. **Invalidación de Caché Obsoleta del Catálogo:**
+   - Elevada clave de catálogo a `rutago_mantenimiento_catalogo_maestro_v3_60_21` para purgar de inmediato valores viejos (12.000 km) que persistían en memoria de los navegadores.
+2. **Descarga Forzada Inmediata (`force = true`):**
+   - Eliminado el bloqueo de 20 segundos (`SYNC_COOLDOWN_MS`) durante el inicio de sesión y sincronización bidireccional en el móvil del chofer, asegurando que cualquier cambio de kilometraje del Socio (ej. 12.300 km) se descargue al instante.
+3. **Consistencia Atómica de la Lista Plana:**
+   - `auditarYGuardarIntervaloEnBD` y `syncMantenimientoConfigConServidor` ahora actualizan simultáneamente la lista plana local (`rg_mantenimientos_v2_${busId}`), evitando que cualquier componente o vista secundaria lea kilometrajes viejos.

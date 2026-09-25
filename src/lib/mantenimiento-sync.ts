@@ -168,7 +168,7 @@ export async function syncMantenimientoBidireccional(busId?: string): Promise<{ 
 
   // 2. Descargar (Download) configuración de recetas actualizada del socio
   try {
-    await syncMantenimientoConfigConServidor(targetBusId);
+    await syncMantenimientoConfigConServidor(targetBusId, true);
   } catch (e) {
     console.warn('Aviso descarga config mantenimiento diferido:', e);
   }
