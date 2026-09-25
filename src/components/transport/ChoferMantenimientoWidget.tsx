@@ -54,7 +54,8 @@ import {
   getCategoriaContablePorEstacion,
   syncMantenimientoConfigConServidor,
   esLaborPropiaChofer,
-  getEstacionNaturalItem
+  getEstacionNaturalItem,
+  resolveMantenimientoItemsParaBus
 } from '@/lib/mantenimiento-estaciones';
 import { syncMantenimientoBidireccional, flushMantenimientoOutbox, getMantenimientoOutbox } from '@/lib/mantenimiento-sync';
 
@@ -97,107 +98,11 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
   const [kmActual, setKmActual] = useState<number>(() => resolverKmActual(getActiveBusId()));
 
-  const cargarItems = useCallback((busId: string) => {
-    if (typeof window === 'undefined') return [];
-    const storageKey = `rg_mantenimientos_v2_${busId}`;
+  const cargarItems = useCallback((busId: string): MantenimientoBusItem[] => {
+    if (typeof window === "undefined") return [];
     const currentKm = resolverKmActual(busId) || 893485;
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const desfaseExtremo = parsed.some(
-            (it: MantenimientoBusItem) => it.ultimoKm > 0 && Math.abs(currentKm - it.ultimoKm) > 100000
-          );
-          if (!desfaseExtremo) {
-            return parsed.filter((it: MantenimientoBusItem) => it.activo !== false);
-          }
-          console.warn('Detectado desfase histórico en widget del chofer. Re-calibrando a línea base real...');
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    if (!getBusModuloMantenimientoActivo(busId)) {
-      return [];
-    }
-
-    const catalogo = getCatalogoMaestroGlobal();
-    return catalogo
-      .map(c => {
-        const esChofer = Boolean(c.asignadoChoferPorDefecto);
-        // Aceite de motor y tríada de filtros: Cambiados anteayer (19 de septiembre de 2026) a 893,100 km
-        if (
-          c.codigo === 'MNT-ACEITE-MOT' ||
-          c.codigo === 'MNT-FILT-ACEITE' ||
-          c.codigo === 'MNT-FILT-TRAMPA' ||
-          c.codigo === 'MNT-FILT-DIESEL-SEC'
-        ) {
-          return {
-            id: `mbus-${c.id}-calibrado`,
-            catalogoId: c.id,
-            codigo: c.codigo,
-            nombre: c.nombre,
-            categoria: c.categoria,
-            intervaloKm: c.intervaloKmOficial,
-            ultimoKm: 893100,
-            fechaUltimo: '2026-09-19',
-            costoEstimado: 0,
-            repuestoDetalle: c.especificacionLubricanteRepuesto,
-            asignadoChofer: esChofer,
-            activo: true,
-          };
-        }
-        // Engrase de chasis
-        if (c.codigo === 'MNT-ENGRASE-CHASIS') {
-          return {
-            id: `mbus-${c.id}-calibrado`,
-            catalogoId: c.id,
-            codigo: c.codigo,
-            nombre: c.nombre,
-            categoria: c.categoria,
-            intervaloKm: c.intervaloKmOficial,
-            ultimoKm: 893085,
-            fechaUltimo: '2026-09-19',
-            costoEstimado: 0,
-            repuestoDetalle: c.especificacionLubricanteRepuesto,
-            asignadoChofer: esChofer,
-            activo: true,
-          };
-        }
-        // Rotación mensual de baterías (8,600 km ciclo / 30 días - sh chofer)
-        if (c.codigo === 'MNT-ROTACION-BATERIAS') {
-          return {
-            id: `mbus-${c.id}-calibrado`,
-            catalogoId: c.id,
-            codigo: c.codigo,
-            nombre: c.nombre,
-            categoria: c.categoria,
-            intervaloKm: c.intervaloKmOficial,
-            ultimoKm: Math.max(0, currentKm - 1500),
-            fechaUltimo: '2026-09-15',
-            costoEstimado: 0,
-            repuestoDetalle: c.especificacionLubricanteRepuesto,
-            asignadoChofer: esChofer,
-            activo: true,
-          };
-        }
-        return {
-          id: `mbus-${c.id}-default`,
-          catalogoId: c.id,
-          codigo: c.codigo,
-          nombre: c.nombre,
-          categoria: c.categoria,
-          intervaloKm: c.intervaloKmOficial,
-          ultimoKm: Math.max(0, currentKm - Math.floor(c.intervaloKmOficial * 0.2)),
-          fechaUltimo: '2026-09-10',
-          costoEstimado: 0,
-          repuestoDetalle: c.especificacionLubricanteRepuesto,
-          asignadoChofer: esChofer,
-          activo: true,
-        };
-      });
+    // FASE 2 y 3: Motor unificado que aplica jerarquía SuperAdmin + Overrides del Socio + Odómetro
+    return resolveMantenimientoItemsParaBus(busId, currentKm);
   }, [resolverKmActual]);
 
   // Tareas asignadas al Chofer y Catálogo Completo del Bus
@@ -255,6 +160,15 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       setItems(cargarItems(activeBusId));
     };
     window.addEventListener('rg_mantenimiento_config_sync', handleConfigSync);
+
+    // FASE 3: Suscripción reactiva en vivo a cambios de intervalos auditados en BD y catálogo
+    const handleIntervaloUpdated = (e: any) => {
+      if (!e.detail || e.detail.busId === activeBusId) {
+        setItems(cargarItems(activeBusId));
+      }
+    };
+    window.addEventListener('rg_mantenimiento_intervalo_updated', handleIntervaloUpdated);
+    window.addEventListener('rg_catalogo_maestro_updated', handleConfigSync);
 
     const handleParadasSync = () => {
       setHistorialParadas(getParadasPagoByBus(activeBusId));

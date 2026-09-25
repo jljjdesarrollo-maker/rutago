@@ -53,3 +53,12 @@ El sistema cuenta con tres niveles de actores en el ciclo de vida del mantenimie
   3. Estado de activación por unidad (`getBusItemsActivosConfig(busId)`).
   4. Odómetro auditado e histórico de calibraciones de fábrica y ruta.
 - Validación de tipos TypeScript: 0 errores detectados.
+
+---
+
+## 🚀 Certificación de Fase 3 (Sincronización Reactiva Multi-Pantalla y Descarga en Login)
+- **Componentes Conectados al Motor Unificado:**
+  - `ChoferMantenimientoWidget.tsx`: Conectado a `resolveMantenimientoItemsParaBus`, suscrito a eventos en tiempo real (`rg_mantenimiento_intervalo_updated`, `rg_catalogo_maestro_updated`).
+  - `SocioMantenimientoWidget.tsx`: Conectado a `resolveMantenimientoItemsParaBus`, actualiza el semáforo y diagnósticos inmediatamente al persistirse un override en PostgreSQL.
+  - `LoginScreen.tsx`: Descarga silenciosa en paralelo (`syncMantenimientoConfigConServidor` + `fetchCatalogoGlobalFromApi`) garantizando disponibilidad 100% offline para chofer y ayudante en ruta.
+- **Compilación Turbopack y TypeScript:** 0 errores.

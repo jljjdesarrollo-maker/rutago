@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Delete, Truck, Loader2, ShieldAlert } from 'lucide-react';
 import { getDeviceInfo } from '@/lib/device-storage';
 import { syncMantenimientoConfigConServidor } from '@/lib/mantenimiento-estaciones';
+import { fetchCatalogoGlobalFromApi } from '@/lib/mantenimiento-catalogo';
 
 interface LoginScreenProps {
   onLogin: (user: { id: string; nombre: string; rol: string }) => void;
@@ -38,8 +39,12 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       // Obtener bus activo o por defecto BUS-01
       const activeBus = localStorage.getItem("rutago_active_bus_id") || "BUS-01";
       if (typeof navigator !== "undefined" && navigator.onLine) {
-        syncMantenimientoConfigConServidor(activeBus).catch(err => {
-          console.warn("Aviso: Descarga en segundo plano de recetas diferida:", err);
+        // FASE 3: Descarga paralela del Catálogo Institucional y Configuración del Bus
+        Promise.allSettled([
+          syncMantenimientoConfigConServidor(activeBus),
+          fetchCatalogoGlobalFromApi(),
+        ]).catch(err => {
+          console.warn("Aviso: Descarga en segundo plano diferida:", err);
         });
       }
     } catch {

@@ -53,6 +53,7 @@ import {
   CODIGOS_NIVEL_BASICO,
   CODIGOS_NIVEL_MEDIO,
   reconciliarMantenimientosConHistorial,
+  resolveMantenimientoItemsParaBus,
 } from '@/lib/mantenimiento-estaciones';
 
 export interface MantenimientoBusItem {
@@ -161,157 +162,16 @@ export function SocioMantenimientoWidget({
 
   // Cargar lista de mantenimientos monitoreados para esta unidad
   const cargarItems = useCallback((bId: string): MantenimientoBusItem[] => {
-    if (typeof window === 'undefined') return [];
-    const storageKey = `rg_mantenimientos_v2_${bId}`;
+    if (typeof window === "undefined") return [];
     const baseKm = resolverKmActual(bId) || 893485;
+    // FASE 2 y 3: Motor centralizado jerárquico SuperAdmin + Overrides del Socio + Odómetro
+    const resueltos = resolveMantenimientoItemsParaBus(bId, baseKm);
     const nivel = getBusNivelControl(bId);
     const catalogo = getCatalogoMaestroGlobal();
     const itemsConfig = getBusItemsActivosConfig(bId, catalogo.map(c => c.codigo));
-
-    const calibrarItem = (c: any): MantenimientoBusItem => {
-      // Aceite de motor y filtros: 19 de septiembre de 2026 a 893,100 km
-      if (
-        c.codigo === 'MNT-ACEITE-MOT' ||
-        c.codigo === 'MNT-FILT-ACEITE' ||
-        c.codigo === 'MNT-FILT-TRAMPA' ||
-        c.codigo === 'MNT-FILT-DIESEL-SEC'
-      ) {
-        return {
-          id: `mbus-${c.id}-calibrado`,
-          catalogoId: c.id,
-          codigo: c.codigo,
-          nombre: c.nombre,
-          categoria: c.categoria,
-          intervaloKm: c.intervaloKmOficial,
-          ultimoKm: 893100,
-          fechaUltimo: '2026-09-19',
-          costoEstimado: c.codigo === 'MNT-ACEITE-MOT' ? 120 : 35,
-          repuestoDetalle: c.especificacionLubricanteRepuesto,
-          asignadoChofer: c.asignadoChoferPorDefecto,
-          activo: true,
-        };
-      }
-      // Engrase de chasis
-      if (c.codigo === 'MNT-ENGRASE-CHASIS') {
-        return {
-          id: `mbus-${c.id}-calibrado`,
-          catalogoId: c.id,
-          codigo: c.codigo,
-          nombre: c.nombre,
-          categoria: c.categoria,
-          intervaloKm: c.intervaloKmOficial,
-          ultimoKm: 893085,
-          fechaUltimo: '2026-09-19',
-          costoEstimado: 25,
-          repuestoDetalle: c.especificacionLubricanteRepuesto,
-          asignadoChofer: c.asignadoChoferPorDefecto,
-          activo: true,
-        };
-      }
-      // Aire acondicionado (Mantenimiento preventivo anual 110.000 km)
-      if (c.codigo === 'MNT-AIRE-ACONDICIONADO') {
-        const kmServicioAC = Math.max(0, baseKm - 15000); // 15,000 km rodados, 95,000 km restantes (86% vida útil - En Regla)
-        return {
-          id: `mbus-${c.id}-calibrado`,
-          catalogoId: c.id,
-          codigo: c.codigo,
-          nombre: c.nombre,
-          categoria: c.categoria,
-          intervaloKm: c.intervaloKmOficial,
-          ultimoKm: kmServicioAC,
-          fechaUltimo: '2026-08-01',
-          costoEstimado: 180,
-          repuestoDetalle: c.especificacionLubricanteRepuesto,
-          asignadoChofer: false,
-          activo: true,
-        };
-      }
-      // Calibración de raches de freno (800 km ciclo)
-      if (c.codigo === 'MNT-RACHES-FRENO') {
-        return {
-          id: `mbus-${c.id}-calibrado`,
-          catalogoId: c.id,
-          codigo: c.codigo,
-          nombre: c.nombre,
-          categoria: c.categoria,
-          intervaloKm: c.intervaloKmOficial,
-          ultimoKm: Math.max(0, baseKm - 250),
-          fechaUltimo: '2026-09-20',
-          costoEstimado: 0,
-          repuestoDetalle: c.especificacionLubricanteRepuesto,
-          asignadoChofer: true,
-          activo: true,
-        };
-      }
-      // Demás componentes oficiales del Hino AK calibrados con 20% de desgaste (Al Día)
-      return {
-        id: `mbus-${c.id}-calibrado`,
-        catalogoId: c.id,
-        codigo: c.codigo,
-        nombre: c.nombre,
-        categoria: c.categoria,
-        intervaloKm: c.intervaloKmOficial,
-        ultimoKm: Math.max(0, baseKm - Math.floor(c.intervaloKmOficial * 0.2)),
-        fechaUltimo: '2026-09-15',
-        costoEstimado: c.categoria === 'MOTOR' ? 120 : c.categoria === 'FRENOS' ? 80 : 45,
-        repuestoDetalle: c.especificacionLubricanteRepuesto,
-        asignadoChofer: c.asignadoChoferPorDefecto,
-        activo: true,
-      };
-    };
-
-    let itemsExistentes: MantenimientoBusItem[] = [];
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const desfaseExtremo = parsed.some(
-            (it: MantenimientoBusItem) => it.ultimoKm > 0 && Math.abs(baseKm - it.ultimoKm) > 100000
-          );
-          if (!desfaseExtremo) {
-            itemsExistentes = parsed;
-          }
-        }
-      } catch (e) {
-        console.error('Error parseando mantenimientos del socio:', e);
-      }
-    }
-
-    const catalogoActivo = catalogo.filter(c => c.activoBiblioteca);
-    const codigosExistentes = new Set(itemsExistentes.map(it => it.codigo));
-    let itemsActualizados = [...itemsExistentes];
-
-    // Auto-expansión: Si el socio tiene un nivel con más ítems (p. ej. Control Total 27), incorporar los faltantes
-    catalogoActivo.forEach(c => {
-      const debeEstar = nivel === 'TOTAL' ? true : (itemsConfig[c.codigo] ?? true);
-      if (debeEstar && !codigosExistentes.has(c.codigo)) {
-        itemsActualizados.push(calibrarItem(c));
-        codigosExistentes.add(c.codigo);
-      }
-    });
-
-    if (itemsActualizados.length === 0) {
-      itemsActualizados = catalogoActivo.map(calibrarItem);
-    }
-
-    // Auto-curación y reconciliación silenciosa con historial de taller y gastos (Self-Healing)
-    const { items: itemsSaneados } = reconciliarMantenimientosConHistorial(itemsActualizados, bId, baseKm);
-    itemsActualizados = itemsSaneados;
-
-    // Persistir si se expandió la lista para garantizar sincronía inmediata
-    if (itemsActualizados.length > itemsExistentes.length) {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(itemsActualizados));
-      } catch (e) {
-        console.error('Error al persistir items ampliados:', e);
-      }
-    }
-
-    // Retornar ítems activos para la supervisión ejecutiva del socio
-    return itemsActualizados.filter(it => {
+    return resueltos.filter(it => {
       if (!it.activo) return false;
-      if (nivel === 'TOTAL') return true;
+      if (nivel === "TOTAL") return true;
       return it.codigo ? (itemsConfig[it.codigo] ?? true) : true;
     });
   }, [resolverKmActual]);
