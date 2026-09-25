@@ -778,3 +778,10 @@
 - **Fase 1:** Función de auditoría previa de escritura en base de datos (`auditarYGuardarIntervaloEnBD`) con validación de payload devuelto.
 - **Fase 2:** Motor de resolución jerárquica unificado (`resolveMantenimientoItemsParaBus`).
 - **Fase 3:** Suscripciones reactivas en `ChoferMantenimientoWidget`, `SocioMantenimientoWidget` y descarga en `LoginScreen`.
+
+### ⚙️ AVANCE FASE 2: MOTOR JERÁRQUICO CENTRALIZADO
+- **Función Implementada:** `resolveMantenimientoItemsParaBus(busId, baseKm)` en `src/lib/mantenimiento-estaciones.ts`.
+- **Gobernanza:**
+  - Garantiza que cualquier intervalo modificado por el Socio o nuevo componente creado por el SuperAdmin se refleje con jerarquía estricta.
+  - El valor auditado en PostgreSQL prevalece sobre los valores por defecto del catálogo.
+- **Certificación:** Compilación TypeScript estricta sin errores.

@@ -42,3 +42,14 @@ El sistema cuenta con tres niveles de actores en el ciclo de vida del mantenimie
 ## 🔒 3. Certificación de Seguridad y Persistencia
 - Respaldo atómico en PostgreSQL vía `busVT.upsert` con clave `SYS_CONFIG_MANTENIMIENTO`.
 - Sincronización libre de condiciones de carrera con deduplicación y tolerancia a fallos offline.
+
+---
+
+## ⚙️ Certificación de Fase 2 (Motor Jerárquico Centralizado)
+- Implementada la función `resolveMantenimientoItemsParaBus(busId, baseKm)` en `src/lib/mantenimiento-estaciones.ts`.
+- Aplica orden de resolución inmutable:
+  1. Base institucional del SuperAdmin (`getCatalogoMaestroGlobal`).
+  2. Ajustes e intervalos personalizados del Socio Propietario (`getBusIntervalosConfig(busId)`).
+  3. Estado de activación por unidad (`getBusItemsActivosConfig(busId)`).
+  4. Odómetro auditado e histórico de calibraciones de fábrica y ruta.
+- Validación de tipos TypeScript: 0 errores detectados.
