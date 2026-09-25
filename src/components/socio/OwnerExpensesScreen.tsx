@@ -1595,8 +1595,9 @@ export default function OwnerExpensesScreen({
                   type="submit"
                   disabled={isSubmittingAbono}
                   className="w-full min-h-[48px] rounded-2xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg transition cursor-pointer"
+                >
                   <Check className="w-5 h-5 stroke-[2.5]" />
-                  <span>{isSubmittingAbono ? 'Asentando Abono...' : `Confirmar Abono de $${parseFloat(abonoAmount || '0').toFixed(2)}`}</span>
+                  <span>{isSubmittingAbono ? 'Asentando Abono...' : `Confirmar Abono de ${parseFloat(abonoAmount || '0').toFixed(2)}`}</span>
                 </button>
               </div>
             </form>
