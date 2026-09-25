@@ -762,3 +762,19 @@
   1. Proponer/implementar selector de fecha histórica en el micro-modal de 1 toque del chofer.
   2. Continuar con las revisiones y optimizaciones solicitadas por el usuario.
   3. Estado de compilación: 100% verificado en producción (v3.60.19 - Commit 42e9cc9).
+
+---
+
+## 🚀 FASE 9 (2026-09-25) - AUDITORÍA DE PERSISTENCIA EN BASE DE DATOS Y SINCRONIZACIÓN JERÁRQUICA (v3.60.20)
+
+### 📌 MOTIVO Y DIAGNÓSTICO
+- El usuario reportó que las modificaciones de kilometraje de mantenimiento y nuevos elementos creados por el SuperAdministrador y los Socios no se sincronizaban de manera reactiva en las interfaces del Chofer y del Socio.
+- Análisis técnico:
+  1. Los widgets de Chofer y Socio leían `intervaloKmOficial` del catálogo sin aplicar la capa de personalización del autobús (`intervalosPersonalizados`).
+  2. No existía verificación previa de que la base de datos PostgreSQL en la nube hubiera confirmado el valor antes de sincronizar la interfaz (ausencia de patrón Read-Your-Writes).
+  3. Los componentes de interfaz carecían de suscripciones reactivas a eventos de actualización de catálogo e intervalos.
+
+### 📐 PLAN EN 3 FASES
+- **Fase 1:** Función de auditoría previa de escritura en base de datos (`auditarYGuardarIntervaloEnBD`) con validación de payload devuelto.
+- **Fase 2:** Motor de resolución jerárquica unificado (`resolveMantenimientoItemsParaBus`).
+- **Fase 3:** Suscripciones reactivas en `ChoferMantenimientoWidget`, `SocioMantenimientoWidget` y descarga en `LoginScreen`.

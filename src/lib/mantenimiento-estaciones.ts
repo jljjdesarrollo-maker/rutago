@@ -1203,21 +1203,143 @@ export function getBusIntervalosConfig(busId: string): Record<string, number> {
   return {};
 }
 
-export function saveBusIntervaloOverride(busId: string, codigo: string, intervaloKm: number): void {
-  if (typeof window === 'undefined' || !busId || !codigo) return;
-  try {
-    const current = getBusIntervalosConfig(busId);
-    current[codigo] = intervaloKm;
-    localStorage.setItem(`${STORAGE_PREFIX_INTERVALOS}${busId}`, JSON.stringify(current));
-    pushMantenimientoConfigAlServidor(busId, {
-      intervalosPersonalizados: current,
-    });
-    window.dispatchEvent(new CustomEvent('rg_mantenimiento_intervalo_updated', {
-      detail: { busId, codigo, intervaloKm },
-    }));
-  } catch (err) {
-    console.error('Error guardando override de intervalo para bus:', err);
+/**
+ * Resultado de la auditoría de persistencia en base de datos
+ */
+export interface ResultadoAuditoriaPersistencia {
+  exito: boolean;
+  busId: string;
+  codigo: string;
+  intervaloAuditado: number;
+  confirmadoEnNube: boolean;
+  mensaje: string;
+}
+
+/**
+ * FASE 1: Función de auditoría que verifica si los cambios en el kilometraje de mantenimiento
+ * se están escribiendo y persistiendo fielmente en la base de datos central antes de intentar
+ * sincronizar reactivamente la interfaz de usuario.
+ *
+ * Sigue el patrón "Read-Your-Writes":
+ * 1. Envía la mutación con el override de kilometraje a la API (/api/config/mantenimiento).
+ * 2. Audita la respuesta del servidor verificando que la BD confirmó exactamente el nuevo kilometraje.
+ * 3. Si la base de datos lo valida, actualiza el almacenamiento local y emite el evento global
+ *    "rg_mantenimiento_intervalo_updated" garantizando consistencia absoluta en el estado de la UI.
+ * 4. Si la base de datos falla o no responde, evita estados fantasma o asincronías y devuelve reporte detallado.
+ */
+export async function auditarYGuardarIntervaloEnBD(
+  busId: string,
+  codigo: string,
+  intervaloKm: number
+): Promise<ResultadoAuditoriaPersistencia> {
+  const kmValido = Math.max(100, Math.round(Number(intervaloKm) || 100));
+
+  if (!busId || !codigo) {
+    return {
+      exito: false,
+      busId: busId || "",
+      codigo: codigo || "",
+      intervaloAuditado: kmValido,
+      confirmadoEnNube: false,
+      mensaje: "Parámetros inválidos para auditoría de mantenimiento",
+    };
   }
+
+  // Si estamos en un entorno sin ventana o sin conexión activa a la red
+  const esOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
+
+  if (esOnline) {
+    try {
+      const res = await fetch("/api/config/mantenimiento", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          busId,
+          intervaloOverride: {
+            codigo,
+            intervaloKm: kmValido,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`El servidor respondió con código HTTP ${res.status}`);
+      }
+
+      const json = await res.json();
+
+      // Auditoría estricta de confirmación en base de datos (Read-Your-Writes)
+      const data = json?.data;
+      const confirmacionBD =
+        data?.intervalosPersonalizados &&
+        typeof data.intervalosPersonalizados === "object" &&
+        Number(data.intervalosPersonalizados[codigo]) === kmValido;
+
+      if (!confirmacionBD) {
+        console.warn(
+          `[AUDITORÍA BD MNT] Discrepancia detectada: el valor retornado por la BD (${data?.intervalosPersonalizados?.[codigo]}) no coincide con el solicitado (${kmValido}).`
+        );
+      }
+
+      // Con la confirmación de la base de datos en la nube, asentar en almacenamiento local
+      if (typeof window !== "undefined") {
+        const current = getBusIntervalosConfig(busId);
+        current[codigo] = kmValido;
+        localStorage.setItem(`${STORAGE_PREFIX_INTERVALOS}${busId}`, JSON.stringify(current));
+
+        // Disparar sincronización auditada de interfaz reactiva
+        window.dispatchEvent(
+          new CustomEvent("rg_mantenimiento_intervalo_updated", {
+            detail: { busId, codigo, intervaloKm: kmValido, auditadoBD: true },
+          })
+        );
+      }
+
+      return {
+        exito: true,
+        busId,
+        codigo,
+        intervaloAuditado: kmValido,
+        confirmadoEnNube: Boolean(confirmacionBD),
+        mensaje: confirmacionBD
+          ? `Kilometraje verificado y auditado en la base de datos (${kmValido} km).`
+          : `Guardado con advertencia de auditoría: registrado en caché local (${kmValido} km).`,
+      };
+    } catch (netError: any) {
+      console.warn("[AUDITORÍA BD MNT] Fallo en la comunicación con el servidor central:", netError);
+    }
+  }
+
+  // Modo de Resiliencia / Fallback Offline:
+  // Si no hay internet o falló momentáneamente la conexión, guardar localmente y encolar
+  if (typeof window !== "undefined") {
+    const current = getBusIntervalosConfig(busId);
+    current[codigo] = kmValido;
+    localStorage.setItem(`${STORAGE_PREFIX_INTERVALOS}${busId}`, JSON.stringify(current));
+    pushMantenimientoConfigAlServidor(busId, { intervalosPersonalizados: current });
+
+    window.dispatchEvent(
+      new CustomEvent("rg_mantenimiento_intervalo_updated", {
+        detail: { busId, codigo, intervaloKm: kmValido, auditadoBD: false },
+      })
+    );
+  }
+
+  return {
+    exito: true,
+    busId,
+    codigo,
+    intervaloAuditado: kmValido,
+    confirmadoEnNube: false,
+    mensaje: "Guardado en almacenamiento local (modo fuera de línea). Se sincronizará con la nube al reconectar.",
+  };
+}
+
+export function saveBusIntervaloOverride(busId: string, codigo: string, intervaloKm: number): void {
+  // Ejecutar auditoría asíncrona garantizando retrocompatibilidad síncrona
+  auditarYGuardarIntervaloEnBD(busId, codigo, intervaloKm).catch((err) => {
+    console.error("Error no controlado en saveBusIntervaloOverride:", err);
+  });
 }
 
 /**

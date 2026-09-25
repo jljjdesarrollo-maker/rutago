@@ -84,6 +84,7 @@ import {
   isMantenimientoDecisionTomada,
   getBusIntervalosConfig,
   saveBusIntervaloOverride,
+  auditarYGuardarIntervaloEnBD,
   type EstacionServicioId,
   type ItemEstacionConfig,
   ESTACIONES_SERVICIO_CONFIG,
@@ -1473,16 +1474,28 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     nuevoIntervalo: number
   ) => {
     if (!nuevoIntervalo || nuevoIntervalo <= 0) return;
+    const it = items.find(x => x.id === itemId);
+    const nombreItem = it?.nombre || "Servicio";
+
+    // FASE 1: Auditoría de persistencia en base de datos antes de confirmar
+    if (itemCodigo) {
+      auditarYGuardarIntervaloEnBD(activeBusId, itemCodigo, nuevoIntervalo).then((resAuditoria) => {
+        if (resAuditoria.confirmadoEnNube) {
+          toast({
+            title: "Auditoría en BD Exitosa 🛡️",
+            description: `${nombreItem}: verificado y asentado en PostgreSQL a ${nuevoIntervalo.toLocaleString()} km.`,
+          });
+        } else {
+          toast({
+            title: "Intervalo Guardado Localmente",
+            description: resAuditoria.mensaje,
+          });
+        }
+      });
+    }
+
     const updated = items.map(x => (x.id === itemId ? { ...x, intervaloKm: nuevoIntervalo } : x));
     saveItems(updated);
-    if (itemCodigo) {
-      saveBusIntervaloOverride(activeBusId, itemCodigo, nuevoIntervalo);
-    }
-    const it = items.find(x => x.id === itemId);
-    toast({
-      title: "Intervalo Actualizado para esta Unidad",
-      description: `${it?.nombre || 'Servicio'}: ahora se renovará cada ${nuevoIntervalo.toLocaleString()} km para el Bus ${activeBusDisco}.`,
-    });
   };
 
   const handleToggleChofer = (id: string, asignado: boolean) => {
