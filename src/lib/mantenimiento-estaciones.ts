@@ -503,7 +503,7 @@ export const ESTACIONES_SERVICIO_CONFIG: Record<EstacionServicioId, EstacionServ
       {
         codigo: "MNT-ZAPATAS-POST",
         nombre: "Zapatas y Tambores Posteriores",
-        intervaloKm: 8000,
+        intervaloKm: 12500,
         preMarcado: false,
       },
       {
@@ -953,16 +953,40 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
   codigosPreMarcados: string[];
   codigosExcluidos: string[];
 } {
-  const safeBusId = busId || 'BUS-01';
+  const safeBusId = busId || "BUS-01";
   const estacionBase = ESTACIONES_SERVICIO_CONFIG[estacionId];
   if (!estacionBase) {
     return { items: [], codigosPreMarcados: [], codigosExcluidos: [] };
   }
 
-  if (typeof window === 'undefined') {
+  // RESOLUCIÓN JERÁRQUICA EN TIEMPO REAL:
+  // 1. Intervalo personalizado del socio para este bus (si existe en BD/local)
+  // 2. Catálogo maestro oficial de la cooperativa (SuperAdmin)
+  // 3. Fallback estático de fábrica
+  const catalogo = getCatalogoMaestroGlobal();
+  const mapCatalogo = new Map(catalogo.map(c => [c.codigo, c]));
+  const intervalosSocio = getBusIntervalosConfig(safeBusId);
+
+  const resolverKmItem = (codigo: string, defaultKm: number): number => {
+    if (typeof intervalosSocio[codigo] === "number" && intervalosSocio[codigo] > 0) {
+      return intervalosSocio[codigo];
+    }
+    const cat = mapCatalogo.get(codigo);
+    if (cat && typeof cat.intervaloKmOficial === "number" && cat.intervaloKmOficial > 0) {
+      return cat.intervaloKmOficial;
+    }
+    return defaultKm;
+  };
+
+  const baseItemsActualizados = (estacionBase.items || []).map(it => ({
+    ...it,
+    intervaloKm: resolverKmItem(it.codigo, it.intervaloKm),
+  }));
+
+  if (typeof window === "undefined") {
     return {
-      items: estacionBase.items || [],
-      codigosPreMarcados: (estacionBase.items || []).filter(it => it.preMarcado).map(it => it.codigo),
+      items: baseItemsActualizados,
+      codigosPreMarcados: baseItemsActualizados.filter(it => it.preMarcado).map(it => it.codigo),
       codigosExcluidos: [],
     };
   }
@@ -970,25 +994,19 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
   try {
     const raw = localStorage.getItem(STORAGE_PREFIX_COMBO_UNIDAD + safeBusId + "_" + estacionId);
     if (!raw) {
-      // DEFAULT OFICIAL DE FÁBRICA PARA NUEVOS SOCIOS / BUSES
       return {
-        items: estacionBase.items,
-        codigosPreMarcados: estacionBase.items.filter(it => it.preMarcado).map(it => it.codigo),
+        items: baseItemsActualizados,
+        codigosPreMarcados: baseItemsActualizados.filter(it => it.preMarcado).map(it => it.codigo),
         codigosExcluidos: [],
       };
     }
 
     const data: ComboUnidadPersonalizado = JSON.parse(raw);
-    const catalogo = getCatalogoMaestroGlobal();
-    const mapCatalogo = new Map(catalogo.map(c => [c.codigo, c]));
-
     const codigosExcluidosArr = Array.isArray(data.codigosExcluidos) ? data.codigosExcluidos : [];
     const excluidosSet = new Set(codigosExcluidosArr);
 
-    // 1. Items base de la estación (respetando exclusiones excepto protegidos)
     const itemsMap = new Map<string, ItemEstacionConfig>();
-    estacionBase.items.forEach(it => {
-      // Si el socio lo excluyó y no es protegido, se omite de la receta
+    baseItemsActualizados.forEach(it => {
       const esProtegido = isItemProtegidoReceta(estacionId, it.codigo);
       if (excluidosSet.has(it.codigo) && !esProtegido) {
         return;
@@ -997,18 +1015,17 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
       const estaMarcado = data.itemsSeleccionados?.[it.codigo] !== undefined 
         ? data.itemsSeleccionados[it.codigo] 
         : it.preMarcado;
+
       itemsMap.set(it.codigo, {
         ...it,
+        intervaloKm: resolverKmItem(it.codigo, it.intervaloKm),
         preMarcado: estaMarcado,
       });
     });
 
-    // 2. Si el socio agregó códigos extras del catálogo a esta estación
     if (data.codigosExtras && Array.isArray(data.codigosExtras)) {
       data.codigosExtras.forEach(cod => {
-        // Solo agregar si no está en la lista de excluidos
         if (excluidosSet.has(cod)) return;
-
         if (!itemsMap.has(cod)) {
           const catItem = mapCatalogo.get(cod);
           if (catItem) {
@@ -1018,9 +1035,9 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
             itemsMap.set(cod, {
               codigo: catItem.codigo,
               nombre: catItem.nombre,
-              intervaloKm: catItem.intervaloKmOficial || 5000,
+              intervaloKm: resolverKmItem(catItem.codigo, catItem.intervaloKmOficial || 5000),
               preMarcado: estaMarcado,
-              opcionalTexto: 'Añadido por el socio para esta unidad',
+              opcionalTexto: "Añadido por el socio para esta unidad",
             });
           }
         }
@@ -1036,10 +1053,10 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
       codigosExcluidos: codigosExcluidosArr,
     };
   } catch (err) {
-    console.error('Error cargando combo personalizado de unidad:', err);
+    console.error("Error cargando combo personalizado de unidad:", err);
     return {
-      items: estacionBase.items,
-      codigosPreMarcados: estacionBase.items.filter(it => it.preMarcado).map(it => it.codigo),
+      items: baseItemsActualizados,
+      codigosPreMarcados: baseItemsActualizados.filter(it => it.preMarcado).map(it => it.codigo),
       codigosExcluidos: [],
     };
   }

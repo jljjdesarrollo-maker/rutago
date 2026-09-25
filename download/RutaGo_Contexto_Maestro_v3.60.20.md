@@ -75,3 +75,15 @@ El sistema cuenta con tres niveles de actores en el ciclo de vida del mantenimie
 - **Efecto Jerárquico en Cascada:**
   - Las unidades sin override específico adoptan de inmediato la nueva norma institucional de 12,500 km.
   - El Chofer y el Socio visualizan el intervalo actualizado de 12,500 km en sus respectivos paneles.
+
+---
+
+## 🛠️ Solución Definitiva al Desfase Visual de Ciclo (Estaciones vs Catálogo)
+- **Diagnóstico:** El modal de parada de taller "Estación: Frenos, Rodaje y Suspensión" leía los valores de `getComboUnidad`, el cual utilizaba una plantilla de items estática (`ESTACIONES_SERVICIO_CONFIG`) con `intervaloKm: 8000` grabado en duro, sin consultar el catálogo maestro ni los overrides de la unidad.
+- **Solución Implementada:**
+  1. `ESTACIONES_SERVICIO_CONFIG.FRENOS_RUEDAS`: Actualizado `MNT-ZAPATAS-POST` a 12,500 km.
+  2. `getComboUnidad`: Refactorizado con **resolución dinámica en cascada**:
+     - Consulta primero los overrides guardados por el socio para esa unidad (`getBusIntervalosConfig(safeBusId)`).
+     - Si no hay override particular, consulta el catálogo oficial actualizado por el SuperAdmin (`getCatalogoMaestroGlobal()`).
+     - Asegura que cualquier cambio de kilometraje se refleje de inmediato tanto en el modal del socio como en el del chofer.
+- **Resultado:** En el modal ahora aparece **"Ciclo: 12.500 km"** de forma inmediata y consistente.

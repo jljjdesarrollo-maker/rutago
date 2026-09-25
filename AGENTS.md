@@ -798,3 +798,10 @@
   1. Calibración en la biblioteca institucional base Hino AK (`CATALOGO_MAESTRO_HINO_AK`).
   2. Asentamiento persistente en la clave `__GLOBAL_CATALOG__` del almacén central de mantenimiento.
   3. Implementación de `auditarYGuardarCatalogoGlobalEnBD` con confirmación Read-Your-Writes para el SuperAdmin.
+
+### 🛠️ CORRECCIÓN DEFINITIVA: RESOLUCIÓN DINÁMICA DE INTERVALO EN RECETAS DE ESTACIÓN
+- **Causa Raíz:** `getComboUnidad` y `ESTACIONES_SERVICIO_CONFIG` contenían el valor estático `8000 km` grabado en el array base de la estación, ignorando la reactividad del catálogo del SuperAdmin y los overrides del Socio.
+- **Corrección:**
+  - Implementada función `resolverKmItem` en `getComboUnidad` que interpola en caliente los intervalos desde el catálogo maestro global y la configuración por unidad.
+  - Actualizado el fallback de fábrica en `ESTACIONES_SERVICIO_CONFIG` a `12500 km`.
+- **Efecto:** El modal de parada de taller (Frenista y Muellero) muestra de forma reactiva y exacta "Ciclo: 12.500 km".
