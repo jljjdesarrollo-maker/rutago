@@ -35,7 +35,10 @@ import {
   ExternalLink,
   Building2,
   Edit2,
+  WifiOff,
+  Loader2,
 } from 'lucide-react';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -522,6 +525,8 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
   const [mostrarCalibrarOdo, setMostrarCalibrarOdo] = useState<boolean>(false);
   const [mostrarEstacionesSocio, setMostrarEstacionesSocio] = useState<boolean>(false);
   const [isPoliticasModalOpen, setIsPoliticasModalOpen] = useState<boolean>(false);
+  const { isOnline } = useNetworkStatus();
+  const [isGuardandoIntervalo, setIsGuardandoIntervalo] = useState<boolean>(false);
   const [itemParaAjustarIntervalo, setItemParaAjustarIntervalo] = useState<MantenimientoBusItem | null>(null);
   const [nuevoIntervaloVal, setNuevoIntervaloVal] = useState<string>('');
   const [intervaloRegistro, setIntervaloRegistro] = useState<string>('');
@@ -3362,16 +3367,30 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                           )}
                           <button
                             type="button"
+                            disabled={!isOnline}
                             onClick={(e) => {
                               e.stopPropagation();
+                              if (!isOnline) return;
                               setItemParaAjustarIntervalo(item);
                               setNuevoIntervaloVal((Number(item.intervaloKm) || 5000).toString());
                             }}
-                            className="inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200/90 text-[10px] font-bold text-amber-900 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-2xs"
-                            title={`Ajustar ciclo de ${item.nombre} solo para Bus ${activeBusDisco} (ej. cambiar a 6,000 km)`}
+                            className={`inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-lg border text-[10px] font-bold transition-all shadow-2xs ${
+                              !isOnline
+                                ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-70"
+                                : "bg-amber-50 hover:bg-amber-100 border-amber-200/90 text-amber-900 hover:scale-105 active:scale-95 cursor-pointer"
+                            }`}
+                            title={
+                              !isOnline
+                                ? "Requiere conexión a internet para editar kilometrajes en el servidor central"
+                                : `Ajustar ciclo de ${item.nombre} solo para Bus ${activeBusDisco}`
+                            }
                           >
                             <span>Ciclo: cada {(Number(item.intervaloKm) || 5000).toLocaleString()} km</span>
-                            <Edit2 className="w-2.5 h-2.5 text-amber-700 shrink-0" />
+                            {!isOnline ? (
+                              <WifiOff className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                            ) : (
+                              <Edit2 className="w-2.5 h-2.5 text-amber-700 shrink-0" />
+                            )}
                           </button>
                         </div>
 
@@ -5089,8 +5108,16 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                 </div>
               </div>
 
+              {!isOnline && (
+                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-2 text-xs">
+                  <WifiOff className="w-4 h-4 text-rose-600 shrink-0 animate-pulse" />
+                  <span className="font-semibold text-[11px] leading-tight">
+                    Sin conexión al servidor central. Conéctese a internet para poder asentar este cambio en la base de datos.
+                  </span>
+                </div>
+              )}
               <p className="text-[10px] text-slate-500 leading-tight">
-                💡 Este cambio aplicará <strong>únicamente para el Bus {activeBusDisco}</strong> y se sincronizará con tu celular.
+                🛡️ La base de datos central auditará y confirmará la actualización antes de asentarla.
               </p>
             </div>
 
@@ -5107,20 +5134,75 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
               <Button
                 type="button"
                 size="sm"
-                onClick={() => {
+                disabled={!isOnline || isGuardandoIntervalo}
+                onClick={async () => {
                   const valNum = parseInt(nuevoIntervaloVal, 10);
-                  if (!isNaN(valNum) && valNum > 0) {
-                    handleActualizarIntervaloUnidad(
-                      itemParaAjustarIntervalo.id,
-                      itemParaAjustarIntervalo.codigo,
+                  if (!valNum || valNum <= 0) return;
+                  
+                  if (!isOnline) {
+                    toast({
+                      variant: "destructive",
+                      title: "Sin Conexión a Internet ⚠️",
+                      description: "No se puede guardar el kilometraje sin conexión al servidor central.",
+                    });
+                    return;
+                  }
+
+                  setIsGuardandoIntervalo(true);
+                  try {
+                    const resAuditoria = await auditarYGuardarIntervaloEnBD(
+                      activeBusId,
+                      itemParaAjustarIntervalo.codigo || "",
                       valNum
                     );
-                    setItemParaAjustarIntervalo(null);
+
+                    if (resAuditoria.confirmadoEnNube) {
+                      // Actualizar memoria local en React
+                      const updated = items.map((x) =>
+                        x.id === itemParaAjustarIntervalo.id ? { ...x, intervaloKm: valNum } : x
+                      );
+                      saveItems(updated);
+                      toast({
+                        title: "Auditoría en BD Exitosa 🛡️",
+                        description: `${itemParaAjustarIntervalo.nombre}: verificado y asentado en PostgreSQL a ${valNum.toLocaleString()} km.`,
+                      });
+                      setItemParaAjustarIntervalo(null);
+                    } else {
+                      toast({
+                        variant: "destructive",
+                        title: "Error al Asentar en Servidor ❌",
+                        description: resAuditoria.mensaje || "La base de datos central no confirmó el cambio. Intente nuevamente.",
+                      });
+                    }
+                  } catch (e: any) {
+                    toast({
+                      variant: "destructive",
+                      title: "Fallo de Comunicación ❌",
+                      description: e?.message || "Error al conectar con la base de datos.",
+                    });
+                  } finally {
+                    setIsGuardandoIntervalo(false);
                   }
                 }}
-                className="text-xs font-black bg-amber-600 hover:bg-amber-700 text-white rounded-xl px-4"
+                className={`text-xs font-black text-white rounded-xl px-4 transition-all ${
+                  !isOnline || isGuardandoIntervalo
+                    ? "bg-slate-400 cursor-not-allowed opacity-80"
+                    : "bg-amber-600 hover:bg-amber-700"
+                }`}
               >
-                Guardar Intervalo
+                {isGuardandoIntervalo ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    Guardando en BD...
+                  </>
+                ) : !isOnline ? (
+                  <>
+                    <WifiOff className="w-3.5 h-3.5 mr-1.5" />
+                    Sin Conexión
+                  </>
+                ) : (
+                  "Guardar Intervalo"
+                )}
               </Button>
             </div>
           </div>

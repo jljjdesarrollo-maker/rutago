@@ -1285,110 +1285,105 @@ export async function auditarYGuardarIntervaloEnBD(
     };
   }
 
-  // Si estamos en un entorno sin ventana o sin conexión activa a la red
+  // Comprobar estado de conectividad nativa
   const esOnline = typeof navigator !== "undefined" ? navigator.onLine : false;
 
-  if (esOnline) {
-    try {
-      const res = await fetch("/api/config/mantenimiento", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          busId,
-          intervaloOverride: {
-            codigo,
-            intervaloKm: kmValido,
-          },
-        }),
-      });
+  if (!esOnline) {
+    return {
+      exito: false,
+      busId,
+      codigo,
+      intervaloAuditado: kmValido,
+      confirmadoEnNube: false,
+      mensaje: "Sin conexión a internet. Se requiere enlace estable con el servidor para modificar kilometrajes.",
+    };
+  }
 
-      if (!res.ok) {
-        throw new Error(`El servidor respondió con código HTTP ${res.status}`);
-      }
+  try {
+    const res = await fetch("/api/config/mantenimiento", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        busId,
+        intervaloOverride: {
+          codigo,
+          intervaloKm: kmValido,
+        },
+      }),
+    });
 
-      const json = await res.json();
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      throw new Error(errJson?.message || `El servidor respondió con código HTTP ${res.status}`);
+    }
 
-      // Auditoría estricta de confirmación en base de datos (Read-Your-Writes)
-      const data = json?.data;
-      const confirmacionBD =
-        data?.intervalosPersonalizados &&
-        typeof data.intervalosPersonalizados === "object" &&
-        Number(data.intervalosPersonalizados[codigo]) === kmValido;
+    const json = await res.json();
+    const data = json?.data;
+    const confirmacionBD =
+      data?.intervalosPersonalizados &&
+      typeof data.intervalosPersonalizados === "object" &&
+      Number(data.intervalosPersonalizados[codigo]) === kmValido;
 
-      if (!confirmacionBD) {
-        console.warn(
-          `[AUDITORÍA BD MNT] Discrepancia detectada: el valor retornado por la BD (${data?.intervalosPersonalizados?.[codigo]}) no coincide con el solicitado (${kmValido}).`
-        );
-      }
-
-      // Con la confirmación de la base de datos en la nube, asentar en almacenamiento local
-      if (typeof window !== "undefined") {
-        const current = getBusIntervalosConfig(busId);
-        current[codigo] = kmValido;
-        localStorage.setItem(`${STORAGE_PREFIX_INTERVALOS}${busId}`, JSON.stringify(current));
-
-        // Sincronizar simultáneamente la lista plana del bus para evitar desfase en vistas secundarias
-        try {
-          const rawMnts = localStorage.getItem(`rg_mantenimientos_v2_${busId}`);
-          if (rawMnts) {
-            const list = JSON.parse(rawMnts);
-            if (Array.isArray(list)) {
-              const updatedList = list.map((item: any) => 
-                item.codigo === codigo ? { ...item, intervaloKm: kmValido } : item
-              );
-              localStorage.setItem(`rg_mantenimientos_v2_${busId}`, JSON.stringify(updatedList));
-            }
-          }
-        } catch (e) {
-          console.warn("Aviso actualizando lista plana en auditoria:", e);
-        }
-
-        // Disparar sincronización auditada de interfaz reactiva
-        window.dispatchEvent(
-          new CustomEvent("rg_mantenimiento_intervalo_updated", {
-            detail: { busId, codigo, intervaloKm: kmValido, auditadoBD: true },
-          })
-        );
-      }
-
+    if (!confirmacionBD) {
       return {
-        exito: true,
+        exito: false,
         busId,
         codigo,
         intervaloAuditado: kmValido,
-        confirmadoEnNube: Boolean(confirmacionBD),
-        mensaje: confirmacionBD
-          ? `Kilometraje verificado y auditado en la base de datos (${kmValido} km).`
-          : `Guardado con advertencia de auditoría: registrado en caché local (${kmValido} km).`,
+        confirmadoEnNube: false,
+        mensaje: "La base de datos central no confirmó la actualización del kilometraje. Intente nuevamente.",
       };
-    } catch (netError: any) {
-      console.warn("[AUDITORÍA BD MNT] Fallo en la comunicación con el servidor central:", netError);
     }
+
+    // ÚNICAMENTE con la confirmación expresa de la BD, asentar en almacenamiento local y UI
+    if (typeof window !== "undefined") {
+      const current = getBusIntervalosConfig(busId);
+      current[codigo] = kmValido;
+      localStorage.setItem(`${STORAGE_PREFIX_INTERVALOS}${busId}`, JSON.stringify(current));
+
+      // Sincronizar simultáneamente la lista plana del bus para consistencia atómica
+      try {
+        const rawMnts = localStorage.getItem(`rg_mantenimientos_v2_${busId}`);
+        if (rawMnts) {
+          const list = JSON.parse(rawMnts);
+          if (Array.isArray(list)) {
+            const updatedList = list.map((item: any) => 
+              item.codigo === codigo ? { ...item, intervaloKm: kmValido } : item
+            );
+            localStorage.setItem(`rg_mantenimientos_v2_${busId}`, JSON.stringify(updatedList));
+          }
+        }
+      } catch (e) {
+        console.warn("Aviso actualizando lista plana en auditoria:", e);
+      }
+
+      // Disparar sincronización auditada de interfaz reactiva
+      window.dispatchEvent(
+        new CustomEvent("rg_mantenimiento_intervalo_updated", {
+          detail: { busId, codigo, intervaloKm: kmValido, auditadoBD: true },
+        })
+      );
+    }
+
+    return {
+      exito: true,
+      busId,
+      codigo,
+      intervaloAuditado: kmValido,
+      confirmadoEnNube: true,
+      mensaje: `Kilometraje verificado y auditado en la base de datos (${kmValido} km).`,
+    };
+  } catch (netError: any) {
+    console.error("[AUDITORÍA BD MNT] Error de comunicación con el servidor central:", netError);
+    return {
+      exito: false,
+      busId,
+      codigo,
+      intervaloAuditado: kmValido,
+      confirmadoEnNube: false,
+      mensaje: netError?.message || "Error al conectar con la base de datos central. No se modificó el valor.",
+    };
   }
-
-  // Modo de Resiliencia / Fallback Offline:
-  // Si no hay internet o falló momentáneamente la conexión, guardar localmente y encolar
-  if (typeof window !== "undefined") {
-    const current = getBusIntervalosConfig(busId);
-    current[codigo] = kmValido;
-    localStorage.setItem(`${STORAGE_PREFIX_INTERVALOS}${busId}`, JSON.stringify(current));
-    pushMantenimientoConfigAlServidor(busId, { intervalosPersonalizados: current });
-
-    window.dispatchEvent(
-      new CustomEvent("rg_mantenimiento_intervalo_updated", {
-        detail: { busId, codigo, intervaloKm: kmValido, auditadoBD: false },
-      })
-    );
-  }
-
-  return {
-    exito: true,
-    busId,
-    codigo,
-    intervaloAuditado: kmValido,
-    confirmadoEnNube: false,
-    mensaje: "Guardado en almacenamiento local (modo fuera de línea). Se sincronizará con la nube al reconectar.",
-  };
 }
 
 export function saveBusIntervaloOverride(busId: string, codigo: string, intervaloKm: number): void {

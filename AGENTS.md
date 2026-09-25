@@ -810,3 +810,8 @@
 - **Caché Versionada:** Purgada caché estancada mediante `rutago_mantenimiento_catalogo_maestro_v3_60_21`.
 - **Descarga Inmediata:** Activado `force = true` en sincronización bidireccional y login móvil para saltar el cooldown de 20s.
 - **Sincronización Dual:** `auditarYGuardarIntervaloEnBD` y `syncMantenimientoConfigConServidor` actualizan de forma atómica tanto los overrides del bus como la lista plana `rg_mantenimientos_v2_${busId}`.
+
+### 🛡️ PERSISTENCIA ESTRICTA Y HOOK USE_NETWORK_STATUS (v3.60.22)
+- **useNetworkStatus Hook:** Monitorea conectividad reactiva y previene ediciones fantasma sin enlace a la nube.
+- **Botones Blindados:** Bloqueo explícito de botones de ajuste y guardado (`disabled={!isOnline || isGuardandoIntervalo}`) con spinners de confirmación en PostgreSQL.
+- **Eliminación de Fallback Silencioso:** Si la BD no confirma la transacción `Read-Your-Writes`, la operación es rechazada con feedback visual en vez de guardar localmente de forma asíncrona.

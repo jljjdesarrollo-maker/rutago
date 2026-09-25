@@ -97,3 +97,14 @@ El sistema cuenta con tres niveles de actores en el ciclo de vida del mantenimie
    - Eliminado el bloqueo de 20 segundos (`SYNC_COOLDOWN_MS`) durante el inicio de sesión y sincronización bidireccional en el móvil del chofer, asegurando que cualquier cambio de kilometraje del Socio (ej. 12.300 km) se descargue al instante.
 3. **Consistencia Atómica de la Lista Plana:**
    - `auditarYGuardarIntervaloEnBD` y `syncMantenimientoConfigConServidor` ahora actualizan simultáneamente la lista plana local (`rg_mantenimientos_v2_${busId}`), evitando que cualquier componente o vista secundaria lea kilometrajes viejos.
+
+---
+
+## 🛡️ Consistencia Estricta y Hook `useNetworkStatus` (v3.60.22)
+1. **Hook `useNetworkStatus`:**
+   - Detecta conectividad nativa (`navigator.onLine`) y valida el enlace real mediante pings livianos de transporte HTTP.
+2. **Deshabilitación Preventiva de Edición:**
+   - Si no hay conexión o el dispositivo está fuera de línea, los botones para ajustar y guardar kilometrajes se bloquean (`disabled={!isOnline}`) mostrando un indicador visual con `WifiOff`.
+3. **Persistencia Cero-Fantasmas:**
+   - En `auditarYGuardarIntervaloEnBD`, se eliminó el auto-guardado local silencioso ("fallback ciego") cuando no hay respuesta de la BD central.
+   - Si la base de datos no confirma con `HTTP 200 OK` y el valor exacto, la UI **no cierra el modal ni asume éxito**, mostrando el mensaje de error transaccional correspondiente.
