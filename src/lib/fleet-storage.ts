@@ -192,13 +192,14 @@ export function getAllBuses(): BusItem[] {
  * Obtiene una unidad por número de disco o por ID.
  */
 export function getBusByDisco(discoOrId: string): BusItem | undefined {
+  if (!discoOrId) return undefined;
   const buses = getAllBuses();
-  const normalized = discoOrId.trim().toUpperCase();
+  const normalized = String(discoOrId).trim().toUpperCase();
   return buses.find(
     (b) =>
-      b.id.toUpperCase() === normalized ||
-      b.numeroDisco.toUpperCase() === normalized ||
-      `BUS-${b.numeroDisco}`.toUpperCase() === normalized
+      String(b.id || '').toUpperCase() === normalized ||
+      String(b.numeroDisco || '').toUpperCase() === normalized ||
+      `BUS-${String(b.numeroDisco || '').padStart(2, '0')}`.toUpperCase() === normalized
   );
 }
 

@@ -887,3 +887,7 @@
 ### ⚙️ CULMINACIÓN FASE 4: BALANCE EN RUTA Y CONSOLIDACIÓN TOTAL (v3.60.27)
 - **TicketScreen.tsx:** Visibilidad de alta luminosidad de ingresos de vuelta en cabecera táctil.
 - **Certificación de Arquitectura:** Integridad de ciclo completa (Fecha -> VT -> 6/8 Frecuencias con arqueo individual -> Arqueo General) 100% preservada y optimizada ergonómicamente para el Ayudante.
+
+### ⚙️ CORRECCIÓN DE REGLAS DE ARQUEO Y BLINDAJE DE IDENTIFICADORES (v3.60.27)
+- **Producción Consolidada:** `totalProduccionJornada` ahora computa con exactitud: Efectivo Real Contado en Mano (`arqueoEfectivo` de cada frecuencia) + Retención de Caja Común (`cajaComunMonto`), reflejando la ganancia real del negocio.
+- **Solución al error "e.id.toUpperCase is not a function":** Sanitización estricta mediante `String(b.id || '').toUpperCase()` en `getBusByDisco`, `resolveRecordBus`, `calculateFleetBenchmark` y `ArqueoGeneralScreen.tsx`.

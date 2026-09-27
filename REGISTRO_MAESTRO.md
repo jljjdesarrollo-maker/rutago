@@ -122,3 +122,22 @@ El rol del Ayudante se rige por la siguiente secuencia operativa estricta:
 - **Validación Final de Toda la Solución:**
   - `npx tsc --noEmit` completado exitosamente con 0 errores en todos los módulos de la aplicación.
   - Sincronización continua en `REGISTRO_MAESTRO.md`, `download/RutaGo_Contexto_Maestro_v3.60.27.md` y `AGENTS.md`.
+
+---
+
+## 🛠️ CORRECCIÓN DE REGLA CONTABLE Y PREVENCIÓN DE ERROR DE TIPADO (2026-09-27)
+### 1. Situación 1: Producción Total de Jornada en Resumen
+- **Problema atendido:** La tarjeta del resumen de jornada y el hero de balance progresivo mostraban únicamente el estimado de ventas del sistema, omitiendo los sobrantes/faltantes del dinero efectivamente contado en mano (`arqueoEfectivo`) y el valor de boletos retenidos por oficina (`cajaComunMonto`).
+- **Solución contable implementada:**
+  - En `FrecuenciaSelector.tsx` y `AyudanteJornadaCard.tsx`:
+    - `totalEfectivoRealContado` = suma de dinero físico en mano por frecuencia cerrada (`arqueoEfectivo` ?? `totalRecaudado`).
+    - `totalCajaComunRetenido` = suma de valor retenido por caja común en oficinas (`cajaComunMonto`).
+    - `totalProduccionJornada` = `totalEfectivoRealContado` + `totalCajaComunRetenido`.
+  - La tarjeta principal y el Hero superior ahora muestran **Producción Total** con desglose explícito (`$X Ef. + $Y CC`), reflejando la realidad contable de la cooperativa.
+
+### 2. Situación 2: Corrección del Error "e.id.toUpperCase is not a function"
+- **Causa raíz:** En `getBusByDisco` (`fleet-storage.ts`), `resolveRecordBus`, `calculateFleetBenchmark` (`benchmark-metrics.ts`) y `ArqueoGeneralScreen.tsx`, se invocaba `.toUpperCase()` directamente sobre `b.id`, `bus.id` o `currentBus.id` sin coerción a String defensiva. Si en algún momento una sesión VT previa o registro en caché almacenaba un `busId` numérico, nulo o undefined, se disparaba la excepción al entrar al Arqueo General.
+- **Solución defensiva aplicada:**
+  - Coerción estricta `String(b.id || '').toUpperCase()` en todas las funciones de búsqueda y filtrado de flota.
+  - Inicialización blindada de `currentBus` en `ArqueoGeneralScreen.tsx` garantizando campos `id`, `numeroDisco` y `placa` sanitizados y formateados.
+  - Validación completa con `npx tsc --noEmit` (0 errores).
