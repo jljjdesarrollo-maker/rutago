@@ -118,11 +118,14 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
 
   // Unidad física activa (Fase 3.2: Desacople de Odómetro y persistencia por Bus)
   const [currentBus, setCurrentBus] = useState<BusItem>(() => {
-    if (session.busId) {
-      const b = getBusByDisco(session.busId);
-      if (b) return b;
-    }
-    return getActiveBus();
+    const rawBus = session.busId ? getBusByDisco(session.busId) : getActiveBus();
+    const active = rawBus || getActiveBus();
+    return {
+      ...active,
+      id: String(active?.id || `BUS-${active?.numeroDisco || '01'}`),
+      numeroDisco: String(active?.numeroDisco || '01').padStart(2, '0'),
+      placa: String(active?.placa || 'TAA-5152'),
+    };
   });
 
   // Suscribirse a cambios reactivos de la unidad física
@@ -325,8 +328,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       try {
         setBuscandoKmPrevio(true);
         const fechaActual = workDate(session);
-        const targetDisco = currentBus.numeroDisco.padStart(2, '0');
-        const targetBusId = currentBus.id.toUpperCase();
+        const targetDisco = String(currentBus.numeroDisco || '01').padStart(2, '0');
+        const targetBusId = String(currentBus.id || `BUS-${targetDisco}`).toUpperCase();
 
         // 0. Consultar almacenamiento dedicado de odómetro por bus (Fase 3.2)
         const dedicated = getLatestBusOdometer(targetDisco);

@@ -21,7 +21,7 @@ export function resolveRecordBus(record: any, fleet: BusItem[]): BusItem | null 
   // 1. Coincidencia directa por busId ("BUS-01", "BUS-10")
   if (targetBusId) {
     const found = fleet.find(
-      (b) => b.id.toUpperCase() === targetBusId || `BUS-${b.numeroDisco}` === targetBusId
+      (b) => String(b.id || '').toUpperCase() === targetBusId || `BUS-${String(b.numeroDisco || '').padStart(2, '0')}`.toUpperCase() === targetBusId
     );
     if (found) return found;
   }
@@ -427,7 +427,7 @@ function computeCircuitGroup(
 
   const ranking: BusBenchmarkMetric[] = rawCalculated.map(({ bus, metrics }) => {
     const isDiscoMatch = bus.numeroDisco.padStart(2, '0') === cleanActiveDisco;
-    const isIdMatch = bus.id.toUpperCase() === cleanActiveId || `BUS-${bus.numeroDisco}`.toUpperCase() === cleanActiveId;
+    const isIdMatch = String(bus.id || '').toUpperCase() === cleanActiveId || `BUS-${String(bus.numeroDisco || '').padStart(2, '0')}`.toUpperCase() === cleanActiveId;
     const esUnidadPropia = isDiscoMatch || isIdMatch;
 
     if (esUnidadPropia) {

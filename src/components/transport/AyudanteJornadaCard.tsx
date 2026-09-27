@@ -39,11 +39,22 @@ export function AyudanteJornadaCard({ user, busNumero, onGoToBoletos }: Ayudante
             const pendientes = estados.find(e => e.estado === 'pendiente');
             const proxima = abiertas ? `${abiertas.hora} (${abiertas.nombre})` : pendientes ? `${pendientes.hora} (${pendientes.nombre})` : null;
 
-            const totalRecaudado = estados.reduce((acc, curr) => acc + (curr.totalRecaudado || 0), 0);
+            // Suma del dinero real determinado: efectivo contado en mano + valor retenido por caja común
+            const totalEfectivoContado = estados.reduce((acc, curr) => {
+              if (curr.estado === 'cerrada') {
+                return acc + ((curr as any).arqueoEfectivo != null ? Number((curr as any).arqueoEfectivo) : (curr.totalRecaudado || 0));
+              }
+              if (curr.estado === 'no_realizada' && (curr.ingresoEspecialMonto || 0) > 0) {
+                return acc + (curr.ingresoEspecialMonto || 0);
+              }
+              return acc + (curr.totalRecaudado || 0);
+            }, 0);
+            const totalCajaComun = estados.reduce((acc, curr) => acc + ((curr as any).cajaComunMonto || 0), 0);
+            const totalProduccionDeterminado = totalEfectivoContado + totalCajaComun;
             const totalBoletos = estados.reduce((acc, curr) => acc + (curr.ventasCount || 0), 0);
 
             setResumenTurno({
-              totalRecaudado,
+              totalRecaudado: totalProduccionDeterminado,
               totalBoletos,
               frecuenciasCerradas: cerradas,
               frecuenciasTotal: estados.length,

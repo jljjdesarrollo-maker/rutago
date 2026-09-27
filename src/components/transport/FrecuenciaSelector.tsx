@@ -429,9 +429,20 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   // Check if ALL frequencies are done (cerrada or no_realizada)
   const allFrecuenciasDone = estados.length > 0 && estados.every(e => e.estado === 'cerrada' || e.estado === 'no_realizada');
 
-  // Totals across all frequencies
+  // Totals across all frequencies (Regla Contable: Efectivo Real Contado + Caja Común Retenido en Oficina)
   const totalVentasAll = estados.reduce((s, e) => s + e.ventasCount, 0);
-  const totalRecaudadoAll = estados.reduce((s, e) => s + e.totalRecaudado, 0);
+  const totalEfectivoRealContado = estados.reduce((s, e) => {
+    if (e.estado === 'cerrada') {
+      return s + ((e as any).arqueoEfectivo != null ? Number((e as any).arqueoEfectivo) : (e.totalRecaudado || 0));
+    }
+    if (e.estado === 'no_realizada' && (e.ingresoEspecialMonto || 0) > 0) {
+      return s + (e.ingresoEspecialMonto || 0);
+    }
+    return s + (e.totalRecaudado || 0);
+  }, 0);
+  const totalCajaComunRetenido = estados.reduce((s, e) => s + ((e as any).cajaComunMonto || 0), 0);
+  const totalProduccionJornada = totalEfectivoRealContado + totalCajaComunRetenido;
+  const totalRecaudadoAll = totalProduccionJornada;
   const cerradasCount = estados.filter(e => e.estado === 'cerrada').length;
 
   // SYNC control: ALWAYS block arqueo general if there are pending ventas
@@ -509,21 +520,36 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
 
           <div className="grid grid-cols-3 gap-2 text-center mb-3">
             <div className="bg-white/5 rounded-2xl p-2 border border-white/10">
-              <span className="text-[9px] text-slate-400 uppercase font-black block">Recaudado</span>
+              <span className="text-[9px] text-slate-400 uppercase font-black block">Producción Total</span>
               <span className="text-base font-black text-emerald-300">
-                ${totalRecaudadoAll.toFixed(2)}
+                ${totalProduccionJornada.toFixed(2)}
               </span>
+              {totalCajaComunRetenido > 0 ? (
+                <span className="text-[9px] text-slate-300 block font-semibold truncate">
+                  ${totalEfectivoRealContado.toFixed(2)} Ef. + ${totalCajaComunRetenido.toFixed(2)} CC
+                </span>
+              ) : (
+                <span className="text-[9px] text-slate-400 block font-medium">
+                  Efectivo Contado
+                </span>
+              )}
             </div>
             <div className="bg-white/5 rounded-2xl p-2 border border-white/10">
               <span className="text-[9px] text-slate-400 uppercase font-black block">Boletos</span>
               <span className="text-base font-black text-white">
                 {totalVentasAll}
               </span>
+              <span className="text-[9px] text-slate-400 block font-medium">
+                Pasajeros
+              </span>
             </div>
             <div className="bg-white/5 rounded-2xl p-2 border border-white/10">
               <span className="text-[9px] text-slate-400 uppercase font-black block">Progreso</span>
               <span className="text-base font-black text-amber-300">
                 {estados.length > 0 ? Math.round((cerradasCount / estados.length) * 100) : 0}%
+              </span>
+              <span className="text-[9px] text-slate-400 block font-medium">
+                {cerradasCount} cerradas
               </span>
             </div>
           </div>
