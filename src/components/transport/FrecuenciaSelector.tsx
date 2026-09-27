@@ -492,8 +492,54 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
         </div>
       </div>
 
-      <div className="flex-1 px-4 py-3 space-y-2 overflow-y-auto pb-6">
-        <div className="text-center text-xs text-gray-500 mb-1">
+      <div className="flex-1 px-4 py-3 space-y-2.5 overflow-y-auto pb-6">
+        {/* ─── Hero Superior: Balance Progresivo y Recaudo del Día (Ergonomía Ayudante) ─── */}
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-4 shadow-lg border border-slate-700/80">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2.5 mb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-300">
+                Jornada {session.vtCode} • Unidad {session.numeroDisco || '01'}
+              </span>
+            </div>
+            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white/10 text-emerald-300">
+              {estados.length > 0 ? `${cerradasCount} de ${estados.length} Vueltas` : 'Cargando...'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center mb-3">
+            <div className="bg-white/5 rounded-2xl p-2 border border-white/10">
+              <span className="text-[9px] text-slate-400 uppercase font-black block">Recaudado</span>
+              <span className="text-base font-black text-emerald-300">
+                ${totalRecaudadoAll.toFixed(2)}
+              </span>
+            </div>
+            <div className="bg-white/5 rounded-2xl p-2 border border-white/10">
+              <span className="text-[9px] text-slate-400 uppercase font-black block">Boletos</span>
+              <span className="text-base font-black text-white">
+                {totalVentasAll}
+              </span>
+            </div>
+            <div className="bg-white/5 rounded-2xl p-2 border border-white/10">
+              <span className="text-[9px] text-slate-400 uppercase font-black block">Progreso</span>
+              <span className="text-base font-black text-amber-300">
+                {estados.length > 0 ? Math.round((cerradasCount / estados.length) * 100) : 0}%
+              </span>
+            </div>
+          </div>
+
+          {/* Barra de Progreso Visual */}
+          <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-emerald-500 to-teal-400 h-2 rounded-full transition-all duration-500"
+              style={{
+                width: `${estados.length > 0 ? (cerradasCount / estados.length) * 100 : 0}%`,
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="text-center text-[11px] font-semibold text-gray-400 mb-1">
           {new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </div>
 

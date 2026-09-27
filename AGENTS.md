@@ -879,3 +879,7 @@
 ### ⚙️ CULMINACIÓN FASE 2: SELECTOR ERGONÓMICO DE JORNADA (VT Y FECHA)
 - **HomeScreenVT.tsx:** Cabecera de fecha asistida con retorno inmediato a "Hoy", tipografía táctil y badges claros de vueltas del día en la cuadrícula de grupos VT.
 - **Compilación:** TypeScript estricto validado al 100%.
+
+### ⚙️ CULMINACIÓN FASE 3: HERO DE BALANCE Y PROGRESO DE VUELTAS
+- **FrecuenciaSelector.tsx:** Añadido panel dinámico superior con métricas financieras acumuladas en vivo y barra de progreso porcentual del grupo VT.
+- **Compilación:** TypeScript estricto validado al 100%.

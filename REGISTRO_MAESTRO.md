@@ -103,3 +103,13 @@ El rol del Ayudante se rige por la siguiente secuencia operativa estricta:
   1. **Selector de Fecha Ergonómico:** Incorporado botón rápido *"Volver a Hoy"* al operar fechas pasadas para evitar desvíos involuntarios, y advertencia reactiva si ya existen ventas pendientes para esa fecha.
   2. **Cuadrícula Táctil de Grupos VT:** Tarjetas con tipografía destacada (`text-lg font-black`), conteo inequívoco de vueltas (`X Vueltas` en lugar de etiqueta genérica) y distintivo de grupo seleccionado.
   3. **Certificación:** Compilación TypeScript estricta validada con 0 errores.
+
+---
+
+## 🚀 AVANCE FASE 3: TABLERO PROGRESIVO DE FRECUENCIAS (2026-09-27)
+- **FrecuenciaSelector.tsx Refactorizado:**
+  1. **Hero Superior de Balance Progresivo:** Tarjeta oscura ejecutiva (`bg-slate-900`) que expone en tiempo real:
+     - Total Recaudado en dólares de las vueltas de la jornada.
+     - Total de Boletos emitidos en carretera.
+     - Porcentaje de progreso del día con barra visual graduada (ej. `3 de 8 Vueltas - 38%`).
+  2. **Certificación:** Compilación TypeScript estricta validada con 0 errores.
