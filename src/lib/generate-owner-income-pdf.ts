@@ -310,11 +310,17 @@ export async function generateOwnerIncomeStatementPDF(data: OwnerIncomeStatement
   doc.setTextColor(...COLOR_MUTED);
   doc.setFont('helvetica', 'normal');
   doc.text(
-    '* Reporte emitido bajo el principio de una unidad por socio. Consolida ingresos de boletaje, deducciones de ruta y gastos patrimoniales.',
+    '* Reporte emitido bajo el principio de una unidad por socio. Consolida ingresos de boletaje, deducciones de ruta y gastos directos del socio.',
     margin,
     y
   );
-  y += 16;
+  y += 4;
+  doc.text(
+    '* Regla de No-Duplicidad Financiera: Mantenimientos liquidados en carretera por el ayudante quedan excluidos de los Gastos del Socio al estar ya deducidos en la entrega neta de ruta.',
+    margin,
+    y
+  );
+  y += 12;
 
   const halfWidth = contentWidth / 2;
   doc.setDrawColor(180, 180, 180);

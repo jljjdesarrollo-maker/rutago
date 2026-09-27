@@ -47,6 +47,12 @@
    - Preservación del estado calibrado en `resolveMantenimientoItemsParaBus` (`mantenimiento-estaciones.ts`).
    - Creación e integración de `MantenimientoSyncDiagnostic.tsx` (consola de diagnóstico y chip reactivo en cabecera de chofer).
    - Commit: `feat(mantenimiento): v3.60.24 - sincronizacion blindada de mantenimientos historicos y consola de diagnostico sync`
+10. **v3.60.25 (Segregación Contable Anti-Duplicidad de Gastos en Ruta vs Ganancia Real):** ✅ COMPLETADA
+   - Principio de No-Duplicidad Financiera: Los gastos pagados en ruta por el ayudante (ej. zapatas $110) se guardan para historial técnico pero quedan ESTRICTAMENTE EXCLUIDOS de los "Gastos del Socio", evitando descontarle dos veces al dueño por un valor ya deducido en el arqueo diario.
+   - Modelo extendido con `origenPago` ('SOCIO_DIRECTO' vs 'AYUDANTE_RUTA') y `descontadoEnRuta`.
+   - Tarjeta de Balance en `OwnerExpensesScreen.tsx` y Estado de Resultados en `OwnerIncomeStatementModal.tsx` recalculados con precisión matemática.
+   - Badge `[ 🛣️ Liquidado en Ruta ]` en el historial mensual con texto explicativo para el socio.
+   - Commit: `feat(contabilidad): v3.60.25 - segregacion anti-duplicidad de gastos en ruta y proteccion de ganancia real`
 
 ---
 

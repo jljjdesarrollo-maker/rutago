@@ -27,13 +27,26 @@ export function getOwnerExpenses(busId = 'BUS-01'): OwnerExpense[] {
         return reAll.filter((item) => item.busId === busId);
       }
     }
-    return busExpenses.map((item) => ({
-      ...item,
-      totalAmount: Number(item.totalAmount) || 0,
-      paidAmount: Number(item.paidAmount) || 0,
-      pendingBalance: Number(item.pendingBalance) || 0,
-      abonos: Array.isArray(item.abonos) ? item.abonos : [],
-    }));
+    return busExpenses.map((item) => {
+      // Deducir automáticamente si fue pagado por el ayudante en ruta para registros existentes
+      const esDeRuta =
+        item.origenPago === 'AYUDANTE_RUTA' ||
+        item.descontadoEnRuta === true ||
+        (item.paymentMethod === 'EFECTIVO' &&
+          (item.description?.toLowerCase().includes('ayudante') ||
+            item.description?.toLowerCase().includes('chofer') ||
+            item.description?.toLowerCase().includes('liquidado')));
+
+      return {
+        ...item,
+        totalAmount: Number(item.totalAmount) || 0,
+        paidAmount: Number(item.paidAmount) || 0,
+        pendingBalance: Number(item.pendingBalance) || 0,
+        origenPago: item.origenPago || (esDeRuta ? 'AYUDANTE_RUTA' : 'SOCIO_DIRECTO'),
+        descontadoEnRuta: typeof item.descontadoEnRuta === 'boolean' ? item.descontadoEnRuta : esDeRuta,
+        abonos: Array.isArray(item.abonos) ? item.abonos : [],
+      };
+    });
   } catch (err) {
     console.error('Error cargando gastos de socio:', err);
     return [];
@@ -379,10 +392,22 @@ export async function fetchOwnerExpensesFromApi(busId = 'BUS-01'): Promise<Owner
         const deletedIds = getDeletedExpenseIds();
         const parsed: OwnerExpense[] = json.data
           .filter((item: any) => !deletedIds.has(item.id))
-          .map((item: any) => ({
-            ...item,
-            abonos: typeof item.abonos === 'string' ? JSON.parse(item.abonos || '[]') : (item.abonos || []),
-          }));
+          .map((item: any) => {
+            const esDeRuta =
+              item.origenPago === 'AYUDANTE_RUTA' ||
+              item.descontadoEnRuta === true ||
+              (item.paymentMethod === 'EFECTIVO' &&
+                (item.description?.toLowerCase().includes('ayudante') ||
+                  item.description?.toLowerCase().includes('chofer') ||
+                  item.description?.toLowerCase().includes('liquidado')));
+
+            return {
+              ...item,
+              origenPago: item.origenPago || (esDeRuta ? 'AYUDANTE_RUTA' : 'SOCIO_DIRECTO'),
+              descontadoEnRuta: typeof item.descontadoEnRuta === 'boolean' ? item.descontadoEnRuta : esDeRuta,
+              abonos: typeof item.abonos === 'string' ? JSON.parse(item.abonos || '[]') : (item.abonos || []),
+            };
+          });
 
         if (typeof window !== 'undefined') {
           const raw = localStorage.getItem(STORAGE_KEY);

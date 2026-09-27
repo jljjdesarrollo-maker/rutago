@@ -110,6 +110,10 @@ export interface OwnerExpense {
   bankName?: string;       // ej. "Banco de Loja", "Banco Pichincha", "Efectivo"
   receiptPhotoUrl?: string; // Base64 o URL de la foto de la nota / captura
   
+  // Origen del desembolso y segregación de liquidación
+  origenPago?: 'SOCIO_DIRECTO' | 'AYUDANTE_RUTA';
+  descontadoEnRuta?: boolean; // true si ya fue deducido en el arqueo diario de ruta (no resta de Ganancia Neta)
+
   // Historial de abonos (en caso de pagos parciales)
   abonos?: PaymentAbono[];
   

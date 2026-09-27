@@ -206,17 +206,55 @@ export default function OwnerExpensesScreen({
   }, [allExpenses, selectedYearMonth, filterCategory, searchTerm]);
 
   // Totales financieros del mes
-  const totalPagadoMes = useMemo(() => {
-    return allExpenses
-      .filter((e) => e.expenseDate.startsWith(selectedYearMonth))
-      .reduce((sum, e) => sum + (e.paidAmount || 0), 0);
+  // REGLA DE ORO DE ARQUITECTURA: NO-DUPLICIDAD FINANCIERA
+  // Los gastos liquidados en ruta por el ayudante (descontadoEnRuta = true o origenPago = 'AYUDANTE_RUTA')
+  // ya fueron descontados del efectivo entregado por el ayudante en carretera.
+  // Por lo tanto, NO deben sumarse a totalCostoMesSocio ni restar de la Ganancia Real en Limpio.
+
+  // Gastos pagados directamente por el socio (desembolso de su bolsillo / transferencias / deudas pactadas por el socio)
+  const expensesSocioDirectoMes = useMemo(() => {
+    return allExpenses.filter((e) => {
+      const matchMonth = e.expenseDate.startsWith(selectedYearMonth);
+      const esDeRuta =
+        e.origenPago === 'AYUDANTE_RUTA' ||
+        e.descontadoEnRuta === true ||
+        (e.paymentMethod === 'EFECTIVO' &&
+          (e.description?.toLowerCase().includes('ayudante') ||
+            e.description?.toLowerCase().includes('chofer') ||
+            e.description?.toLowerCase().includes('liquidado')));
+      return matchMonth && !esDeRuta;
+    });
   }, [allExpenses, selectedYearMonth]);
 
-  const totalCostoMes = useMemo(() => {
-    return allExpenses
-      .filter((e) => e.expenseDate.startsWith(selectedYearMonth))
-      .reduce((sum, e) => sum + (e.totalAmount || 0), 0);
+  // Gastos de carretera asumidos y liquidados por el ayudante en ruta (solo informativos de mantenimiento técnico)
+  const expensesRutaInformativosMes = useMemo(() => {
+    return allExpenses.filter((e) => {
+      const matchMonth = e.expenseDate.startsWith(selectedYearMonth);
+      const esDeRuta =
+        e.origenPago === 'AYUDANTE_RUTA' ||
+        e.descontadoEnRuta === true ||
+        (e.paymentMethod === 'EFECTIVO' &&
+          (e.description?.toLowerCase().includes('ayudante') ||
+            e.description?.toLowerCase().includes('chofer') ||
+            e.description?.toLowerCase().includes('liquidado')));
+      return matchMonth && esDeRuta;
+    });
   }, [allExpenses, selectedYearMonth]);
+
+  // Total desembolsado por el socio en el mes (solo directos del socio)
+  const totalPagadoMes = useMemo(() => {
+    return expensesSocioDirectoMes.reduce((sum, e) => sum + (e.paidAmount || 0), 0);
+  }, [expensesSocioDirectoMes]);
+
+  // Costo total de gastos que restan a la entrega de ruta (SOLO directos del socio)
+  const totalCostoMes = useMemo(() => {
+    return expensesSocioDirectoMes.reduce((sum, e) => sum + (e.totalAmount || 0), 0);
+  }, [expensesSocioDirectoMes]);
+
+  // Monto informativo de mantenimientos liquidados en ruta por el personal de ruta
+  const totalMantenimientoRutaMes = useMemo(() => {
+    return expensesRutaInformativosMes.reduce((sum, e) => sum + (e.totalAmount || 0), 0);
+  }, [expensesRutaInformativosMes]);
 
   // Datos de ruta obtenidos en tiempo real desde la base de datos central (/api/reports)
   const [monthlyRouteData, setMonthlyRouteData] = useState<{
@@ -430,6 +468,8 @@ export default function OwnerExpensesScreen({
       bankName: formPaymentMethod === 'TRANSFERENCIA' ? formBankName : undefined,
       comprobanteRef: formComprobanteRef.trim() || undefined,
       receiptPhotoUrl: formPhotoPreview || undefined,
+      origenPago: 'SOCIO_DIRECTO',
+      descontadoEnRuta: false,
       status: pending <= 0 ? 'PAGADO' : 'PENDIENTE',
     };
 
@@ -740,13 +780,18 @@ export default function OwnerExpensesScreen({
 
             <div className="bg-white/5 border border-white/10 rounded-2xl p-2.5">
               <span className="text-[10px] text-rose-200/90 uppercase font-bold block">
-                Gastos del Bus
+                Gastos del Socio
               </span>
               <div className="text-lg font-black text-rose-300 mt-0.5">
                 ${totalCostoMes.toFixed(2)}
               </div>
               <span className="text-[10px] text-rose-200/80 block mt-0.5">
-                {expensesInMonth.length} compras / pagos
+                {expensesSocioDirectoMes.length} directos del bolsillo
+                {totalMantenimientoRutaMes > 0 && (
+                  <span className="block text-[9px] text-amber-200/80 mt-0.5">
+                    +${totalMantenimientoRutaMes.toFixed(2)} pagados en ruta
+                  </span>
+                )}
               </span>
             </div>
           </div>
@@ -1033,10 +1078,21 @@ export default function OwnerExpensesScreen({
                 const categoryMeta = OWNER_EXPENSE_CATEGORIES.find(
                   (c) => c.id === expense.category
                 );
+
+                const esDeRuta =
+                  expense.origenPago === 'AYUDANTE_RUTA' ||
+                  expense.descontadoEnRuta === true ||
+                  (expense.paymentMethod === 'EFECTIVO' &&
+                    (expense.description?.toLowerCase().includes('ayudante') ||
+                      expense.description?.toLowerCase().includes('chofer') ||
+                      expense.description?.toLowerCase().includes('liquidado')));
+
                 return (
                   <div
                     key={expense.id}
-                    className="bg-white border-2 border-gray-200 rounded-2xl p-3.5 space-y-2 shadow-sm hover:border-gray-300 transition"
+                    className={`bg-white border-2 rounded-2xl p-3.5 space-y-2 shadow-sm transition ${
+                      esDeRuta ? 'border-amber-200/90 bg-amber-50/20' : 'border-gray-200 hover:border-gray-300'
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-2.5 min-w-0">
@@ -1044,9 +1100,16 @@ export default function OwnerExpensesScreen({
                           {categoryMeta?.icon || '📦'}
                         </div>
                         <div className="min-w-0">
-                          <h4 className="text-xs font-bold text-[#3A3A3A] leading-snug truncate">
-                            {expense.description}
-                          </h4>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-xs font-bold text-[#3A3A3A] leading-snug truncate">
+                              {expense.description}
+                            </h4>
+                            {esDeRuta && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[9px] font-black uppercase tracking-wider shrink-0">
+                                🛣️ Liquidado en Ruta
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[11px] text-gray-500 truncate mt-0.5">
                             {expense.provider || 'Proveedor / Taller'}
                           </p>
@@ -1054,10 +1117,14 @@ export default function OwnerExpensesScreen({
                       </div>
 
                       <div className="text-right shrink-0">
-                        <div className="text-sm font-black text-[#3A3A3A]">
+                        <div className={`text-sm font-black ${esDeRuta ? 'text-gray-500' : 'text-[#3A3A3A]'}`}>
                           ${expense.paidAmount.toFixed(2)}
                         </div>
-                        {expense.pendingBalance > 0 ? (
+                        {esDeRuta ? (
+                          <span className="text-[9px] font-bold text-amber-700 block mt-0.5">
+                            Pagó ayudante
+                          </span>
+                        ) : expense.pendingBalance > 0 ? (
                           <span className="text-[10px] font-bold text-amber-600 block mt-0.5">
                             Debe: ${expense.pendingBalance.toFixed(2)}
                           </span>
@@ -1068,6 +1135,14 @@ export default function OwnerExpensesScreen({
                         )}
                       </div>
                     </div>
+
+                    {/* Explicación si fue liquidado en ruta */}
+                    {esDeRuta && (
+                      <div className="bg-amber-100/60 border border-amber-200/80 rounded-xl px-2.5 py-1 text-[10px] text-amber-900 font-medium flex items-center gap-1.5">
+                        <Info className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                        <span>Deducido en arqueo diario de ruta — No descuenta de su liquidación mensual</span>
+                      </div>
+                    )}
 
                     {/* Metadata: Fecha Real de Pago + Método y Referencia */}
                     <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-[11px] text-neutral-400">

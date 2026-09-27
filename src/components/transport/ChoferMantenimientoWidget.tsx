@@ -920,6 +920,8 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         provider: tallerStr,
         comprobanteRef: estacionFacturaChofer.trim() ? 'Fac: ' + estacionFacturaChofer.trim() : undefined,
         abonos: abonosList,
+        origenPago: pagadorChofer === 'AYUDANTE' ? 'AYUDANTE_RUTA' : 'SOCIO_DIRECTO',
+        descontadoEnRuta: pagadorChofer === 'AYUDANTE',
         createdAt: new Date().toISOString(),
       }).then(res => {
         if (res.syncedToCloud) {
@@ -1462,6 +1464,8 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
         provider: tallerFinal,
         comprobanteRef: facturaFinal ? `Fac: ${facturaFinal}` : undefined,
         abonos: abonosList,
+        origenPago: arregloPagador === 'AYUDANTE' ? 'AYUDANTE_RUTA' : 'SOCIO_DIRECTO',
+        descontadoEnRuta: arregloPagador === 'AYUDANTE',
         createdAt: new Date().toISOString(),
       });
 

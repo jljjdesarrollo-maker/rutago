@@ -191,10 +191,20 @@ export default function OwnerIncomeStatementModal({
   }, [dbRouteData, selectedYearMonth]);
 
   // 2. CONSOLIDAR GASTOS DEL SOCIO EN EL MES (8 CATEGORÍAS)
+  // REGLA DE ORO DE ARQUITECTURA: NO-DUPLICIDAD FINANCIERA
+  // Solo se computan como deducibles del socio los desembolsos directos (origenPago !== 'AYUDANTE_RUTA' && !descontadoEnRuta).
   const ownerExpensesSummary = useMemo(() => {
-    const expensesInMonth = allExpenses.filter((e) =>
-      e.expenseDate.startsWith(selectedYearMonth)
-    );
+    const expensesInMonth = allExpenses.filter((e) => {
+      const matchMonth = e.expenseDate.startsWith(selectedYearMonth);
+      const esDeRuta =
+        e.origenPago === 'AYUDANTE_RUTA' ||
+        e.descontadoEnRuta === true ||
+        (e.paymentMethod === 'EFECTIVO' &&
+          (e.description?.toLowerCase().includes('ayudante') ||
+            e.description?.toLowerCase().includes('chofer') ||
+            e.description?.toLowerCase().includes('liquidado')));
+      return matchMonth && !esDeRuta;
+    });
 
     const categoriesBreakdown = OWNER_EXPENSE_CATEGORIES.map((meta) => {
       const items = expensesInMonth.filter((e) => e.category === meta.id);

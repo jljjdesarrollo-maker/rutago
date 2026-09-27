@@ -1961,6 +1961,8 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
         comprobanteRef: facturaRef || undefined,
         abonos: abonosList,
         status: expenseStatus,
+        origenPago: 'SOCIO_DIRECTO',
+        descontadoEnRuta: false,
       }).then(res => {
         if (res.syncedToCloud) {
           toast({

@@ -283,6 +283,15 @@
 - **Consola de Diagnóstico Sync:** Creado `MantenimientoSyncDiagnostic.tsx` e integrado en la cabecera del chofer con estado de red, cola offline, timestamp de última subida y botón de sincronización forzada.
 - **Commit Oficial:** `feat(mantenimiento): v3.60.24 - sincronizacion blindada de mantenimientos historicos y consola de diagnostico sync`.
 
+## 32. Segregación Contable Anti-Duplicidad de Gastos en Ruta y Protección de Ganancia Real (v3.60.25)
+- **Hito:** Eliminación definitiva de la doble deducción en la ganancia neta del socio.
+- **Principio Rector:** Todo gasto pagado por el ayudante en carretera (ej. Zapatas $110) ya viene deducido del efectivo neto entregado al finalizar la jornada. Por ende, SÍ se registra en el historial técnico y odómetro del vehículo, pero queda **estrictamente excluido** de la sumatoria de "Gastos del Socio" en la fórmula de Ganancia Real en Limpio.
+- **Fórmula Oficial Auditada:**
+  $$\text{Gastos Deducibles del Socio} = \sum \text{totalAmount (donde origenPago === 'SOCIO\_DIRECTO')}$$
+  $$\text{Ganancia Real en Limpio} = \text{Total Entregado de Ruta} - \text{Gastos Deducibles del Socio}$$
+- **UI del Socio:** Badge distintivo `[ 🛣️ Liquidado en Ruta ]` en el historial mensual con aclaración: *"Deducido en arqueo diario de ruta — No descuenta de su liquidación mensual"*.
+- **Commit Oficial:** `feat(contabilidad): v3.60.25 - segregacion anti-duplicidad de gastos en ruta y proteccion de ganancia real`.
+
 
 
 
