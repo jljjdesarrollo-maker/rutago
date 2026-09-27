@@ -599,11 +599,25 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
           <BusSelector />
         </div>
 
-        {/* Selector de fecha */}
+        {/* Selector de fecha de la jornada */}
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <h2 className="text-base font-bold text-[#3A3A3A] mb-3 flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-[#912D26]" /> Fecha del turno
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-black text-[#3A3A3A] flex items-center gap-2 uppercase tracking-wide">
+              <CalendarDays className="w-4 h-4 text-[#912D26]" /> Fecha de la Jornada
+            </h2>
+            {selectedDate !== todayStr && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedDate(todayStr);
+                  setDateWarning('');
+                }}
+                className="text-[10px] font-black uppercase px-2 py-1 rounded-lg bg-[#912D26]/10 text-[#912D26] hover:bg-[#912D26]/20 transition active:scale-95"
+              >
+                Volver a Hoy
+              </button>
+            )}
+          </div>
           <input
             type="date"
             value={selectedDate}
@@ -668,9 +682,21 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
           </div>
         ) : (
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <h2 className="text-base font-bold text-[#3A3A3A] mb-3 flex items-center gap-2">
-              <Bus className="w-4 h-4 text-[#912D26]" /> Cartilla / Grupo de Turno (VT)
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="text-sm font-black text-[#3A3A3A] flex items-center gap-2 uppercase tracking-wide">
+                  <Bus className="w-4 h-4 text-[#912D26]" /> Grupo de Turno (VT)
+                </h2>
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  Define el paquete de 6 u 8 frecuencias asignadas al bus para el día
+                </p>
+              </div>
+              {selectedVT && (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#912D26] text-white">
+                  {selectedVT} SELECCIONADO
+                </span>
+              )}
+            </div>
             <div className={`grid gap-3 ${vts.length <= 2 ? 'grid-cols-2' : vts.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
               {vts.map(vt => {
                 const routeType = getVTRouteType(vt.frecuencias);
@@ -680,16 +706,16 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
                 return (
                   <button key={vt.codigo}
                     onClick={() => vts.length === 1 ? startSession(vt.codigo) : setSelectedVT(vt.codigo)}
-                    className={`relative py-4 px-3 rounded-xl text-center transition-all active:scale-95 border flex flex-col justify-between items-center min-h-[92px] ${
+                    className={`relative py-4 px-3 rounded-xl text-center transition-all active:scale-95 border flex flex-col justify-between items-center min-h-[98px] ${
                       isSelected
                         ? `${style.selectedBg} text-white shadow-md ring-2 ${style.selectedRing}`
                         : `${style.bg} ${style.border} ${style.text} hover:opacity-80 active:opacity-70`
                     }`}
                   >
                     <div>
-                      <div className="text-base font-black tracking-tight">{vt.codigo}</div>
+                      <div className="text-lg font-black tracking-tight">{vt.codigo}</div>
                       <div className={`text-[10px] font-semibold mt-0.5 ${isSelected ? 'text-white/85' : style.subtext}`}>
-                        {vt.frecuencias?.length || 0} frecuencias
+                        {vt.frecuencias?.length || 0} Vueltas
                       </div>
                     </div>
 

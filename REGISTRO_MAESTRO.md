@@ -95,3 +95,11 @@ El rol del Ayudante se rige por la siguiente secuencia operativa estricta:
   - Inyección de `AyudanteJornadaCard` en el tope del Pilar 1 (Día a Día).
   - Eliminación de la tarjeta duplicada de boletos al pie de pantalla.
 - **Validación:** `npx tsc --noEmit` completado exitosamente con 0 errores.
+
+---
+
+## 🚀 AVANCE FASE 2: OPTIMIZACIÓN DE CONFIGURACIÓN DE JORNADA (2026-09-27)
+- **HomeScreenVT.tsx Refactorizado:**
+  1. **Selector de Fecha Ergonómico:** Incorporado botón rápido *"Volver a Hoy"* al operar fechas pasadas para evitar desvíos involuntarios, y advertencia reactiva si ya existen ventas pendientes para esa fecha.
+  2. **Cuadrícula Táctil de Grupos VT:** Tarjetas con tipografía destacada (`text-lg font-black`), conteo inequívoco de vueltas (`X Vueltas` en lugar de etiqueta genérica) y distintivo de grupo seleccionado.
+  3. **Certificación:** Compilación TypeScript estricta validada con 0 errores.

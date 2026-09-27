@@ -875,3 +875,7 @@
 - **AyudanteMantenimientoBar:** Supervisión visual ligera de unidad con botón de alerta mecánica en ruta.
 - **AyudanteJornadaCard:** Tarjeta principal interactiva con contadores en vivo de la jornada (recaudo, pasajeros, vueltas cerradas) y acceso inmediato en 1 toque.
 - **Compilación:** TypeScript estricto validado al 100%.
+
+### ⚙️ CULMINACIÓN FASE 2: SELECTOR ERGONÓMICO DE JORNADA (VT Y FECHA)
+- **HomeScreenVT.tsx:** Cabecera de fecha asistida con retorno inmediato a "Hoy", tipografía táctil y badges claros de vueltas del día en la cuadrícula de grupos VT.
+- **Compilación:** TypeScript estricto validado al 100%.
