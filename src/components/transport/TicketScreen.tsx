@@ -372,9 +372,9 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
             </div>
             <div className="inline-block px-2 py-0.5 rounded-full bg-white/20 text-[9px] font-bold uppercase">{direccionLabel}</div>
           </div>
-          <div className="text-right">
-            <div className="text-[11px] font-mono">{ventasHoy}t</div>
-            <div className="text-[11px] font-mono">${totalHoy.toFixed(2)}</div>
+          <div className="text-right bg-black/25 px-2 py-1 rounded-xl border border-white/10 shrink-0">
+            <div className="text-[10px] font-black uppercase text-emerald-300">${totalHoy.toFixed(2)}</div>
+            <div className="text-[9px] font-bold text-white/80">{ventasHoy} bol</div>
           </div>
         </div>
       </div>
