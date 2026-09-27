@@ -40,6 +40,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { ChoferMantenimientoWidget } from './ChoferMantenimientoWidget';
 import { SocioMantenimientoWidget } from './SocioMantenimientoWidget';
+import { AyudanteMantenimientoBar } from './AyudanteMantenimientoBar';
+import { AyudanteJornadaCard } from './AyudanteJornadaCard';
 import type { UserSession } from './types';
 import { getOwnerExpenses, fetchOwnerExpensesFromApi } from '@/lib/owner-expenses-storage';
 import { SuperAdminHomeScreen } from './SuperAdminHomeScreen';
@@ -509,6 +511,15 @@ export function HomeScreen({
                 />
               );
             }
+            // Si es Ayudante: mostrar la barra compacta de supervisión pasiva (no fosa ni taller mecánico)
+            if (user.rol === 'AYUDANTE') {
+              return (
+                <AyudanteMantenimientoBar
+                  busId={activeBusId}
+                  busNumero={busNumero}
+                />
+              );
+            }
             // En la interfaz del conductor (!isAdmin): conservar el widget operativo de conductor
             return <ChoferMantenimientoWidget onVerMas={undefined} />;
           }
@@ -561,6 +572,14 @@ export function HomeScreen({
           </div>
 
           <div className="grid grid-cols-1 gap-2.5">
+            {/* Acción Principal Táctica y Destacada para el AYUDANTE (Prioridad 1) */}
+            {user.rol === 'AYUDANTE' && onGoToBoletos && (
+              <AyudanteJornadaCard
+                user={user}
+                busNumero={busNumero}
+                onGoToBoletos={handleAyudanteBoletosClick}
+              />
+            )}
             {/* Gastos del Socio Propietario (Acceso Destacado al Negocio) */}
             {isAdmin && onGoToSocioGastos && (
               <Card
@@ -683,49 +702,6 @@ export function HomeScreen({
               </CardContent>
             </Card>
 
-            {/* RutaGo Boletos - EXCLUSIVO PARA EL AYUDANTE (Oculto para Administrador y Conductor) */}
-            {user.rol === 'AYUDANTE' && (
-              <Card
-                onClick={handleAyudanteBoletosClick}
-                className={`cursor-pointer hover:shadow-md transition-all rounded-2xl border-2 ${
-                  user.esActual !== false
-                    ? 'border-[#912D26] bg-gradient-to-r from-[#912D26]/10 via-[#912D26]/5 to-transparent shadow-md shadow-[#912D26]/10'
-                    : 'border-amber-300 bg-amber-50/50'
-                }`}
-              >
-                <CardContent className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-md ${
-                      user.esActual !== false
-                        ? 'bg-[#912D26] text-white shadow-[#912D26]/20'
-                        : 'bg-amber-500 text-white shadow-amber-500/20'
-                    }`}>
-                      <Ticket className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-base text-[#912D26]">Venta de Boletos</p>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                          user.esActual !== false
-                            ? 'bg-green-100 text-green-800 border border-green-200'
-                            : 'bg-amber-100 text-amber-800 border border-amber-200'
-                        }`}>
-                          {user.esActual !== false ? 'TURNO ACTIVO' : 'INACTIVO'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-[#3A3A3A]/70 mt-0.5">
-                        {user.esActual !== false
-                          ? 'Módulo offline de cobro y emisión en ruta'
-                          : 'Turno no habilitado por el administrador'}
-                      </p>
-                    </div>
-                  </div>
-                  <ArrowRight className={`w-5 h-5 shrink-0 ${
-                    user.esActual !== false ? 'text-[#912D26]' : 'text-amber-600'
-                  }`} />
-                </CardContent>
-              </Card>
-            )}
           </div>
         </div>
 

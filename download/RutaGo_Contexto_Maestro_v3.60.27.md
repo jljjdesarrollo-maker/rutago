@@ -77,3 +77,21 @@ El rol del Ayudante se rige por la siguiente secuencia operativa estricta:
 ## 🚀 CONTROL DE VERSIONES Y DEPLOY
 - Versión formal: `3.60.27`
 - Despliegue automático a Vercel mediante GitHub Webhooks tras push a rama `main`.
+
+---
+
+## 🚀 AVANCE FASE 1: LIMPIEZA ERGONÓMICA Y PUNTO DE ENTRADA (2026-09-27)
+- **Componentes Creados:**
+  1. `src/components/transport/AyudanteMantenimientoBar.tsx`:
+     - Sustituye para el Ayudante al pesado `ChoferMantenimientoWidget` (200 KB de listas de taller y fosas).
+     - Supervisión de semáforo pasivo (`normal` = verde al día, `advertencia`/`critica` = alerta informada al chofer).
+     - Modal de reporte de anomalías mecánicas en ruta (`Bell` / `Wrench`) persistido para conocimiento de chofer y socio.
+  2. `src/components/transport/AyudanteJornadaCard.tsx`:
+     - Tarjeta táctil principal colocada en la posición de máxima prioridad de la pantalla de inicio del Ayudante.
+     - Si hay un turno activo: detecta automáticamente `rg_vt_session` y `rg_estados`, mostrando en vivo el total recaudado, boletos emitidos, frecuencias cerradas y botón táctil `[ Continuar Jornada • Próxima Frecuencia ]`.
+     - Si no hay turno activo: botón directo `[ Iniciar Jornada Laboral (Seleccionar VT) ]`.
+- **HomeScreen.tsx Refactorizado:**
+  - Inyección condicional de `AyudanteMantenimientoBar` si `user.rol === 'AYUDANTE'`.
+  - Inyección de `AyudanteJornadaCard` en el tope del Pilar 1 (Día a Día).
+  - Eliminación de la tarjeta duplicada de boletos al pie de pantalla.
+- **Validación:** `npx tsc --noEmit` completado exitosamente con 0 errores.

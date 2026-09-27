@@ -869,3 +869,9 @@
   - Fase 3: Tablero progresivo de frecuencias en `FrecuenciaSelector.tsx`.
   - Fase 4: Ergonomía de cobro y arqueos en `TicketScreen`, `ArqueoScreen` y `ArqueoGeneralScreen`.
 - **Archivo de Contexto Maestro:** `download/RutaGo_Contexto_Maestro_v3.60.27.md`.
+
+### ⚙️ CULMINACIÓN FASE 1: PUNTO DE ENTRADA Y ERGONOMÍA DEL AYUDANTE
+- **HomeScreen.tsx Optimizado:** Retirado el widget operativo mecánico del chofer para el rol `AYUDANTE`.
+- **AyudanteMantenimientoBar:** Supervisión visual ligera de unidad con botón de alerta mecánica en ruta.
+- **AyudanteJornadaCard:** Tarjeta principal interactiva con contadores en vivo de la jornada (recaudo, pasajeros, vueltas cerradas) y acceso inmediato en 1 toque.
+- **Compilación:** TypeScript estricto validado al 100%.
