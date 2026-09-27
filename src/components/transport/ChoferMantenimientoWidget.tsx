@@ -44,7 +44,7 @@ import {
   type ParadaPagador,
   type SocioModalidadPago,
 } from '@/lib/paradas-vt-storage';
-import { type MantenimientoBusItem } from './MantenimientoScreen';
+import { type MantenimientoBusItem } from '@/lib/mantenimiento-catalogo';
 import { 
   getBusModuloMantenimientoActivo, 
   type EstacionServicioId, 
@@ -58,6 +58,7 @@ import {
   resolveMantenimientoItemsParaBus
 } from '@/lib/mantenimiento-estaciones';
 import { syncMantenimientoBidireccional, flushMantenimientoOutbox, getMantenimientoOutbox } from '@/lib/mantenimiento-sync';
+import { MantenimientoSyncChip } from './MantenimientoSyncDiagnostic';
 
 export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void }) {
   const { toast } = useToast();
@@ -771,7 +772,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       } else {
         fullList.push({
           id: 'mbus-' + cod + '-' + Date.now(),
-          catalogoId: catItem?.id,
+          catalogoId: catItem?.id || cod,
           codigo: cod,
           nombre: catItem?.nombre || cod,
           categoria: (catItem?.categoria as any) || 'MOTOR',
@@ -893,45 +894,53 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
       // 2. Sincronizar en Base de Datos Central (soporta tanto costo > 0 como costo $0 de garantía)
       // BLINDAJE CONTABLE EXPERTO: Si el pagador fue el ayudante y la fecha es anterior a hoy,
-      // esos valores YA fueron liquidados y pagados en ruta por el ayudante ese día histórico.
-      // Por ende, NO se crea un nuevo gasto deducible al socio para evitar duplicar el cobro.
+      // el valor YA fue liquidado en ruta por el ayudante ese día histórico.
+      // Se sincroniza en PostgreSQL como PAGADO (saldo pendiente = $0) para respaldar el historial en la nube
+      // sin generar ninguna deuda por cobrar al socio ni alterar el arqueo del día de hoy.
       const esFechaAnteriorAyudante = pagadorChofer === 'AYUDANTE' && fechaEfectiva < today;
+      const apiExpenseStatus = esFechaAnteriorAyudante ? 'PAGADO' : expenseStatus;
+      const apiPaidAmount = esFechaAnteriorAyudante ? valorTotal : paidAmount;
+      const apiPendingBalance = esFechaAnteriorAyudante ? 0 : pendingBalance;
+      const apiPaymentMethod = esFechaAnteriorAyudante ? 'EFECTIVO' : paymentMethod;
+      const apiDescripcion = esFechaAnteriorAyudante
+        ? `[HISTÓRICO RUTA LIQUIDADO ${fechaEfectiva}] ${descripcionContable}`
+        : descripcionContable;
 
-      if (!esFechaAnteriorAyudante) {
-        saveOwnerExpenseToApi({
-          id: expenseId,
-          busId: activeBusId,
-          category: getCategoriaContablePorEstacion(estacionSeleccionadaChofer) as any,
-          totalAmount: valorTotal,
-          paidAmount,
-          pendingBalance,
-          paymentMethod,
-          status: expenseStatus,
-          expenseDate: fechaEfectiva,
-          description: descripcionContable,
-          provider: tallerStr,
-          comprobanteRef: estacionFacturaChofer.trim() ? 'Fac: ' + estacionFacturaChofer.trim() : undefined,
-          abonos: abonosList,
-          createdAt: new Date().toISOString(),
-        }).then(res => {
-          if (res.syncedToCloud) {
-            toast({
-              title: '☁️ Sincronizado en Base de Datos Central',
-              description: `El mantenimiento en ${config.nombre} ha sido guardado exitosamente en la nube de RutaGo.`,
-            });
-          } else {
-            toast({
-              title: '📡 Guardado Local (Sin Conexión)',
-              description: `Sin internet al asentar. La información está segura en el teléfono y se sincronizará a la base de datos automáticamente al recuperar la señal.`,
-            });
-          }
-        }).catch(() => {
+      saveOwnerExpenseToApi({
+        id: expenseId,
+        busId: activeBusId,
+        category: getCategoriaContablePorEstacion(estacionSeleccionadaChofer) as any,
+        totalAmount: valorTotal,
+        paidAmount: apiPaidAmount,
+        pendingBalance: apiPendingBalance,
+        paymentMethod: apiPaymentMethod,
+        status: apiExpenseStatus,
+        expenseDate: fechaEfectiva,
+        description: apiDescripcion,
+        provider: tallerStr,
+        comprobanteRef: estacionFacturaChofer.trim() ? 'Fac: ' + estacionFacturaChofer.trim() : undefined,
+        abonos: abonosList,
+        createdAt: new Date().toISOString(),
+      }).then(res => {
+        if (res.syncedToCloud) {
+          toast({
+            title: '☁️ Sincronizado en Base de Datos Central',
+            description: esFechaAnteriorAyudante
+              ? `Histórico de ruta respaldado en la nube con saldo $0 (sin deuda para el socio).`
+              : `El mantenimiento en ${config.nombre} ha sido guardado exitosamente en la nube de RutaGo.`,
+          });
+        } else {
           toast({
             title: '📡 Guardado Local (Sin Conexión)',
-            description: `Guardado localmente. Se sincronizará a la base de datos central cuando haya conexión estable.`,
+            description: `Sin internet al asentar. La información está segura en el teléfono y se sincronizará a la base de datos automáticamente al recuperar la señal.`,
           });
+        }
+      }).catch(() => {
+        toast({
+          title: '📡 Guardado Local (Sin Conexión)',
+          description: `Guardado localmente. Se sincronizará a la base de datos central cuando haya conexión estable.`,
         });
-      }
+      });
     } catch (err) {
       console.error('Error registrando parada técnica:', err);
     }
@@ -1137,7 +1146,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           catalogo.find(c => c.nombre.toLowerCase().includes(ci.nombre.toLowerCase()));
         fullList.push({
           id: `mbus-${ci.codigo}-${Date.now()}`,
-          catalogoId: catItem?.id,
+          catalogoId: catItem?.id || ci.codigo,
           codigo: ci.codigo,
           nombre: ci.nombre,
           categoria: (catItem?.categoria as any) || (ci.esFiltroAire ? 'SISTEMA_AIRE' : 'SISTEMA_COMBUSTIBLE'),
@@ -1426,32 +1435,35 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
 
       // Sincronizar gasto contable con la base de datos central
       // BLINDAJE CONTABLE EXPERTO: Si el pagador fue el ayudante y la fecha es anterior a hoy,
-      // esos valores YA fueron liquidados y pagados en ruta por el ayudante ese día histórico.
-      // Por ende, NO se crea un nuevo gasto deducible al socio para evitar duplicar el cobro.
+      // el valor YA fue liquidado en ruta por el ayudante ese día histórico.
+      // Se sincroniza en PostgreSQL como PAGADO (saldo pendiente = $0) para respaldar el historial en la nube
+      // sin generar ninguna deuda por cobrar al socio ni alterar el arqueo del día de hoy.
       const esFechaAnteriorAyudante = arregloPagador === 'AYUDANTE' && fechaFinal < today;
+      const apiStatus = esFechaAnteriorAyudante ? 'PAGADO' : expenseStatus;
+      const apiPaid = esFechaAnteriorAyudante ? costoNum : paidAmount;
+      const apiPending = esFechaAnteriorAyudante ? 0 : pendingBalance;
+      const apiMethod = esFechaAnteriorAyudante ? 'EFECTIVO' : 'EFECTIVO';
 
-      if (!esFechaAnteriorAyudante) {
-        const descContable = costoNum > 0
-          ? `Novedad / Arreglo: ${descTrim} (Km ${kmNum.toLocaleString()}) - ${tallerFinal}`
-          : `Revisión / Garantía: ${descTrim} (Km ${kmNum.toLocaleString()}) - ${tallerFinal} [Sin costo]`;
+      const descContable = costoNum > 0
+        ? `${esFechaAnteriorAyudante ? `[HISTÓRICO RUTA LIQUIDADO ${fechaFinal}] ` : ''}Novedad / Arreglo: ${descTrim} (Km ${kmNum.toLocaleString()}) - ${tallerFinal}`
+        : `${esFechaAnteriorAyudante ? `[HISTÓRICO RUTA LIQUIDADO ${fechaFinal}] ` : ''}Revisión / Garantía: ${descTrim} (Km ${kmNum.toLocaleString()}) - ${tallerFinal} [Sin costo]`;
 
-        await saveOwnerExpenseToApi({
-          id: expenseId,
-          busId: activeBusId,
-          category: 'OTROS',
-          totalAmount: costoNum,
-          paidAmount,
-          pendingBalance,
-          paymentMethod,
-          status: expenseStatus,
-          expenseDate: fechaFinal,
-          description: descContable,
-          provider: tallerFinal,
-          comprobanteRef: facturaFinal ? `Fac: ${facturaFinal}` : undefined,
-          abonos: abonosList,
-          createdAt: new Date().toISOString(),
-        });
-      }
+      await saveOwnerExpenseToApi({
+        id: expenseId,
+        busId: activeBusId,
+        category: 'OTROS',
+        totalAmount: costoNum,
+        paidAmount: apiPaid,
+        pendingBalance: apiPending,
+        paymentMethod: apiMethod,
+        status: apiStatus,
+        expenseDate: fechaFinal,
+        description: descContable,
+        provider: tallerFinal,
+        comprobanteRef: facturaFinal ? `Fac: ${facturaFinal}` : undefined,
+        abonos: abonosList,
+        createdAt: new Date().toISOString(),
+      });
 
       // Refrescar historial en vivo
       setHistorialParadas(getParadasPagoByBus(activeBusId));
@@ -1531,7 +1543,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
     // 1º Vencidos (esVencido === true), con mayor km excedido primero
     // 2º Próximos / Urgentes (esUrgente === true), con menor km restante primero
     // 3º En Regla, con menor km restante primero (lo que está más próximo a vencer primero)
-    return list.sort((a, b) => {
+    const sorted = list.sort((a, b) => {
       // Prioridad 1: Vencidos primero
       if (a.esVencido && !b.esVencido) return -1;
       if (!a.esVencido && b.esVencido) return 1;
@@ -1659,21 +1671,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             </div>
 
             <div className="flex items-center gap-1.5">
-              {outboxCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={ejecutarSincronizacionManual}
-                  className="flex items-center gap-1 text-[9px] font-black bg-amber-400 hover:bg-amber-300 text-slate-950 px-2 py-1 rounded-lg animate-pulse cursor-pointer shadow-xs"
-                  title="Subir pendientes a la base de datos"
-                >
-                  <RefreshCw className="w-3 h-3 animate-spin" /> {outboxCount} subir
-                </button>
-              ) : (
-                <span className="hidden xs:inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-1 rounded-lg border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Nube OK
-                </span>
-              )}
+              <MantenimientoSyncChip busId={activeBusId} />
               <button
                 type="button"
                 onClick={() => {

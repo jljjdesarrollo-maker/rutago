@@ -316,7 +316,7 @@ export type EstacionServicioId =
   | 'ALINEACION'
   | 'ELECTROAUTO'
   | 'RADIADOR'
-  | 'CHOFER_RUTINA;
+  | 'CHOFER_RUTINA';
 
 export interface ItemEstacionConfig {
   codigo: string;
@@ -1606,6 +1606,22 @@ export function resolveMantenimientoItemsParaBus(
   // Resolver odómetro actual si no fue suministrado
   const odometroActual = typeof baseKm === "number" && baseKm > 0 ? baseKm : 893485;
 
+  // 4. Leer estado previo guardado en el bus para preservar calibraciones manuales, históricas y de taller
+  const itemsGuardadosMap = new Map<string, any>();
+  try {
+    const rawSaved = localStorage.getItem(`rg_mantenimientos_v2_${busId}`);
+    if (rawSaved) {
+      const parsedList = JSON.parse(rawSaved);
+      if (Array.isArray(parsedList)) {
+        parsedList.forEach((it: any) => {
+          if (it.codigo) itemsGuardadosMap.set(it.codigo, it);
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("Aviso al leer estado guardado en resolveMantenimientoItemsParaBus:", err);
+  }
+
   // Ensamblar los ítems combinando catálogo base con personalizaciones del socio
   const itemsResueltos: MantenimientoBusItem[] = catalogoGlobal.map((c) => {
     // Si el socio personalizó el intervalo, prevalece el valor auditado; de lo contrario, el oficial
@@ -1616,6 +1632,26 @@ export function resolveMantenimientoItemsParaBus(
 
     const esChofer = Boolean(c.asignadoChoferPorDefecto);
     const estaActivo = itemsActivosConfig[c.id] !== false && itemsActivosConfig[c.codigo] !== false;
+    const itemGuardado = itemsGuardadosMap.get(c.codigo);
+
+    // Si ya existe un estado guardado con calibración (ej. servicio histórico o taller), preservarlo
+    if (itemGuardado && typeof itemGuardado.ultimoKm === "number" && itemGuardado.ultimoKm > 0) {
+      return {
+        id: itemGuardado.id || `mbus-${c.id}-${busId}`,
+        catalogoId: c.id,
+        codigo: c.codigo,
+        nombre: c.nombre,
+        categoria: c.categoria,
+        intervaloKm: intervaloFinal,
+        ultimoKm: itemGuardado.ultimoKm,
+        fechaUltimo: itemGuardado.fechaUltimo || "2026-09-08",
+        tallerMecanico: itemGuardado.tallerMecanico || "",
+        costoEstimado: typeof itemGuardado.costoEstimado === "number" ? itemGuardado.costoEstimado : 0,
+        repuestoDetalle: c.especificacionLubricanteRepuesto,
+        asignadoChofer: esChofer,
+        activo: estaActivo,
+      };
+    }
 
     // Calibración de fábrica / histórico real para Hino AK
     if (

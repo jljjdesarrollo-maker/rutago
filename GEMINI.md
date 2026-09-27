@@ -275,6 +275,14 @@
 - **Contexto Maestro Actualizado:** `/download/RutaGo_Contexto_Maestro_v3.60.18.md` generado y sincronizado.
 - **Commit Oficial:** `chore(release): v3.60.18 - fase 4 certificacion e2e y cierre de ciclo del plan maestro`.
 
+## 31. Sincronización Blindada de Mantenimientos Históricos y Consola Sync (v3.60.24)
+- **Hito:** Resolución definitiva de la desaparición de calibraciones históricas (ej. 08/09/2026 a 889,653 km pagado por Ayudante).
+- **Sincronización Neutra en Nube:** El gasto histórico se respalda en PostgreSQL con saldo pendiente $0 (`status: 'PAGADO'`) para respaldar el inventario patrimonial sin generar deudas al socio.
+- **Blindaje del Reconciliador:** `syncMantenimientoBidireccional` en `mantenimiento-sync.ts` protege paradas operativas del ayudante contra purga automática de la nube.
+- **Preservación en Motor de Resolución:** `resolveMantenimientoItemsParaBus` respeta el estado calibrado previo del componente (`ultimoKm` y `fechaUltimo`).
+- **Consola de Diagnóstico Sync:** Creado `MantenimientoSyncDiagnostic.tsx` e integrado en la cabecera del chofer con estado de red, cola offline, timestamp de última subida y botón de sincronización forzada.
+- **Commit Oficial:** `feat(mantenimiento): v3.60.24 - sincronizacion blindada de mantenimientos historicos y consola de diagnostico sync`.
+
 
 
 

@@ -40,6 +40,13 @@
      * Prevención de concurrencia y doble submit con estado `isSubmittingAbono` y texto descriptivo en botón ("Asentando Abono...").
      * Extinción instantánea de la deuda de la lista "Saldos Pendientes con Talleres" cuando `pendingBalance <= 0` sin recargas ni parpadeos.
    - Commit: `fix(socio): v3.60.16 - sincronizacion de estado reactivo y persistencia api en abono de talleres`
+9. **v3.60.24 (Sincronización Blindada de Mantenimientos Históricos y Consola Sync):** ✅ COMPLETADA
+   - Solución definitiva al caso de servicios históricos (ej. 08/09/2026 a 889,653 km) pagados por el ayudante en ruta.
+   - Sincronización en PostgreSQL con saldo $0 y estado `PAGADO` para no generar deuda al socio y respaldar en la nube.
+   - Blindaje de `syncMantenimientoBidireccional` en `mantenimiento-sync.ts` para nunca purgar paradas operativas del ayudante.
+   - Preservación del estado calibrado en `resolveMantenimientoItemsParaBus` (`mantenimiento-estaciones.ts`).
+   - Creación e integración de `MantenimientoSyncDiagnostic.tsx` (consola de diagnóstico y chip reactivo en cabecera de chofer).
+   - Commit: `feat(mantenimiento): v3.60.24 - sincronizacion blindada de mantenimientos historicos y consola de diagnostico sync`
 
 ---
 

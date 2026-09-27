@@ -20,6 +20,62 @@ import { OwnerExpense } from '../types/expenses';
 import { saveOwnerExpense, fetchOwnerExpensesFromApi } from './owner-expenses-storage';
 import { syncRetroactiveParadasFromExpenses } from './paradas-vt-storage';
 
+const SYNC_DIAGNOSTIC_KEY = 'rg_mantenimiento_sync_diagnostic_v1';
+
+export interface SyncDiagnosticInfo {
+  lastSyncTimestamp: string | null;
+  lastSyncSuccess: boolean;
+  lastSyncMessage: string;
+  lastUploadedCount: number;
+  lastDownloadedCount: number;
+  lastError: string | null;
+}
+
+export function getSyncDiagnosticInfo(): SyncDiagnosticInfo {
+  if (typeof window === 'undefined') {
+    return {
+      lastSyncTimestamp: null,
+      lastSyncSuccess: true,
+      lastSyncMessage: 'Inicializando...',
+      lastUploadedCount: 0,
+      lastDownloadedCount: 0,
+      lastError: null,
+    };
+  }
+  try {
+    const raw = localStorage.getItem(SYNC_DIAGNOSTIC_KEY);
+    return raw ? JSON.parse(raw) : {
+      lastSyncTimestamp: null,
+      lastSyncSuccess: true,
+      lastSyncMessage: 'Listo para sincronizar',
+      lastUploadedCount: 0,
+      lastDownloadedCount: 0,
+      lastError: null,
+    };
+  } catch {
+    return {
+      lastSyncTimestamp: null,
+      lastSyncSuccess: true,
+      lastSyncMessage: 'Listo',
+      lastUploadedCount: 0,
+      lastDownloadedCount: 0,
+      lastError: null,
+    };
+  }
+}
+
+export function saveSyncDiagnosticInfo(info: Partial<SyncDiagnosticInfo>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const current = getSyncDiagnosticInfo();
+    const updated = { ...current, ...info };
+    localStorage.setItem(SYNC_DIAGNOSTIC_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent('rg_mantenimiento_diagnostic_updated', { detail: updated }));
+  } catch (err) {
+    console.warn('Error guardando diagnostico de sync:', err);
+  }
+}
+
 const OUTBOX_STORAGE_KEY = 'rg_mantenimiento_outbox_v1';
 
 export interface OutboxItem {
@@ -180,12 +236,18 @@ export async function syncMantenimientoBidireccional(busId?: string): Promise<{ 
 
     // A. Reconciliar anulaciones: si una parada local fue anulada en la nube (su gasto ya no existe en remoteExpenses),
     // removerla localmente para que el celular refleje las anulaciones hechas en la web.
+    // BLINDAJE OPERATIVO: Las paradas con pagador 'AYUDANTE' o marcadas como 'descontadoEnVT'
+    // son registros operacionales liquidados en ruta y NO deben borrarse aunque no tengan gasto de socio en la nube.
     if (Array.isArray(remoteExpenses)) {
       const activeRemoteExpenseIds = new Set(remoteExpenses.map(r => r.id));
       const rawParadas = localStorage.getItem('rg_paradas_pago_v1');
       if (rawParadas) {
         const localParadas: any[] = JSON.parse(rawParadas);
         const filtered = localParadas.filter(p => {
+          // Si fue pagada por el ayudante o descontada en ruta, conservar SIEMPRE en historial operativo
+          if (p.pagador === 'AYUDANTE' || p.descontadoEnVT) {
+            return true;
+          }
           // Si la parada está vinculada a un gasto de socio y la BD central ya no lo tiene, se elimina
           if (p.ownerExpenseId && !activeRemoteExpenseIds.has(p.ownerExpenseId)) {
             return false;
@@ -228,8 +290,24 @@ export async function syncMantenimientoBidireccional(busId?: string): Promise<{ 
     } catch (healErr) {
       console.warn('Aviso reconciliacion automatica diferida:', healErr);
     }
-  } catch (e) {
+
+    // Guardar diagnóstico de sincronización exitosa
+    saveSyncDiagnosticInfo({
+      lastSyncTimestamp: new Date().toISOString(),
+      lastSyncSuccess: true,
+      lastSyncMessage: `Sincronización bidireccional exitosa (${uploaded} subidos, ${downloaded} comprobantes en nube)`,
+      lastUploadedCount: uploaded,
+      lastDownloadedCount: downloaded,
+      lastError: null,
+    });
+  } catch (e: any) {
     console.warn('Aviso descarga gastos mantenimiento diferido:', e);
+    saveSyncDiagnosticInfo({
+      lastSyncTimestamp: new Date().toISOString(),
+      lastSyncSuccess: false,
+      lastSyncMessage: 'Error temporal al sincronizar con la nube',
+      lastError: e?.message || 'Error de conexión',
+    });
   }
 
   return { uploaded, downloaded };
