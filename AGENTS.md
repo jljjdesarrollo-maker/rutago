@@ -850,3 +850,22 @@
 - **Continuidad por Cuotas:** Repositorio oficial sincronizado en la nueva cuenta de Google AI Studio, manteniendo integridad absoluta con la rama `main` en GitHub (`https://github.com/jljjdesarrollo-maker/rutago`).
 - **Versión Oficial:** `3.60.23`.
 - **Archivo de Contexto Maestro:** `download/RutaGo_Contexto_Maestro_v3.60.23.md`.
+
+---
+
+## 🚀 v3.60.27 - RESPALDO TOTAL, PLANIFICACIÓN POR FASES Y PROPUESTA UX/UI DEL AYUDANTE (2026-09-27)
+- **Copia de Seguridad y Punto de Restauración:** Creada rama remota `backup/v3.60.26-pre-ayudante` y tag `backup-v3.60.26-pre-ayudante` en GitHub.
+- **Validación del Flujo de Trabajo:**
+  1. Clic en "Venta de Boletos" en `HomeScreen`.
+  2. Selección de fecha de jornada laboral y grupo VT (con 6 u 8 frecuencias).
+  3. Ejecución y arqueo individual por cada frecuencia en `FrecuenciaSelector`.
+  4. Arqueo General de la jornada laboral una vez finalizadas las frecuencias.
+- **Ajuste de Usabilidad:**
+  - El ayudante prioriza recaudación e ingresos (80%).
+  - Mantenimiento actúa como supervisión pasiva (20%) con alertas sin sobrecargar con tareas de taller asignadas al chofer.
+- **Plan por Fases:**
+  - Fase 1: Limpieza ergonómica y punto de entrada en `HomeScreen.tsx`.
+  - Fase 2: Configuración de jornada en `HomeScreenVT.tsx`.
+  - Fase 3: Tablero progresivo de frecuencias en `FrecuenciaSelector.tsx`.
+  - Fase 4: Ergonomía de cobro y arqueos en `TicketScreen`, `ArqueoScreen` y `ArqueoGeneralScreen`.
+- **Archivo de Contexto Maestro:** `download/RutaGo_Contexto_Maestro_v3.60.27.md`.
