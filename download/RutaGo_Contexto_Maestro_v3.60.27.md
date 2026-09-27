@@ -141,3 +141,16 @@ El rol del Ayudante se rige por la siguiente secuencia operativa estricta:
   - Coerción estricta `String(b.id || '').toUpperCase()` en todas las funciones de búsqueda y filtrado de flota.
   - Inicialización blindada de `currentBus` en `ArqueoGeneralScreen.tsx` garantizando campos `id`, `numeroDisco` y `placa` sanitizados y formateados.
   - Validación completa con `npx tsc --noEmit` (0 errores).
+
+---
+
+## 📖 MANUAL DE USUARIO OFICIAL DEL AYUDANTE GENERADO (v3.60.27)
+- Creado y respaldado en `/docs/MANUAL_DE_USUARIO_AYUDANTE.md`.
+- Documenta el flujo completo:
+  1. Inicio de sesión con PIN y operación offline.
+  2. Vista táctica y reporte de novedades mecánicas en ruta.
+  3. Selección asistida de fecha y grupos VT ergonómicos.
+  4. Tablero de frecuencias con Hero progresivo de Producción Total (Efectivo Contado + Caja Común).
+  5. Venta rápida con balance en vivo en ticketera.
+  6. Arqueos parciales por vuelta.
+  7. Arqueo General con odómetro físico blindado y liquidación formal.
