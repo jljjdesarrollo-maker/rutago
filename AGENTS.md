@@ -54,6 +54,13 @@
    - Badge `[ 🛣️ Liquidado en Ruta ]` en el historial mensual con texto explicativo para el socio.
    - Commit: `feat(contabilidad): v3.60.25 - segregacion anti-duplicidad de gastos en ruta y proteccion de ganancia real`
 
+11. **v3.60.26 (Automatización 'Gastos del bus que pagó el socio' en Inicio e Historial de Paradas):** ✅ COMPLETADA
+   - Corrección de fuga de cálculo en `HomeScreen.tsx` (balance del mes): ahora excluye automáticamente los gastos de ruta pagados por el ayudante.
+   - Renombramiento estandarizado en Dashboard y Libro de Egresos: `"Gastos del bus que pagó el socio"`.
+   - Módulo `MantenimientoScreen.tsx`: indicador agregado en cabecera de paradas (`"Gastos del bus que pagó el socio: $X.XX"`) y etiqueta automática en cada ficha (`Quién pagó: 🚌 Ayudante en Ruta` vs `Quién pagó: 👤 Socio Propietario`).
+   - Blindaje de persistencia con etiquetas inmutables `[RUTA-AYUDANTE]` en combos y paradas técnicas.
+   - Commit: `feat(contabilidad): v3.60.26 - automatizacion gastos del bus que pago el socio en inicio e historial`
+
 ---
 
 ### 🏛️ REGLAS DE ARQUITECTURA OFICIAL IMPLEMENTADAS:

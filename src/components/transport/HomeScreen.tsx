@@ -199,7 +199,21 @@ export function HomeScreen({
       const monthExpenses = expenses.filter(
         e => e.expenseDate && e.expenseDate.startsWith(targetMonth)
       );
-      const totalCost = monthExpenses.reduce((sum, e) => sum + (e.totalAmount || 0), 0);
+      // REGLA DE NO-DUPLICIDAD: Sumar únicamente los gastos que pagó el socio (excluyendo gastos de ruta asumidos por el ayudante)
+      const expensesSocioDirecto = monthExpenses.filter(e => {
+        const esDeRuta =
+          e.origenPago === 'AYUDANTE_RUTA' ||
+          e.descontadoEnRuta === true ||
+          e.comprobanteRef?.includes('AYUDANTE_RUTA') ||
+          e.description?.includes('[RUTA-AYUDANTE]') ||
+          (e.paymentMethod === 'EFECTIVO' &&
+            (e.description?.toLowerCase().includes('ayudante') ||
+              e.description?.toLowerCase().includes('chofer') ||
+              e.description?.toLowerCase().includes('liquidado') ||
+              e.description?.toLowerCase().includes('ruta')));
+        return !esDeRuta;
+      });
+      const totalCost = expensesSocioDirecto.reduce((sum, e) => sum + (e.totalAmount || 0), 0);
       const debts = expenses
         .filter(e => e.pendingBalance > 0)
         .reduce((sum, e) => sum + e.pendingBalance, 0);
@@ -438,7 +452,7 @@ export function HomeScreen({
                   <span className="text-sm font-black text-white">${ownerSummary.routeIncome.toFixed(2)}</span>
                 </div>
                 <div className="bg-white/5 rounded-xl p-1.5 border border-white/10">
-                  <span className="text-[10px] text-rose-200/80 uppercase font-semibold block">Gastos del Bus</span>
+                  <span className="text-[9px] text-rose-200/80 uppercase font-semibold block leading-tight">Gastos del bus que pagó el socio</span>
                   <span className="text-sm font-black text-rose-300">${ownerSummary.busExpenses.toFixed(2)}</span>
                 </div>
                 <div className="bg-emerald-500/20 rounded-xl p-1.5 border border-emerald-400/30">

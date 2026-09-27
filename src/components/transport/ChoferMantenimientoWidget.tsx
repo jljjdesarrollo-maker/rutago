@@ -902,8 +902,8 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       const apiPaidAmount = esFechaAnteriorAyudante ? valorTotal : paidAmount;
       const apiPendingBalance = esFechaAnteriorAyudante ? 0 : pendingBalance;
       const apiPaymentMethod = esFechaAnteriorAyudante ? 'EFECTIVO' : paymentMethod;
-      const apiDescripcion = esFechaAnteriorAyudante
-        ? `[HISTÓRICO RUTA LIQUIDADO ${fechaEfectiva}] ${descripcionContable}`
+      const apiDescripcion = pagadorChofer === 'AYUDANTE'
+        ? `[RUTA-AYUDANTE] ${descripcionContable}`
         : descripcionContable;
 
       saveOwnerExpenseToApi({
@@ -1265,9 +1265,10 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
       const esFechaAnteriorAyudante = comboPagador === 'AYUDANTE' && fechaEfectiva < today;
 
       if (!esFechaAnteriorAyudante) {
-        const descServicio = valorFactura > 0 
+        const descBase = valorFactura > 0 
           ? `Servicio Rápido Lubricadora [${itemsSeleccionados.map(i => i.nombre).join(', ')}]`
           : `Servicio Rápido Lubricadora [${itemsSeleccionados.map(i => i.nombre).join(', ')}] - Mantenimiento sin costo / Garantía`;
+        const descServicio = comboPagador === 'AYUDANTE' ? `[RUTA-AYUDANTE] ${descBase}` : descBase;
 
         saveOwnerExpenseToApi({
           id: expenseId,
@@ -1283,6 +1284,8 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           status: expenseStatus,
           expenseDate: fechaEfectiva,
           abonos: abonosList,
+          origenPago: comboPagador === 'AYUDANTE' ? 'AYUDANTE_RUTA' : 'SOCIO_DIRECTO',
+          descontadoEnRuta: comboPagador === 'AYUDANTE',
           createdAt: new Date().toISOString(),
         }).then(res => {
           if (res.syncedToCloud) {

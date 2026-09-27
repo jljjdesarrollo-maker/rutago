@@ -484,6 +484,19 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
     if (typeof window === 'undefined') return [];
     return getParadasPagoByBus(activeBusId);
   });
+
+  // Gastos del bus que pagó el socio (excluyendo lo cubierto por el ayudante en ruta)
+  const totalParadasPagadasPorSocio = useMemo(() => {
+    return paradasTallerHistorial
+      .filter(p => p.pagador !== 'AYUDANTE')
+      .reduce((sum, p) => sum + (Number(p.costoTotal) || 0), 0);
+  }, [paradasTallerHistorial]);
+
+  const totalParadasPagadasPorAyudante = useMemo(() => {
+    return paradasTallerHistorial
+      .filter(p => p.pagador === 'AYUDANTE')
+      .reduce((sum, p) => sum + (Number(p.costoTotal) || 0), 0);
+  }, [paradasTallerHistorial]);
   const [isDebtsReportModalOpen, setIsDebtsReportModalOpen] = useState(false);
   const [isAbonoModalOpen, setIsAbonoModalOpen] = useState(false);
   const [abonoTargetExpense, setAbonoTargetExpense] = useState<OwnerExpense | null>(null);
@@ -2797,10 +2810,20 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                 <Building2 className="w-4 h-4" />
               </div>
               <div>
-                <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">
-                  Historial de Paradas en Taller
-                </span>
-                <p className="text-[10px] text-slate-500">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">
+                    Historial de Paradas en Taller
+                  </span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">
+                    Gastos del bus que pagó el socio: ${totalParadasPagadasPorSocio.toFixed(2)}
+                  </span>
+                  {totalParadasPagadasPorAyudante > 0 && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                      (+${totalParadasPagadasPorAyudante.toFixed(2)} liquidados en ruta)
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-0.5">
                   {paradasTallerHistorial.length} {paradasTallerHistorial.length === 1 ? 'registro' : 'registros'} operativos sincronizados
                 </p>
               </div>
@@ -2903,23 +2926,32 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                             </div>
                           )}
                           
-                          {/* Sello de Modalidad */}
-                          <div className="mt-1 flex items-center gap-1 flex-wrap">
+                          {/* Quién pagó y Modalidad */}
+                          <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Quién pagó:</span>
                             {esAyudante ? (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-800">
-                                🚌 Pagado por Ayudante en Ruta (${montoAyudanteVal.toFixed(2)}) {p.descontadoEnVT ? '• Descontado en VT' : '• Pendiente de VT'}
-                              </span>
-                            ) : p.socioModalidad === 'TRANSFERENCIA_TOTAL' ? (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
-                                🏦 Transferencia Socio 100% Pagada
-                              </span>
-                            ) : p.socioModalidad === 'TRANSFERENCIA_PARCIAL' ? (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-900">
-                                ⚠️ Anticipo ${montoTransfVal.toFixed(2)} • Saldo: ${saldoPendVal.toFixed(2)}
+                              <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 border border-blue-200 inline-flex items-center gap-1">
+                                🚌 Ayudante en Ruta (${(montoAyudanteVal || costoVal).toFixed(2)})
+                                <span className="text-[8px] font-bold text-blue-700 bg-blue-200/60 px-1 rounded ml-0.5">
+                                  No descuenta al socio
+                                </span>
                               </span>
                             ) : (
-                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-800">
-                                💳 Crédito Fiado • Saldo: ${saldoPendVal.toFixed(2)}
+                              <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-200 inline-flex items-center gap-1">
+                                👤 Socio Propietario (${costoVal.toFixed(2)})
+                                {p.socioModalidad === 'TRANSFERENCIA_TOTAL' ? (
+                                  <span className="text-[8px] font-medium text-emerald-700 bg-emerald-200/60 px-1 rounded ml-0.5">
+                                    Transferencia 100%
+                                  </span>
+                                ) : p.socioModalidad === 'TRANSFERENCIA_PARCIAL' ? (
+                                  <span className="text-[8px] font-medium text-amber-700 bg-amber-200/60 px-1 rounded ml-0.5">
+                                    Anticipo ${montoTransfVal.toFixed(2)} • Debe: ${saldoPendVal.toFixed(2)}
+                                  </span>
+                                ) : (
+                                  <span className="text-[8px] font-medium text-rose-700 bg-rose-200/60 px-1 rounded ml-0.5">
+                                    Crédito Fiado • Debe: ${saldoPendVal.toFixed(2)}
+                                  </span>
+                                )}
                               </span>
                             )}
                           </div>

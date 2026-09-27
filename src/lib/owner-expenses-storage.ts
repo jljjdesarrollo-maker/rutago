@@ -32,10 +32,13 @@ export function getOwnerExpenses(busId = 'BUS-01'): OwnerExpense[] {
       const esDeRuta =
         item.origenPago === 'AYUDANTE_RUTA' ||
         item.descontadoEnRuta === true ||
+        item.comprobanteRef?.includes('AYUDANTE_RUTA') ||
+        item.description?.includes('[RUTA-AYUDANTE]') ||
         (item.paymentMethod === 'EFECTIVO' &&
           (item.description?.toLowerCase().includes('ayudante') ||
             item.description?.toLowerCase().includes('chofer') ||
-            item.description?.toLowerCase().includes('liquidado')));
+            item.description?.toLowerCase().includes('liquidado') ||
+            item.description?.toLowerCase().includes('ruta')));
 
       return {
         ...item,
@@ -396,10 +399,13 @@ export async function fetchOwnerExpensesFromApi(busId = 'BUS-01'): Promise<Owner
             const esDeRuta =
               item.origenPago === 'AYUDANTE_RUTA' ||
               item.descontadoEnRuta === true ||
+              item.comprobanteRef?.includes('AYUDANTE_RUTA') ||
+              item.description?.includes('[RUTA-AYUDANTE]') ||
               (item.paymentMethod === 'EFECTIVO' &&
                 (item.description?.toLowerCase().includes('ayudante') ||
                   item.description?.toLowerCase().includes('chofer') ||
-                  item.description?.toLowerCase().includes('liquidado')));
+                  item.description?.toLowerCase().includes('liquidado') ||
+                  item.description?.toLowerCase().includes('ruta')));
 
             return {
               ...item,

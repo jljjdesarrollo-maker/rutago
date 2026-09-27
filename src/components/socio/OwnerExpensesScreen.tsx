@@ -218,10 +218,13 @@ export default function OwnerExpensesScreen({
       const esDeRuta =
         e.origenPago === 'AYUDANTE_RUTA' ||
         e.descontadoEnRuta === true ||
+        e.comprobanteRef?.includes('AYUDANTE_RUTA') ||
+        e.description?.includes('[RUTA-AYUDANTE]') ||
         (e.paymentMethod === 'EFECTIVO' &&
           (e.description?.toLowerCase().includes('ayudante') ||
             e.description?.toLowerCase().includes('chofer') ||
-            e.description?.toLowerCase().includes('liquidado')));
+            e.description?.toLowerCase().includes('liquidado') ||
+            e.description?.toLowerCase().includes('ruta')));
       return matchMonth && !esDeRuta;
     });
   }, [allExpenses, selectedYearMonth]);
@@ -233,10 +236,13 @@ export default function OwnerExpensesScreen({
       const esDeRuta =
         e.origenPago === 'AYUDANTE_RUTA' ||
         e.descontadoEnRuta === true ||
+        e.comprobanteRef?.includes('AYUDANTE_RUTA') ||
+        e.description?.includes('[RUTA-AYUDANTE]') ||
         (e.paymentMethod === 'EFECTIVO' &&
           (e.description?.toLowerCase().includes('ayudante') ||
             e.description?.toLowerCase().includes('chofer') ||
-            e.description?.toLowerCase().includes('liquidado')));
+            e.description?.toLowerCase().includes('liquidado') ||
+            e.description?.toLowerCase().includes('ruta')));
       return matchMonth && esDeRuta;
     });
   }, [allExpenses, selectedYearMonth]);
@@ -779,8 +785,8 @@ export default function OwnerExpensesScreen({
             </div>
 
             <div className="bg-white/5 border border-white/10 rounded-2xl p-2.5">
-              <span className="text-[10px] text-rose-200/90 uppercase font-bold block">
-                Gastos del Socio
+              <span className="text-[10px] text-rose-200/90 uppercase font-bold block leading-tight">
+                Gastos del bus que pagó el socio
               </span>
               <div className="text-lg font-black text-rose-300 mt-0.5">
                 ${totalCostoMes.toFixed(2)}
@@ -1082,10 +1088,13 @@ export default function OwnerExpensesScreen({
                 const esDeRuta =
                   expense.origenPago === 'AYUDANTE_RUTA' ||
                   expense.descontadoEnRuta === true ||
+                  expense.comprobanteRef?.includes('AYUDANTE_RUTA') ||
+                  expense.description?.includes('[RUTA-AYUDANTE]') ||
                   (expense.paymentMethod === 'EFECTIVO' &&
                     (expense.description?.toLowerCase().includes('ayudante') ||
                       expense.description?.toLowerCase().includes('chofer') ||
-                      expense.description?.toLowerCase().includes('liquidado')));
+                      expense.description?.toLowerCase().includes('liquidado') ||
+                      expense.description?.toLowerCase().includes('ruta')));
 
                 return (
                   <div

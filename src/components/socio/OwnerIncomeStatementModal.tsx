@@ -199,10 +199,13 @@ export default function OwnerIncomeStatementModal({
       const esDeRuta =
         e.origenPago === 'AYUDANTE_RUTA' ||
         e.descontadoEnRuta === true ||
+        e.comprobanteRef?.includes('AYUDANTE_RUTA') ||
+        e.description?.includes('[RUTA-AYUDANTE]') ||
         (e.paymentMethod === 'EFECTIVO' &&
           (e.description?.toLowerCase().includes('ayudante') ||
             e.description?.toLowerCase().includes('chofer') ||
-            e.description?.toLowerCase().includes('liquidado')));
+            e.description?.toLowerCase().includes('liquidado') ||
+            e.description?.toLowerCase().includes('ruta')));
       return matchMonth && !esDeRuta;
     });
 
