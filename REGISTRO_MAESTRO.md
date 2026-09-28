@@ -467,6 +467,12 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
     - `src/components/transport/mantenimiento/MantenimientoPoliticasModal.tsx` (Búsqueda rápida, edición de intervalos por componente y botón "Restablecer Fábrica").
     - `src/components/transport/mantenimiento/MantenimientoAjusteRapidoModal.tsx` (Mini-modal rápido desde tarjeta con sugerencias 4k, 5k, 6k, 7k km, auditoría en BD PostgreSQL y validación de red online).
   * Reducción de más de 350 líneas de código monolítico en `MantenimientoScreen.tsx`.
+- **Fase 3: Estaciones de Taller y Combos de Parada (`MantenimientoEstacionesModal.tsx`):** ✅ COMPLETADA
+  * Archivo: `src/components/transport/mantenimiento/MantenimientoEstacionesModal.tsx` (760 líneas encapsuladas).
+  * Funcionalidad completa y blindada:
+    - Pestaña 1 ("Asentar Parada de Taller"): Checklist táctil de componentes, odómetro/tacómetro con enlace sutil a regularización retroactiva en vivo, costos, proveedor/taller, factura y modalidades de pago (Total, Anticipo, Fiado).
+    - Pestaña 2 ("Mi Receta Oficial"): Personalización de receta exclusiva por unidad con exclusión de no aplicables, protección de filtros vitales de motor Hino AK y adición de repuestos extras desde catálogo maestro.
+  * **Impacto:** Reducción récord de **1.168 líneas de código** en `MantenimientoScreen.tsx`, erradicando 15 estados huérfanos que provocaban re-renders masivos.
 
 ---
 
@@ -475,9 +481,9 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado Actual:
    - **Fase 3: Arquitectura Multi-Tenant SaaS y Soberanía por Socio:** 🟢 100% COMPLETADA Y DESPLEGADA.
-   - **Modularización de Mantenimiento:** Subcomponentes de Odómetro, Políticas de Unidad y Ajuste Rápido 100% desacoplados.
+   - **Modularización de Mantenimiento:** Subcomponentes de Odómetro, Políticas de Unidad, Ajuste Rápido y Estaciones de Taller 100% desacoplados.
 4. Próxima Etapa Operativa:
-   - Continuar con la extracción de `MantenimientoEstacionesModal.tsx` y `MantenimientoHistorialModal.tsx` o avanzar hacia la **Fase 4: Pruebas de Campo en Carretera**.
+   - Continuar con la extracción de `MantenimientoHistorialModal.tsx` y `MantenimientoComboRuedasModal.tsx` o avanzar hacia la **Fase 4: Pruebas de Campo en Carretera**.
 5. Indicar al agente:  
    `"Continuamos con la modularización de MantenimientoScreen o con la Fase 4: Pruebas de Campo"`.
 
