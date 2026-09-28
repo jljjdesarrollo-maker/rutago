@@ -193,15 +193,31 @@ El rol del Ayudante se rige por la siguiente secuencia operativa estricta:
 
 ---
 
-### 🔹 FASE 3: Aislamiento Multi-Tenant por Socio Propietario
-- **Autonomía Operativa de la Tripulación:**
-  - En `PersonalScreen`, cada socio gestiona única y exclusivamente a sus propios choferes y ayudantes (`Persona.socioId`).
-- **Finanzas y Gastos 100% Privados:**
-  - `OwnerExpensesScreen` y reportes de producción filtrados estrictamente por el `busId` del socio logueado. Cero visibilidad de números privados entre compañeros.
-- **Mantenimiento Desacoplado:**
-  - Cada socio ajusta sus intervalos de cambio de aceite, repuestos y filtros en `BusItemOverride` y `BusRecetaCombo` sin afectar a los demás autobuses.
-- **Ergonomía Preservada:**
-  - Cero barras laterales estorbosas en teléfonos móviles; la tripulación conserva su interfaz táctil rápida.
+### 🔹 FASE 3: Aislamiento Multi-Tenant por Socio Propietario (Desglose por Subfases)
+Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrumpida sin pérdida de avance, la Fase 3 se estructura en 4 subfases atómicas con verificación, actualización de registro maestro, commit y push independiente:
+
+* **Subfase 3.1: Aislamiento de Personal y Tripulación (`PersonalScreen` y `/api/personas`)**
+  - **Objetivo:** Cada socio gestiona y visualiza única y exclusivamente a sus propios choferes y ayudantes (`Persona.socioId`).
+  - **Backend:** Filtrado estricto en `/api/personas` según el `socioId` de la sesión. Si es `SUPERADMIN_SAAS`, acceso global con selector. En alta/edición, asociación forzosa al `socioId` del socio logueado.
+  - **Frontend:** Adaptación de `PersonalScreen.tsx` para operar con el contexto del socio en sesión.
+  - **Hito de Cierre:** Compilación sin errores, actualización de `REGISTRO_MAESTRO.md`, commit y push a `main`.
+
+* **Subfase 3.2: Privacidad Total de Gastos y Finanzas (`OwnerExpensesScreen` y `/api/gastos-socio`)**
+  - **Objetivo:** Privacidad financiera estricta. Ningún socio puede consultar gastos de repuestos, lubricantes o egresos de otro propietario.
+  - **Backend:** Validación de propiedad del `busId` contra el `socioId` en endpoints de `OwnerExpense` (HTTP 403 en intentos de acceso cruzado).
+  - **Frontend:** `OwnerExpensesScreen.tsx` y resúmenes contables acotados al autobús o flota del socio autenticado.
+  - **Hito de Cierre:** Compilación sin errores, actualización de `REGISTRO_MAESTRO.md`, commit y push a `main`.
+
+* **Subfase 3.3: Mantenimiento Desacoplado por Unidad (`BusItemOverride` y `BusRecetaCombo`)**
+  - **Objetivo:** Desacoplar las recetas e intervalos de mantenimiento preventivo (aceite, filtros, frenos) de cada autobús.
+  - **Lógica:** Las personalizaciones de un autobús no alteran las plantillas ni configuraciones de los demás buses de la flota.
+  - **Frontend & Backend:** Endpoints y pantallas de mantenimiento configurables solo para unidades del socio autenticado.
+  - **Hito de Cierre:** Compilación sin errores, actualización de `REGISTRO_MAESTRO.md`, commit y push a `main`.
+
+* **Subfase 3.4: Ergonomía Móvil y Auditoría Integral de Roles (Cero Sidebars)**
+  - **Objetivo:** Preservar la agilidad táctil a una mano en ruta para choferes y ayudantes sin sidebars ni interfaces sobrecargadas.
+  - **Pruebas de Transición:** Auditoría de flujo continuo para roles `SUPERADMIN_SAAS`, `SOCIO`, `CHOFER` y `AYUDANTE`.
+  - **Hito de Cierre:** Build final de producción verificado, actualización de cierre de Fase 3 en `REGISTRO_MAESTRO.md`, commit y push a `main`.
 
 ---
 
@@ -332,7 +348,12 @@ El rol del Ayudante se rige por la siguiente secuencia operativa estricta:
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
-3. Indicar al agente:  
-   `"Continuamos con la FASE 3: Aislamiento Multi-Tenant por Socio Propietario (PersonalScreen, OwnerExpensesScreen, Mantenimiento Desacoplado)"`.
+3. Estado de la Fase 3:
+   - **Subfase 3.1: Aislamiento de Personal y Tripulación (`PersonalScreen` y `/api/personas`)** 🟡 EN CURSO.
+   - **Subfase 3.2: Privacidad Total de Gastos y Finanzas (`OwnerExpensesScreen` y `/api/gastos-socio`)** ⚪ PENDIENTE.
+   - **Subfase 3.3: Mantenimiento Desacoplado por Unidad (`BusItemOverride` y `BusRecetaCombo`)** ⚪ PENDIENTE.
+   - **Subfase 3.4: Ergonomía Móvil y Auditoría Integral de Roles** ⚪ PENDIENTE.
+4. Indicar al agente:  
+   `"Continuamos con la SUBFASE 3.1: Aislamiento de Personal y Tripulación (PersonalScreen y /api/personas)"`.
 
 
