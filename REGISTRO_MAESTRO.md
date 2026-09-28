@@ -154,3 +154,70 @@ El rol del Ayudante se rige por la siguiente secuencia operativa estricta:
   5. Venta rápida con balance en vivo en ticketera.
   6. Arqueos parciales por vuelta.
   7. Arqueo General con odómetro físico blindado y liquidación formal.
+
+---
+
+# 🏛️ HOJA DE RUTA OFICIAL SAAS MULTI-TENANT & CONTINUIDAD DE CUOTA (v3.61.0)
+**Fecha de Registro:** 2026-09-27  
+**Estado:** Planificación y Arquitectura Aprobada. Listo para Ejecución por Fases en Nueva Sesión/Cuenta de Google AI Studio.  
+**Regla de Oro:** Preservación al 100% de la información histórica de la Unidad 01, respeto absoluto a la ergonomía táctil en ruta (sin sidebars estorbosos en teléfonos) y erradicación total de PINs quemados en código.
+
+---
+
+## 🎯 RESUMEN EJECUTIVO DEL PLAN POR FASES
+
+### 🔹 FASE 1: Migración Relacional PostgreSQL, Seguridad Cero-Hardcode y Blindaje del Bus 01
+- **Tablas a incorporar en `prisma/schema.prisma`:**
+  - `CuentaSocio`: `id`, `cedula` (unique), `nombre`, `telefono`, `email` (unique), `pinHash` (cifrado con salt, sin texto plano), `rol` (`SUPERADMIN_SAAS` | `SOCIO`), `activo`, `esFundadorSaaS`.
+  - `SuscripcionBus`: `id`, `socioId`, `busId` (unique), `montoMensual` (default 20.00 USD), `diaCorteMensual` (default 5), `fechaInicio`, `fechaUltimoPago`, `fechaProximoCorte`, `estado` (`ACTIVA` | `POR_VENCER` | `VENCIDA` | `GRACIA` | `SUSPENDIDA`), `comprobanteUrl`, `notasAdmin`.
+  - `PagoSuscripcion`: `id`, `suscripcionId`, `monto`, `fechaPago`, `metodoPago`, `numeroComprobante`, `comprobanteUrl`, `registradoPor`, `notas`.
+  - Claves foráneas en tablas existentes: `Bus.socioId` (opcional hacia `CuentaSocio`), `Persona.socioId` (opcional hacia `CuentaSocio`).
+- **Eliminación de Claves Quemadas:**
+  - Erradicar `if (pinValue === '9999')`, `'0101'`, `'1234'`, `'2107'` tanto de `LoginScreen.tsx` como de `/api/auth/route.ts`.
+  - Autenticación criptográfica consultando a PostgreSQL.
+- **Script de Migración / Seed Seguro:**
+  - Inyectar SuperAdmin inicial con credencial de entorno segura `SEED_SUPERADMIN_PIN`.
+  - Asignar la Unidad 01, sus choferes, ayudantes, reportes `DailyRecord` y gastos `OwnerExpense` al `Socio 01 (Socio Fundador)`.
+  - Crear suscripción activa para la Unidad 01 sin romper ningún dato histórico.
+
+---
+
+### 🔹 FASE 2: Consola de SuperAdministración SaaS (Online Obligatorio)
+- **Premisa:** Requiere Internet obligatorio (acceso vía PC / Laptop de oficina).
+- **Control Comercial y Financiero:**
+  - Tablero de MRR ($20/mes por bus $\times$ $N$ buses activos = proyección cooperativa de $380/mes para 19 unidades).
+  - Padrón de Socios: Alta de socios, asignación de números de disco, generación de PINs iniciales.
+  - Registro de pagos con adjuntos de comprobante de transferencia y fechas de corte.
+  - Alertas automáticas de vencimiento y políticas de corte/gracia.
+  - Consola de soporte técnico L2 y auditoría de base de datos.
+
+---
+
+### 🔹 FASE 3: Aislamiento Multi-Tenant por Socio Propietario
+- **Autonomía Operativa de la Tripulación:**
+  - En `PersonalScreen`, cada socio gestiona única y exclusivamente a sus propios choferes y ayudantes (`Persona.socioId`).
+- **Finanzas y Gastos 100% Privados:**
+  - `OwnerExpensesScreen` y reportes de producción filtrados estrictamente por el `busId` del socio logueado. Cero visibilidad de números privados entre compañeros.
+- **Mantenimiento Desacoplado:**
+  - Cada socio ajusta sus intervalos de cambio de aceite, repuestos y filtros en `BusItemOverride` y `BusRecetaCombo` sin afectar a los demás autobuses.
+- **Ergonomía Preservada:**
+  - Cero barras laterales estorbosas en teléfonos móviles; la tripulación conserva su interfaz táctil rápida.
+
+---
+
+### 🔹 FASE 4: Módulo de Benchmark Cooperativo con Anonimato Blindado
+- **Motor Matemático (`benchmark-metrics.ts`):**
+  - Agrupación simétrica: Troncales VT (45 pax) vs Alimentadores P (28 pax).
+  - Medias cooperativas de Producción Bruta, Vueltas Realizadas e Índice de Pasajeros por Frecuencia (IPF).
+- **Anonimización Estricta:**
+  - El socio ve con claridad: *"Mi Unidad (Bus 01) - Chofer X / Ayudante Y"*.
+  - Las demás unidades se presentan como `#T-01`, `#T-02`, `#A-01`.
+  - Placas, propietarios y gastos de terceros permanecen estrictamente ocultos e inaccesibles.
+
+---
+
+## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
+1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
+2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
+3. Indicar al agente:  
+   `"Continuamos con la FASE 1: Migración Relacional PostgreSQL, Seguridad Cero-Hardcode y Resguardo del Bus 01"`.
