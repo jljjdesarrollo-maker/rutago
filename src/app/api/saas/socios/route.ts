@@ -127,3 +127,104 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Error al registrar el socio' }, { status: 500 });
   }
 }
+
+// PUT /api/saas/socios — Actualizar datos de un socio, resetear PIN o asignar unidad
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, nombre, email, telefono, pin, activo, rol, busIdAsignar, busIdDesvincular } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID de socio requerido' }, { status: 400 });
+    }
+
+    const socio = await db.cuentaSocio.findUnique({ where: { id } });
+    if (!socio) {
+      return NextResponse.json({ error: 'Socio no encontrado' }, { status: 404 });
+    }
+
+    const dataToUpdate: any = {};
+    if (nombre !== undefined) dataToUpdate.nombre = nombre.trim();
+    if (email !== undefined) dataToUpdate.email = email ? email.trim() : null;
+    if (telefono !== undefined) dataToUpdate.telefono = telefono ? telefono.trim() : null;
+    if (activo !== undefined) dataToUpdate.activo = Boolean(activo);
+    if (rol !== undefined && (rol === 'SOCIO' || rol === 'SUPERADMIN_SAAS')) {
+      dataToUpdate.rol = rol;
+    }
+
+    // Reset de PIN si se proporcionó uno nuevo
+    if (pin && typeof pin === 'string' && pin.trim().length >= 4) {
+      const salt = generateSalt();
+      dataToUpdate.pinHash = hashPinWithSalt(pin.trim(), salt);
+      dataToUpdate.pinSalt = salt;
+    }
+
+    const socioActualizado = await db.cuentaSocio.update({
+      where: { id },
+      data: dataToUpdate,
+    });
+
+    // Vincular bus
+    if (busIdAsignar) {
+      await db.bus.update({
+        where: { id: busIdAsignar },
+        data: { socioId: id },
+      }).catch(err => console.error('Error asociando bus:', err));
+    }
+
+    // Desvincular bus
+    if (busIdDesvincular) {
+      await db.bus.update({
+        where: { id: busIdDesvincular },
+        data: { socioId: null },
+      }).catch(err => console.error('Error desvinculando bus:', err));
+    }
+
+    return NextResponse.json({
+      success: true,
+      socio: {
+        id: socioActualizado.id,
+        cedula: socioActualizado.cedula,
+        nombre: socioActualizado.nombre,
+        activo: socioActualizado.activo,
+        rol: socioActualizado.rol,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating socio:', error);
+    return NextResponse.json({ error: 'Error al actualizar el socio' }, { status: 500 });
+  }
+}
+
+// DELETE /api/saas/socios?id=... — Desactivar socio (soft delete defensivo)
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID de socio requerido' }, { status: 400 });
+    }
+
+    const socio = await db.cuentaSocio.findUnique({ where: { id } });
+    if (!socio) {
+      return NextResponse.json({ error: 'Socio no encontrado' }, { status: 404 });
+    }
+
+    // Impedir desactivación del socio fundador
+    if (socio.esFundadorSaaS) {
+      return NextResponse.json({ error: 'No se puede desactivar la cuenta del Socio Fundador' }, { status: 403 });
+    }
+
+    await db.cuentaSocio.update({
+      where: { id },
+      data: { activo: false },
+    });
+
+    return NextResponse.json({ success: true, message: 'Socio desactivado correctamente' });
+  } catch (error) {
+    console.error('Error deleting socio:', error);
+    return NextResponse.json({ error: 'Error al desactivar socio' }, { status: 500 });
+  }
+}
+

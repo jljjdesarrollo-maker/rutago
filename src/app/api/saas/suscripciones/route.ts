@@ -130,3 +130,60 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Error al procesar el pago' }, { status: 500 });
   }
 }
+
+// PUT /api/saas/suscripciones — Modificar parámetros de suscripción (monto, estado, corte)
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, busId, socioId, estado, montoMensual, diaCorteMensual, fechaProximoCorte, notasAdmin } = body;
+
+    if (!id && !busId) {
+      return NextResponse.json({ error: 'Se requiere id o busId' }, { status: 400 });
+    }
+
+    const where = id ? { id } : { busId };
+    let sub = await db.suscripcionBus.findUnique({ where });
+
+    if (!sub && busId && socioId) {
+      // Crear suscripción si no existía para la unidad
+      const hoy = new Date();
+      const corte = fechaProximoCorte ? new Date(fechaProximoCorte) : new Date(hoy.getFullYear(), hoy.getMonth() + 1, diaCorteMensual || 5);
+      sub = await db.suscripcionBus.create({
+        data: {
+          busId,
+          socioId,
+          montoMensual: montoMensual ? Number(montoMensual) : 20.0,
+          diaCorteMensual: diaCorteMensual ? Number(diaCorteMensual) : 5,
+          fechaInicio: hoy,
+          fechaProximoCorte: corte,
+          estado: estado || 'ACTIVA',
+          notasAdmin,
+        },
+      });
+      return NextResponse.json({ success: true, suscripcion: sub });
+    }
+
+    if (!sub) {
+      return NextResponse.json({ error: 'Suscripción no encontrada' }, { status: 404 });
+    }
+
+    const updateData: any = {};
+    if (estado) updateData.estado = estado;
+    if (montoMensual !== undefined) updateData.montoMensual = Number(montoMensual);
+    if (diaCorteMensual !== undefined) updateData.diaCorteMensual = Number(diaCorteMensual);
+    if (fechaProximoCorte) updateData.fechaProximoCorte = new Date(fechaProximoCorte);
+    if (notasAdmin !== undefined) updateData.notasAdmin = notasAdmin;
+    if (socioId) updateData.socioId = socioId;
+
+    const actualizada = await db.suscripcionBus.update({
+      where: { id: sub.id },
+      data: updateData,
+    });
+
+    return NextResponse.json({ success: true, suscripcion: actualizada });
+  } catch (error) {
+    console.error('Error updating suscripcion:', error);
+    return NextResponse.json({ error: 'Error al actualizar suscripción' }, { status: 500 });
+  }
+}
+

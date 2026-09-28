@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 
 export async function GET() {
   try {
-    const [records, personas] = await Promise.all([
+    const [records, personas, socios, buses, suscripciones, pagos, ownerExpenses] = await Promise.all([
       db.dailyRecord.findMany({
         orderBy: { date: 'desc' },
         include: {
@@ -20,21 +20,59 @@ export async function GET() {
           telefono: true,
           rol: true,
           esActual: true,
+          socioId: true,
           createdAt: true,
           updatedAt: true,
         },
+      }),
+      db.cuentaSocio.findMany({
+        orderBy: { nombre: 'asc' },
+        select: {
+          id: true,
+          cedula: true,
+          nombre: true,
+          email: true,
+          telefono: true,
+          rol: true,
+          activo: true,
+          esFundadorSaaS: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      db.bus.findMany({
+        orderBy: { numeroDisco: 'asc' },
+      }),
+      db.suscripcionBus.findMany({
+        orderBy: { createdAt: 'desc' },
+      }),
+      db.pagoSuscripcion.findMany({
+        orderBy: { fechaPago: 'desc' },
+      }),
+      db.ownerExpense.findMany({
+        orderBy: { date: 'desc' },
       }),
     ]);
 
     const backup = {
       exportDate: new Date().toISOString(),
-      version: 'v2.5-backup',
+      version: 'v3.61.0-backup',
       app: 'rutago',
       records,
       personas,
+      socios,
+      buses,
+      suscripciones,
+      pagos,
+      ownerExpenses,
       summary: {
         totalRecords: records.length,
         totalPersonas: personas.length,
+        totalSocios: socios.length,
+        totalBuses: buses.length,
+        totalSuscripciones: suscripciones.length,
+        totalPagos: pagos.length,
+        totalOwnerExpenses: ownerExpenses.length,
         dateRange: records.length > 0
           ? { from: records[records.length - 1].date, to: records[0].date }
           : null,

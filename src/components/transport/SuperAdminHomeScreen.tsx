@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   CreditCard,
@@ -48,6 +49,31 @@ export function SuperAdminHomeScreen({
   backupLoading,
   onLogout,
 }: SuperAdminHomeScreenProps) {
+  const [metrics, setMetrics] = useState<{
+    totalBuses: number;
+    mrrProyectado: number;
+    recaudadoMes: number;
+  }>({
+    totalBuses: 19,
+    mrrProyectado: 380.0,
+    recaudadoMes: 0,
+  });
+
+  useEffect(() => {
+    fetch('/api/saas/auditoria')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data && data.mrrMetrics) {
+          setMetrics({
+            totalBuses: data.mrrMetrics.totalBuses || 19,
+            mrrProyectado: data.mrrMetrics.mrrProyectado || 380.0,
+            recaudadoMes: data.mrrMetrics.recaudadoMes || 0,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="flex flex-col min-h-[100dvh] bg-slate-50">
       {/* Header Corporativo SaaS Desarrollador */}
@@ -99,7 +125,7 @@ export function SuperAdminHomeScreen({
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-white/5 rounded-xl p-2 border border-white/5">
               <span className="text-[10px] text-slate-300 uppercase font-semibold block">Clientes Potenciales</span>
-              <span className="text-base font-black text-white">19 Buses</span>
+              <span className="text-base font-black text-white">{metrics.totalBuses} Buses</span>
             </div>
             <div className="bg-white/5 rounded-xl p-2 border border-white/5">
               <span className="text-[10px] text-slate-300 uppercase font-semibold block">Tarifa SaaS</span>
@@ -107,7 +133,7 @@ export function SuperAdminHomeScreen({
             </div>
             <div className="bg-emerald-500/20 rounded-xl p-2 border border-emerald-400/30">
               <span className="text-[10px] text-emerald-200 uppercase font-extrabold block">MRR Máximo</span>
-              <span className="text-base font-black text-emerald-400">$380.00</span>
+              <span className="text-base font-black text-emerald-400">${metrics.mrrProyectado.toFixed(2)}</span>
             </div>
           </div>
         </div>
