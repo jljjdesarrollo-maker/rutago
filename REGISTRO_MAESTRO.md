@@ -216,8 +216,66 @@ El rol del Ayudante se rige por la siguiente secuencia operativa estricta:
 
 ---
 
+---
+
+## 🚀 AVANCE FASE 1 COMPLETADO: MIGRACIÓN RELACIONAL POSTGRESQL, CERO-HARDCODE Y BLINDAJE DEL BUS 01 (2026-09-27)
+- **Estado:** 🟢 COMPLETADO Y VALIDADO AL 100%. Compilación Next.js 16 / Turbopack certificada con 0 errores (`compile_applet` exitoso).
+- **1. Modelo Relacional SaaS Multi-Tenant (`prisma/schema.prisma`):**
+  - Incorporado modelo `CuentaSocio`:
+    - Campos: `id`, `cedula` (unique), `nombre`, `email` (unique), `telefono`, `pinHash` (cifrado SHA-256 + Salt de 32 chars hex), `pinSalt` (salt aleatorio único por cuenta), `rol` (`SUPERADMIN_SAAS` | `SOCIO`), `activo`, `esFundadorSaaS`, timestamps.
+    - Relaciones activas: `buses` (`Bus[]`), `personal` (`Persona[]`), `suscripciones` (`SuscripcionBus[]`), `pagosRegistrados` (`PagoSuscripcion[]`).
+  - Incorporado modelo `SuscripcionBus`:
+    - Campos: `id`, `socioId`, `busId` (unique), `montoMensual` (default 20.00 USD), `diaCorteMensual` (default día 5), `fechaInicio`, `fechaUltimoPago`, `fechaProximoCorte`, `estado` (`ACTIVA` | `POR_VENCER` | `VENCIDA` | `GRACIA` | `SUSPENDIDA`), `comprobanteUrl`, `notasAdmin`.
+    - Relaciones hacia `CuentaSocio`, `Bus` y `PagoSuscripcion[]`.
+  - Incorporado modelo `PagoSuscripcion`:
+    - Campos: `id`, `suscripcionId`, `monto`, `fechaPago`, `metodoPago`, `numeroComprobante`, `comprobanteUrl`, `registradoPor`, `notas`.
+  - Claves foráneas y relaciones en tablas existentes:
+    - `Bus.socioId` (opcional hacia `CuentaSocio`), `Bus.suscripcion` hacia `SuscripcionBus`.
+    - `Persona.socioId` (opcional hacia `CuentaSocio`), `Persona.pinSalt` (para soporte de hashing con salt y migración transparente).
+
+- **2. Erradicación Total de PINs Quemados (Seguridad Cero-Hardcode):**
+  - **`src/lib/pin-hash.ts`:**
+    - Creadas funciones `generateSalt()` (16 bytes randomBytes hex) y `hashPinWithSalt(pin, salt)`.
+    - Creada función `verifyPin(pin, storedHash, salt)` con soporte de verificación defensiva para hashes con salt, hashes legacy y migración transparente de PINs plaintext.
+  - **`src/app/api/auth/route.ts`:**
+    - Erradicados completamente los condicionales hardcodeados `if (pin === '9999')`, `'0101'`, `'1234'`, `'0423'`, `'2107'`.
+    - Autenticación criptográfica en dos niveles contra base de datos PostgreSQL:
+      1. Búsqueda en `CuentaSocio` (SuperAdmin SaaS y Socios). Retorna sesión con rol `ADMIN` o `SOCIO`, `socioId` y flag `esFundadorSaaS`.
+      2. Búsqueda en `Persona` (Conductor, Ayudante). Verificación con salt y migración automática in situ si el registro previo carecía de salt.
+      3. Conservado y blindado el módulo de **Device Binding** para usuarios de rol `AYUDANTE`.
+      4. Fallback de Bootstrap inicial seguro controlado exclusivamente mediante variable de entorno `SEED_SUPERADMIN_PIN`.
+  - **`src/components/transport/LoginScreen.tsx`:**
+    - Erradicados todos los atajos de PIN en duro (`9999`, `0101`, `1234`, `2107`, `0423`).
+    - En línea: delegación 100% segura al endpoint `/api/auth` mediante petición HTTPS.
+    - Fuera de línea: validación estricta contra sesión previamente autenticada y cacheada en `localStorage` (`ct_session`).
+  - **`src/lib/seed.ts`:**
+    - Erradicado el PIN quemado `2107` en texto plano.
+    - Implementada inicialización con hashing y salt para `CuentaSocio` (SuperAdmin y Socio Fundador) y vinculación de la Unidad 01.
+  - **`src/app/api/personas/route.ts`:**
+    - Soporte de `socioId` para aislamiento por flota.
+    - Registro de nuevos choferes y ayudantes con generación de salt y `hashPinWithSalt`.
+
+- **3. Endpoints de Gestión SaaS Multi-Tenant:**
+  - `src/app/api/saas/suscripciones/route.ts`: Consulta de suscripciones por bus/socio, cálculo en vivo de estados (`ACTIVA`, `POR_VENCER`, `GRACIA`, `VENCIDA`) según fecha de corte, y registro formal de pagos (`PagoSuscripcion`).
+  - `src/app/api/saas/socios/route.ts`: Listado de socios con unidades y suscripciones asociadas, y alta de nuevos socios con PIN criptográfico protegido.
+
+- **4. Script de Migración y Blindaje de la Unidad 01 (`scripts/seed-saas-fase1.ts`):**
+  - Sembrado del SuperAdmin SaaS (`1100000000`, `admin@rutago.app`).
+  - Sembrado del Socio Fundador José Leonardo Jaya Jaramillo (`1103987654`, `socio01@rutago.app`).
+  - Asignación garantizada del Bus 01 (`BUS-01`, Disco 01, Hino AK, Placa TAA-5152) al Socio Fundador.
+  - Vinculación del personal histórico existente al Socio Fundador con actualización a salted hashes.
+  - Activación de suscripción perpetua/vitalicia para el Bus 01 con registro de comprobante de activación inicial.
+  - Verificación de integridad: 100% de registros en `DailyRecord`, `OwnerExpense` y `VentaBoleto` preservados sin alteración.
+
+- **5. Certificación Técnica:**
+  - Build de Next.js 16.1.3 + Turbopack completado con éxito absoluto en 28.3s.
+  - `compile_applet` ejecutado con resultado: `Build succeeded - the applet is compiled`.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Indicar al agente:  
-   `"Continuamos con la FASE 1: Migración Relacional PostgreSQL, Seguridad Cero-Hardcode y Resguardo del Bus 01"`.
+   `"Continuamos con la FASE 2: Consola de SuperAdministración SaaS (Online Obligatorio) - Padrón de Socios, Control Comercial de Suscripciones MRR y Soporte Técnico L2"`.
+

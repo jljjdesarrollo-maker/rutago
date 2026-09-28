@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { hashPin } from '@/lib/pin-hash';
+import { generateSalt, hashPinWithSalt, verifyPin } from '@/lib/pin-hash';
 
 // GET /api/personas — List all personas
 export async function GET(req: NextRequest) {
@@ -8,16 +8,19 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const rol = url.searchParams.get('rol');
     const esActual = url.searchParams.get('esActual');
+    const socioId = url.searchParams.get('socioId');
 
     const where: Record<string, unknown> = {};
     if (rol) where.rol = rol;
     if (esActual !== null) where.esActual = esActual === 'true';
+    if (socioId) where.socioId = socioId;
 
     const personas = await db.persona.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
+        socioId: true,
         nombre: true,
         cedula: true,
         telefono: true,
@@ -41,18 +44,20 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { nombre, cedula, telefono, rol, pin } = body;
+    const { nombre, cedula, telefono, rol, pin, socioId } = body;
 
-    if (!nombre || !pin) {
-      return NextResponse.json({ error: 'Nombre y PIN son obligatorios' }, { status: 400 });
+    if (!nombre || !pin || pin.length < 4) {
+      return NextResponse.json({ error: 'Nombre y PIN válido (4+ dígitos) son obligatorios' }, { status: 400 });
     }
 
-    const pinHash = hashPin(pin);
+    const salt = generateSalt();
+    const pinHash = hashPinWithSalt(pin.trim(), salt);
 
-    // Check if PIN already exists (by hash)
-    const existing = await db.persona.findUnique({ where: { pin: pinHash } });
-    if (existing) {
-      return NextResponse.json({ error: 'El PIN ya esta en uso' }, { status: 400 });
+    // Check if PIN already exists by scanning personas
+    const existingPersonas = await db.persona.findMany();
+    const pinEnUso = existingPersonas.some(p => verifyPin(pin.trim(), p.pin, p.pinSalt));
+    if (pinEnUso) {
+      return NextResponse.json({ error: 'El PIN ya está en uso por otro usuario' }, { status: 400 });
     }
 
     // If setting as current, deactivate others of same role
@@ -66,16 +71,18 @@ export async function POST(req: NextRequest) {
 
     const persona = await db.persona.create({
       data: {
-        nombre,
-        cedula: cedula || null,
-        telefono: telefono || null,
+        nombre: nombre.trim(),
+        cedula: cedula ? cedula.trim() : null,
+        telefono: telefono ? telefono.trim() : null,
         rol: rol || 'CONDUCTOR',
         pin: pinHash,
+        pinSalt: salt,
+        socioId: socioId || null,
         esActual,
       },
     });
 
-    const { pin: _pin, ...safePersona } = persona;
+    const { pin: _pin, pinSalt: _salt, ...safePersona } = persona;
     return NextResponse.json(safePersona, { status: 201 });
   } catch (error) {
     console.error('Error creating persona:', error);

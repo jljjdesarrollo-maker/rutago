@@ -55,36 +55,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const submitPin = async (pinValue: string) => {
     setLoading(true);
 
-    // ─── PINs Maestros SaaS Inmediatos ───
-    if (pinValue === '9999') {
-      const saasAdminSession = {
-        id: 'saas-superadmin',
-        nombre: 'SuperAdmin SaaS (RutaGo)',
-        rol: 'ADMIN',
-        esActual: true,
-      };
-      localStorage.setItem('ct_session', JSON.stringify(saasAdminSession));
-      triggerBackgroundSyncMantenimiento(saasAdminSession);
-      onLogin(saasAdminSession);
-      setLoading(false);
-      return;
-    }
-
-    if (pinValue === '0101') {
-      const socioSession = {
-        id: 'socio-bus-01',
-        nombre: 'Socio Unidad 01 (Líder)',
-        rol: 'ADMIN',
-        esActual: true,
-      };
-      localStorage.setItem('ct_session', JSON.stringify(socioSession));
-      triggerBackgroundSyncMantenimiento(socioSession);
-      onLogin(socioSession);
-      setLoading(false);
-      return;
-    }
-
-    // ─── Offline login: usar sesión cacheada ───
+    // ─── Offline login: usar sesión previamente cacheada y verificada ───
     if (!navigator.onLine) {
       try {
         const cached = localStorage.getItem('ct_session');
@@ -97,25 +68,13 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           }
         }
       } catch { /* corrupted cache */ }
-      if (pinValue === '1234' || pinValue === '2107' || pinValue === '0423') {
-        const adminSession = {
-          id: 'admin-001',
-          nombre: 'Administrador',
-          rol: 'ADMIN',
-          esActual: true,
-        };
-        localStorage.setItem('ct_session', JSON.stringify(adminSession));
-        triggerBackgroundSyncMantenimiento(adminSession);
-        onLogin(adminSession);
-        return;
-      }
-      setError('Sin internet y sin sesion guardada');
+      setError('Sin conexión a internet y sin sesión activa guardada');
       setPin('');
       setLoading(false);
       return;
     }
 
-    // ─── Online login ───
+    // ─── Online login: Autenticación Cero-Hardcode contra PostgreSQL ───
     try {
       const { deviceId, deviceName } = getDeviceInfo();
       const res = await fetch('/api/auth', {

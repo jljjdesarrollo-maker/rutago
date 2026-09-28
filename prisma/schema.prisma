@@ -76,18 +76,24 @@ model Expense {
 }
 
 model Persona {
-  id             String    @id @default(cuid())
+  id             String       @id @default(cuid())
+  socioId        String?
   nombre         String
   cedula         String?
   telefono       String?
-  rol            String    @default("CONDUCTOR") // CONDUCTOR | AYUDANTE | ADMIN
-  pin            String    @unique
-  esActual       Boolean   @default(false)
-  deviceId       String?   // UUID de hardware del teléfono oficial asignado
-  deviceName     String?   // Nombre amigable (ej. "Terminal Móvil Bus 01")
-  deviceLinkedAt DateTime? // Fecha y hora en la que se vinculó
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  rol            String       @default("CONDUCTOR") // CONDUCTOR | AYUDANTE | ADMIN
+  pin            String       @unique
+  pinSalt        String?      // Salt criptográfico único
+  esActual       Boolean      @default(false)
+  deviceId       String?      // UUID de hardware del teléfono oficial asignado
+  deviceName     String?      // Nombre amigable (ej. "Terminal Móvil Bus 01")
+  deviceLinkedAt DateTime?    // Fecha y hora en la que se vinculó
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  socio          CuentaSocio? @relation(fields: [socioId], references: [id])
+
+  @@index([socioId])
 }
 
 // ─── RutaGo: Módulo de Venta de Boletos Offline ───
@@ -166,22 +172,95 @@ model OwnerExpense {
 
 // ─── Módulo de Flota y Unidades Físicas (Fase 2) ───
 model Bus {
-  id                String   @id @default(cuid())
-  numeroDisco       String   @unique // "01", "10", "16", "18", etc.
-  placa             String   @unique // "TAA-5152"
-  marca             String   // "Hino AK"
-  modelo            String?  // "AK"
+  id                String          @id @default(cuid())
+  socioId           String?
+  numeroDisco       String          @unique // "01", "10", "16", "18", etc.
+  placa             String          @unique // "TAA-5152"
+  marca             String          // "Hino AK"
+  modelo            String?         // "AK"
   anio              Int?
-  capacidadAsientos Int      @default(45)
-  propietario       String   // "José Leonardo Jaya Jaramillo"
-  tipoOperacion     String   @default("TRONCAL_VT") // "TRONCAL_VT" | "ALIMENTADOR_P"
-  activo            Boolean  @default(true)
+  capacidadAsientos Int             @default(45)
+  propietario       String          // "José Leonardo Jaya Jaramillo"
+  tipoOperacion     String          @default("TRONCAL_VT") // "TRONCAL_VT" | "ALIMENTADOR_P"
+  activo            Boolean         @default(true)
   notas             String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  socio             CuentaSocio?    @relation(fields: [socioId], references: [id])
+  suscripcion       SuscripcionBus?
 
   @@index([numeroDisco])
   @@index([tipoOperacion])
+  @@index([socioId])
+}
+
+// ─── Módulo SaaS Multi-Tenant: Cuentas de Socios y Suscripciones (Fase 1) ───
+
+model CuentaSocio {
+  id               String            @id @default(cuid())
+  cedula           String            @unique
+  nombre           String
+  telefono         String?
+  email            String?           @unique
+  pinHash          String            // Hash criptográfico con salt
+  pinSalt          String            // Salt aleatorio único por cuenta
+  rol              String            @default("SOCIO") // "SUPERADMIN_SAAS" | "SOCIO"
+  activo           Boolean           @default(true)
+  esFundadorSaaS   Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  buses            Bus[]
+  personal         Persona[]
+  suscripciones    SuscripcionBus[]
+  pagosRegistrados PagoSuscripcion[]
+
+  @@index([cedula])
+  @@index([rol])
+}
+
+model SuscripcionBus {
+  id                String            @id @default(cuid())
+  socioId           String
+  busId             String            @unique // 1 suscripción por unidad física
+  montoMensual      Float             @default(20.00)
+  diaCorteMensual   Int               @default(5)
+  fechaInicio       DateTime          @default(now())
+  fechaUltimoPago   DateTime?
+  fechaProximoCorte DateTime?
+  estado            String            @default("ACTIVA") // "ACTIVA" | "POR_VENCER" | "VENCIDA" | "GRACIA" | "SUSPENDIDA"
+  comprobanteUrl    String?
+  notasAdmin        String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  socio             CuentaSocio       @relation(fields: [socioId], references: [id])
+  bus               Bus               @relation(fields: [busId], references: [id])
+  pagos             PagoSuscripcion[]
+
+  @@index([socioId])
+  @@index([estado])
+}
+
+model PagoSuscripcion {
+  id                String         @id @default(cuid())
+  suscripcionId     String
+  monto             Float
+  fechaPago         DateTime       @default(now())
+  metodoPago        String         @default("TRANSFERENCIA") // "TRANSFERENCIA" | "EFECTIVO" | "DEPOSITO"
+  numeroComprobante String?
+  comprobanteUrl    String?
+  registradoPor     String         // ID de CuentaSocio o 'SISTEMA'
+  notas             String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  suscripcion       SuscripcionBus @relation(fields: [suscripcionId], references: [id], onDelete: Cascade)
+  socioRegistrador  CuentaSocio?   @relation(fields: [registradoPor], references: [id])
+
+  @@index([suscripcionId])
+  @@index([registradoPor])
 }
 
 // ─── Módulo de Mantenimiento Preventivo Jerárquico (SuperAdmin vs Socio) ───

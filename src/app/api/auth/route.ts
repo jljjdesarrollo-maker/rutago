@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { hashPin, isPlaintextPin } from '@/lib/pin-hash';
+import { generateSalt, hashPinWithSalt, verifyPin } from '@/lib/pin-hash';
 import { getDeviceBindingGlobalConfigAsync } from '@/app/api/config/device-binding/route';
-
-const FIRST_ADMIN_PINS = ['2107', '1234'];
 
 // ─── Rate limiting in-memory ───
 interface AttemptRecord {
@@ -49,7 +47,7 @@ if (typeof globalThis !== 'undefined') {
   }, 10 * 60 * 1000);
 }
 
-// POST /api/auth — Login by PIN
+// POST /api/auth — Login by PIN (Cero-Hardcode & Blindaje Criptográfico)
 export async function POST(req: NextRequest) {
   try {
     // Rate limiting por IP
@@ -59,124 +57,121 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { pin, deviceId, deviceName } = body;
 
-    if (!pin || pin.length < 4) {
-      return NextResponse.json({ error: 'PIN invalido' }, { status: 400 });
+    if (!pin || typeof pin !== 'string' || pin.trim().length < 4) {
+      return NextResponse.json({ error: 'PIN inválido' }, { status: 400 });
     }
 
-    // ─── PINs Maestros Universales y SaaS (Bypass inmediato de rate limit) ───
-    if (pin === '9999') {
-      recordSuccess(ip);
-      return NextResponse.json({
-        id: 'saas-superadmin',
-        nombre: 'SuperAdmin SaaS (RutaGo)',
-        rol: 'ADMIN',
-        esActual: true,
-      });
-    }
-
-    if (pin === '0101') {
-      recordSuccess(ip);
-      return NextResponse.json({
-        id: 'socio-bus-01',
-        nombre: 'Socio Unidad 01 (Líder)',
-        rol: 'ADMIN',
-        esActual: true,
-      });
-    }
-
-    if (pin === '1234' || pin === '0423') {
-      recordSuccess(ip);
-      return NextResponse.json({
-        id: 'admin-master',
-        nombre: 'Administrador',
-        rol: 'ADMIN',
-        esActual: true,
-      });
-    }
+    const cleanPin = pin.trim();
 
     if (isRateLimited(ip)) {
       return NextResponse.json(
-        { error: 'Demasiados intentos. Espere 5 minutos.' },
+        { error: 'Demasiados intentos erróneos. Por seguridad, espere 5 minutos.' },
         { status: 429 }
       );
     }
 
-    const pinHash = hashPin(pin);
+    // ─── 1. Búsqueda en Cuentas de Socios y SuperAdministración SaaS ───
+    const socios = await db.cuentaSocio.findMany({
+      where: { activo: true },
+    });
 
-    // If no users exist, auto-create admin with first PIN (hashed)
-    const count = await db.persona.count();
-    if (count === 0 && FIRST_ADMIN_PINS.includes(pin)) {
-      const admin = await db.persona.create({
-        data: {
-          nombre: 'Administrador',
-          cedula: null,
-          telefono: null,
-          rol: 'ADMIN',
-          pin: pinHash,
-          esActual: false,
-        },
-      });
-      recordSuccess(ip);
-      return NextResponse.json({
-        id: admin.id,
-        nombre: admin.nombre,
-        rol: admin.rol,
-        esActual: admin.esActual,
-      });
-    }
-
-    // Buscar por hash — compatible con PINs en plaintext (migración automática)
-    let persona = await db.persona.findUnique({ where: { pin: pinHash } });
-
-    // Migración: si no encuentra por hash, buscar plaintext y actualizar
-    if (!persona) {
-      // No podemos buscar por plaintext directamente con findUnique si el campo tiene hash.
-      // Escaneamos todos los usuarios (max ~50) para encontrar match plaintext.
-      const allPersonas = await db.persona.findMany({ select: { id: true, pin: true } });
-      for (const p of allPersonas) {
-        if (isPlaintextPin(p.pin) && p.pin === pin) {
-          // Migrar: actualizar a hash
-          persona = await db.persona.update({
-            where: { id: p.id },
-            data: { pin: pinHash },
-          });
-          break;
-        }
+    for (const socio of socios) {
+      if (verifyPin(cleanPin, socio.pinHash, socio.pinSalt)) {
+        recordSuccess(ip);
+        return NextResponse.json({
+          id: socio.id,
+          nombre: socio.nombre,
+          cedula: socio.cedula,
+          rol: socio.rol === 'SUPERADMIN_SAAS' ? 'ADMIN' : 'SOCIO',
+          subRol: socio.rol,
+          socioId: socio.id,
+          esFundadorSaaS: socio.esFundadorSaaS,
+          esActual: true,
+        });
       }
     }
 
-    if (!persona) {
-      recordFailedAttempt(ip);
-      return NextResponse.json({ error: 'PIN no encontrado' }, { status: 401 });
+    // ─── 2. Búsqueda en Personal Operativo (Conductor, Ayudante, Admin de Flota) ───
+    const personal = await db.persona.findMany();
+
+    let matchedPersona: typeof personal[0] | null = null;
+    for (const p of personal) {
+      if (verifyPin(cleanPin, p.pin, p.pinSalt)) {
+        matchedPersona = p;
+        // Si el PIN estaba en texto plano o sin salt, actualizarlo a hash seguro con salt único
+        if (!p.pinSalt || p.pin.length <= 6) {
+          const newSalt = generateSalt();
+          const newHash = hashPinWithSalt(cleanPin, newSalt);
+          await db.persona.update({
+            where: { id: p.id },
+            data: { pin: newHash, pinSalt: newSalt },
+          }).catch(err => console.error('Error migrando hash de personal:', err));
+        }
+        break;
+      }
     }
 
-    // ─── PENDIENTE CRÍTICO #1: Vinculación Estricta de Dispositivo Físico (Device Binding) ───
-    // Controlado por el Switch Maestro del SuperAdmin 9999 (por defecto DESACTIVADO/OFF).
-    // Solo aplica para tripulantes de cobro operativo (AYUDANTE) para evitar sesiones simultáneas no autorizadas.
-    // Los administradores y socios pueden acceder desde cualquier dispositivo para supervisión y gestión.
+    // ─── 3. Si la base está completamente virgen, permitir Bootstrap Seguro desde ENV ───
+    if (socios.length === 0 && personal.length === 0) {
+      const seedPin = process.env.SEED_SUPERADMIN_PIN;
+      if (seedPin && cleanPin === seedPin) {
+        const salt = generateSalt();
+        const pinHash = hashPinWithSalt(cleanPin, salt);
+        const superAdmin = await db.cuentaSocio.create({
+          data: {
+            cedula: '1100000000',
+            nombre: 'SuperAdmin SaaS (RutaGo)',
+            email: 'admin@rutago.app',
+            pinHash,
+            pinSalt: salt,
+            rol: 'SUPERADMIN_SAAS',
+            activo: true,
+            esFundadorSaaS: true,
+          },
+        });
+        recordSuccess(ip);
+        return NextResponse.json({
+          id: superAdmin.id,
+          nombre: superAdmin.nombre,
+          cedula: superAdmin.cedula,
+          rol: 'ADMIN',
+          subRol: superAdmin.rol,
+          socioId: superAdmin.id,
+          esFundadorSaaS: true,
+          esActual: true,
+        });
+      }
+    }
+
+    if (!matchedPersona) {
+      recordFailedAttempt(ip);
+      return NextResponse.json({ error: 'PIN no encontrado o no autorizado' }, { status: 401 });
+    }
+
+    // ─── 4. Vinculación Estricta de Dispositivo Físico (Device Binding) ───
     const deviceBindingConfig = await getDeviceBindingGlobalConfigAsync();
-    if (deviceBindingConfig.enabled && persona.rol === 'AYUDANTE' && deviceId) {
-      if (!persona.deviceId) {
+    if (deviceBindingConfig.enabled && matchedPersona.rol === 'AYUDANTE' && deviceId) {
+      if (!matchedPersona.deviceId) {
         // Primer login del ayudante: Enlazar automáticamente este teléfono como su dispositivo oficial
-        persona = await db.persona.update({
-          where: { id: persona.id },
+        matchedPersona = await db.persona.update({
+          where: { id: matchedPersona.id },
           data: {
             deviceId,
             deviceName: deviceName || 'Terminal Móvil',
             deviceLinkedAt: new Date(),
           },
         });
-      } else if (persona.deviceId !== deviceId) {
+      } else if (matchedPersona.deviceId !== deviceId) {
         // Dispositivo diferente: Rechazo estricto por seguridad
         recordFailedAttempt(ip);
-        const fechaEnlace = persona.deviceLinkedAt
-          ? new Date(persona.deviceLinkedAt).toLocaleDateString('es-EC')
+        const fechaEnlace = matchedPersona.deviceLinkedAt
+          ? new Date(matchedPersona.deviceLinkedAt).toLocaleDateString('es-EC')
           : '';
         return NextResponse.json(
           {
-            error: `Dispositivo no autorizado. Este usuario está vinculado al teléfono oficial del bus (${persona.deviceName || 'Móvil'}). Contacta al Socio/Admin para desvincularlo.`,
+            error: `Dispositivo no autorizado. Este usuario está vinculado al teléfono oficial del bus (${matchedPersona.deviceName || 'Móvil'}). Contacta al Socio/Admin para desvincularlo.`,
             deviceBlocked: true,
-            registeredDeviceName: persona.deviceName || 'Terminal Oficial',
+            registeredDeviceName: matchedPersona.deviceName || 'Terminal Oficial',
             registeredAt: fechaEnlace,
           },
           { status: 403 }
@@ -186,15 +181,16 @@ export async function POST(req: NextRequest) {
 
     recordSuccess(ip);
     return NextResponse.json({
-      id: persona.id,
-      nombre: persona.nombre,
-      rol: persona.rol,
-      esActual: persona.esActual,
-      deviceId: persona.deviceId || null,
-      deviceName: persona.deviceName || null,
+      id: matchedPersona.id,
+      nombre: matchedPersona.nombre,
+      rol: matchedPersona.rol,
+      socioId: matchedPersona.socioId || null,
+      esActual: matchedPersona.esActual,
+      deviceId: matchedPersona.deviceId || null,
+      deviceName: matchedPersona.deviceName || null,
     });
   } catch (error) {
     console.error('Error authenticating:', error);
-    return NextResponse.json({ error: 'Error de autenticacion' }, { status: 500 });
+    return NextResponse.json({ error: 'Error de autenticación' }, { status: 500 });
   }
 }

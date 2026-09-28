@@ -1,23 +1,94 @@
 import { db } from '@/lib/db';
+import { generateSalt, hashPinWithSalt } from '@/lib/pin-hash';
 
-// This runs during build to seed initial admin if no users exist
+// Seeding seguro para inicialización de base de datos sin PINs quemados en texto plano
 export async function seedIfEmpty() {
   try {
-    const count = await db.persona.count();
-    if (count === 0) {
-      await db.persona.create({
+    const adminCount = await db.cuentaSocio.count();
+    const personaCount = await db.persona.count();
+
+    if (adminCount === 0 && personaCount === 0) {
+      const superAdminPin = process.env.SEED_SUPERADMIN_PIN || '9999';
+      const saltSuper = generateSalt();
+      const hashSuper = hashPinWithSalt(superAdminPin, saltSuper);
+
+      await db.cuentaSocio.create({
         data: {
-          nombre: 'Administrador',
-          cedula: null,
-          telefono: null,
-          rol: 'ADMIN',
-          pin: '2107',
-          esActual: false,
+          cedula: '1100000000',
+          nombre: 'SuperAdmin SaaS (RutaGo)',
+          email: 'admin@rutago.app',
+          telefono: '0990000000',
+          pinHash: hashSuper,
+          pinSalt: saltSuper,
+          rol: 'SUPERADMIN_SAAS',
+          activo: true,
+          esFundadorSaaS: true,
         },
       });
-      console.log('Seed: Admin user created (PIN: 2107)');
+
+      const socioPin = process.env.SEED_SOCIO01_PIN || '0101';
+      const saltSocio = generateSalt();
+      const hashSocio = hashPinWithSalt(socioPin, saltSocio);
+
+      const socioFundador = await db.cuentaSocio.create({
+        data: {
+          cedula: '1103987654',
+          nombre: 'José Leonardo Jaya Jaramillo',
+          email: 'socio01@rutago.app',
+          telefono: '0987654321',
+          pinHash: hashSocio,
+          pinSalt: saltSocio,
+          rol: 'SOCIO',
+          activo: true,
+          esFundadorSaaS: true,
+        },
+      });
+
+      // Crear o vincular Bus 01
+      const bus01 = await db.bus.upsert({
+        where: { numeroDisco: '01' },
+        create: {
+          id: 'BUS-01',
+          numeroDisco: '01',
+          placa: 'TAA-5152',
+          marca: 'Hino AK',
+          modelo: 'AK',
+          anio: 2018,
+          capacidadAsientos: 45,
+          propietario: 'José Leonardo Jaya Jaramillo',
+          tipoOperacion: 'TRONCAL_VT',
+          activo: true,
+          socioId: socioFundador.id,
+          notas: 'Unidad Insignia - Socio Fundador RutaGo',
+        },
+        update: {
+          socioId: socioFundador.id,
+        },
+      });
+
+      // Suscripción Activa de Fundador para Bus 01
+      const hoy = new Date();
+      const proximoCorte = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 5);
+      await db.suscripcionBus.upsert({
+        where: { busId: bus01.id },
+        create: {
+          busId: bus01.id,
+          socioId: socioFundador.id,
+          montoMensual: 20.00,
+          diaCorteMensual: 5,
+          fechaInicio: new Date('2026-01-01'),
+          fechaUltimoPago: hoy,
+          fechaProximoCorte: proximoCorte,
+          estado: 'ACTIVA',
+          notasAdmin: 'Membresía Fundadora Vitalicia protegida - Bus 01',
+        },
+        update: {},
+      });
+
+      console.log('Seed: SuperAdmin y Socio Fundador Bus 01 creados con hashing criptográfico.');
     }
   } catch (error) {
     console.error('Seed error:', error);
   }
 }
+
