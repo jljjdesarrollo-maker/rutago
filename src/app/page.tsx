@@ -393,6 +393,7 @@ export default function Home() {
         onGoHome={() => setView('home')}
       >
         <MantenimientoScreen
+          currentUser={user}
           onBack={() => setView('home')}
           onGoToSocioGastos={() => setView('socio_gastos')}
         />

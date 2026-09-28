@@ -46,6 +46,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import type { UserSession } from './types';
 import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, setActiveBus, subscribeToActiveBus, subscribeToBusOdometer, INITIAL_PILOT_BUS } from '@/lib/fleet-storage';
 import {
   saveOwnerExpense,
@@ -118,18 +119,91 @@ export interface MantenimientoBusItem {
 }
 
 export interface MantenimientoScreenProps {
+  currentUser?: UserSession | null;
   onBack: () => void;
   onGoToSocioGastos?: () => void;
 }
 
-export function MantenimientoScreen({ onBack, onGoToSocioGastos }: MantenimientoScreenProps) {
+export function MantenimientoScreen({
+  currentUser,
+  onBack,
+  onGoToSocioGastos,
+}: MantenimientoScreenProps) {
   const { toast } = useToast();
 
+  const isSuperAdmin = currentUser?.rol === 'ADMIN' && currentUser?.subRol === 'SUPERADMIN_SAAS';
+  const isSocio = !isSuperAdmin;
+  const socioIdActual = currentUser?.socioId || (isSocio ? currentUser?.id : null);
+
+  const [availableBuses, setAvailableBuses] = useState<
+    Array<{ id: string; numeroDisco: string; placa: string; marca?: string; modelo?: string; propietario?: string; socioId?: string | null }>
+  >([]);
+  const [sociosList, setSociosList] = useState<
+    Array<{ id: string; nombre: string; cedula: string; buses?: Array<{ numeroDisco: string }> }>
+  >([]);
+  const [filtroSocioSuperAdmin, setFiltroSocioSuperAdmin] = useState<string>('TODOS');
+
   const [activeBusId, setActiveBusId] = useState<string>(() => {
+    if (currentUser?.busId) {
+      return currentUser.busId.startsWith('BUS-') ? currentUser.busId : `BUS-${currentUser.busId}`;
+    }
     if (typeof window === 'undefined') return 'BUS-01';
     return getActiveBusId();
   });
-  const buses = getAllBuses();
+
+  // Cargar lista de autobuses autorizados según rol y socioId
+  useEffect(() => {
+    let isMounted = true;
+    const loadBuses = async () => {
+      try {
+        let url = '/api/buses';
+        if (isSocio && socioIdActual) {
+          url += `?socioId=${encodeURIComponent(socioIdActual)}`;
+        } else if (isSuperAdmin && filtroSocioSuperAdmin !== 'TODOS') {
+          url += `?socioId=${encodeURIComponent(filtroSocioSuperAdmin)}`;
+        }
+        const res = await fetch(url);
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted && json.success && Array.isArray(json.data) && json.data.length > 0) {
+            setAvailableBuses(json.data);
+            // Si el bus actual no pertenece al socio, seleccionar su primera unidad
+            if (isSocio) {
+              const matchingBus = json.data.find(
+                (b: any) =>
+                  b.numeroDisco === activeBusId ||
+                  `BUS-${b.numeroDisco}` === activeBusId ||
+                  b.id === activeBusId
+              );
+              if (!matchingBus) {
+                const newId = `BUS-${json.data[0].numeroDisco}`;
+                setActiveBusId(newId);
+                setActiveBus(newId);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error cargando lista de unidades:', err);
+      }
+    };
+    loadBuses();
+    return () => {
+      isMounted = false;
+    };
+  }, [isSocio, isSuperAdmin, socioIdActual, filtroSocioSuperAdmin]);
+
+  // Si es SuperAdmin, cargar padrón completo de socios
+  useEffect(() => {
+    if (isSuperAdmin) {
+      fetch('/api/saas/socios')
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => setSociosList(Array.isArray(data) ? data : []))
+        .catch(() => {});
+    }
+  }, [isSuperAdmin]);
+
+  const buses = availableBuses.length > 0 ? availableBuses : getAllBuses();
   const currentBus = buses.find(b => b.id === activeBusId) ||
     buses.find(b => b.numeroDisco === activeBusId || `BUS-${b.numeroDisco}` === activeBusId) ||
     buses[0] ||
@@ -2251,13 +2325,14 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                   <select
                     value={activeBusId}
                     onChange={(e) => {
-                      const newBus = setActiveBus(e.target.value);
-                      setActiveBusId(newBus.id);
+                      const selectedVal = e.target.value;
+                      const newBus = setActiveBus(selectedVal);
+                      setActiveBusId(newBus.id || selectedVal);
                     }}
                     className="text-[11px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-500 text-slate-950 border-none cursor-pointer focus:ring-2 focus:ring-amber-300 shadow-sm"
                   >
                     {buses.map(b => (
-                      <option key={b.id} value={b.id}>
+                      <option key={b.id || b.numeroDisco} value={b.id || `BUS-${b.numeroDisco}`}>
                         Bus {b.numeroDisco} ({b.placa})
                       </option>
                     ))}
@@ -2267,12 +2342,20 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
                     {currentBus ? `Bus ${currentBus.numeroDisco}` : 'Bus 01'}
                   </span>
                 )}
-                <Badge className="bg-blue-900/80 text-blue-200 border-blue-700 text-[10px] py-0 px-2">
-                  PIN 2107 Socio
-                </Badge>
+                {isSuperAdmin ? (
+                  <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/50 text-[10px] py-0 px-2 font-bold">
+                    🏢 SuperAdmin SaaS
+                  </Badge>
+                ) : (
+                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/50 text-[10px] py-0 px-2 font-bold">
+                    🔒 {currentUser?.nombre ? `Socio: ${currentUser.nombre}` : 'Socio Propietario'}
+                  </Badge>
+                )}
               </div>
               <p className="text-[11px] text-slate-300 font-medium">
-                Gestión patrimonial, alertas y delegación a chofer
+                {isSuperAdmin
+                  ? 'Gobernanza de recetas maestras y calibración de flota'
+                  : 'Gestión patrimonial, recetas y alertas de tu unidad'}
               </p>
             </div>
           </div>
@@ -2299,6 +2382,84 @@ export function MantenimientoScreen({ onBack, onGoToSocioGastos }: Mantenimiento
       </header>
 
       <main className="flex-1 px-4 py-4 max-w-xl mx-auto w-full flex flex-col gap-4 pb-20">
+        {/* BARRA TÁCTICA MULTI-TENANT: SELECCIÓN DE UNIDAD Y GOBERNANZA (SUBFASE 3.3) */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-3 shadow-xs space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <span className={`px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider ${
+                isSuperAdmin
+                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                  : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+              }`}>
+                {isSuperAdmin ? '🏢 SuperAdmin' : '🔒 Unidad Privada'}
+              </span>
+              <span className="text-xs font-bold text-slate-800">
+                {isSuperAdmin
+                  ? 'Configuración Desacoplada por Unidad'
+                  : `Disco ${activeBusDisco} (${activeBusPlaca})`}
+              </span>
+            </div>
+            {isSocio && (
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Recetas Aisladas
+              </span>
+            )}
+          </div>
+
+          {/* Si es SuperAdmin, filtro por socio */}
+          {isSuperAdmin && sociosList.length > 0 && (
+            <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+              <label className="text-[11px] font-bold text-slate-500 whitespace-nowrap">Socio:</label>
+              <select
+                value={filtroSocioSuperAdmin}
+                onChange={(e) => setFiltroSocioSuperAdmin(e.target.value)}
+                className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-slate-800"
+              >
+                <option value="TODOS">Todos los Socios (Toda la Flota)</option>
+                {sociosList.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nombre} ({s.buses?.map((b) => `Bus ${b.numeroDisco}`).join(', ') || 'Sin bus'})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Chips de selección de unidad si hay más de 1 bus */}
+          {buses.length > 1 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar pt-1 border-t border-slate-100">
+              <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">Unidad:</span>
+              {buses.map((b) => {
+                const idVariant = b.id || `BUS-${b.numeroDisco}`;
+                const isSelected = activeBusId === idVariant || activeBusId === b.numeroDisco || activeBusId === `BUS-${b.numeroDisco}`;
+                return (
+                  <button
+                    key={b.id || b.numeroDisco}
+                    type="button"
+                    onClick={() => {
+                      const newBus = setActiveBus(idVariant);
+                      setActiveBusId(newBus.id || idVariant);
+                    }}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-black transition whitespace-nowrap flex items-center gap-1 active:scale-95 shrink-0 ${
+                      isSelected
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    <span>Bus {b.numeroDisco}</span>
+                    {b.placa && (
+                      <span className={`text-[9px] font-mono px-1 rounded ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                      }`}>
+                        {b.placa}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
         {/* BANNER GERENCIAL DE CONTROL OPTATIVO DEL MÓDULO */}
         <div className="bg-white rounded-3xl border border-slate-200/90 p-4 shadow-sm flex flex-col gap-3">
           <div className="flex items-center justify-between">

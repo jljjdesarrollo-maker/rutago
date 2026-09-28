@@ -401,16 +401,38 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+## 🚀 AVANCE SUBFASE 3.3 COMPLETADO: MANTENIMIENTO DESACOPLADO POR UNIDAD (2026-09-28)
+- **Estado:** 🟢 COMPLETADO Y VALIDADO AL 100%. Build de Next.js 16.1.3 + Turbopack verificado con 0 errores (24 rutas dinámicas y estáticas generadas).
+- **1. Aislamiento Multi-Tenant y Soberanía de Unidad en Mantenimiento (`MantenimientoScreen.tsx`):**
+  - **Socio Propietario (`isSocio`):**
+    - Inyección de `currentUser={user}` en `page.tsx` para sincronización de sesión y rol en tiempo real.
+    - Carga dinámica y filtrada de unidades (`/api/buses?socioId=${socioId}`). Si el socio tiene 1 unidad asignada, el sistema se calibra automáticamente a esa unidad.
+    - Selector ergonómico de unidades (`buses.length > 1`) con chips táctiles para alternar entre autobuses propios (ej. Bus 01 y Bus 16), manteniendo aislamiento estricto respecto a unidades de otros socios.
+    - Badge dinámico en cabecera: `[ 🔒 Socio: Nombre del Socio ]` (sustituido el texto quemado estático).
+    - Cero interferencia: personalizaciones de recetas por estación (`BusRecetaCombo`), exclusiones de ítems y durabilidad (`BusItemOverride`) persisten y operan de forma 100% aislada por `busId`.
+  - **SuperAdministrador SaaS (`isSuperAdmin`):**
+    - Distintivo `[ 🏢 SuperAdmin SaaS • Gobernanza de recetas maestras y calibración de flota ]`.
+    - Selector / filtro interactivo por Socio Propietario para auditar y configurar el plan mecánico de cualquier autobús de la cooperativa.
+    - Selector global de toda la flota.
+- **2. Arquitectura de Cascada Backend (`/api/config/mantenimiento`):**
+  - Resolución en cascada garantizada: Catálogo Maestro Global + Overrides de Unidad + Combos por Autobús.
+  - Sincronización bidireccional y guardado aislado por `busId` en PostgreSQL (`SYS_CONFIG_MANTENIMIENTO`).
+- **3. Certificación Técnica:**
+  - Compilación Next.js con Turbopack exitosa (25.2s, 0 errores).
+  - Dev server en puerto 3000 respondiendo `HTTP/1.1 200 OK`.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado de la Fase 3:
    - **Subfase 3.1: Aislamiento de Personal y Tripulación (`PersonalScreen` y `/api/personas`)** ✅ COMPLETADA.
    - **Subfase 3.2: Privacidad Total de Gastos y Finanzas (`OwnerExpensesScreen` y `/api/owner-expenses`)** ✅ COMPLETADA.
-   - **Subfase 3.3: Mantenimiento Desacoplado por Unidad (`BusItemOverride` y `BusRecetaCombo`)** 🟡 SIGUIENTE PENDIENTE.
-   - **Subfase 3.4: Ergonomía Móvil y Auditoría Integral de Roles** ⚪ PENDIENTE.
+   - **Subfase 3.3: Mantenimiento Desacoplado por Unidad (`BusItemOverride` y `BusRecetaCombo`)** ✅ COMPLETADA.
+   - **Subfase 3.4: Ergonomía Móvil y Auditoría Integral de Roles** 🟡 SIGUIENTE PENDIENTE.
 4. Indicar al agente:  
-   `"Continuamos con la SUBFASE 3.3: Mantenimiento Desacoplado por Unidad (BusItemOverride y BusRecetaCombo)"`.
+   `"Continuamos con la SUBFASE 3.4: Ergonomía Móvil y Auditoría Integral de Roles"`.
 
 
 

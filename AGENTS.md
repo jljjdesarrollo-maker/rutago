@@ -74,6 +74,13 @@
    - Modal de nuevo gasto con asignación dinámica de unidad.
    - Commit: `feat(saas): subfase 3.2 - privacidad total de gastos y finanzas multi-tenant`
 
+14. **v3.60.27 - Subfase 3.3 (Mantenimiento Desacoplado por Unidad y Soberanía de Recetas):** ✅ COMPLETADA
+   - Inyección de `currentUser={user}` en `MantenimientoScreen.tsx` desde `page.tsx`.
+   - Aislamiento estricto de unidades del socio (`/api/buses?socioId=...`): selector ergonómico para socios con múltiples unidades sin visibilidad de flota ajena.
+   - Modo SuperAdmin SaaS con filtro dinámico por Socio Propietario y visor global de unidades.
+   - Persistencia y desacoplamiento garantizados: `BusRecetaCombo` y `BusItemOverride` operan de forma 100% aislada por `busId`.
+   - Commit: `feat(saas): subfase 3.3 - mantenimiento desacoplado por unidad y soberania de recetas`
+
 ---
 
 ### 🏛️ REGLAS DE ARQUITECTURA OFICIAL IMPLEMENTADAS:
