@@ -454,15 +454,32 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+## 🚀 MODULARIZACIÓN DE MANTENIMIENTO Y RESOLUCIÓN "GUARDAR AJUSTE" (2026-09-28)
+- **Diagnóstico Inicial:**
+  * En la tarjeta del tacómetro de `MantenimientoScreen.tsx` existía un pseudo-botón `<span>Guardar ajuste</span>` sin eventos interactivos y un input que guardaba en `onBlur`, causando fallos de usabilidad en dispositivos táctiles.
+  * El archivo `MantenimientoScreen.tsx` acumulaba 5.700 líneas (270 KB), saturando el compilador y parser AST.
+- **Fase 1: Odómetro y Modal de Calibración (Opción B - Autonomía del Socio):** ✅ COMPLETADA
+  * Archivo: `src/components/transport/mantenimiento/MantenimientoOdometroCard.tsx`.
+  * Tarjeta ejecutiva con semáforos, tacómetro auditado y botón ergonómico `[ ⚙️ Calibrar Odómetro ]` (mínimo 48px).
+  * Modal formal de calibración con comparador en vivo, indicador reactivo de variación (+ avance o alerta de retroceso justificado), selector de motivos, observaciones, botón real interactivo `[ Guardar Ajuste de Tacómetro ]` y evento reactivo `rg_bus_odometer_updated`.
+- **Fase 2: Políticas de Servicio y Ajuste Rápido de Ciclos:** ✅ COMPLETADA
+  * Archivos: 
+    - `src/components/transport/mantenimiento/MantenimientoPoliticasModal.tsx` (Búsqueda rápida, edición de intervalos por componente y botón "Restablecer Fábrica").
+    - `src/components/transport/mantenimiento/MantenimientoAjusteRapidoModal.tsx` (Mini-modal rápido desde tarjeta con sugerencias 4k, 5k, 6k, 7k km, auditoría en BD PostgreSQL y validación de red online).
+  * Reducción de más de 350 líneas de código monolítico en `MantenimientoScreen.tsx`.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado Actual:
    - **Fase 3: Arquitectura Multi-Tenant SaaS y Soberanía por Socio:** 🟢 100% COMPLETADA Y DESPLEGADA.
+   - **Modularización de Mantenimiento:** Subcomponentes de Odómetro, Políticas de Unidad y Ajuste Rápido 100% desacoplados.
 4. Próxima Etapa Operativa:
-   - **Fase 4: Pruebas de Campo en Carretera, Calibración de Arqueos y Certificación de Producción Real.**
+   - Continuar con la extracción de `MantenimientoEstacionesModal.tsx` y `MantenimientoHistorialModal.tsx` o avanzar hacia la **Fase 4: Pruebas de Campo en Carretera**.
 5. Indicar al agente:  
-   `"Continuamos con la Fase 4: Pruebas de Campo y Calibración Operativa en Carretera"`.
+   `"Continuamos con la modularización de MantenimientoScreen o con la Fase 4: Pruebas de Campo"`.
 
 
 

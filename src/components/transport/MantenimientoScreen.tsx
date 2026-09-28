@@ -47,6 +47,9 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import type { UserSession } from './types';
+import { MantenimientoOdometroCard } from './mantenimiento/MantenimientoOdometroCard';
+import { MantenimientoPoliticasModal } from './mantenimiento/MantenimientoPoliticasModal';
+import { MantenimientoAjusteRapidoModal } from './mantenimiento/MantenimientoAjusteRapidoModal';
 import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, setActiveBus, subscribeToActiveBus, subscribeToBusOdometer, INITIAL_PILOT_BUS } from '@/lib/fleet-storage';
 import {
   saveOwnerExpense,
@@ -609,15 +612,11 @@ export function MantenimientoScreen({
     return getBusItemsActivosConfig(activeBusId);
   });
   const [mostrarSoloActivos, setMostrarSoloActivos] = useState<boolean>(true);
-  const [mostrarCalibrarOdo, setMostrarCalibrarOdo] = useState<boolean>(false);
   const [mostrarEstacionesSocio, setMostrarEstacionesSocio] = useState<boolean>(false);
   const [isPoliticasModalOpen, setIsPoliticasModalOpen] = useState<boolean>(false);
   const { isOnline } = useNetworkStatus();
-  const [isGuardandoIntervalo, setIsGuardandoIntervalo] = useState<boolean>(false);
   const [itemParaAjustarIntervalo, setItemParaAjustarIntervalo] = useState<MantenimientoBusItem | null>(null);
-  const [nuevoIntervaloVal, setNuevoIntervaloVal] = useState<string>('');
   const [intervaloRegistro, setIntervaloRegistro] = useState<string>('');
-  const [politicaBusqueda, setPoliticaBusqueda] = useState<string>('');
 
   // Decisión del Socio: ¿Desea utilizar las funciones de mantenimiento o solo operativas?
   const [moduloActivo, setModuloActivo] = useState<boolean>(() => {
@@ -1396,15 +1395,14 @@ export function MantenimientoScreen({
     setIsComboRuedasModalOpen(false);
   };
 
-  const handleUpdateKmActual = (nuevoKmStr: string) => {
-    const num = parseInt(nuevoKmStr, 10);
-    if (!isNaN(num) && num > 0) {
-      setKmActual(num);
-      localStorage.setItem(`rg_last_km_${activeBusId}`, num.toString());
-      toast({
-        title: 'Tacómetro Actualizado',
-        description: `Odómetro base ajustado a ${num.toLocaleString()} km`,
-      });
+  const handleUpdateKmActual = (nuevoKm: number, motivo: string) => {
+    if (nuevoKm > 0) {
+      setKmActual(nuevoKm);
+      localStorage.setItem(`rg_last_km_${activeBusId}`, nuevoKm.toString());
+      saveBusOdometer(activeBusDisco, nuevoKm.toString(), motivo);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('rg_bus_odometer_updated'));
+      }
     }
   };
 
@@ -1588,6 +1586,26 @@ export function MantenimientoScreen({
 
     const updated = items.map(x => (x.id === itemId ? { ...x, intervaloKm: nuevoIntervalo } : x));
     saveItems(updated);
+  };
+
+  const handleRestablecerFabrica = () => {
+    const catalogoOficial = getCatalogoMaestroGlobal();
+    const actualizados = items.map(it => {
+      const ofi = catalogoOficial.find(c => c.codigo === it.codigo);
+      if (ofi) {
+        return { ...it, intervaloKm: ofi.intervaloKmOficial };
+      }
+      return it;
+    });
+    saveItems(actualizados);
+    localStorage.removeItem(`rg_bus_intervalos_override_${activeBusId}`);
+    pushMantenimientoConfigAlServidor(activeBusId, {
+      intervalosPersonalizados: {},
+    });
+    toast({
+      title: "Intervalos Restablecidos",
+      description: `Se restauraron los ciclos oficiales para la Unidad ${activeBusDisco}.`,
+    });
   };
 
   const handleToggleChofer = (id: string, asignado: boolean) => {
@@ -2593,76 +2611,16 @@ export function MantenimientoScreen({
           </div>
         ) : (
           <>
-        {/* Odómetro Actual del Tablero */}
-        <Card className="rounded-3xl border-none bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white shadow-lg overflow-hidden">
-          <CardContent className="p-4.5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Gauge className="w-5 h-5 text-amber-400" />
-                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  Odómetro / Tacómetro Actual
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-black px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3" /> Auditado Flota
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-baseline justify-between mb-3">
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black tracking-tight text-white">
-                  {(kmActual ?? 187420).toLocaleString()}
-                </span>
-                <span className="text-sm font-bold text-amber-400">km</span>
-              </div>
-
-              {/* Indicadores rápidos de estado */}
-              <div className="flex items-center gap-2">
-                {totalVencidos > 0 && (
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-600/90 text-white flex items-center gap-1 animate-pulse">
-                    <AlertTriangle className="w-3.5 h-3.5" /> {totalVencidos} vencidos
-                  </span>
-                )}
-                {totalProximos > 0 && (
-                  <span className="text-xs font-bold px-2 py-1 rounded-lg bg-amber-500 text-slate-950 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" /> {totalProximos} próximos
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-white/10 flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-300">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Tacómetro alimentado del arqueo de caja registrado por el ayudante al cerrar el VT</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMostrarCalibrarOdo(!mostrarCalibrarOdo)}
-                className="text-[10px] font-bold text-amber-400 hover:text-amber-300 underline cursor-pointer"
-              >
-                {mostrarCalibrarOdo ? "Cerrar ajuste" : "Calibrar manual"}
-              </button>
-            </div>
-
-            {mostrarCalibrarOdo && (
-              <div className="mt-3 p-3 rounded-2xl bg-black/30 border border-white/10 flex items-center gap-2">
-                <Input
-                  type="number"
-                  placeholder="Ajustar tacómetro actual..."
-                  defaultValue={kmActual}
-                  onBlur={e => handleUpdateKmActual(e.target.value)}
-                  className="h-8 rounded-xl bg-white/10 border-white/20 text-white text-xs placeholder:text-white/40 font-bold"
-                />
-                <span className="text-[10px] text-slate-300 shrink-0 font-medium">
-                  Guardar ajuste
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Odómetro Actual del Tablero (Modularizado con Modal de Autonomía) */}
+        <MantenimientoOdometroCard
+          activeBusDisco={activeBusDisco}
+          activeBusPlaca={activeBusPlaca}
+          activeBusId={activeBusId}
+          kmActual={kmActual}
+          totalVencidos={totalVencidos}
+          totalProximos={totalProximos}
+          onUpdateKm={handleUpdateKmActual}
+        />
 
         {/* ========================================================= */}
         {/* ASISTENTE DE NIVELES DE CONTROL (BÁSICO 7 | MEDIO 15 | TOTAL 27) */}
@@ -5090,319 +5048,31 @@ export function MantenimientoScreen({
         </div>
       )}
 
-      {/* MODAL DE POLÍTICAS DE FLOTA / PARÁMETROS DEL SOCIO */}
-            {/* Modal de Políticas de Servicio de Unidad (Autonomía del Socio) */}
-      {isPoliticasModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-5 shadow-2xl space-y-4 max-h-[90vh] flex flex-col border border-slate-200">
-            <div className="flex items-center justify-between border-b pb-3 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-2xl bg-amber-100 text-amber-800">
-                  <Settings2 className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">
-                    Políticas de Servicio — Unidad {activeBusDisco}
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Define los intervalos según las marcas y especificaciones de lubricante que usas
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsPoliticasModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100"
-              >
-                ✕
-              </button>
-            </div>
+      {/* MODAL DE POLÍTICAS DE SERVICIO (MODULARIZADO) */}
+      <MantenimientoPoliticasModal
+        isOpen={isPoliticasModalOpen}
+        onClose={() => setIsPoliticasModalOpen(false)}
+        activeBusDisco={activeBusDisco}
+        activeBusId={activeBusId}
+        items={items}
+        onActualizarIntervalo={handleActualizarIntervaloUnidad}
+        onRestablecerFabrica={handleRestablecerFabrica}
+      />
 
-            <div className="space-y-3 overflow-y-auto pr-1 flex-1 text-xs">
-              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 leading-relaxed">
-                💡 <strong>Autonomía del Socio:</strong> Si utilizas aceite sintético de mayor duración (ej. 6,000 o 7,000 km) o lubricas zapatas con distinta frecuencia, ajusta los parámetros aquí. Los cambios se guardan exclusivamente para la <strong>Unidad {activeBusDisco}</strong> y se sincronizan en tiempo real con tu teléfono.
-              </div>
-
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-                <Input
-                  value={politicaBusqueda}
-                  onChange={e => setPoliticaBusqueda(e.target.value)}
-                  placeholder="Buscar componente (aceite, filtro, chasis, frenos...)"
-                  className="h-8 pl-8 text-xs rounded-xl bg-slate-50 border-slate-200"
-                />
-              </div>
-
-              <div className="space-y-2.5">
-                {items
-                  .filter(it => {
-                    if (!politicaBusqueda.trim()) return true;
-                    const q = politicaBusqueda.toLowerCase();
-                    return (
-                      it.nombre.toLowerCase().includes(q) ||
-                      (it.codigo && it.codigo.toLowerCase().includes(q)) ||
-                      (it.categoria && it.categoria.toLowerCase().includes(q))
-                    );
-                  })
-                  .map(it => (
-                    <div
-                      key={it.id}
-                      className="p-3 rounded-2xl border border-slate-200 bg-slate-50/70 flex items-center justify-between gap-3 hover:bg-white transition-colors"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="text-[9px] font-mono font-bold bg-white text-slate-700 px-1.5 py-0.2 rounded border">
-                            {it.codigo || 'MNT'}
-                          </span>
-                          <span className="text-xs font-black text-slate-900 truncate">
-                            {it.nombre}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-500 truncate">
-                          {it.repuestoDetalle || it.categoria.replace('_', ' ')}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Input
-                          key={`${it.id}_${it.intervaloKm}`}
-                          type="number"
-                          step="500"
-                          defaultValue={it.intervaloKm}
-                          onBlur={e => {
-                            const val = parseInt(e.target.value, 10);
-                            if (!isNaN(val) && val > 0 && val !== it.intervaloKm) {
-                              handleActualizarIntervaloUnidad(it.id, it.codigo, val);
-                            }
-                          }}
-                          className="w-24 h-8 text-xs font-black text-right rounded-xl bg-white border-slate-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
-                        />
-                        <span className="text-slate-500 font-bold text-[11px]">km</span>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-
-            <div className="pt-3 border-t flex items-center justify-between shrink-0">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const catalogoOficial = getCatalogoMaestroGlobal();
-                  const actualizados = items.map(it => {
-                    const ofi = catalogoOficial.find(c => c.codigo === it.codigo);
-                    if (ofi) {
-                      return { ...it, intervaloKm: ofi.intervaloKmOficial };
-                    }
-                    return it;
-                  });
-                  saveItems(actualizados);
-                  localStorage.removeItem(`rg_bus_intervalos_override_${activeBusId}`);
-                  pushMantenimientoConfigAlServidor(activeBusId, {
-                    intervalosPersonalizados: {},
-                  });
-                  toast({
-                    title: "Intervalos Restablecidos",
-                    description: `Se restauraron los ciclos oficiales para la Unidad ${activeBusDisco}.`,
-                  });
-                }}
-                className="h-9 text-xs font-bold text-slate-600 rounded-xl"
-              >
-                Restablecer Fábrica
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setIsPoliticasModalOpen(false)}
-                className="h-9 px-5 text-xs font-black rounded-xl bg-slate-900 text-white hover:bg-slate-800"
-              >
-                Listo y Aplicar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Mini-Modal Rápido: Ajustar Ciclo Directamente desde la Tarjeta */}
-      {itemParaAjustarIntervalo && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-4 border border-slate-200">
-            <div className="flex items-center justify-between border-b pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-100 text-amber-800">
-                  <Settings2 className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900">
-                    Ajustar Ciclo de Servicio
-                  </h3>
-                  <p className="text-[11px] font-bold text-amber-700">
-                    Unidad {activeBusDisco} (Autonomía del Socio)
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setItemParaAjustarIntervalo(null)}
-                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  Mantenimiento:
-                </span>
-                <p className="text-xs font-black text-slate-900">
-                  {itemParaAjustarIntervalo.nombre}
-                </p>
-                <p className="text-[10px] text-slate-600">
-                  {itemParaAjustarIntervalo.repuestoDetalle || "Parámetro de desgaste de unidad"}
-                </p>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Cada cuántos kilómetros se debe renovar:
-                </label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    step="500"
-                    value={nuevoIntervaloVal}
-                    onChange={e => setNuevoIntervaloVal(e.target.value)}
-                    className="h-11 rounded-2xl text-base font-black text-center bg-amber-50/60 border-amber-300 text-slate-900 pr-10"
-                    autoFocus
-                  />
-                  <span className="absolute right-3.5 top-3 text-xs font-black text-amber-800">
-                    km
-                  </span>
-                </div>
-              </div>
-
-              {/* Botones de sugerencias rápidas comunes */}
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-400">Sugerencias rápidas:</span>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[4000, 5000, 6000, 7000].map(kmVal => (
-                    <button
-                      key={kmVal}
-                      type="button"
-                      onClick={() => setNuevoIntervaloVal(kmVal.toString())}
-                      className={`py-1 text-[11px] font-black rounded-lg border transition-all ${
-                        nuevoIntervaloVal === kmVal.toString()
-                          ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                          : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                      }`}
-                    >
-                      {(kmVal / 1000).toFixed(0)}k km
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {!isOnline && (
-                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-2 text-xs">
-                  <WifiOff className="w-4 h-4 text-rose-600 shrink-0 animate-pulse" />
-                  <span className="font-semibold text-[11px] leading-tight">
-                    Sin conexión al servidor central. Conéctese a internet para poder asentar este cambio en la base de datos.
-                  </span>
-                </div>
-              )}
-              <p className="text-[10px] text-slate-500 leading-tight">
-                🛡️ La base de datos central auditará y confirmará la actualización antes de asentarla.
-              </p>
-            </div>
-
-            <div className="pt-2 flex items-center justify-end gap-2 border-t">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setItemParaAjustarIntervalo(null)}
-                className="text-xs font-bold text-slate-500"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                disabled={!isOnline || isGuardandoIntervalo}
-                onClick={async () => {
-                  const valNum = parseInt(nuevoIntervaloVal, 10);
-                  if (!valNum || valNum <= 0) return;
-                  
-                  if (!isOnline) {
-                    toast({
-                      variant: "destructive",
-                      title: "Sin Conexión a Internet ⚠️",
-                      description: "No se puede guardar el kilometraje sin conexión al servidor central.",
-                    });
-                    return;
-                  }
-
-                  setIsGuardandoIntervalo(true);
-                  try {
-                    const resAuditoria = await auditarYGuardarIntervaloEnBD(
-                      activeBusId,
-                      itemParaAjustarIntervalo.codigo || "",
-                      valNum
-                    );
-
-                    if (resAuditoria.confirmadoEnNube) {
-                      // Actualizar memoria local en React
-                      const updated = items.map((x) =>
-                        x.id === itemParaAjustarIntervalo.id ? { ...x, intervaloKm: valNum } : x
-                      );
-                      saveItems(updated);
-                      toast({
-                        title: "Auditoría en BD Exitosa 🛡️",
-                        description: `${itemParaAjustarIntervalo.nombre}: verificado y asentado en PostgreSQL a ${valNum.toLocaleString()} km.`,
-                      });
-                      setItemParaAjustarIntervalo(null);
-                    } else {
-                      toast({
-                        variant: "destructive",
-                        title: "Error al Asentar en Servidor ❌",
-                        description: resAuditoria.mensaje || "La base de datos central no confirmó el cambio. Intente nuevamente.",
-                      });
-                    }
-                  } catch (e: any) {
-                    toast({
-                      variant: "destructive",
-                      title: "Fallo de Comunicación ❌",
-                      description: e?.message || "Error al conectar con la base de datos.",
-                    });
-                  } finally {
-                    setIsGuardandoIntervalo(false);
-                  }
-                }}
-                className={`text-xs font-black text-white rounded-xl px-4 transition-all ${
-                  !isOnline || isGuardandoIntervalo
-                    ? "bg-slate-400 cursor-not-allowed opacity-80"
-                    : "bg-amber-600 hover:bg-amber-700"
-                }`}
-              >
-                {isGuardandoIntervalo ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                    Guardando en BD...
-                  </>
-                ) : !isOnline ? (
-                  <>
-                    <WifiOff className="w-3.5 h-3.5 mr-1.5" />
-                    Sin Conexión
-                  </>
-                ) : (
-                  "Guardar Intervalo"
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* MINI-MODAL RÁPIDO: AJUSTE DE CICLO DIRECTAMENTE DESDE LA TARJETA (MODULARIZADO) */}
+      <MantenimientoAjusteRapidoModal
+        item={itemParaAjustarIntervalo}
+        onClose={() => setItemParaAjustarIntervalo(null)}
+        activeBusDisco={activeBusDisco}
+        activeBusId={activeBusId}
+        isOnline={isOnline}
+        onIntervaloGuardado={(itemId, valNum) => {
+          const updated = items.map(x =>
+            x.id === itemId ? { ...x, intervaloKm: valNum } : x
+          );
+          saveItems(updated);
+        }}
+      />
 
       {/* ========================================================= */}
       {/* MODAL DE REGISTRO DE ABONO A TALLER (FASE 4)              */}
