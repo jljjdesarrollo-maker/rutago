@@ -81,6 +81,12 @@
    - Persistencia y desacoplamiento garantizados: `BusRecetaCombo` y `BusItemOverride` operan de forma 100% aislada por `busId`.
    - Commit: `feat(saas): subfase 3.3 - mantenimiento desacoplado por unidad y soberania de recetas`
 
+15. **v3.60.27 - Subfase 3.4 (Ergonomía Móvil a Una Sola Mano y Auditoría Integral de Roles):** ✅ COMPLETADA
+   - Blindaje de roles y permisos en `page.tsx`: bloqueo estricto de rutas socio/admin a choferes y ayudantes sin privilegios.
+   - Barra táctica fija al pulgar (Thumb Zone) en `HomeScreen.tsx` para acceso ultra-rápido ergonómico adaptado a cada rol (`[ 🎫 Emitir Boletos ]`, `[ 🔧 Mantenimiento ]`, `[ 💰 Gastos del Bus ]`, `[ 🏢 SaaS ]`).
+   - Cierre y certificación al 100% de la Fase 3 de Arquitectura Multi-Tenant SaaS.
+   - Commit: `feat(saas): subfase 3.4 - ergonomia movil a una sola mano y auditoria integral de roles`
+
 ---
 
 ### 🏛️ REGLAS DE ARQUITECTURA OFICIAL IMPLEMENTADAS:

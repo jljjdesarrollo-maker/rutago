@@ -34,6 +34,7 @@ import {
   Sparkle,
   Phone,
   ExternalLink,
+  Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -493,7 +494,7 @@ export function HomeScreen({
       </header>
 
       {/* Main Actions */}
-      <main className="flex-1 px-5 pb-8 flex flex-col gap-4">
+      <main className="flex-1 px-5 pb-28 flex flex-col gap-4">
 
         {/* ─── PILAR 1: DÍA A DÍA (OPERACIÓN Y CAJA DE HOY) ─── */}
         {/* Widget de Mantenimiento: SOLO si el socio lo activó expresamente para su unidad */}
@@ -940,9 +941,81 @@ export function HomeScreen({
       </main>
 
       {/* Footer */}
-      <footer className="py-4 text-center text-xs text-[#3A3A3A]/40 font-medium">
-        RutaGo v3.56.0 • Control de Transporte
+      <footer className="py-4 text-center text-xs text-[#3A3A3A]/40 font-medium pb-24">
+        RutaGo v3.60.27 • Control de Transporte
       </footer>
+
+      {/* BARRA TÁCTICA FIJA AL PULGAR (THUMB ZONE - ERGONOMÍA A UNA SOLA MANO) */}
+      <aside aria-label="Acciones Rápidas" className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-200/90 px-4 py-2.5 shadow-[0_-4px_25px_rgba(0,0,0,0.08)]">
+        <div className="max-w-md mx-auto flex items-center gap-2">
+          {/* Si es AYUDANTE: Botón táctico primario para emisión de boletos en ruta */}
+          {user.rol === 'AYUDANTE' && onGoToBoletos && (
+            <Button
+              onClick={handleAyudanteBoletosClick}
+              className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 active:scale-95 transition cursor-pointer"
+            >
+              <Ticket className="w-5 h-5" />
+              <span>Emitir Boletos (Jornada)</span>
+            </Button>
+          )}
+
+          {/* Si es CONDUCTOR: Acceso rápido a Mantenimiento y Registros de Turno */}
+          {user.rol === 'CONDUCTOR' && (
+            <>
+              {onGoToMantenimiento && (
+                <Button
+                  onClick={onGoToMantenimiento}
+                  className="flex-1 h-12 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95 transition cursor-pointer"
+                >
+                  <Wrench className="w-4 h-4" />
+                  <span>Mantenimiento</span>
+                </Button>
+              )}
+              <Button
+                onClick={onGoToHistory}
+                variant="outline"
+                className="flex-1 h-12 rounded-2xl border-gray-300 text-gray-800 font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 active:scale-95 transition cursor-pointer"
+              >
+                <History className="w-4 h-4 text-gray-600" />
+                <span>Mis Vueltas</span>
+              </Button>
+            </>
+          )}
+
+          {/* Si es SOCIO / ADMIN: Acceso directo a Gastos del Bus y Mantenimiento */}
+          {isAdmin && (
+            <>
+              {onGoToSocioGastos && (
+                <Button
+                  onClick={onGoToSocioGastos}
+                  className="flex-1 h-12 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-700/20 active:scale-95 transition cursor-pointer"
+                >
+                  <Receipt className="w-4 h-4" />
+                  <span>Gastos del Bus</span>
+                </Button>
+              )}
+              {onGoToMantenimiento && (
+                <Button
+                  onClick={onGoToMantenimiento}
+                  className="flex-1 h-12 rounded-2xl bg-slate-900 hover:bg-black text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-slate-900/20 active:scale-95 transition cursor-pointer"
+                >
+                  <Wrench className="w-4 h-4 text-amber-400" />
+                  <span>Mantenimiento</span>
+                </Button>
+              )}
+              {isSuperAdmin && onGoToSaaSAdmin && (
+                <Button
+                  onClick={onGoToSaaSAdmin}
+                  className="h-12 w-12 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20 active:scale-95 transition cursor-pointer"
+                  title="Panel SaaS"
+                >
+                  <Building2 className="w-5 h-5" />
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

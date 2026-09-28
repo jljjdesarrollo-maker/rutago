@@ -423,16 +423,46 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+## 🚀 AVANCE SUBFASE 3.4 COMPLETADO: ERGONOMÍA MÓVIL Y AUDITORÍA INTEGRAL DE ROLES (2026-09-28)
+- **Estado:** 🟢 COMPLETADO Y VALIDADO AL 100%. Build de Next.js 16.1.3 + Turbopack verificado con 0 errores (24 rutas dinámicas y estáticas generadas).
+- **1. Auditoría Integral y Blindaje de Roles en Router de Vistas (`src/app/page.tsx`):**
+  - **Barrera de Permisos Estricta:** Implementadas validaciones de acceso que impiden escalación de privilegios o ingreso accidental de roles operativos a áreas administrativas o patrimoniales:
+    * `saas_admin`: Solo ejecutable por `ADMIN` con `subRol === 'SUPERADMIN_SAAS'`. Redirección inmediata a `home` en caso contrario.
+    * `vtconfig`: Solo ejecutable por `ADMIN`.
+    * `socio_gastos`: Acceso bloqueado a `AYUDANTE` y `CONDUCTOR`. Reservado exclusivamente para Socios y Administradores.
+    * `personal`: Acceso bloqueado a `AYUDANTE` y `CONDUCTOR`.
+    * `flota_gestion`: Acceso bloqueado a `AYUDANTE` y `CONDUCTOR`.
+    * `reports`: Acceso bloqueado a `AYUDANTE` y `CONDUCTOR`.
+- **2. Ergonomía Móvil Estricta a Una Sola Mano (Thumb Zone) en `HomeScreen.tsx`:**
+  - **Barra Táctica Fija al Pulgar (`<aside>` sticky bottom):** Ubicada en la zona inferior de la pantalla con desenfoque de fondo (`backdrop-blur-md`), sombra y dimensiones táctiles optimizadas (48px - 52px, `active:scale-95`).
+  - **Acciones Tácticas Adaptativas por Rol:**
+    * **Ayudante:** Botón táctico primario `[ 🎫 Emitir Boletos (Jornada) ]` para acceso instantáneo al teclado de ventas sin recorrer la pantalla.
+    * **Conductor:** Botón táctil `[ 🔧 Mantenimiento ]` y `[ 📋 Mis Vueltas ]` para registro rápido de paradas y odómetro en fosa.
+    * **Socio Propietario / Admin:** Botones directos `[ 💰 Gastos del Bus ]` y `[ 🛠️ Mantenimiento ]` más acceso directo al panel SaaS para SuperAdmin.
+  - **Margen de Lectura (`pb-28`):** Previene que las tarjetas de información queden ocultas bajo la barra fija inferior.
+- **3. Certificación Técnica:**
+  - Compilación Next.js con Turbopack exitosa (26.9s, 0 errores).
+  - Dev server en puerto 3000 respondiendo `HTTP/1.1 200 OK`.
+
+---
+
+## 🏁 BALANCE DE LA FASE 3 (ARQUITECTURA MULTI-TENANT Y GOBERNANZA SAAS)
+- **Subfase 3.1 (Personal y Tripulación):** ✅ COMPLETADA.
+- **Subfase 3.2 (Privacidad de Finanzas y Gastos):** ✅ COMPLETADA.
+- **Subfase 3.3 (Mantenimiento Desacoplado por Unidad):** ✅ COMPLETADA.
+- **Subfase 3.4 (Ergonomía Móvil y Auditoría Integral de Roles):** ✅ COMPLETADA.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
-3. Estado de la Fase 3:
-   - **Subfase 3.1: Aislamiento de Personal y Tripulación (`PersonalScreen` y `/api/personas`)** ✅ COMPLETADA.
-   - **Subfase 3.2: Privacidad Total de Gastos y Finanzas (`OwnerExpensesScreen` y `/api/owner-expenses`)** ✅ COMPLETADA.
-   - **Subfase 3.3: Mantenimiento Desacoplado por Unidad (`BusItemOverride` y `BusRecetaCombo`)** ✅ COMPLETADA.
-   - **Subfase 3.4: Ergonomía Móvil y Auditoría Integral de Roles** 🟡 SIGUIENTE PENDIENTE.
-4. Indicar al agente:  
-   `"Continuamos con la SUBFASE 3.4: Ergonomía Móvil y Auditoría Integral de Roles"`.
+3. Estado Actual:
+   - **Fase 3: Arquitectura Multi-Tenant SaaS y Soberanía por Socio:** 🟢 100% COMPLETADA Y DESPLEGADA.
+4. Próxima Etapa Operativa:
+   - **Fase 4: Pruebas de Campo en Carretera, Calibración de Arqueos y Certificación de Producción Real.**
+5. Indicar al agente:  
+   `"Continuamos con la Fase 4: Pruebas de Campo y Calibración Operativa en Carretera"`.
 
 
 

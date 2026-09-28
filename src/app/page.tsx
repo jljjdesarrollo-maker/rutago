@@ -309,8 +309,12 @@ export default function Home() {
     );
   }
 
-  // Personal screen (admin only)
+  // Personal screen (admin and socio only)
   if (view === 'personal') {
+    if (user.rol === 'AYUDANTE' || user.rol === 'CONDUCTOR') {
+      setView('home');
+      return null;
+    }
     return (
       <PersonalScreen
         currentUser={user}
@@ -319,8 +323,12 @@ export default function Home() {
     );
   }
 
-  // Reports screen (admin only)
+  // Reports screen (admin and socio only)
   if (view === 'reports') {
+    if (user.rol === 'AYUDANTE' || user.rol === 'CONDUCTOR') {
+      setView('home');
+      return null;
+    }
     return (
       <ReportsScreen
         onBack={() => setView('home')}
@@ -337,8 +345,12 @@ export default function Home() {
     );
   }
 
-  // VT Config screen (admin only)
+  // VT Config screen (SuperAdmin only)
   if (view === 'vtconfig') {
+    if (user.rol !== 'ADMIN') {
+      setView('home');
+      return null;
+    }
     return (
       <VTConfigScreen
         onBack={() => setView('home')}
@@ -346,8 +358,12 @@ export default function Home() {
     );
   }
 
-  // Gastos del Socio Propietario
+  // Gastos del Socio Propietario (Socio and Admin only)
   if (view === 'socio_gastos') {
+    if (user.rol === 'AYUDANTE' || user.rol === 'CONDUCTOR') {
+      setView('home');
+      return null;
+    }
     return (
       <OwnerExpensesScreen
         currentUser={user}
@@ -356,8 +372,12 @@ export default function Home() {
     );
   }
 
-  // Gestión de Flota de Autobuses
+  // Gestión de Flota de Autobuses (Socio and Admin only)
   if (view === 'flota_gestion') {
+    if (user.rol === 'AYUDANTE' || user.rol === 'CONDUCTOR') {
+      setView('home');
+      return null;
+    }
     return (
       <FlotaScreen
         currentUser={user}
@@ -376,8 +396,12 @@ export default function Home() {
     );
   }
 
-  // Suscripciones SaaS (SuperAdmin)
+  // Suscripciones SaaS (SuperAdmin only)
   if (view === 'saas_admin') {
+    if (user.rol !== 'ADMIN' || user.subRol !== 'SUPERADMIN_SAAS') {
+      setView('home');
+      return null;
+    }
     return (
       <SaaSAdminScreen
         onBack={() => setView('home')}
