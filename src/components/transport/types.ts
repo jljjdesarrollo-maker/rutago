@@ -61,7 +61,13 @@ export interface UserSession {
   id: string;
   nombre: string;
   rol: string;
+  subRol?: string;
+  socioId?: string | null;
+  cedula?: string | null;
+  esFundadorSaaS?: boolean;
   esActual?: boolean;
+  deviceId?: string | null;
+  deviceName?: string | null;
 }
 
 export type AppView = 'home' | 'form' | 'history' | 'reports' | 'operativo' | 'personal' | 'vtconfig' | 'compare' | 'ventas_review' | 'boletos_home' | 'boletos_frecuencias' | 'boletos_tickets' | 'boletos_cierre' | 'boletos_arqueo' | 'boletos_arqueo_general' | 'boletos_sync' | 'carga_historica' | 'socio_gastos' | 'flota_gestion' | 'benchmark' | 'saas_admin' | 'mantenimiento';
@@ -70,15 +76,37 @@ export function num(v: string): number {
   return parseFloat(v) || 0;
 }
 
-export function getCurrentConductor(): Promise<string | null> {
-  return fetch('/api/personas').then(r => r.json()).then((list: Array<{ esActual: boolean; rol: string; nombre: string }>) => {
+export function getCurrentConductor(socioId?: string | null): Promise<string | null> {
+  let targetSocioId = socioId;
+  if (!targetSocioId && typeof window !== 'undefined') {
+    try {
+      const s = localStorage.getItem('ct_session');
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed.socioId) targetSocioId = parsed.socioId;
+      }
+    } catch { /* ignore */ }
+  }
+  const url = targetSocioId ? `/api/personas?socioId=${targetSocioId}` : '/api/personas';
+  return fetch(url).then(r => r.json()).then((list: Array<{ esActual: boolean; rol: string; nombre: string }>) => {
     const c = list.find(p => p.rol === 'CONDUCTOR' && p.esActual);
     return c ? c.nombre : null;
   }).catch(() => null);
 }
 
-export function getCurrentAyudante(): Promise<string | null> {
-  return fetch('/api/personas').then(r => r.json()).then((list: Array<{ esActual: boolean; rol: string; nombre: string }>) => {
+export function getCurrentAyudante(socioId?: string | null): Promise<string | null> {
+  let targetSocioId = socioId;
+  if (!targetSocioId && typeof window !== 'undefined') {
+    try {
+      const s = localStorage.getItem('ct_session');
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (parsed.socioId) targetSocioId = parsed.socioId;
+      }
+    } catch { /* ignore */ }
+  }
+  const url = targetSocioId ? `/api/personas?socioId=${targetSocioId}` : '/api/personas';
+  return fetch(url).then(r => r.json()).then((list: Array<{ esActual: boolean; rol: string; nombre: string }>) => {
     const a = list.find(p => p.rol === 'AYUDANTE' && p.esActual);
     return a ? a.nombre : null;
   }).catch(() => null);

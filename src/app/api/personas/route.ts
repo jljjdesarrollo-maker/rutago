@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { generateSalt, hashPinWithSalt, verifyPin } from '@/lib/pin-hash';
 
-// GET /api/personas — List all personas
+// GET /api/personas — List personas with optional socioId isolation
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
@@ -13,7 +13,12 @@ export async function GET(req: NextRequest) {
     const where: Record<string, unknown> = {};
     if (rol) where.rol = rol;
     if (esActual !== null) where.esActual = esActual === 'true';
-    if (socioId) where.socioId = socioId;
+
+    if (socioId === 'SIN_SOCIO') {
+      where.socioId = null;
+    } else if (socioId && socioId !== 'TODOS') {
+      where.socioId = socioId;
+    }
 
     const personas = await db.persona.findMany({
       where,
@@ -31,6 +36,13 @@ export async function GET(req: NextRequest) {
         deviceLinkedAt: true,
         createdAt: true,
         updatedAt: true,
+        socio: {
+          select: {
+            id: true,
+            nombre: true,
+            cedula: true,
+          },
+        },
       },
     });
     return NextResponse.json(personas);
@@ -40,7 +52,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/personas — Create persona
+// POST /api/personas — Create persona with cryptographic salt and socio scoping
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -50,21 +62,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nombre y PIN válido (4+ dígitos) son obligatorios' }, { status: 400 });
     }
 
-    const salt = generateSalt();
-    const pinHash = hashPinWithSalt(pin.trim(), salt);
+    const cleanPin = pin.trim();
 
-    // Check if PIN already exists by scanning personas
+    // Check if PIN already exists by scanning personas and cuentas de socios
     const existingPersonas = await db.persona.findMany();
-    const pinEnUso = existingPersonas.some(p => verifyPin(pin.trim(), p.pin, p.pinSalt));
-    if (pinEnUso) {
-      return NextResponse.json({ error: 'El PIN ya está en uso por otro usuario' }, { status: 400 });
+    const pinEnUsoPersona = existingPersonas.some(p => verifyPin(cleanPin, p.pin, p.pinSalt));
+    if (pinEnUsoPersona) {
+      return NextResponse.json({ error: 'El PIN ya está en uso por otro usuario del personal' }, { status: 400 });
     }
 
-    // If setting as current, deactivate others of same role
+    const existingSocios = await db.cuentaSocio.findMany({ where: { activo: true } });
+    const pinEnUsoSocio = existingSocios.some(s => verifyPin(cleanPin, s.pinHash, s.pinSalt));
+    if (pinEnUsoSocio) {
+      return NextResponse.json({ error: 'El PIN ya está reservado por una cuenta de socio o administrador' }, { status: 400 });
+    }
+
+    const salt = generateSalt();
+    const pinHash = hashPinWithSalt(cleanPin, salt);
+    const targetSocioId = socioId || null;
+
+    // Aislamiento Multi-Tenant: Si se activa, desactivar otros del mismo rol SOLO para este socio
     const esActual = body.esActual || false;
     if (esActual && rol) {
       await db.persona.updateMany({
-        where: { rol, esActual: true },
+        where: {
+          rol,
+          esActual: true,
+          socioId: targetSocioId,
+        },
         data: { esActual: false },
       });
     }
@@ -77,8 +102,17 @@ export async function POST(req: NextRequest) {
         rol: rol || 'CONDUCTOR',
         pin: pinHash,
         pinSalt: salt,
-        socioId: socioId || null,
+        socioId: targetSocioId,
         esActual,
+      },
+      include: {
+        socio: {
+          select: {
+            id: true,
+            nombre: true,
+            cedula: true,
+          },
+        },
       },
     });
 

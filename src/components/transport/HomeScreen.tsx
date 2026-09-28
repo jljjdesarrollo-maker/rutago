@@ -181,8 +181,9 @@ export function HomeScreen({
       /* ignore */
     }
 
-    // 2. Cargar tripulación activa del día (/api/personas)
-    fetch('/api/personas')
+    // 2. Cargar tripulación activa del día (/api/personas) aislada por socio
+    const personasUrl = (user?.socioId) ? `/api/personas?socioId=${user.socioId}` : '/api/personas';
+    fetch(personasUrl)
       .then(res => res.ok ? res.json() : [])
       .then(personas => {
         if (Array.isArray(personas)) {

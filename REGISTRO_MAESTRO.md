@@ -345,15 +345,46 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+---
+
+## 🚀 AVANCE SUBFASE 3.1 COMPLETADO: AISLAMIENTO DE PERSONAL Y TRIPULACIÓN (2026-09-28)
+- **Estado:** 🟢 COMPLETADO Y VALIDADO AL 100%. Compilación Next.js 16.1.3 + Turbopack certificada con 0 errores (`compile_applet` exitoso).
+- **1. Aislamiento Multi-Tenant por Socio en `PersonalScreen.tsx`:**
+  - **Socio Propietario:**
+    - Panel privado con banner de privacidad: *"Panel Privado de Tripulación - Gestión exclusiva de choferes y ayudantes de tus unidades"*.
+    - Filtrado automático estricto por `socioId` (`/api/personas?socioId=${currentUser.socioId}`). Cero visibilidad de conductores y ayudantes de otros socios.
+    - Alta de tripulación con asignación inmutable automática de `socioId` del socio logueado.
+    - Preservada la ergonomía móvil con botones táctiles de 48px, teclado numérico para PIN y modal asistido de confirmación.
+  - **SuperAdministrador SaaS:**
+    - Consola global de gestión de flota con selector / filtro interactivo por Socio Propietario (`TODOS`, `SIN_SOCIO`, o socio específico).
+    - Despliegue de badge identificador en cada ficha: `[ 🏢 Socio: Nombre del Socio ]`.
+    - Selector en alta y edición para asignar o reasignar personal a cualquier socio de la cooperativa.
+- **2. Seguridad Cero-Hardcode & Hashes con Salt en API de Personal:**
+  - **`src/app/api/personas/route.ts`:**
+    - `GET`: Soporte de query param `socioId` (incluyendo `SIN_SOCIO` y `TODOS`). Inclusión de datos del socio en la respuesta relacional.
+    - `POST`: Generación de salt criptográfico de 16 bytes con `generateSalt()`, hasheo seguro `hashPinWithSalt()`, detección de colisiones de PIN tanto en personal como en cuentas de socios, y desactivación de otros miembros del mismo rol **estrictamente acotada al `socioId`** del socio (activar un chofer en Bus 01 jamás desactiva el chofer de Bus 02).
+  - **`src/app/api/personas/[id]/route.ts`:**
+    - `PUT`: Hashing con salt en actualización de PIN con verificación de colisiones en toda la base, preservación y reasignación de `socioId`, y desactivación de estado activo (`esActual`) aislada por socio.
+    - Conservado y blindado el módulo de desvinculación de **Device Binding** para ayudantes.
+- **3. Sincronización en Cabecera de Inicio y Helpers:**
+  - **`src/components/transport/HomeScreen.tsx`:** Carga de `crewInfo` ("Tripulación de Hoy") filtrada por el `socioId` del usuario autenticado.
+  - **`src/components/transport/types.ts`:** `UserSession` extendido (`socioId`, `subRol`, `cedula`, `esFundadorSaaS`, `deviceId`, `deviceName`). Funciones `getCurrentConductor` y `getCurrentAyudante` optimizadas con fallback automático al `socioId` de la sesión activa en `localStorage`.
+- **4. Certificación Técnica:**
+  - Build de Next.js 16.1.3 + Turbopack completado con éxito absoluto (0 errores).
+  - `compile_applet` ejecutado con resultado: `Build succeeded - the applet is compiled`.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado de la Fase 3:
-   - **Subfase 3.1: Aislamiento de Personal y Tripulación (`PersonalScreen` y `/api/personas`)** 🟡 EN CURSO.
-   - **Subfase 3.2: Privacidad Total de Gastos y Finanzas (`OwnerExpensesScreen` y `/api/gastos-socio`)** ⚪ PENDIENTE.
+   - **Subfase 3.1: Aislamiento de Personal y Tripulación (`PersonalScreen` y `/api/personas`)** ✅ COMPLETADA.
+   - **Subfase 3.2: Privacidad Total de Gastos y Finanzas (`OwnerExpensesScreen` y `/api/gastos-socio`)** 🟡 SIGUIENTE PENDIENTE.
    - **Subfase 3.3: Mantenimiento Desacoplado por Unidad (`BusItemOverride` y `BusRecetaCombo`)** ⚪ PENDIENTE.
    - **Subfase 3.4: Ergonomía Móvil y Auditoría Integral de Roles** ⚪ PENDIENTE.
 4. Indicar al agente:  
-   `"Continuamos con la SUBFASE 3.1: Aislamiento de Personal y Tripulación (PersonalScreen y /api/personas)"`.
+   `"Continuamos con la SUBFASE 3.2: Privacidad Total de Gastos y Finanzas (OwnerExpensesScreen y /api/gastos-socio)"`.
+
 
 
