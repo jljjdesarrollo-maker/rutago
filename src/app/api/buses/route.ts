@@ -11,15 +11,28 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const disco = searchParams.get('disco');
     const tipoOperacion = searchParams.get('tipoOperacion');
+    const socioId = searchParams.get('socioId');
 
     const where: Record<string, unknown> = {};
     if (disco) where.numeroDisco = disco.trim();
     if (tipoOperacion) where.tipoOperacion = tipoOperacion;
+    if (socioId && socioId !== 'TODOS') {
+      if (socioId === 'SIN_SOCIO') {
+        where.socioId = null;
+      } else {
+        where.socioId = socioId;
+      }
+    }
 
     let buses: any[] = [];
     try {
       buses = await (db as any).bus.findMany({
         where,
+        include: {
+          socio: {
+            select: { id: true, nombre: true, cedula: true }
+          }
+        },
         orderBy: { numeroDisco: 'asc' },
       });
 

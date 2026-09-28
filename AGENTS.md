@@ -61,6 +61,19 @@
    - Blindaje de persistencia con etiquetas inmutables `[RUTA-AYUDANTE]` en combos y paradas técnicas.
    - Commit: `feat(contabilidad): v3.60.26 - automatizacion gastos del bus que pago el socio en inicio e historial`
 
+12. **v3.60.27 - Subfase 3.1 (Aislamiento de Personal y Tripulación por Socio):** ✅ COMPLETADA
+   - Aislamiento Multi-Tenant estricto en `PersonalScreen.tsx`: cada Socio Propietario gestiona de forma privada sus choferes y ayudantes sin visibilidad ni interferencia con otras tripulaciones.
+   - SuperAdmin SaaS dispone de vista global con selector interactivo de socio y reasignación de personal.
+   - Hashing con salt aleatorio en PINs y erradicación total de PINs quemados.
+   - Commit: `6c1ed66: feat(saas): subfase 3.1 - aislamiento de tripulacion por socio, hashing con salt y filtro superadmin`
+
+13. **v3.60.27 - Subfase 3.2 (Privacidad Total de Gastos y Finanzas Multi-Tenant):** ✅ COMPLETADA
+   - Aislamiento financiero en `OwnerExpensesScreen.tsx`: banner de seguridad `[ 🔒 Panel Privado ]` y selector táctil limitado exclusivamente a las unidades del socio (`/api/buses?socioId=...`). Soporte de `[ 📑 Todas mis unidades ]` para socios con múltiples autobuses.
+   - Modo SuperAdmin SaaS con consola global de flota, filtro desplegable por Socio Propietario y visor consolidado.
+   - Endpoints `/api/owner-expenses` y `/api/buses` blindados con resolución relacional de `socioId` y variantes de `busId`.
+   - Modal de nuevo gasto con asignación dinámica de unidad.
+   - Commit: `feat(saas): subfase 3.2 - privacidad total de gastos y finanzas multi-tenant`
+
 ---
 
 ### 🏛️ REGLAS DE ARQUITECTURA OFICIAL IMPLEMENTADAS:

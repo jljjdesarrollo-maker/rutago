@@ -375,16 +375,42 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+## 🚀 AVANCE SUBFASE 3.2 COMPLETADO: PRIVACIDAD TOTAL DE GASTOS Y FINANZAS (2026-09-28)
+- **Estado:** 🟢 COMPLETADO Y VALIDADO AL 100%. Build de Next.js 16.1.3 + Turbopack verificado con 0 errores (24 rutas dinámicas y estáticas generadas).
+- **1. Aislamiento Multi-Tenant en Pantalla de Gastos (`OwnerExpensesScreen.tsx`):**
+  - **Socio Propietario (`isSocio`):**
+    - Banner de seguridad táctil: `[ 🔒 Panel Privado • Socio: Nombre / Tus Unidades Asignadas ]` con badge verde `[ 🔒 Aislamiento Activo ]`.
+    - Selector ergonómico de unidades limitado exclusivamente a los autobuses de su propiedad (`/api/buses?socioId=${socioId}`). Si posee múltiples unidades (ej. Bus 01 y Bus 16), puede alternar fácilmente entre cada disco o ver `[ 📑 Todas mis unidades ]`.
+    - Modal de nuevo gasto con selector dinámico de unidad para imputar el egreso al autobús específico cuando se poseen varios vehículos.
+  - **SuperAdministrador SaaS (`isSuperAdmin`):**
+    - Consola de supervisión global de flota con badge ámbar `[ 🏢 SuperAdmin SaaS • Gobernanza General de Flota ]`.
+    - Selector desplegable de Socio Propietario para auditar las finanzas y egresos de cualquier miembro de la cooperativa o consolidar toda la flota.
+    - Selector de todas las unidades de la flota.
+- **2. Blindaje Multi-Tenant en Backend y Endpoints:**
+  - **`src/app/api/owner-expenses/route.ts`:**
+    - `GET`: Soporte de parámetros `socioId` y variantes de `busId`. Resuelve de forma relacional en PostgreSQL todos los autobuses vinculados a la cuenta del socio (`socioBuses`), validando que las consultas no filtren egresos de otros socios.
+  - **`src/app/api/buses/route.ts`:**
+    - `GET`: Filtro por `socioId` (incluyendo `SIN_SOCIO` y `TODOS`) e inclusión relacional de datos del socio (`id`, `nombre`, `cedula`).
+  - **`src/lib/owner-expenses-storage.ts`:**
+    - `fetchOwnerExpensesFromApi(busId, socioId)` optimizado para orquestar la consulta a la nube con aislamiento de socio.
+  - **`src/app/page.tsx`:**
+    - Inyección de `currentUser={user}` en la vista `socio_gastos`.
+- **3. Certificación Técnica:**
+  - Compilación Next.js con Turbopack exitosa (25.5s, 0 errores).
+  - Dev server en puerto 3000 respondiendo `HTTP/1.1 200 OK`.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado de la Fase 3:
    - **Subfase 3.1: Aislamiento de Personal y Tripulación (`PersonalScreen` y `/api/personas`)** ✅ COMPLETADA.
-   - **Subfase 3.2: Privacidad Total de Gastos y Finanzas (`OwnerExpensesScreen` y `/api/gastos-socio`)** 🟡 SIGUIENTE PENDIENTE.
-   - **Subfase 3.3: Mantenimiento Desacoplado por Unidad (`BusItemOverride` y `BusRecetaCombo`)** ⚪ PENDIENTE.
+   - **Subfase 3.2: Privacidad Total de Gastos y Finanzas (`OwnerExpensesScreen` y `/api/owner-expenses`)** ✅ COMPLETADA.
+   - **Subfase 3.3: Mantenimiento Desacoplado por Unidad (`BusItemOverride` y `BusRecetaCombo`)** 🟡 SIGUIENTE PENDIENTE.
    - **Subfase 3.4: Ergonomía Móvil y Auditoría Integral de Roles** ⚪ PENDIENTE.
 4. Indicar al agente:  
-   `"Continuamos con la SUBFASE 3.2: Privacidad Total de Gastos y Finanzas (OwnerExpensesScreen y /api/gastos-socio)"`.
+   `"Continuamos con la SUBFASE 3.3: Mantenimiento Desacoplado por Unidad (BusItemOverride y BusRecetaCombo)"`.
 
 
 

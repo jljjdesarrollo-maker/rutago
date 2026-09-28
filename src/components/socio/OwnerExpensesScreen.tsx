@@ -27,6 +27,9 @@ import {
   FileSpreadsheet,
   TrendingUp,
   BarChart3,
+  ShieldCheck,
+  Layers,
+  Bus as BusIcon,
 } from 'lucide-react';
 import OwnerIncomeStatementModal from './OwnerIncomeStatementModal';
 import OwnerDebtsReportModal from './OwnerDebtsReportModal';
@@ -55,17 +58,39 @@ import {
   syncAllLocalExpensesToApi,
 } from '../../lib/owner-expenses-storage';
 import { getCurrentYearMonth, getTodayDateString } from '../../lib/date-helpers';
+import type { UserSession } from '../transport/types';
 
 interface Props {
   initialBusId?: string;
+  currentUser?: UserSession | null;
   onBackToHome?: () => void;
 }
 
 export default function OwnerExpensesScreen({
   initialBusId = 'BUS-01',
+  currentUser,
   onBackToHome,
 }: Props) {
-  const [busId, setBusId] = useState<string>(initialBusId);
+  const isSuperAdmin = currentUser?.rol === 'ADMIN' && currentUser?.subRol === 'SUPERADMIN_SAAS';
+  const isSocio = !isSuperAdmin;
+  const socioIdActual = currentUser?.socioId || (isSocio ? currentUser?.id : null);
+
+  const [availableBuses, setAvailableBuses] = useState<
+    Array<{ id: string; numeroDisco: string; placa: string; propietario?: string; socioId?: string | null }>
+  >([]);
+  const [sociosList, setSociosList] = useState<
+    Array<{ id: string; nombre: string; cedula: string; buses?: Array<{ numeroDisco: string }> }>
+  >([]);
+  const [filtroSocioSuperAdmin, setFiltroSocioSuperAdmin] = useState<string>('TODOS');
+
+  // Inicializar busId según la sesión o fallback
+  const [busId, setBusId] = useState<string>(() => {
+    if (currentUser?.busId) {
+      return currentUser.busId.startsWith('BUS-') ? currentUser.busId : `BUS-${currentUser.busId}`;
+    }
+    return initialBusId;
+  });
+  const [formBusId, setFormBusId] = useState<string>('');
   const [allExpenses, setAllExpenses] = useState<OwnerExpense[]>(() => getOwnerExpenses(initialBusId));
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [isOnlineDb, setIsOnlineDb] = useState<boolean>(true);
@@ -113,10 +138,66 @@ export default function OwnerExpensesScreen({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Cargar lista de autobuses autorizados según rol y socioId
+  useEffect(() => {
+    let isMounted = true;
+    const loadBuses = async () => {
+      try {
+        let url = '/api/buses';
+        if (isSocio && socioIdActual) {
+          url += `?socioId=${encodeURIComponent(socioIdActual)}`;
+        } else if (isSuperAdmin && filtroSocioSuperAdmin !== 'TODOS') {
+          url += `?socioId=${encodeURIComponent(filtroSocioSuperAdmin)}`;
+        }
+        const res = await fetch(url);
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted && json.success && Array.isArray(json.data) && json.data.length > 0) {
+            setAvailableBuses(json.data);
+            // Si el bus actual no pertenece al socio, seleccionar su primera unidad
+            if (isSocio) {
+              const matchingBus = json.data.find(
+                (b: any) =>
+                  b.numeroDisco === busId ||
+                  `BUS-${b.numeroDisco}` === busId ||
+                  b.id === busId
+              );
+              if (!matchingBus) {
+                setBusId(`BUS-${json.data[0].numeroDisco}`);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Error cargando lista de unidades:', err);
+      }
+    };
+    loadBuses();
+    return () => {
+      isMounted = false;
+    };
+  }, [isSocio, isSuperAdmin, socioIdActual, filtroSocioSuperAdmin]);
+
+  // Si es SuperAdmin, cargar padrón completo de socios
+  useEffect(() => {
+    if (isSuperAdmin) {
+      fetch('/api/saas/socios')
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => setSociosList(Array.isArray(data) ? data : []))
+        .catch(() => {});
+    }
+  }, [isSuperAdmin]);
+
   // Cargar datos conectando directamente con la API central y sincronizando caché local
   const loadData = async () => {
     try {
-      const list = await fetchOwnerExpensesFromApi(busId);
+      const socioFilter = isSocio
+        ? socioIdActual || undefined
+        : filtroSocioSuperAdmin !== 'TODOS'
+        ? filtroSocioSuperAdmin
+        : undefined;
+
+      const list = await fetchOwnerExpensesFromApi(busId, socioFilter);
       const effectiveList = (list && list.length > 0) ? list : getOwnerExpenses(busId);
       setAllExpenses(effectiveList);
       setIsOnlineDb(true);
@@ -161,7 +242,7 @@ export default function OwnerExpensesScreen({
 
   useEffect(() => {
     loadData();
-  }, [busId]);
+  }, [busId, filtroSocioSuperAdmin]);
 
   // Sincronizar todos los gastos locales con la base de datos central
   const handleSyncToDb = async () => {
@@ -436,6 +517,10 @@ export default function OwnerExpensesScreen({
     setFormBankName('Banco de Loja');
     setFormComprobanteRef('');
     setFormPhotoPreview(null);
+    const initialTargetBus = busId !== 'TODOS'
+      ? busId
+      : (availableBuses[0]?.numeroDisco ? `BUS-${availableBuses[0].numeroDisco}` : 'BUS-01');
+    setFormBusId(initialTargetBus);
     setIsNewExpenseOpen(true);
   };
 
@@ -458,10 +543,11 @@ export default function OwnerExpensesScreen({
     }
 
     const pending = Math.max(0, total - paid);
+    const targetBus = formBusId || (busId !== 'TODOS' ? busId : (availableBuses[0]?.numeroDisco ? `BUS-${availableBuses[0].numeroDisco}` : 'BUS-01'));
 
     const newExpense: OwnerExpense = {
       id: 'EXP-' + Date.now(),
-      busId,
+      busId: targetBus,
       expenseDate: formDate,
       createdAt: new Date().toISOString(),
       category: formCategory,
@@ -655,6 +741,140 @@ export default function OwnerExpensesScreen({
             <span>{isSyncing ? "Sincronizando..." : "☁️ Sincronizar"}</span>
           </button>
         </div>
+
+        {/* PANEL MULTI-TENANT: AISLAMIENTO POR SOCIO Y SELECTOR DE UNIDADES (SUBFASE 3.2) */}
+        <div className="bg-white rounded-2xl border-2 border-gray-200/90 shadow-xs p-3 space-y-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span
+                className={`px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider flex items-center gap-1 ${
+                  isSuperAdmin
+                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                    : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                }`}
+              >
+                {isSuperAdmin ? (
+                  <>
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+                    <span>SuperAdmin SaaS</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Panel Privado</span>
+                  </>
+                )}
+              </span>
+              <span className="text-xs font-semibold text-gray-700 truncate max-w-[200px]">
+                {isSuperAdmin
+                  ? 'Gobernanza General de Flota'
+                  : currentUser?.nombre
+                  ? `Socio: ${currentUser.nombre}`
+                  : 'Tus Unidades Asignadas'}
+              </span>
+            </div>
+            {isSocio && (
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                🔒 Aislamiento Activo
+              </span>
+            )}
+          </div>
+
+          {/* Selector de Socio para SuperAdmin */}
+          {isSuperAdmin && sociosList.length > 0 && (
+            <div className="pt-1.5 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] font-bold text-gray-500 whitespace-nowrap">
+                  Filtrar Socio:
+                </label>
+                <select
+                  value={filtroSocioSuperAdmin}
+                  onChange={(e) => {
+                    setFiltroSocioSuperAdmin(e.target.value);
+                    setBusId('TODOS');
+                  }}
+                  className="w-full text-xs font-semibold bg-gray-50 border border-gray-200 rounded-lg p-1.5 text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#912D26]"
+                >
+                  <option value="TODOS">Todos los Socios (Flota Completa)</option>
+                  {sociosList.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nombre} ({s.buses?.map((b) => `Bus ${b.numeroDisco}`).join(', ') || 'Sin bus'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Selector Táctil Ergonómico de Unidades */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
+                <BusIcon className="w-3.5 h-3.5 text-gray-400" />
+                <span>Unidad Contable Seleccionada:</span>
+              </span>
+              <span className="text-[11px] font-mono font-bold text-[#912D26]">
+                {busId === 'TODOS' ? '📑 Consolidado General' : busId}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              {availableBuses.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setBusId('TODOS')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 flex items-center gap-1 shrink-0 ${
+                    busId === 'TODOS'
+                      ? 'bg-[#912D26] text-white shadow-xs'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Todas mis unidades ({availableBuses.length})</span>
+                </button>
+              )}
+              {availableBuses.length > 0 ? (
+                availableBuses.map((b) => {
+                  const idVariant = `BUS-${b.numeroDisco}`;
+                  const isSelected = busId === idVariant || busId === b.numeroDisco;
+                  return (
+                    <button
+                      key={b.id || b.numeroDisco}
+                      type="button"
+                      onClick={() => setBusId(idVariant)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 active:scale-95 shrink-0 ${
+                        isSelected
+                          ? 'bg-[#912D26] text-white shadow-xs'
+                          : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'
+                      }`}
+                    >
+                      <span>🚌 Disco {b.numeroDisco}</span>
+                      {b.placa && (
+                        <span
+                          className={`text-[10px] font-mono px-1 rounded ${
+                            isSelected
+                              ? 'bg-white/20 text-white'
+                              : 'bg-gray-200 text-gray-600'
+                          }`}
+                        >
+                          {b.placa}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setBusId(initialBusId)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#912D26] text-white shadow-xs shrink-0"
+                >
+                  🚌 {busId}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* NAVEGADOR DE MES CONTABLE (EJE CARDINAL DE FECHA) */}
         <div className="bg-white border-2 border-gray-200 rounded-2xl p-3 shadow-sm">
           <div className="flex items-center justify-between">
@@ -1222,7 +1442,7 @@ export default function OwnerExpensesScreen({
                   <span>Registrar Gasto del Bus</span>
                 </h2>
                 <p className="text-[11px] text-neutral-400">
-                  Unidad {busId} • Asignación a mes contable
+                  Unidad {formBusId || busId} • Asignación a mes contable
                 </p>
               </div>
               <button
@@ -1235,6 +1455,26 @@ export default function OwnerExpensesScreen({
 
             {/* Formulario Scrolleable: Flujo Simplificado 1-2-3 */}
             <form onSubmit={handleSaveExpense} className="p-4 space-y-4 overflow-y-auto">
+              {/* SELECTOR DE UNIDAD SI HAY MÚLTIPLES AUTOBUSES */}
+              {availableBuses.length > 1 && (
+                <div className="bg-white border-2 border-gray-200 rounded-2xl p-3 shadow-xs space-y-1.5">
+                  <label className="text-xs font-black text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <BusIcon className="w-4 h-4 text-[#912D26]" />
+                    <span>¿A cuál de tus unidades corresponde este gasto?</span>
+                  </label>
+                  <select
+                    value={formBusId}
+                    onChange={(e) => setFormBusId(e.target.value)}
+                    className="w-full text-xs font-bold bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-gray-800 focus:outline-none focus:ring-1 focus:ring-[#912D26]"
+                  >
+                    {availableBuses.map((b) => (
+                      <option key={b.numeroDisco} value={`BUS-${b.numeroDisco}`}>
+                        Disco {b.numeroDisco} {b.placa ? `• Placa ${b.placa}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {/* PASO 1: MONTO Y CONDICIÓN DE PAGO (CONTADO O FIADO) */}
               <div className="bg-white border-2 border-gray-200 rounded-2xl p-3.5 space-y-3 shadow-xs">
                 <div className="flex items-center justify-between">

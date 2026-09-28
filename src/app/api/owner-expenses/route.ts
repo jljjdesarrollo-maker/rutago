@@ -4,18 +4,63 @@ import { db } from '@/lib/db';
 export const dynamic = 'force-dynamic';
 
 // GET /api/owner-expenses
-// Parámetros opcionales: busId, yearMonth (ej: "2026-08"), category, status
+// Parámetros opcionales: busId, socioId, yearMonth (ej: "2026-08"), category, status
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const busId = searchParams.get('busId') || 'BUS-01';
+    const rawBusId = searchParams.get('busId');
+    const socioId = searchParams.get('socioId');
     const yearMonth = searchParams.get('yearMonth');
     const category = searchParams.get('category');
     const status = searchParams.get('status');
 
-    const where: Record<string, unknown> = {
-      busId,
-    };
+    const where: Record<string, unknown> = {};
+
+    // Resolución multi-tenant de unidades según socioId y/o busId
+    if (socioId && socioId !== 'TODOS') {
+      try {
+        const socioBuses = await db.bus.findMany({
+          where: { socioId },
+          select: { numeroDisco: true },
+        });
+        const discos = socioBuses.map((b) => b.numeroDisco);
+        const allowedBusVariants = Array.from(
+          new Set([
+            ...discos,
+            ...discos.map((d) => `BUS-${d}`),
+            ...discos.map((d) => `BUS-${d.padStart(2, '0')}`),
+          ])
+        );
+
+        if (rawBusId && rawBusId !== 'TODOS') {
+          const cleanBus = rawBusId.replace(/^BUS-/i, '');
+          const targetVariants = [rawBusId, cleanBus, `BUS-${cleanBus.padStart(2, '0')}`];
+          if (allowedBusVariants.length > 0) {
+            const match = targetVariants.filter((v) => allowedBusVariants.includes(v));
+            where.busId = { in: match.length > 0 ? match : targetVariants };
+          } else {
+            where.busId = { in: targetVariants };
+          }
+        } else if (allowedBusVariants.length > 0) {
+          where.busId = { in: allowedBusVariants };
+        } else if (rawBusId) {
+          where.busId = rawBusId;
+        }
+      } catch (busLookupErr) {
+        console.warn('Error resolviendo buses de socio en BD:', busLookupErr);
+        if (rawBusId && rawBusId !== 'TODOS') {
+          where.busId = rawBusId;
+        }
+      }
+    } else if (rawBusId && rawBusId !== 'TODOS') {
+      const cleanBus = rawBusId.replace(/^BUS-/i, '');
+      where.busId = {
+        in: [rawBusId, cleanBus, `BUS-${cleanBus.padStart(2, '0')}`],
+      };
+    } else if (!rawBusId && !socioId) {
+      // Por defecto para retrocompatibilidad
+      where.busId = { in: ['BUS-01', '01'] };
+    }
 
     if (yearMonth) {
       where.expenseDate = { startsWith: yearMonth };

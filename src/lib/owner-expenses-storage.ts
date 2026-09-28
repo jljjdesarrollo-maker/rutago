@@ -382,9 +382,16 @@ export function seedSampleExpenses(busId = 'BUS-01'): void {
 
 // ─── CONEXIÓN ASÍNCRONA CON LA BASE DE DATOS CENTRAL (/api/owner-expenses) ───
 
-export async function fetchOwnerExpensesFromApi(busId = 'BUS-01'): Promise<OwnerExpense[]> {
+export async function fetchOwnerExpensesFromApi(
+  busId = 'BUS-01',
+  socioId?: string
+): Promise<OwnerExpense[]> {
   try {
-    const res = await fetch(`/api/owner-expenses?busId=${encodeURIComponent(busId)}`, {
+    const params = new URLSearchParams();
+    if (busId) params.set('busId', busId);
+    if (socioId && socioId !== 'TODOS') params.set('socioId', socioId);
+
+    const res = await fetch(`/api/owner-expenses?${params.toString()}`, {
       cache: 'no-store',
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

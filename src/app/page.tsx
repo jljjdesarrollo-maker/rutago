@@ -350,6 +350,7 @@ export default function Home() {
   if (view === 'socio_gastos') {
     return (
       <OwnerExpensesScreen
+        currentUser={user}
         onBackToHome={() => setView('home')}
       />
     );
