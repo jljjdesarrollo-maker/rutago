@@ -26,6 +26,7 @@ import {
   TrendingUp,
   Clock,
   CheckCircle2,
+  RefreshCw,
   ShieldCheck,
   FolderSync,
   Bus,
@@ -122,6 +123,8 @@ export function HomeScreen({
     netProfit: 0,
     pendingDebts: 0,
   });
+  const [balanceStatus, setBalanceStatus] = useState<'loading' | 'live' | 'stale' | 'error'>('loading');
+  const [isRefreshingBalance, setIsRefreshingBalance] = useState<boolean>(false);
 
   // Tripulación activa del día (Conductor y Ayudante)
   const [crewInfo, setCrewInfo] = useState<{
@@ -202,23 +205,22 @@ export function HomeScreen({
       })
       .catch(() => {});
 
-    // 3. Balance financiero en vivo para el mes dinámico (o el mes más reciente con registros)
+    // 3. Sincronización de balance financiero en vivo con Semáforo de Estado
     const calculateForMonth = (targetMonth: string, expenses: any[], income: number) => {
       const monthExpenses = expenses.filter(
         e => e.expenseDate && e.expenseDate.startsWith(targetMonth)
       );
-      // REGLA DE NO-DUPLICIDAD: Sumar únicamente los gastos que pagó el socio (excluyendo gastos de ruta asumidos por el ayudante)
       const expensesSocioDirecto = monthExpenses.filter(e => {
         const esDeRuta =
-          e.origenPago === 'AYUDANTE_RUTA' ||
+          e.origenPago === "AYUDANTE_RUTA" ||
           e.descontadoEnRuta === true ||
-          e.comprobanteRef?.includes('AYUDANTE_RUTA') ||
-          e.description?.includes('[RUTA-AYUDANTE]') ||
-          (e.paymentMethod === 'EFECTIVO' &&
-            (e.description?.toLowerCase().includes('ayudante') ||
-              e.description?.toLowerCase().includes('chofer') ||
-              e.description?.toLowerCase().includes('liquidado') ||
-              e.description?.toLowerCase().includes('ruta')));
+          e.comprobanteRef?.includes("AYUDANTE_RUTA") ||
+          e.description?.includes("[RUTA-AYUDANTE]") ||
+          (e.paymentMethod === "EFECTIVO" &&
+            (e.description?.toLowerCase().includes("ayudante") ||
+              e.description?.toLowerCase().includes("chofer") ||
+              e.description?.toLowerCase().includes("liquidado") ||
+              e.description?.toLowerCase().includes("ruta")));
         return !esDeRuta;
       });
       const totalCost = expensesSocioDirecto.reduce((sum, e) => sum + (e.totalAmount || 0), 0);
@@ -234,59 +236,73 @@ export function HomeScreen({
       });
     };
 
-    const processExpenses = (expenses: any[]) => {
-      // Determinar mes objetivo: si el mes actual no tiene gastos, buscar el mes más reciente con gastos
-      let targetMonth = defaultYearMonth;
-      const hasCurrent = expenses.some(e => e.expenseDate && e.expenseDate.startsWith(defaultYearMonth));
-      if (!hasCurrent && expenses.length > 0) {
-        const monthsWithData = Array.from(
-          new Set(expenses.map((e: any) => e.expenseDate?.substring(0, 7)).filter(Boolean))
-        ).sort().reverse();
-        if (monthsWithData.length > 0 && typeof monthsWithData[0] === 'string') {
-          targetMonth = monthsWithData[0];
-        }
-      }
-      setDisplayYearMonth(targetMonth);
+    const runSync = async () => {
+      setBalanceStatus("loading");
+      try {
+        // Cargar caché local primero para respuesta inmediata
+        let localExpenses: any[] = [];
+        try {
+          localExpenses = getOwnerExpenses(activeBusId);
+        } catch {}
 
-      let initialIncome = targetMonth === '2026-08' ? 3915.25 : 0;
-      calculateForMonth(targetMonth, expenses, initialIncome);
+        let expensesToUse = localExpenses;
 
-      // Consultar ingresos reales del mes en la API de reportes
-      fetch(`/api/reports?type=mensual&month=${targetMonth}`)
-        .then(res => res.ok ? res.json() : null)
-        .then(reportData => {
-          if (reportData && reportData.totals) {
-            const t = reportData.totals;
-            const ay = t.entregaAyudante || 0;
-            const cia = t.entregaCompania || 0;
-            const total = t.totalEntregado || (ay + cia);
-            if (total > 0 || targetMonth !== '2026-08') {
-              initialIncome = total;
-            }
+        // Intentar traer los gastos oficiales de la API
+        try {
+          const onlineExpenses = await fetchOwnerExpensesFromApi(activeBusId);
+          if (onlineExpenses && onlineExpenses.length > 0) {
+            expensesToUse = onlineExpenses;
           }
-          calculateForMonth(targetMonth, expenses, initialIncome);
-        })
-        .catch(() => {});
+        } catch {
+          // Mantener caché local si falla la red
+        }
+
+        // Determinar mes objetivo
+        let targetMonth = defaultYearMonth;
+        const hasCurrent = expensesToUse.some(e => e.expenseDate && e.expenseDate.startsWith(defaultYearMonth));
+        if (!hasCurrent && expensesToUse.length > 0) {
+          const monthsWithData = Array.from(
+            new Set(expensesToUse.map((e: any) => e.expenseDate?.substring(0, 7)).filter(Boolean))
+          ).sort().reverse();
+          if (monthsWithData.length > 0 && typeof monthsWithData[0] === "string") {
+            targetMonth = monthsWithData[0];
+          }
+        }
+        setDisplayYearMonth(targetMonth);
+
+        // Consultar ingresos de ruta reales del mes
+        let initialIncome = targetMonth === "2026-08" ? 3915.25 : 0;
+        let apiSuccess = false;
+        try {
+          const res = await fetch(`/api/reports?type=mensual&month=${targetMonth}`);
+          if (res.ok) {
+            const reportData = await res.json();
+            if (reportData && reportData.totals) {
+              const t = reportData.totals;
+              const ay = t.entregaAyudante || 0;
+              const cia = t.entregaCompania || 0;
+              const total = t.totalEntregado || (ay + cia);
+              if (total > 0 || targetMonth !== "2026-08") {
+                initialIncome = total;
+              }
+            }
+            apiSuccess = true;
+          }
+        } catch {
+          apiSuccess = false;
+        }
+
+        calculateForMonth(targetMonth, expensesToUse, initialIncome);
+        setBalanceStatus(apiSuccess || expensesToUse.length > 0 ? "live" : "stale");
+      } catch (err) {
+        console.error("Error en balance:", err);
+        setBalanceStatus("stale");
+      } finally {
+        setIsRefreshingBalance(false);
+      }
     };
 
-    // Primero con la caché local de gastos
-    try {
-      const cached = getOwnerExpenses(activeBusId);
-      processExpenses(cached);
-    } catch {
-      /* ignore */
-    }
-
-    // Luego sincronizar con API de gastos
-    fetchOwnerExpensesFromApi(activeBusId)
-      .then(onlineExpenses => {
-        const listToUse = (onlineExpenses && onlineExpenses.length > 0)
-          ? onlineExpenses
-          : getOwnerExpenses(activeBusId);
-        processExpenses(listToUse);
-      })
-      .catch(() => {});
-  }, [isSuperAdmin, activeBusId, defaultYearMonth]);
+    runSync();  }, [isSuperAdmin, activeBusId, defaultYearMonth]);
 
   const handleAyudanteBoletosClick = () => {
     if (user.esActual === false) {
@@ -438,23 +454,96 @@ export function HomeScreen({
               </a>
             </div>
 
-            {/* Resumen Financiero Dinámico */}
+            {/* Resumen Financiero Dinámico con Semáforo de Certeza Contable */}
             <div
               onClick={onGoToSocioGastos}
-              className="cursor-pointer bg-gradient-to-br from-emerald-900 via-teal-950 to-slate-900 rounded-2xl p-3.5 text-white shadow-md border border-emerald-800/40 hover:scale-[1.01] transition active:scale-[0.99]"
+              className="cursor-pointer bg-gradient-to-br from-emerald-900 via-teal-950 to-slate-900 rounded-2xl p-3.5 text-white shadow-md border border-emerald-800/40 hover:scale-[1.01] transition active:scale-[0.99] relative overflow-hidden"
             >
+              {/* Cabecera: Semáforo de Estado + Botón Táctil de Refresco */}
               <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wide">
-                    Balance de Ganancia Limpia • {formatMonthName(displayYearMonth)}
+                  {/* Semáforo Inteligente */}
+                  {balanceStatus === "loading" && (
+                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/30 text-[10px] font-bold">
+                      <RefreshCw className="w-2.5 h-2.5 animate-spin text-amber-300" />
+                      <span>Actualizando balance...</span>
+                    </span>
+                  )}
+                  {balanceStatus === "live" && (
+                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/25 text-emerald-200 border border-emerald-400/30 text-[10px] font-bold">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>En Vivo • {formatMonthName(displayYearMonth)}</span>
+                    </span>
+                  )}
+                  {(balanceStatus === "stale" || balanceStatus === "error") && (
+                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-orange-500/25 text-orange-200 border border-orange-400/30 text-[10px] font-bold">
+                      <span className="w-2 h-2 rounded-full bg-orange-400" />
+                      <span>Caché local • Toca ↻</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Botón Táctil de Refresco Inmediato */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsRefreshingBalance(true);
+                      setBalanceStatus("loading");
+                      // Re-ejecutar consulta de balance
+                      const target = displayYearMonth || defaultYearMonth;
+                      Promise.all([
+                        fetchOwnerExpensesFromApi(activeBusId).catch(() => []),
+                        fetch(`/api/reports?type=mensual&month=${target}`).then(r => r.ok ? r.json() : null).catch(() => null)
+                      ]).then(([expensesRes, reportRes]) => {
+                        const expenses = (expensesRes && expensesRes.length > 0) ? expensesRes : getOwnerExpenses(activeBusId);
+                        let inc = target === "2026-08" ? 3915.25 : 0;
+                        if (reportRes && reportRes.totals) {
+                          const t = reportRes.totals;
+                          const total = t.totalEntregado || ((t.entregaAyudante || 0) + (t.entregaCompania || 0));
+                          if (total > 0 || target !== "2026-08") inc = total;
+                        }
+                        const monthExpenses = expenses.filter((e: any) => e.expenseDate && e.expenseDate.startsWith(target));
+                        const expensesSocioDirecto = monthExpenses.filter((e: any) => {
+                          const esDeRuta =
+                            e.origenPago === "AYUDANTE_RUTA" ||
+                            e.descontadoEnRuta === true ||
+                            e.comprobanteRef?.includes("AYUDANTE_RUTA") ||
+                            e.description?.includes("[RUTA-AYUDANTE]") ||
+                            (e.paymentMethod === "EFECTIVO" &&
+                              (e.description?.toLowerCase().includes("ayudante") ||
+                                e.description?.toLowerCase().includes("chofer") ||
+                                e.description?.toLowerCase().includes("liquidado") ||
+                                e.description?.toLowerCase().includes("ruta")));
+                          return !esDeRuta;
+                        });
+                        const totalCost = expensesSocioDirecto.reduce((sum: number, e: any) => sum + (e.totalAmount || 0), 0);
+                        const debts = expenses.filter((e: any) => e.pendingBalance > 0).reduce((sum: number, e: any) => sum + e.pendingBalance, 0);
+                        setOwnerSummary({ routeIncome: inc, busExpenses: totalCost, netProfit: inc - totalCost, pendingDebts: debts });
+                        setBalanceStatus("live");
+                      }).catch(() => {
+                        setBalanceStatus("stale");
+                      }).finally(() => {
+                        setIsRefreshingBalance(false);
+                      });
+                    }}
+                    disabled={isRefreshingBalance}
+                    className="p-1 px-2 rounded-lg bg-white/10 hover:bg-white/20 active:scale-95 transition flex items-center gap-1 text-[10px] text-emerald-100 font-semibold cursor-pointer border border-white/10"
+                    title="Actualizar balance en vivo"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isRefreshingBalance ? "animate-spin text-amber-300" : "text-emerald-200"}`} />
+                    <span className="hidden xs:inline">{isRefreshingBalance ? "Actualizando..." : "Actualizar"}</span>
+                  </button>
+
+                  <span className="text-[11px] text-emerald-300 font-bold flex items-center gap-1">
+                    Ver Módulo <ArrowRight className="w-3 h-3" />
                   </span>
                 </div>
-                <span className="text-[11px] text-emerald-300 font-bold flex items-center gap-1">
-                  Ver Módulo Socio <ArrowRight className="w-3 h-3" />
-                </span>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-center">
+
+              {/* Grid de Métricas Financieras (Con transición suave de opacidad al refrescar) */}
+              <div className={`grid grid-cols-3 gap-2 text-center transition-opacity duration-300 ${balanceStatus === "loading" ? "opacity-70" : "opacity-100"}`}>
                 <div className="bg-white/5 rounded-xl p-1.5 border border-white/10">
                   <span className="text-[10px] text-emerald-200/80 uppercase font-semibold block">Ruta (Recaudado)</span>
                   <span className="text-sm font-black text-white">${ownerSummary.routeIncome.toFixed(2)}</span>

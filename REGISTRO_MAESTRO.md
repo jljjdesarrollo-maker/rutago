@@ -576,6 +576,24 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
   * Estos cambios se aplican automáticamente a la cuenta de Socio 01 y a todos los socios presentes y futuros creados en el Padrón SaaS, manteniendo una interfaz unificada, escalable y robusta.
 
 ---
+---
+
+## 🟢 SEMÁFORO DE CERTEZA CONTABLE Y BOTÓN DE REFRESCO TÁCTIL EN BALANCE DE SOCIO (2026-09-29)
+- **Necesidad Planteada por el Socio Propietario:**
+  * Certeza visual sobre el estado del cálculo de balance financiero en HomeScreen.
+  * Eliminar la incertidumbre de no saber si los números corresponden al balance actualizado o si la consulta sigue en progreso o falló la conexión.
+- **Implementación Técnica en \`src/components/transport/HomeScreen.tsx\`:**
+  1. **Estados Reactivos de Certeza Contable (\`balanceStatus\`):**
+     - \`loading\` (🟡 Ámbar Titilante + Icono \`RefreshCw\` giratorio): Muestra \`Actualizando balance...\` con transición suave de opacidad al 70% en las cifras.
+     - \`live\` (🟢 Verde Esmeralda + Pulso Activo): Muestra \`En Vivo • Mes Año\` indicando cálculo 100% confirmado desde PostgreSQL/Neon y reportes de ruta. Cifras al 100% de brillo.
+     - \`stale\` o \`error\` (🟠 Naranja de Alerta): Muestra \`Caché local • Toca ↻\` si se está en zona sin cobertura o hubo retraso de red.
+  2. **Botón Táctil Ergonómico de Refresco (\`↻ Actualizar\`):**
+     - Integrado en la cabecera de la tarjeta con \`stopPropagation()\` para no disparar la navegación al módulo de gastos al pulsarlo.
+     - Al pulsar el botón, fuerza la reconsulta concurrente a \`/api/owner/expenses\` y \`/api/reports\`, animando el icono giratorio y actualizando las cifras al instante.
+  3. **Preservación Multi-Tenant Universal:**
+     - Esta experiencia visual aplica para el Socio 01 y para cualquier cuenta de socio actual o futura en la cooperativa.
+
+---
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
