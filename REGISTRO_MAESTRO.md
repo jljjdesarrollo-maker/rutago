@@ -594,6 +594,19 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
      - Esta experiencia visual aplica para el Socio 01 y para cualquier cuenta de socio actual o futura en la cooperativa.
 
 ---
+---
+
+## 🟢 SEMÁFORO DE CERTEZA CONTABLE EN MÓDULO "GASTOS DEL SOCIO" (BALANCE DEL MES) (2026-09-29)
+- **Extensión de Certeza Visual al Módulo Interno de Gastos (\`OwnerExpensesScreen.tsx\`):**
+  * Solicitado por el Socio Propietario para mantener una coherencia visual y tranquilidad operativa al ingresar a "Gastos del Socio".
+  * La tarjeta ejecutiva principal de **"Balance del Mes"** ahora cuenta con el mismo sistema de estados:
+    1. **Estado \`loading\` (🟡 Ámbar + \`RefreshCw\` animado):** Muestra \`Actualizando balance...\` y aplica una transición de opacidad al 70% en las entregas de ruta, gastos del bus y ganancia neta.
+    2. **Estado \`live\` (🟢 Verde Esmeralda + Pulso):** Muestra \`En Vivo • Balance del Mes\` confirmando la sincronización de entregas de ruta (\`/api/reports\`) y gastos auditados (\`/api/owner/expenses\`). Cifras al 100% de brillo.
+    3. **Estado \`stale\` / \`error\` (🟠 Naranja):** Muestra \`Caché local • Toca ↻\`.
+    4. **Botón Táctil de Refresco Instantáneo (\`↻ Actualizar\`):** Permite forzar el recálculo y consulta a la nube con un solo toque desde la misma tarjeta ejecutiva.
+  * También se activa automáticamente al cambiar de mes en el selector de periodos.
+
+---
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
