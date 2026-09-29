@@ -444,21 +444,20 @@ export function MantenimientoEstacionesModal({
         saveOwnerExpense({
           id: expenseId,
           busId: activeBusId,
-          date: fechaFinal,
+          expenseDate: fechaFinal,
+          createdAt: new Date().toISOString(),
           category: categoriaContable,
           description: `Taller ${config.nombre}: ${nombresRealizados}${
             estacionCodigosSeleccionados.length > 3 ? '...' : ''
           }`,
-          amount: costoTotal,
+          totalAmount: costoTotal,
           paymentMethod: estacionMetodoPago,
-          supplier: tallerStr,
-          invoiceNumber: facturaRef || undefined,
+          provider: tallerStr,
+          comprobanteRef: facturaRef || undefined,
           status: expenseStatus,
           paidAmount,
           pendingBalance,
           abonos: abonosList,
-          socioModalidadPago: socioModalidad,
-          notes: `Asentado en ${config.nombre}. Modalidad: ${modalidadDesc}. Tacómetro: ${kmServicio.toLocaleString()} km`,
           origenPago: 'SOCIO_DIRECTO',
           descontadoEnRuta: false,
         });
@@ -466,27 +465,28 @@ export function MantenimientoEstacionesModal({
         saveOwnerExpenseToApi({
           id: expenseId,
           busId: activeBusId,
-          date: fechaFinal,
+          expenseDate: fechaFinal,
+          createdAt: new Date().toISOString(),
           category: categoriaContable,
           description: `Taller ${config.nombre}: ${nombresRealizados}${
             estacionCodigosSeleccionados.length > 3 ? '...' : ''
           }`,
-          amount: costoTotal,
+          totalAmount: costoTotal,
           paymentMethod: estacionMetodoPago,
-          supplier: tallerStr,
-          invoiceNumber: facturaRef || undefined,
+          provider: tallerStr,
+          comprobanteRef: facturaRef || undefined,
           status: expenseStatus,
           paidAmount,
           pendingBalance,
           abonos: abonosList,
-          socioModalidadPago: socioModalidad,
-          notes: `Asentado en ${config.nombre}. Modalidad: ${modalidadDesc}. Tacómetro: ${kmServicio.toLocaleString()} km`,
           origenPago: 'SOCIO_DIRECTO',
           descontadoEnRuta: false,
         }).catch(err => console.error('Error background sync expense:', err));
       }
 
       saveParadaPago({
+        id: `parada-${Date.now()}`,
+        disco: activeBusId.replace(/^BUS-/i, ''),
         busId: activeBusId,
         fecha: fechaFinal,
         estacionId,
@@ -494,22 +494,20 @@ export function MantenimientoEstacionesModal({
         costoTotal,
         taller: tallerStr,
         factura: facturaRef || undefined,
-        modalidadPago: estacionModalidadPago,
-        metodoPago: estacionMetodoPago,
-        montoAbono:
-          estacionModalidadPago === 'PAGO_PARCIAL' ? parseFloat(estacionMontoAbono || '0') || 0 : undefined,
+        socioModalidad,
+        socioMontoTransferido: paidAmount,
+        socioSaldoPendiente: pendingBalance,
         odometroKm: kmTablero,
         odometroServicio: kmServicio,
         odometroActualBus: kmTablero,
         esRetroactivo: esRetro,
         kmRodadosDesdeServicio: esRetro ? Math.max(0, kmTablero - kmServicio) : 0,
         codigosMantenimiento: estacionCodigosSeleccionados,
+        itemsRealizados: nombresRealizados ? [nombresRealizados] : [],
         pagador: 'SOCIO',
-        socioModalidadPago: socioModalidad,
-        montoSocio: costoTotal,
-        expenseId,
+        ownerExpenseId: expenseId,
         descontadoEnVT: false,
-        sincronizadoEnNube: false,
+        createdAt: new Date().toISOString(),
       });
 
       if (typeof window !== 'undefined') {

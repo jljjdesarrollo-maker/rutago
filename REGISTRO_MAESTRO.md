@@ -702,15 +702,27 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
   - El archivo fue validado sintácticamente y desplegado a GitHub.
 
 ---
+- **v3.60.28 (Claridad Semántica de Responsabilidad Chofer vs Socio y Ergonomía Móvil):**
+  - **Clarificación de Alcance:**
+    - Se reemplazó la etiqueta ambigua *"Mis Tareas (9)"* por **"Mi Rutina Chofer (9)"** con subtítulo explicativo: *(Fosa, engrase y filtros de motor)*.
+    - Se renombró *"Todo el Bus (30)"* con subtítulo: *(Incluye taller mayor del socio)*.
+    - Se integró el micro-indicador ejecutivo de 3 segundos bajo el tacómetro del conductor:
+      - 🟢 *"Todos los componentes al día en ruta"* (o 🟡 *"X próximos a vencer • Monitorear fosa"* / 🔴 *"X componentes vencidos • Requiere fosa"*), eliminando cualquier confusión de que los 9 ítems de rutina fueran fallas acumuladas.
+  - **Ergonomía Móvil en Barra Inferior (`HomeScreen.tsx`):**
+    - Para `user.rol === 'CONDUCTOR'`, el botón *"Mantenimiento"* de la barra fija inferior (Thumb Zone) ahora ejecuta un scroll suave directo hacia el widget de mantenimiento de su jornada (`#chofer-mantenimiento-section`), evitando que navegue fuera de su flujo operativo.
+  - **Blindaje de Roles y Gobernanza (`MantenimientoScreen.tsx`):**
+    - Se definió explícitamente `isConductor = currentUser?.rol === 'CONDUCTOR'` e `isSocio = !isSuperAdmin && !isConductor`, protegiendo la privacidad de gastos de taller, edición de recetas y cambio de flotas de los socios propietarios.
+
+---
 
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado Actual:
-   - **Fase 3: Arquitectura Multi-Tenant SaaS y Soberanía por Socio:** 🟢 100% COMPLETADA Y DESPLEGADA.
-   - **Modularización de Mantenimiento:** Subcomponentes de Odómetro, Políticas de Unidad, Ajuste Rápido y Estaciones de Taller 100% desacoplados.
+   - **v3.60.28:** Claridad semántica en panel de conductor, scroll suave ergonómico y blindaje estricto de roles socio/chofer.
+   - **Fase 3 SaaS:** Multi-Tenant y Soberanía por Socio 100% completada.
 4. Próxima Etapa Operativa:
-   - Continuar con la extracción de `MantenimientoHistorialModal.tsx` y `MantenimientoComboRuedasModal.tsx` o avanzar hacia la **Fase 4: Pruebas de Campo en Carretera**.
+   - Continuar con la extracción modular o pruebas en campo.
 5. Indicar al agente:  
    `"Continuamos con la modularización de MantenimientoScreen o con la Fase 4: Pruebas de Campo"`.
 

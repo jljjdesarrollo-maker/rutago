@@ -68,8 +68,11 @@ export async function GET(req: NextRequest) {
     if (category && category !== 'ALL') {
       where.category = category;
     }
-    if (status && (status === 'PAGADO' || status === 'PENDIENTE')) {
+    const includeAnulados = searchParams.get('includeAnulados') === 'true';
+    if (status && (status === 'PAGADO' || status === 'PENDIENTE' || status === 'ANULADO')) {
       where.status = status;
+    } else if (!includeAnulados) {
+      where.status = { not: 'ANULADO' };
     }
 
     const expenses = await db.ownerExpense.findMany({
@@ -338,9 +341,10 @@ export async function DELETE(req: NextRequest) {
     const clearAll = searchParams.get('clearAll');
     const sampleOnly = searchParams.get('sampleOnly');
 
-    if (!id && req.headers.get('content-type')?.includes('application/json')) {
-      const body = await req.json().catch(() => ({}));
-      id = body.id;
+    let body: Record<string, any> = {};
+    if (req.headers.get('content-type')?.includes('application/json')) {
+      body = await req.json().catch(() => ({}));
+      if (!id) id = body.id;
     }
 
     // Caso A: Vaciar todos los gastos de un bus
@@ -397,7 +401,7 @@ export async function DELETE(req: NextRequest) {
       });
     }
 
-    // Caso C: Eliminar por ID individual
+    // Caso C: Anulación Segura (Soft Delete) o Hard Delete por ID individual
     if (!id) {
       return NextResponse.json(
         { success: false, error: 'ID o parámetros de eliminación requeridos' },
@@ -405,13 +409,77 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    await db.ownerExpense.delete({ where: { id } }).catch((err) => {
-      console.warn('Gasto ya eliminado o no encontrado en base de datos:', err.message);
-    });
+    const hardDelete = searchParams.get('hardDelete') === 'true' || body?.hardDelete === true;
+    const motivo = (searchParams.get('motivo') || body?.motivo || 'Anulado por usuario').trim();
+    const usuario = (searchParams.get('usuario') || body?.usuario || 'Socio Propietario').trim();
+
+    if (hardDelete) {
+      await db.ownerExpense.delete({ where: { id } }).catch((err) => {
+        console.warn('Gasto ya eliminado o no encontrado en base de datos:', err.message);
+      });
+      return NextResponse.json({
+        success: true,
+        message: 'Gasto eliminado definitivamente de la base de datos',
+      });
+    }
+
+    // Soft delete con auditoría
+    const existing = await db.ownerExpense.findUnique({ where: { id } }).catch(() => null);
+    if (!existing) {
+      return NextResponse.json({
+        success: true,
+        message: 'Registro no encontrado en base de datos central (ya purgado o inexistente)',
+      });
+    }
+
+    // Verificar período de bloqueo (> 72 horas)
+    if (existing.expenseDate) {
+      const expenseTime = new Date(`${existing.expenseDate}T00:00:00Z`).getTime();
+      const nowTime = Date.now();
+      const diffHours = (nowTime - expenseTime) / (1000 * 60 * 60);
+      const isPeriodoConsolidado = diffHours > 72;
+      const tieneMotivoValido = motivo && motivo.length >= 4 && motivo !== 'Anulado por usuario';
+
+      if (isPeriodoConsolidado && !tieneMotivoValido && searchParams.get('force') !== 'true' && !body?.force) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Este registro corresponde a un período consolidado (>72h). Es obligatorio indicar el motivo justificado de la anulación.',
+            requiresMotivo: true,
+            diffHours: Math.round(diffHours),
+          },
+          { status: 422 }
+        );
+      }
+    }
+
+    // Marcar como ANULADO en base de datos
+    try {
+      await db.ownerExpense.update({
+        where: { id },
+        data: {
+          status: 'ANULADO',
+          pendingBalance: 0,
+          anuladoAt: new Date(),
+          anuladoPor: usuario,
+          motivoAnulacion: motivo,
+        },
+      });
+    } catch {
+      // Fallback si campos adicionales de auditoría no existen aún
+      await db.ownerExpense.update({
+        where: { id },
+        data: {
+          status: 'ANULADO',
+          pendingBalance: 0,
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Gasto eliminado de la base de datos',
+      status: 'ANULADO',
+      message: 'Gasto anulado correctamente. Se conserva en auditoría y queda excluido de los balances contables.',
     });
   } catch (error) {
     console.error('Error al eliminar gasto de socio:', error);

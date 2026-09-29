@@ -41,6 +41,12 @@ export interface ParadaPagoRegistro {
   itemsRealizados?: string[]; // Nombres de ítems realizados (ej. ["Aceite Motor", "Filtro Aceite"])
   codigosMantenimiento?: string[]; // Códigos de catálogo involucrados (ej. ["MNT-01", "MNT-02"])
   createdAt: string;
+
+  // Auditoría y Anulación Segura (Soft Delete v3.60.28)
+  estado?: 'ACTIVO' | 'ANULADO';
+  anuladoAt?: string;
+  anuladoPor?: string;
+  motivoAnulacion?: string;
 }
 
 export interface ResultadoCalculoRegularizacion {
@@ -445,7 +451,7 @@ export function saveParadaPago(registro: ParadaPagoRegistro): void {
 /**
  * Obtiene todas las paradas de una unidad asegurando compatibilidad retroactiva
  */
-export function getParadasPagoByBus(busId: string): ParadaPagoRegistro[] {
+export function getParadasPagoByBus(busId: string, includeAnulados = false): ParadaPagoRegistro[] {
   if (typeof window === 'undefined') return [];
   try {
     // Sincronizar de forma segura gastos previos que no tengan parada técnica aún
@@ -456,7 +462,12 @@ export function getParadasPagoByBus(busId: string): ParadaPagoRegistro[] {
     const list: ParadaPagoRegistro[] = JSON.parse(raw);
     const busDisco = busId.replace(/^BUS-/i, '');
     return list
-      .filter(p => p.busId === busId || p.disco === busDisco || p.disco === busId)
+      .filter(p => {
+        const matchesBus = p.busId === busId || p.disco === busDisco || p.disco === busId;
+        if (!matchesBus) return false;
+        if (!includeAnulados && p.estado === 'ANULADO') return false;
+        return true;
+      })
       .map(p => ({
         ...p,
         costoTotal: Number(p.costoTotal) || 0,
@@ -739,6 +750,60 @@ export async function deleteParadaPagoCascada(paradaId: string): Promise<boolean
     return true;
   } catch (err) {
     console.error('Error al eliminar parada técnica en cascada:', err);
+    return false;
+  }
+}
+
+/**
+ * FASE B (v3.60.28): Anulación Segura (Soft Delete) de parada técnica en CASCADA AUDITADA:
+ * 1. Marca la parada como estado = 'ANULADO', con timestamp, usuario y motivo.
+ * 2. Si tenía gasto vinculado, ejecuta Soft Delete en OwnerExpense en local y nube.
+ * 3. Cancela saldos pendientes con taller para no distorsionar deudas.
+ * 4. Emite eventos reactivos globales preservando la inmutabilidad del tacómetro.
+ */
+export async function anularParadaPagoCascada(
+  paradaId: string,
+  motivo = 'Anulado por usuario',
+  usuario = 'Socio Propietario',
+  hardDelete = false
+): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (hardDelete) {
+      return deleteParadaPagoCascada(paradaId);
+    }
+
+    const raw = localStorage.getItem(STORAGE_PARADAS_KEY);
+    if (!raw) return false;
+    const list: ParadaPagoRegistro[] = JSON.parse(raw);
+    const targetIndex = list.findIndex(p => p.id === paradaId);
+    if (targetIndex === -1) return false;
+    const target = list[targetIndex];
+
+    // Marcar como ANULADO
+    list[targetIndex] = {
+      ...target,
+      estado: 'ANULADO',
+      anuladoAt: new Date().toISOString(),
+      anuladoPor: usuario,
+      motivoAnulacion: motivo,
+      socioSaldoPendiente: 0,
+    };
+    localStorage.setItem(STORAGE_PARADAS_KEY, JSON.stringify(list));
+
+    // Si tenía gasto contable vinculado, anularlo en cascada con soft delete
+    const relatedExpenseId = target.ownerExpenseId || (paradaId.startsWith('PARADA-RETRO-') ? paradaId.replace('PARADA-RETRO-', '') : null);
+    if (relatedExpenseId) {
+      deleteOwnerExpense(relatedExpenseId, motivo, usuario, false);
+      deleteOwnerExpenseFromApi(relatedExpenseId, motivo, usuario, false).catch(err => console.warn('Aviso anulación en nube:', err));
+      window.dispatchEvent(new CustomEvent('rg_owner_expenses_sync', { detail: { expenseId: relatedExpenseId, status: 'ANULADO' } }));
+    }
+
+    // Notificar actualización reactiva
+    window.dispatchEvent(new CustomEvent('rg_paradas_pago_updated', { detail: { busId: target.busId, paradaId, status: 'ANULADO' } }));
+    return true;
+  } catch (err) {
+    console.error('Error al anular parada técnica en cascada:', err);
     return false;
   }
 }

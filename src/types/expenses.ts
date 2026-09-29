@@ -117,5 +117,11 @@ export interface OwnerExpense {
   // Historial de abonos (en caso de pagos parciales)
   abonos?: PaymentAbono[];
   
-  status: 'PAGADO' | 'PENDIENTE';
+  status: 'PAGADO' | 'PENDIENTE' | 'ANULADO';
+
+  // Auditoría y Anulación Segura (Soft Delete)
+  anuladoAt?: string;
+  anuladoPor?: string;
+  motivoAnulacion?: string;
 }
+

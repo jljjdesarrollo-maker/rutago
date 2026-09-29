@@ -131,6 +131,12 @@ export default function OwnerExpensesScreen({
   const [abonoNotes, setAbonoNotes] = useState('');
   const [isSubmittingAbono, setIsSubmittingAbono] = useState(false);
 
+  // Estados para Anulación Segura (Soft Delete v3.60.28)
+  const [expenseParaAnular, setExpenseParaAnular] = useState<OwnerExpense | null>(null);
+  const [motivoAnulacionGasto, setMotivoAnulacionGasto] = useState<string>('Error de digitación');
+  const [motivoAnulacionCustom, setMotivoAnulacionCustom] = useState<string>('');
+  const [isSubmittingAnulacion, setIsSubmittingAnulacion] = useState(false);
+
   // Toast / Mensaje feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -737,19 +743,39 @@ export default function OwnerExpensesScreen({
     }
   };
 
-  // Eliminar gasto por Fases (Fase 1: Optimistic UI sin bucle, Fase 2: Persistencia local y remota)
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('¿Seguro que deseas eliminar este registro de gasto?')) return;
-    
-    // Fase 1: Actualización optimista inmediata en el estado de React (cero parpadeo, cero bucles)
-    setAllExpenses((prev) => prev.filter((e) => e.id !== id));
-    showToast('🗑️ Registro eliminado');
+  // FASE A & B (v3.60.28): Anulación Segura (Soft Delete) de Gasto con Auditoría
+  const handleOpenAnularModal = (expense: OwnerExpense) => {
+    setExpenseParaAnular(expense);
+    setMotivoAnulacionGasto('Error de digitación');
+    setMotivoAnulacionCustom('');
+  };
 
-    // Fase 2: Ejecutar borrado definitivo en Storage y API en segundo plano
+  const handleConfirmarAnulacionGasto = async () => {
+    if (!expenseParaAnular) return;
+    const motivoFinal = (motivoAnulacionGasto === 'OTRO' ? motivoAnulacionCustom : motivoAnulacionGasto).trim();
+    if (!motivoFinal || motivoFinal.length < 3) {
+      showToast('⚠️ Ingresa un motivo para la anulación');
+      return;
+    }
+
+    setIsSubmittingAnulacion(true);
+    const targetId = expenseParaAnular.id;
+    const usuarioActivo = currentUser?.nombre || currentUser?.username || 'Socio Propietario';
+
     try {
-      await deleteOwnerExpenseFromApi(id);
+      // 1. Actualización optimista: retirar de la vista activa para no distorsionar balance
+      setAllExpenses((prev) => prev.filter((e) => e.id !== targetId));
+      showToast('🛡️ Gasto anulado y archivado en auditoría');
+
+      // 2. Persistir Soft Delete con motivo y usuario en local y nube
+      await deleteOwnerExpenseFromApi(targetId, motivoFinal, usuarioActivo, false);
     } catch (err) {
-      console.warn('Error borrando en API:', err);
+      console.warn('Error anulando en API:', err);
+    } finally {
+      setIsSubmittingAnulacion(false);
+      setExpenseParaAnular(null);
+      setMotivoAnulacionGasto('Error de digitación');
+      setMotivoAnulacionCustom('');
     }
   };
 
@@ -1518,9 +1544,10 @@ export default function OwnerExpensesScreen({
                           </span>
                         )}
                         <button
-                          onClick={() => handleDelete(expense.id)}
-                          className="text-gray-300 hover:text-rose-600 p-1 transition"
-                          title="Eliminar registro"
+                          type="button"
+                          onClick={() => handleOpenAnularModal(expense)}
+                          className="text-gray-300 hover:text-rose-600 p-1 transition cursor-pointer"
+                          title="Anular registro con auditoría"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -2092,6 +2119,118 @@ export default function OwnerExpensesScreen({
           allExpenses={allExpenses}
         />
       )}
+
+      {/* ========================================================= */}
+      {/* MODAL DE ANULACIÓN SEGURA (SOFT DELETE) DE GASTO          */}
+      {/* ========================================================= */}
+      {expenseParaAnular && (() => {
+        const fechaTime = expenseParaAnular.expenseDate ? new Date(`${expenseParaAnular.expenseDate}T00:00:00Z`).getTime() : 0;
+        const diffHours = fechaTime > 0 ? (Date.now() - fechaTime) / (1000 * 60 * 60) : 0;
+        const esPeriodoConsolidado = diffHours > 72;
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-3xl border border-slate-200 max-w-sm w-full p-5 space-y-3.5 shadow-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-black text-sm text-slate-900 leading-tight">
+                    ¿Anular este Gasto?
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium truncate">
+                    {expenseParaAnular.description}
+                  </p>
+                </div>
+              </div>
+
+              {esPeriodoConsolidado && (
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] space-y-1">
+                  <div className="font-bold flex items-center gap-1">
+                    <span>⚠️ Período Consolidado (&gt;72h)</span>
+                  </div>
+                  <p className="text-amber-800 leading-snug">
+                    Este egreso pertenece a una fecha anterior ya consolidada ({expenseParaAnular.expenseDate}). La anulación exige motivo justificado y quedará registrada en auditoría.
+                  </p>
+                </div>
+              )}
+
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1 text-xs text-slate-700">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Proveedor / Taller:</span>
+                  <span className="font-bold truncate max-w-[170px]">{expenseParaAnular.provider || 'No especificado'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Fecha contable:</span>
+                  <span className="font-mono font-bold">{expenseParaAnular.expenseDate}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Monto pactado:</span>
+                  <span className="font-black text-slate-900">${expenseParaAnular.totalAmount.toFixed(2)}</span>
+                </div>
+                {expenseParaAnular.pendingBalance > 0 && (
+                  <div className="flex justify-between text-rose-700 font-bold">
+                    <span>Saldo pendiente:</span>
+                    <span>${expenseParaAnular.pendingBalance.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Selector de Motivo de Anulación */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-700 block">
+                  Motivo de la Anulación (Auditoría):
+                </label>
+                <select
+                  value={motivoAnulacionGasto}
+                  onChange={(e) => setMotivoAnulacionGasto(e.target.value)}
+                  className="w-full h-9 px-2.5 text-xs font-medium rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                >
+                  <option value="Error de digitación">Error de digitación / Duplicado</option>
+                  <option value="Monto o factura incorrecta">Monto o factura incorrecta</option>
+                  <option value="Servicio no ejecutado">Servicio o compra cancelada</option>
+                  <option value="Pago asumido por terceros">Pago asumido por terceros / Garantía</option>
+                  <option value="OTRO">Otro motivo (especificar)...</option>
+                </select>
+
+                {motivoAnulacionGasto === 'OTRO' && (
+                  <input
+                    type="text"
+                    value={motivoAnulacionCustom}
+                    onChange={(e) => setMotivoAnulacionCustom(e.target.value)}
+                    placeholder="Describe el motivo de la anulación..."
+                    className="w-full h-8 px-2.5 text-xs rounded-xl border border-slate-300 font-medium mt-1 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                  />
+                )}
+              </div>
+
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                🛡️ <strong>Anulación Segura:</strong> Se archivará con estado ANULADO, se extinguirá cualquier deuda pendiente con el proveedor y no afectará tu Utilidad Real.
+              </p>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={isSubmittingAnulacion}
+                  onClick={() => setExpenseParaAnular(null)}
+                  className="flex-1 h-10 rounded-xl text-xs font-bold text-slate-600 border border-slate-300 hover:bg-slate-100 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmittingAnulacion}
+                  onClick={handleConfirmarAnulacionGasto}
+                  className="flex-1 h-10 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  {isSubmittingAnulacion ? 'Anulando...' : 'Confirmar Anulación'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

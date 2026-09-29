@@ -1695,6 +1695,26 @@ export function ChoferMantenimientoWidget({
             <div className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-emerald-200/90 mt-1">
               KILOMETRAJE REGISTRADO POR AYUDANTE
             </div>
+
+            {/* Estado Ejecutivo de 3 Segundos */}
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-extrabold border ${
+                countVencidos > 0
+                  ? 'bg-rose-950/80 text-rose-300 border-rose-500/40'
+                  : countPorVencer > 0
+                  ? 'bg-amber-950/80 text-amber-300 border-amber-500/40'
+                  : 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  countVencidos > 0 ? 'bg-rose-400 animate-ping' : countPorVencer > 0 ? 'bg-amber-400' : 'bg-emerald-400'
+                }`} />
+                {countVencidos > 0
+                  ? `${countVencidos} componente${countVencidos > 1 ? 's' : ''} vencido${countVencidos > 1 ? 's' : ''} • Requiere fosa`
+                  : countPorVencer > 0
+                  ? `${countPorVencer} próximo${countPorVencer > 1 ? 's' : ''} a vencer • Monitorear fosa`
+                  : 'Todos los componentes al día en ruta'}
+              </span>
+            </div>
           </div>
 
           {/* Semáforo Táctil Reactivo (4 Chips) */}
@@ -1911,33 +1931,52 @@ export function ChoferMantenimientoWidget({
 
         {/* ZONA 3: EL RADAR DE TAREAS MECÁNICAS */}
         <div className="space-y-2 pt-0.5">
-          {/* Selector de Alcance en 1 Toque y Filtro Activo */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 rounded-xl border border-slate-200/80 w-full shadow-inner">
+          {/* Selector de Alcance Ergonómico y Minimalista */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                Alcance de Inspección
+              </span>
+              <span className="text-[10px] font-bold text-slate-400">
+                {filtroAlcance === 'CHOFER' ? 'Fosa, engrase y filtros rápidos' : 'Catálogo completo (incluye taller)'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 shadow-inner">
               <button
                 type="button"
                 onClick={() => setFiltroAlcance('CHOFER')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`p-2.5 rounded-xl transition-all flex flex-col items-center justify-center text-center cursor-pointer select-none ${
                   filtroAlcance === 'CHOFER'
-                    ? 'bg-amber-500 text-slate-950 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                    ? 'bg-white text-slate-950 shadow-sm border border-slate-200 ring-1 ring-black/5'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                 }`}
               >
-                <UserCheck className="w-3.5 h-3.5 shrink-0" />
-                <span>Mis Tareas ({countChofer})</span>
+                <div className="flex items-center gap-1.5">
+                  <UserCheck className={`w-3.5 h-3.5 ${filtroAlcance === 'CHOFER' ? 'text-amber-600 font-bold' : 'text-slate-400'}`} />
+                  <span className="text-xs font-black">Mi Rutina Chofer ({countChofer})</span>
+                </div>
+                <span className="text-[9.5px] font-semibold text-slate-500 mt-0.5">
+                  Fosa, engrase y filtros de motor
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setFiltroAlcance('TODOS')}
-                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`p-2.5 rounded-xl transition-all flex flex-col items-center justify-center text-center cursor-pointer select-none ${
                   filtroAlcance === 'TODOS'
-                    ? 'bg-amber-500 text-slate-950 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                    ? 'bg-white text-slate-950 shadow-sm border border-slate-200 ring-1 ring-black/5'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                 }`}
               >
-                <Wrench className="w-3.5 h-3.5 shrink-0" />
-                <span>Todo el Bus ({countTodos})</span>
+                <div className="flex items-center gap-1.5">
+                  <Wrench className={`w-3.5 h-3.5 ${filtroAlcance === 'TODOS' ? 'text-blue-600 font-bold' : 'text-slate-400'}`} />
+                  <span className="text-xs font-black">Todo el Bus ({countTodos})</span>
+                </div>
+                <span className="text-[9.5px] font-semibold text-slate-500 mt-0.5">
+                  Incluye taller mayor del socio
+                </span>
               </button>
             </div>
           </div>

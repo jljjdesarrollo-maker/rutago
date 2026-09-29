@@ -162,7 +162,10 @@ model OwnerExpense {
   bankName        String?
   receiptPhotoUrl String?
   abonos          Json     @default("[]")
-  status          String   @default("PAGADO") // PAGADO | PENDIENTE
+  status          String   @default("PAGADO") // PAGADO | PENDIENTE | ANULADO
+  anuladoAt       DateTime?
+  anuladoPor      String?
+  motivoAnulacion String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

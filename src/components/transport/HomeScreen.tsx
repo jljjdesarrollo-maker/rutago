@@ -885,12 +885,14 @@ export function HomeScreen({
                   );
                 }
                 return (
+                  <div id="chofer-mantenimiento-section" className="scroll-mt-4">
                     <ChoferMantenimientoWidget
                       onVerMas={onGoToHistory}
                       onGoToHistory={onGoToHistory}
                       recordCount={recordCount}
                     />
-                  );
+                  </div>
+                );
               }
               return null;
             })()}
@@ -978,15 +980,20 @@ export function HomeScreen({
           {/* Si es CONDUCTOR: Acceso rápido a Mantenimiento y Registros de Turno */}
           {user.rol === 'CONDUCTOR' && (
             <>
-              {onGoToMantenimiento && (
-                <Button
-                  onClick={onGoToMantenimiento}
-                  className="flex-1 h-12 rounded-2xl bg-[#053225] hover:bg-[#073b2d] text-white font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/20 active:scale-95 transition cursor-pointer border border-emerald-800/60"
-                >
-                  <Wrench className="w-4 h-4 text-emerald-300" />
-                  <span>Mantenimiento</span>
-                </Button>
-              )}
+              <Button
+                onClick={() => {
+                  const elem = document.getElementById('chofer-mantenimiento-section');
+                  if (elem) {
+                    elem.scrollIntoView({ behavior: 'smooth' });
+                  } else if (onGoToMantenimiento) {
+                    onGoToMantenimiento();
+                  }
+                }}
+                className="flex-1 h-12 rounded-2xl bg-[#053225] hover:bg-[#073b2d] text-white font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/20 active:scale-95 transition cursor-pointer border border-emerald-800/60"
+              >
+                <Wrench className="w-4 h-4 text-emerald-300" />
+                <span>Mantenimiento</span>
+              </Button>
               <Button
                 onClick={onGoToHistory}
                 variant="outline"

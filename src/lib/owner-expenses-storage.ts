@@ -6,7 +6,7 @@ const STORAGE_KEY = 'rutago_owner_expenses_v1';
 const INITIALIZED_KEY = 'rutago_owner_expenses_initialized_flag';
 const DELETED_IDS_KEY = 'rutago_owner_expenses_deleted_ids_v1';
 
-export function getOwnerExpenses(busId = 'BUS-01'): OwnerExpense[] {
+export function getOwnerExpenses(busId = 'BUS-01', includeAnulados = false): OwnerExpense[] {
   if (typeof window === 'undefined') return [];
   try {
     let raw = localStorage.getItem(STORAGE_KEY);
@@ -17,14 +17,18 @@ export function getOwnerExpenses(busId = 'BUS-01'): OwnerExpense[] {
     }
     if (!raw) return [];
     const all: OwnerExpense[] = JSON.parse(raw);
-    const busExpenses = all.filter((item) => item.busId === busId);
+    const busExpenses = all.filter(
+      (item) => item.busId === busId && (includeAnulados ? true : item.status !== 'ANULADO')
+    );
     const isInitialized = localStorage.getItem(INITIALIZED_KEY) === 'true';
     if (busExpenses.length === 0 && busId === 'BUS-01' && !isInitialized) {
       seedSampleExpenses(busId);
       const reRead = localStorage.getItem(STORAGE_KEY);
       if (reRead) {
         const reAll: OwnerExpense[] = JSON.parse(reRead);
-        return reAll.filter((item) => item.busId === busId);
+        return reAll.filter(
+          (item) => item.busId === busId && (includeAnulados ? true : item.status !== 'ANULADO')
+        );
       }
     }
     return busExpenses.map((item) => {
@@ -109,19 +113,45 @@ export function clearDeletedExpenseIds(): void {
   }
 }
 
-export function deleteOwnerExpense(id: string): boolean {
+export function deleteOwnerExpense(
+  id: string,
+  motivo = 'Anulado por usuario',
+  usuario = 'Socio Propietario',
+  hardDelete = false
+): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    recordDeletedExpenseId(id);
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return false;
     const all: OwnerExpense[] = JSON.parse(raw);
-    const filtered = all.filter((e) => e.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    const index = all.findIndex((e) => e.id === id);
+    if (index === -1) return false;
+
+    if (hardDelete) {
+      recordDeletedExpenseId(id);
+      const filtered = all.filter((e) => e.id !== id);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      localStorage.setItem(INITIALIZED_KEY, 'true');
+      return true;
+    }
+
+    // Soft Delete: Mantener para auditoría con status ANULADO y saldo cero
+    all[index] = {
+      ...all[index],
+      status: 'ANULADO',
+      pendingBalance: 0,
+      anuladoAt: new Date().toISOString(),
+      anuladoPor: usuario,
+      motivoAnulacion: motivo,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
     localStorage.setItem(INITIALIZED_KEY, 'true');
+    window.dispatchEvent(
+      new CustomEvent('rg_owner_expenses_sync', { detail: { expenseId: id, status: 'ANULADO' } })
+    );
     return true;
   } catch (err) {
-    console.error('Error eliminando gasto de socio:', err);
+    console.error('Error anulando gasto de socio:', err);
     return false;
   }
 }
@@ -565,18 +595,29 @@ export async function registerAbonoToApi(
   return localUpdated;
 }
 
-export async function deleteOwnerExpenseFromApi(id: string): Promise<boolean> {
-  // Fase 1: Local y Tombstone de exclusión inmediata (Optimistic UI)
-  deleteOwnerExpense(id);
+export async function deleteOwnerExpenseFromApi(
+  id: string,
+  motivo = 'Anulado por usuario',
+  usuario = 'Socio Propietario',
+  hardDelete = false
+): Promise<boolean> {
+  // Fase 1: Local y Soft Delete inmediato (Optimistic UI)
+  deleteOwnerExpense(id, motivo, usuario, hardDelete);
 
   // Fase 2: Envío asíncrono a API sin bloquear la interacción
   try {
-    const res = await fetch(`/api/owner-expenses?id=${encodeURIComponent(id)}`, {
+    const params = new URLSearchParams();
+    params.set('id', id);
+    if (motivo) params.set('motivo', motivo);
+    if (usuario) params.set('usuario', usuario);
+    if (hardDelete) params.set('hardDelete', 'true');
+
+    const res = await fetch(`/api/owner-expenses?${params.toString()}`, {
       method: 'DELETE',
     });
     return res.ok;
   } catch (err) {
-    console.warn('Eliminación en nube diferida (local ya asegurado):', err);
+    console.warn('Anulación en nube diferida (local ya asegurado):', err);
     return true;
   }
 }

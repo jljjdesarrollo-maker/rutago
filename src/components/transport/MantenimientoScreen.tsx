@@ -63,6 +63,7 @@ import {
   getParadasPagoByBus,
   saveParadaPago,
   deleteParadaPagoCascada,
+  anularParadaPagoCascada,
   clearAllParadasByBus,
   calcularDesgasteRegularizacion,
   type ParadaPagoRegistro,
@@ -136,7 +137,8 @@ export function MantenimientoScreen({
   const { toast } = useToast();
 
   const isSuperAdmin = currentUser?.rol === 'ADMIN' && currentUser?.subRol === 'SUPERADMIN_SAAS';
-  const isSocio = !isSuperAdmin;
+  const isConductor = currentUser?.rol === 'CONDUCTOR';
+  const isSocio = !isSuperAdmin && !isConductor;
   const socioIdActual = currentUser?.socioId || (isSocio ? currentUser?.id : null);
 
   const [availableBuses, setAvailableBuses] = useState<
@@ -570,6 +572,9 @@ export function MantenimientoScreen({
 
   // FASE B: Modal de confirmación para anulación/eliminación en cascada de parada técnica
   const [paradaParaEliminar, setParadaParaEliminar] = useState<ParadaPagoRegistro | null>(null);
+  const [motivoAnulacionParada, setMotivoAnulacionParada] = useState<string>('Error de digitación');
+  const [motivoAnulacionCustom, setMotivoAnulacionCustom] = useState<string>('');
+  const [isAnulandoParada, setIsAnulandoParada] = useState<boolean>(false);
   const [modalConfirmLimpiarPruebasOpen, setModalConfirmLimpiarPruebasOpen] = useState(false);
 
   // Modal Combo 4 Ruedas (Rodaje y Suspensión)
@@ -1714,24 +1719,49 @@ export function MantenimientoScreen({
     }
   };
 
-  // FASE A: Anulación / Eliminación en Cascada de Paradas Técnicas (Local + Nube)
+  // FASE A & B (v3.60.28): Anulación Segura (Soft Delete) de Paradas Técnicas (Local + Nube)
   const handleConfirmarEliminarParada = async () => {
     if (!paradaParaEliminar) return;
-    const ok = await deleteParadaPagoCascada(paradaParaEliminar.id);
-    if (ok) {
+    const motivoFinal = (motivoAnulacionParada === 'OTRO' ? motivoAnulacionCustom : motivoAnulacionParada).trim();
+    if (!motivoFinal || motivoFinal.length < 3) {
       toast({
-        title: 'Registro de Parada Anulado',
-        description: `Se eliminó el servicio en ${paradaParaEliminar.estacionNombre} y se canceló su impacto contable en deudas y caja (local y nube).`,
-      });
-      recargarCarteraYParadas();
-    } else {
-      toast({
-        title: 'Error al anular registro',
-        description: 'No se pudo eliminar el registro seleccionado.',
+        title: 'Motivo requerido',
+        description: 'Por favor selecciona o escribe la razón de la anulación para auditoría.',
         variant: 'destructive',
       });
+      return;
     }
-    setParadaParaEliminar(null);
+
+    setIsAnulandoParada(true);
+    try {
+      const usuarioActivo = currentUser?.nombre || currentUser?.username || 'Socio Propietario';
+      const ok = await anularParadaPagoCascada(paradaParaEliminar.id, motivoFinal, usuarioActivo, false);
+      if (ok) {
+        toast({
+          title: 'Registro de Mantenimiento Anulado',
+          description: `Se anuló el servicio en ${paradaParaEliminar.estacionNombre}. Queda archivado en auditoría y su impacto contable fue cancelado.`,
+        });
+        recargarCarteraYParadas();
+      } else {
+        toast({
+          title: 'Error al anular registro',
+          description: 'No se pudo anular el registro seleccionado.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      console.error('Error al anular parada:', err);
+      toast({
+        title: 'Error al procesar anulación',
+        description: 'Ocurrió un error inesperado al anular.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAnulandoParada(false);
+      setParadaParaEliminar(null);
+      setMotivoAnulacionParada('Error de digitación');
+      setMotivoAnulacionCustom('');
+    }
   };
 
   // FASE A: Limpieza total de paradas de prueba del autobús (Local + Nube)
@@ -4098,68 +4128,115 @@ export function MantenimientoScreen({
       {/* ========================================================= */}
       {/* FASE B: MODAL DE CONFIRMACIÓN: ANULAR PARADA EN CASCADA    */}
       {/* ========================================================= */}
-      {paradaParaEliminar && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl border border-slate-200 max-w-sm w-full p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-black text-sm text-slate-900">
-                  ¿Anular este Mantenimiento?
-                </h3>
-                <p className="text-xs text-slate-500 font-medium">
-                  {paradaParaEliminar.estacionNombre}
-                </p>
-              </div>
-            </div>
+      {paradaParaEliminar && (() => {
+        const fechaTime = paradaParaEliminar.fecha ? new Date(`${paradaParaEliminar.fecha}T00:00:00Z`).getTime() : 0;
+        const diffHours = fechaTime > 0 ? (Date.now() - fechaTime) / (1000 * 60 * 60) : 0;
+        const esPeriodoConsolidado = diffHours > 72;
 
-            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5 text-xs text-slate-700">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Taller:</span>
-                <span className="font-bold">{paradaParaEliminar.taller}</span>
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-3xl border border-slate-200 max-w-sm w-full p-5 space-y-3.5 shadow-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-black text-sm text-slate-900 leading-tight">
+                    ¿Anular este Mantenimiento?
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium truncate">
+                    {paradaParaEliminar.estacionNombre}
+                  </p>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Odómetro:</span>
-                <span className="font-mono font-bold">{(Number(paradaParaEliminar.odometroKm) || 0).toLocaleString()} km</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Costo:</span>
-                <span className="font-black text-slate-900">${(Number(paradaParaEliminar.costoTotal) || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Modalidad:</span>
-                <span className="font-bold text-amber-800">
-                  {paradaParaEliminar.pagador === 'AYUDANTE' ? 'Ruta Ayudante' : 'Socio Propietario'}
-                </span>
-              </div>
-            </div>
 
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              ⚠️ <strong>Efecto en cascada:</strong> Se cancelará la deuda o egreso registrado, se saneará la cartera y se retirará del historial de la unidad.
-            </p>
+              {esPeriodoConsolidado && (
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] space-y-1">
+                  <div className="font-bold flex items-center gap-1">
+                    <span>⚠️ Período Consolidado (&gt;72h)</span>
+                  </div>
+                  <p className="text-amber-800 leading-snug">
+                    Este registro pertenece a una fecha anterior ya consolidada ({paradaParaEliminar.fecha}). Se requiere motivo justificado para asentar la anulación contable sin alterar el tacómetro del autobús.
+                  </p>
+                </div>
+              )}
 
-            <div className="flex items-center gap-2 pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setParadaParaEliminar(null)}
-                className="flex-1 h-10 rounded-xl text-xs font-bold text-slate-600 border-slate-300 hover:bg-slate-100 cursor-pointer"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                onClick={handleConfirmarEliminarParada}
-                className="flex-1 h-10 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-md"
-              >
-                Sí, Anular Registro
-              </Button>
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1 text-xs text-slate-700">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Taller:</span>
+                  <span className="font-bold truncate max-w-[180px]">{paradaParaEliminar.taller}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Odómetro:</span>
+                  <span className="font-mono font-bold">{(Number(paradaParaEliminar.odometroKm) || 0).toLocaleString()} km</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Costo:</span>
+                  <span className="font-black text-slate-900">${(Number(paradaParaEliminar.costoTotal) || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Modalidad:</span>
+                  <span className="font-bold text-amber-800">
+                    {paradaParaEliminar.pagador === 'AYUDANTE' ? 'Ruta Ayudante' : 'Socio Propietario'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Selector de Motivo de Anulación */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-700 block">
+                  Motivo de la Anulación (Auditoría):
+                </label>
+                <select
+                  value={motivoAnulacionParada}
+                  onChange={(e) => setMotivoAnulacionParada(e.target.value)}
+                  className="w-full h-9 px-2.5 text-xs font-medium rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                >
+                  <option value="Error de digitación">Error de digitación / Duplicado</option>
+                  <option value="Monto o factura incorrecta">Monto o factura incorrecta</option>
+                  <option value="Servicio técnico no ejecutado">Servicio técnico no ejecutado</option>
+                  <option value="Cambio de taller o proveedor">Cambio de taller o proveedor</option>
+                  <option value="OTRO">Otro motivo (especificar)...</option>
+                </select>
+
+                {motivoAnulacionParada === 'OTRO' && (
+                  <Input
+                    type="text"
+                    value={motivoAnulacionCustom}
+                    onChange={(e) => setMotivoAnulacionCustom(e.target.value)}
+                    placeholder="Describe el motivo de la anulación..."
+                    className="h-8 text-xs rounded-xl border-slate-300 font-medium mt-1"
+                  />
+                )}
+              </div>
+
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                🛡️ <strong>Anulación Segura:</strong> Se archivará con sello de auditoría, se cancelará su saldo con talleres y quedará excluida de balances contables.
+              </p>
+
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isAnulandoParada}
+                  onClick={() => setParadaParaEliminar(null)}
+                  className="flex-1 h-10 rounded-xl text-xs font-bold text-slate-600 border-slate-300 hover:bg-slate-100 cursor-pointer"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  disabled={isAnulandoParada}
+                  onClick={handleConfirmarEliminarParada}
+                  className="flex-1 h-10 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white cursor-pointer shadow-md"
+                >
+                  {isAnulandoParada ? 'Anulando...' : 'Confirmar Anulación'}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================= */}
       {/* FASE B: MODAL DE CONFIRMACIÓN: LIMPIAR PRUEBAS DE LA UNIDAD */}
