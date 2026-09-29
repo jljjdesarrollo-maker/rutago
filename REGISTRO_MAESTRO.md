@@ -659,6 +659,19 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
   - Las pantallas de **Conductor** y **Ayudante** conservan íntegras sus herramientas tácticas de jornada y emisión de boletos.
 
 ---
+---
+
+## 📅 COBERTURA CALENDARIO EN REPORTE OPERATIVO (INTERFAZ Y PDF) (2026-09-29)
+- **Problema de Negocio:** En septiembre el reporte mostraba que solo 2 frecuencias se cayeron en ruta, pero los días 28 y 29 de septiembre el bus no salió a rodar por estar en mantenimiento en el taller. Sin una métrica de cobertura de días, no se evidenciaba por qué faltaban esos 2 días.
+- **Solución Implementada (Simplicidad y Precisión Matemática):**
+  - Se implementó el cálculo automático de días calendario del período (\`totalDiasPeriodo\`) versus días con hoja de ruta guardada (\`diasConRuta\`).
+  - **En la Interfaz (\`ReporteOperativoScreen.tsx\`):**
+    - Tarjeta ejecutiva: *"27 de 29 días operados (93% actividad) • 2 días sin registro (mantenimiento en taller, parada técnica o retención)"*.
+  - **En el Reporte PDF (\`generate-operativo-pdf.ts\`):**
+    - Franja institucional verde de **COBERTURA DE JORNADAS** con el porcentaje de actividad y los días sin registro detallados.
+  - **Beneficio Operativo:** Cero trabajo adicional para el chofer o socio (no se requiere llenar hojas ficticias en cero), manteniendo un reporte 100% veraz y transparente para la cooperativa y el socio.
+
+---
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).

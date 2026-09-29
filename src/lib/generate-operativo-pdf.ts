@@ -202,6 +202,27 @@ export async function generateOperativoPDF(data: OperativoData): Promise<Blob> {
   // ==================== KPI CARDS ====================
   drawBlockTitle('RESUMEN OPERATIVO Y FINANCIERO');
 
+  // Cálculo de Cobertura de Jornadas Calendario
+  const startD = new Date(data.startDate + "T00:00:00");
+  const endD = new Date(data.endDate + "T00:00:00");
+  const totalDiasPeriodo = Math.max(1, Math.round((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+  const diasConRuta = data.days.length;
+  const diasSinRuta = Math.max(0, totalDiasPeriodo - diasConRuta);
+
+  // Barra de Cobertura de Jornadas
+  doc.setFillColor(...COLORS.lightGreen);
+  doc.roundedRect(ml, y, cw, 10, 2, 2, "F");
+  doc.setDrawColor(...COLORS.green);
+  doc.roundedRect(ml, y, cw, 10, 2, 2, "S");
+
+  addText("COBERTURA DE JORNADAS:", ml + 3, y + 4, { size: 7, color: COLORS.green, bold: true });
+  addText(
+    `${diasConRuta} de ${totalDiasPeriodo} dias con ruta activa (${((diasConRuta / totalDiasPeriodo) * 100).toFixed(0)}%)` +
+    (diasSinRuta > 0 ? `  -  ${diasSinRuta} ${diasSinRuta === 1 ? "dia sin registro" : "dias sin registro"} (mantenimiento en taller, parada tecnica o retencion)` : "  -  100% jornadas registradas"),
+    ml + 3, y + 8, { size: 7, color: COLORS.dark }
+  );
+  y += 13;
+
   const kpiCards = [
     { label: 'Programadas', value: `${data.totalProgramadas}`, color: COLORS.dark },
     { label: 'Cumplimiento', value: `${(data.cumplimiento * 100).toFixed(1)}%`, color: pctColor(data.cumplimiento) },

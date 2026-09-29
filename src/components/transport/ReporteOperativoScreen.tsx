@@ -246,6 +246,44 @@ export function ReporteOperativoScreen({ onBack }: Props) {
 
         {data && !loading && (
           <>
+            {/* Indicador de Cobertura de Jornadas y Días Inactivos */}
+            {(() => {
+              const startD = new Date(data.startDate + "T00:00:00");
+              const endD = new Date(data.endDate + "T00:00:00");
+              const totalDiasPeriodo = Math.max(1, Math.round((endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+              const diasConRuta = data.days.length;
+              const diasSinRuta = Math.max(0, totalDiasPeriodo - diasConRuta);
+
+              return (
+                <div className="bg-white rounded-2xl p-3.5 border border-emerald-200/80 bg-gradient-to-r from-emerald-50/50 via-white to-slate-50 shadow-xs flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600/10 text-emerald-800 flex items-center justify-center shrink-0">
+                      <Calendar className="w-5 h-5 text-emerald-800" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-black text-slate-800">
+                          {diasConRuta} de {totalDiasPeriodo} días operados
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          {((diasConRuta / totalDiasPeriodo) * 100).toFixed(0)}% actividad
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 mt-0.5">
+                        {diasSinRuta > 0 ? (
+                          <span>
+                            <strong className="text-amber-800">{diasSinRuta} {diasSinRuta === 1 ? "día sin registro" : "días sin registro"}</strong> (mantenimiento en taller, parada técnica o retención).
+                          </span>
+                        ) : (
+                          <span>Ruta activa registrada todos los días del período evaluado.</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Bloque de Producción Operativa Consolidada */}
             <div className="bg-white rounded-2xl p-4 border border-[#D6D6D6] shadow-sm space-y-3">
               <div className="flex items-center justify-between border-b border-[#D6D6D6]/50 pb-2.5">
