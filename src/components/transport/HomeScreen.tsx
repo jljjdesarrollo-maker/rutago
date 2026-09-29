@@ -381,661 +381,544 @@ export function HomeScreen({
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-white">
-      {/* Header with user info & Bus identifier */}
-      <header className="pt-6 pb-3 px-5 bg-gradient-to-b from-[#912D26]/10 via-transparent to-transparent">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-[#912D26] text-white shadow-md shadow-[#912D26]/20">
-              <Truck className="w-6 h-6" />
-            </div>
+      {/* ─── CABECERA SEGÚN ROL ─── */}
+      {isSocioOwner ? (
+        <header className="pt-6 pb-2 px-5 bg-white">
+          {/* Fila 1: Saludo y Selector de Unidad */}
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-base font-black text-[#3A3A3A] tracking-tight">RutaGo</span>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#912D26] text-white">
-                  UNIDAD {busNumero}
-                </span>
-              </div>
-              <p className="text-xs text-[#3A3A3A]/70 font-medium">Coo. Vilcabambaturis</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border border-gray-200 shadow-xs">
-            <div className="w-8 h-8 rounded-full bg-[#912D26]/10 flex items-center justify-center">
-              <User className="w-4 h-4 text-[#912D26]" />
-            </div>
-            <div className="text-right">
-              <p className="text-xs font-bold text-[#3A3A3A] leading-tight">{user.nombre}</p>
-              <p className="text-[10px] text-[#912D26] uppercase font-extrabold">{user.rol}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Resumen Ejecutivo Financiero del Socio (Solo Administrador / Socio Propietario) */}
-        {isSocioOwner && (
-          <div className="flex flex-col gap-2.5 mb-1">
-            {/* Franja Esbelta de Licencia SaaS */}
-            <div className="bg-slate-900 text-white rounded-2xl px-3.5 py-2 border border-slate-700 shadow-xs flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <Sparkle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="text-xs font-bold text-slate-100 shrink-0">Licencia SaaS</span>
-                <span
-                  className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${
-                    saasSubscription.estado === "ACTIVA"
-                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                      : saasSubscription.estado === "POR_VENCER"
-                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                      : "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                  }`}
-                >
-                  {saasSubscription.estado}
-                </span>
-                <span className="text-[10px] text-slate-400 hidden xs:inline truncate">
-                  (${saasSubscription.montoMensual.toFixed(2)}/mes)
-                </span>
-              </div>
-              <a
-                href={`https://wa.me/593991234567?text=${encodeURIComponent(
-                  `Hola, reporto pago de licencia SaaS RutaGo para Unidad ${busNumero} (${saasSubscription.fechaProximoCorte || displayYearMonth || currentYearMonth})`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg transition shadow-xs shrink-0"
-              >
-                <Phone className="w-3 h-3" />
-                <span>Pagar</span>
-                <ExternalLink className="w-2.5 h-2.5 opacity-80" />
-              </a>
+              <span className="text-sm font-medium text-slate-500 block leading-tight">Hola,</span>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
+                {user.nombre || "Socio 01"}
+              </h1>
             </div>
 
-            {/* Resumen Financiero Dinámico con Semáforo de Certeza y NÚMERO REY */}
+            {/* Pastilla del Autobús */}
             <div
-              onClick={onGoToSocioGastos}
-              className="cursor-pointer bg-gradient-to-br from-emerald-900 via-teal-950 to-slate-900 rounded-3xl p-4 text-white shadow-xl border border-emerald-800/40 hover:scale-[1.008] transition active:scale-[0.99] relative overflow-hidden space-y-3"
+              onClick={onGoToFlota}
+              className="cursor-pointer flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 rounded-full px-3.5 py-1.5 shadow-2xs transition"
+              title="Ficha técnica de la unidad"
             >
-              {/* Cabecera del Semáforo y Control */}
-              <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                <div className="flex items-center gap-2">
-                  {/* Semáforo Inteligente */}
-                  {balanceStatus === "loading" && (
-                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/30 text-[11px] font-bold">
-                      <RefreshCw className="w-3 h-3 animate-spin text-amber-300" />
-                      <span>Actualizando balance...</span>
-                    </span>
-                  )}
-                  {balanceStatus === "live" && (
-                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/25 text-emerald-200 border border-emerald-400/30 text-[11px] font-bold">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>En Vivo • {formatMonthName(displayYearMonth)}</span>
-                    </span>
-                  )}
-                  {(balanceStatus === "stale" || balanceStatus === "error") && (
-                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/25 text-orange-200 border border-orange-400/30 text-[11px] font-bold">
-                      <span className="w-2 h-2 rounded-full bg-orange-400" />
-                      <span>Caché local • Toca ↻</span>
-                    </span>
-                  )}
-                </div>
+              <Bus className="w-4 h-4 text-emerald-800" />
+              <span className="text-xs font-bold text-slate-800">
+                Bus {busNumero} • {activeBus?.placa || "HAA-1234"}
+              </span>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  saasSubscription.estado === "ACTIVA"
+                    ? "bg-emerald-500"
+                    : saasSubscription.estado === "POR_VENCER"
+                    ? "bg-amber-500 animate-pulse"
+                    : "bg-rose-500 animate-pulse"
+                }`}
+                title={`SaaS: ${saasSubscription.estado}`}
+              />
+            </div>
+          </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Botón Táctil de Refresco Inmediato */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsRefreshingBalance(true);
-                      setBalanceStatus("loading");
-                      const target = displayYearMonth || defaultYearMonth;
-                      Promise.all([
-                        fetchOwnerExpensesFromApi(activeBusId).catch(() => []),
-                        fetch(`/api/reports?type=mensual&month=${target}`).then(r => r.ok ? r.json() : null).catch(() => null)
-                      ]).then(([expensesRes, reportRes]) => {
-                        const expenses = (expensesRes && expensesRes.length > 0) ? expensesRes : getOwnerExpenses(activeBusId);
-                        let inc = target === "2026-08" ? 3915.25 : 0;
-                        if (reportRes && reportRes.totals) {
-                          const t = reportRes.totals;
-                          const total = t.totalEntregado || ((t.entregaAyudante || 0) + (t.entregaCompania || 0));
-                          if (total > 0 || target !== "2026-08") inc = total;
-                        }
-                        const monthExpenses = expenses.filter((e: any) => e.expenseDate && e.expenseDate.startsWith(target));
-                        const expensesSocioDirecto = monthExpenses.filter((e: any) => {
-                          const esDeRuta =
-                            e.origenPago === "AYUDANTE_RUTA" ||
-                            e.descontadoEnRuta === true ||
-                            e.comprobanteRef?.includes("AYUDANTE_RUTA") ||
-                            e.description?.includes("[RUTA-AYUDANTE]") ||
-                            (e.paymentMethod === "EFECTIVO" &&
-                              (e.description?.toLowerCase().includes("ayudante") ||
-                                e.description?.toLowerCase().includes("chofer") ||
-                                e.description?.toLowerCase().includes("liquidado") ||
-                                e.description?.toLowerCase().includes("ruta")));
-                          return !esDeRuta;
-                        });
-                        const totalCost = expensesSocioDirecto.reduce((sum: number, e: any) => sum + (e.totalAmount || 0), 0);
-                        const debts = expenses.filter((e: any) => e.pendingBalance > 0).reduce((sum: number, e: any) => sum + e.pendingBalance, 0);
-                        setOwnerSummary({ routeIncome: inc, busExpenses: totalCost, netProfit: inc - totalCost, pendingDebts: debts });
-                        setBalanceStatus("live");
-                      }).catch(() => {
-                        setBalanceStatus("stale");
-                      }).finally(() => {
-                        setIsRefreshingBalance(false);
-                      });
-                    }}
-                    disabled={isRefreshingBalance}
-                    className="p-1 px-2.5 rounded-lg bg-white/10 hover:bg-white/20 active:scale-95 transition flex items-center gap-1 text-[11px] text-emerald-100 font-semibold cursor-pointer border border-white/10"
-                    title="Actualizar balance en vivo"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${isRefreshingBalance ? "animate-spin text-amber-300" : "text-emerald-200"}`} />
-                    <span className="hidden xs:inline">{isRefreshingBalance ? "Actualizando..." : "Actualizar"}</span>
-                  </button>
+          {/* Tarjeta Ejecutiva de Balance (Idéntica a la maqueta) */}
+          <div
+            onClick={onGoToSocioGastos}
+            className="cursor-pointer bg-[#053225] hover:bg-[#04281e] text-white rounded-3xl p-5 shadow-xl border border-emerald-900/60 transition active:scale-[0.99] relative overflow-hidden"
+          >
+            {/* Fila superior: Pastilla En Vivo + Botón Refresco */}
+            <div className="flex items-center justify-between mb-4">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
+                <span className={`w-2 h-2 rounded-full ${balanceStatus === "live" ? "bg-emerald-400 animate-pulse" : "bg-orange-400"}`} />
+                <span>En Vivo • {formatMonthName(displayYearMonth)}</span>
+              </span>
 
-                  <span className="text-[11px] text-emerald-300 font-bold flex items-center gap-1 hover:text-white transition">
-                    Ver Módulo <ArrowRight className="w-3.5 h-3.5" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsRefreshingBalance(true);
+                  setBalanceStatus("loading");
+                  const target = displayYearMonth || defaultYearMonth;
+                  Promise.all([
+                    fetchOwnerExpensesFromApi(activeBusId).catch(() => []),
+                    fetch(`/api/reports?type=mensual&month=${target}`).then(r => r.ok ? r.json() : null).catch(() => null)
+                  ]).then(([expensesRes, reportRes]) => {
+                    const expenses = (expensesRes && expensesRes.length > 0) ? expensesRes : getOwnerExpenses(activeBusId);
+                    let inc = target === "2026-08" ? 3915.25 : 0;
+                    if (reportRes && reportRes.totals) {
+                      const t = reportRes.totals;
+                      const total = t.totalEntregado || ((t.entregaAyudante || 0) + (t.entregaCompania || 0));
+                      if (total > 0 || target !== "2026-08") inc = total;
+                    }
+                    const monthExpenses = expenses.filter((e: any) => e.expenseDate && e.expenseDate.startsWith(target));
+                    const expensesSocioDirecto = monthExpenses.filter((e: any) => {
+                      const esDeRuta =
+                        e.origenPago === "AYUDANTE_RUTA" ||
+                        e.descontadoEnRuta === true ||
+                        e.comprobanteRef?.includes("AYUDANTE_RUTA") ||
+                        e.description?.includes("[RUTA-AYUDANTE]") ||
+                        (e.paymentMethod === "EFECTIVO" &&
+                          (e.description?.toLowerCase().includes("ayudante") ||
+                            e.description?.toLowerCase().includes("chofer") ||
+                            e.description?.toLowerCase().includes("liquidado") ||
+                            e.description?.toLowerCase().includes("ruta")));
+                      return !esDeRuta;
+                    });
+                    const totalCost = expensesSocioDirecto.reduce((sum: number, e: any) => sum + (e.totalAmount || 0), 0);
+                    const debts = expenses.filter((e: any) => e.pendingBalance > 0).reduce((sum: number, e: any) => sum + e.pendingBalance, 0);
+                    setOwnerSummary({ routeIncome: inc, busExpenses: totalCost, netProfit: inc - totalCost, pendingDebts: debts });
+                    setBalanceStatus("live");
+                  }).catch(() => {
+                    setBalanceStatus("stale");
+                  }).finally(() => {
+                    setIsRefreshingBalance(false);
+                  });
+                }}
+                disabled={isRefreshingBalance}
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-emerald-200 transition cursor-pointer"
+                title="Actualizar balance en vivo"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingBalance ? "animate-spin text-amber-300" : ""}`} />
+              </button>
+            </div>
+
+            {/* Número Rey: Ganancia en Limpio */}
+            <div className={`text-center py-2 transition-opacity duration-300 ${balanceStatus === "loading" ? "opacity-70" : "opacity-100"}`}>
+              <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight drop-shadow-sm">
+                ${ownerSummary.netProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-xs sm:text-sm font-black uppercase tracking-widest text-emerald-200/90 mt-1">
+                EN LIMPIO
+              </div>
+            </div>
+
+            {/* Línea divisoria y Métricas Secundarias */}
+            <div className={`mt-5 pt-3.5 border-t border-emerald-800/60 flex items-center justify-between text-xs text-emerald-200/90 px-1 transition-opacity duration-300 ${balanceStatus === "loading" ? "opacity-70" : "opacity-100"}`}>
+              <div>
+                <span>Ruta: </span>
+                <strong className="text-white font-bold">${ownerSummary.routeIncome.toFixed(2)}</strong>
+              </div>
+              <div>
+                <span>Gastos: </span>
+                <strong className="text-white font-bold">${ownerSummary.busExpenses.toFixed(2)}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Tripulación del Día Compacta */}
+          <div
+            onClick={onGoToPersonal}
+            className="mt-3 cursor-pointer bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-2xl px-3.5 py-2 flex items-center justify-between text-xs transition"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <Users className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+              <span className="font-semibold text-slate-700">Tripulación:</span>
+              <span className="text-slate-600 truncate">
+                {crewInfo.conductorNombre} (Chofer) • {crewInfo.ayudanteNombre} (Ayudante)
+              </span>
+            </div>
+            <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
+          </div>
+        </header>
+      ) : (
+        /* Header Institucional para Conductor y Ayudante */
+        <header className="pt-6 pb-3 px-5 bg-gradient-to-b from-[#912D26]/10 via-transparent to-transparent">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-[#912D26] text-white shadow-md shadow-[#912D26]/20">
+                <Truck className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-black text-[#3A3A3A] tracking-tight">RutaGo</span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#912D26] text-white">
+                    UNIDAD {busNumero}
                   </span>
                 </div>
-              </div>
-
-              {/* EL NÚMERO REY (GANANCIA REAL EN LIMPIO) */}
-              <div className={`py-1 text-center transition-opacity duration-300 ${balanceStatus === "loading" ? "opacity-70" : "opacity-100"}`}>
-                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-200/90 block mb-0.5">
-                  Ganancia Real en Limpio
-                </span>
-                <div className="text-3xl sm:text-4xl font-black text-white tracking-tight drop-shadow-sm flex items-center justify-center gap-1">
-                  <span>${ownerSummary.netProfit.toFixed(2)}</span>
-                </div>
-              </div>
-
-              {/* MÉTRICAS SECUNDARIAS DE SOPORTE */}
-              <div className={`grid grid-cols-2 gap-2 pt-2 border-t border-white/10 text-xs transition-opacity duration-300 ${balanceStatus === "loading" ? "opacity-70" : "opacity-100"}`}>
-                <div className="bg-white/5 rounded-xl p-2 border border-white/10 flex items-center justify-between">
-                  <span className="text-[10px] text-emerald-200/80 uppercase font-semibold">Ruta (Recaudado)</span>
-                  <span className="text-xs font-black text-white">${ownerSummary.routeIncome.toFixed(2)}</span>
-                </div>
-                <div className="bg-white/5 rounded-xl p-2 border border-white/10 flex items-center justify-between">
-                  <span className="text-[10px] text-rose-200/80 uppercase font-semibold">Gastos Socio</span>
-                  <span className="text-xs font-black text-rose-300">${ownerSummary.busExpenses.toFixed(2)}</span>
-                </div>
+                <p className="text-xs text-[#3A3A3A]/70 font-medium">Coo. Vilcabambaturis</p>
               </div>
             </div>
 
-            {/* Tripulación del Día Compacta */}
-            <div
-              onClick={onGoToPersonal}
-              className="cursor-pointer bg-white rounded-2xl px-3 py-2 border border-gray-200 shadow-xs flex items-center justify-between hover:border-gray-300 transition"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-7 h-7 rounded-xl bg-[#912D26]/10 text-[#912D26] flex items-center justify-center shrink-0">
-                  <Users className="w-3.5 h-3.5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-bold text-[#3A3A3A]">Tripulación:</span>
-                    <span className="text-[11px] text-gray-700 truncate">
-                      Chofer <strong>{crewInfo.conductorNombre}</strong> • Ayudante <strong>{crewInfo.ayudanteNombre}</strong>
-                    </span>
-                  </div>
-                </div>
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border border-gray-200 shadow-xs">
+              <div className="w-8 h-8 rounded-full bg-[#912D26]/10 flex items-center justify-center">
+                <User className="w-4 h-4 text-[#912D26]" />
               </div>
-              <div className="flex items-center gap-1 text-[11px] text-gray-400 font-semibold shrink-0 ml-2">
-                <span>Cambiar</span>
-                <ArrowRight className="w-3 h-3" />
+              <div className="text-right">
+                <p className="text-xs font-bold text-[#3A3A3A] leading-tight">{user.nombre}</p>
+                <p className="text-[10px] text-[#912D26] uppercase font-extrabold">{user.rol}</p>
               </div>
             </div>
           </div>
-        )}
-      </header>
+        </header>
+      )}
 
       {/* Main Actions */}
       <main className="flex-1 px-5 pb-28 flex flex-col gap-4">
-
-        {/* ─── PILAR 1: DÍA A DÍA (OPERACIÓN Y CAJA DE HOY) ─── */}
-        {/* Widget de Mantenimiento: SOLO si el socio lo activó expresamente para su unidad */}
-        {onGoToMantenimiento && (() => {
-          const moduloMantenimientoActivoVal = moduloMantenimientoActivo;
-          const yaConfigurado = isBusModuloMantenimientoConfigurado(activeBusId);
-
-          // Si el módulo está activo para este bus:
-          if (moduloMantenimientoActivoVal) {
-            // En la interfaz del socio (isAdmin): reemplazar vista de chofer por la etiqueta ejecutiva semafórica
-            if (isSocioOwner) {
-              return (
-                <SocioMantenimientoWidget
-                  busId={activeBusId}
-                  onGoToMantenimiento={onGoToMantenimiento}
-                />
-              );
-            }
-            // Si es Ayudante: mostrar la barra compacta de supervisión pasiva (no fosa ni taller mecánico)
-            if (user.rol === 'AYUDANTE') {
-              return (
-                <AyudanteMantenimientoBar
-                  busId={activeBusId}
-                  busNumero={busNumero}
-                />
-              );
-            }
-            // En la interfaz del conductor (!isAdmin): conservar el widget operativo de conductor
-            return <ChoferMantenimientoWidget onVerMas={undefined} />;
-          }
-
-          // Si el socio aún no lo ha configurado o es nuevo en la suscripción, se le presenta la invitación optativa
-          if (isSocioOwner) {
-            return (
-              <Card className="rounded-3xl border-2 border-dashed border-amber-300/80 bg-gradient-to-br from-amber-50/60 via-white to-amber-50/20 p-4 shadow-xs">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-900 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
-                      <Wrench className="w-5 h-5 text-amber-700" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-xs text-slate-900 uppercase tracking-tight">
-                          Control Preventivo de Mantenimiento
-                        </span>
-                        <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                          {yaConfigurado ? "Pausado" : "Opcional"}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
-                        ¿Deseas supervisar cambios de aceite, filtros y semáforo mecánico para la <strong>Unidad {activeBus?.numeroDisco || "01"}</strong>?
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={onGoToMantenimiento}
-                    className="w-full sm:w-auto h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider shrink-0 shadow-xs cursor-pointer"
-                  >
-                    <Wrench className="w-3.5 h-3.5 mr-1.5" />
-                    {yaConfigurado ? "Revisar / Activar" : "Configurar y Activar"}
-                  </Button>
-                </div>
-              </Card>
-            );
-          }
-
-          // Si es chofer/ayudante y el socio no activó el módulo, no se muestra nada (no se le impone al chofer)
-          return null;
-        })()}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-black text-[#3A3A3A]/50 uppercase tracking-wider flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-[#912D26]" />
-              <span>1. Día a Día • Ruta y Caja de Hoy</span>
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-2.5">
-            {/* Acción Principal Táctica y Destacada para el AYUDANTE (Prioridad 1) */}
-            {user.rol === 'AYUDANTE' && onGoToBoletos && (
-              <AyudanteJornadaCard
-                user={user}
-                busNumero={busNumero}
-                onGoToBoletos={handleAyudanteBoletosClick}
-              />
-            )}
-            {/* Gastos del Socio Propietario (Acceso Destacado al Negocio) */}
-            {isSocioOwner && onGoToSocioGastos && (
-              <Card
-                onClick={onGoToSocioGastos}
-                className="cursor-pointer hover:shadow-md transition-all rounded-2xl border-2 border-emerald-400/80 bg-gradient-to-r from-emerald-50/70 via-white to-emerald-50/30 shadow-xs"
-              >
-                <CardContent className="flex items-center justify-between p-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20">
-                      <Receipt className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-black text-sm text-emerald-950">Gastos y Negocio del Bus</p>
-                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-950">
-                          Socio
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-600 mt-0.5">
-                        Registrar compras, combustible, repuestos y deudas
-                      </p>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-emerald-700 shrink-0" />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Mantenimiento Mecánico y Tacómetro del Bus */}
-            {isSocioOwner && onGoToMantenimiento && (
-              <Card
-                onClick={onGoToMantenimiento}
-                className="cursor-pointer hover:shadow-md transition-all rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-50/60 to-white shadow-xs"
-              >
-                <CardContent className="flex items-center justify-between p-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center shadow-xs">
-                      <Wrench className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-black text-sm text-gray-900">Mantenimiento Preventivo</p>
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-100 text-amber-900">
-                          Auditoría
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Semáforo de cumplimiento del conductor: vigila que realice cambios de aceite, filtros y talleres a tiempo
-                      </p>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Acceso para Conductor a sus turnos guardados (En el socio pasa al Pilar 3) */}
-            {!isSocioOwner && (
-              <Card
-                onClick={onGoToHistory}
-                className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
-              >
-                <CardContent className="flex items-center justify-between p-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-                      <History className="w-5 h-5 text-[#3A3A3A]" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-[#3A3A3A]">Mis Registros</p>
-                      <p className="text-xs text-gray-500">Consultar mis liquidaciones de ruta archivadas</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-black text-[#912D26]">{recordCount}</span>
-                    <ArrowRight className="w-4 h-4 text-gray-400" />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-          </div>
-        </div>
-
-        {/* ─── PILAR 2: INFORMES Y RENDIMIENTO DEL NEGOCIO ─── */}
+        {/* ─── VISTA DEL SOCIO: CUADRÍCULA EJECUTIVA 2x2 (IDÉNTICA A LA MAQUETA) ─── */}
         {isSocioOwner && (
-          <div className="mt-1">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] font-black text-[#3A3A3A]/50 uppercase tracking-wider flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-[#912D26]" />
-                <span>2. Informes y Rendimiento del Negocio</span>
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5">
-              {/* 1. Historial General de Liquidaciones Archivadas */}
-              <Card
+          <div className="flex flex-col gap-4">
+            {/* Cuadrícula 2x2 */}
+            <div className="grid grid-cols-2 gap-3.5 mt-1">
+              {/* 1. Liquidación de Hoy */}
+              <button
+                type="button"
                 onClick={onGoToHistory}
-                className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
+                className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60"
               >
-                <CardContent className="p-3.5 flex flex-col justify-between h-full">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center">
-                      <History className="w-5 h-5" />
-                    </div>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                      {recordCount} días
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-[#3A3A3A] leading-tight">Historial de Liquidaciones</p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">Auditoría de días archivados</p>
-                  </div>
-                </CardContent>
-              </Card>
+                <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-sm sm:text-base font-bold block leading-snug">Liquidación de Hoy</span>
+                  <span className="text-[11px] text-emerald-200/70 font-medium">Caja y vueltas</span>
+                </div>
+              </button>
 
-              {/* 2. Frecuencias y Cumplimiento Operativo */}
-              <Card
-                onClick={onGoToOperativo}
-                className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
+              {/* 2. Gastos del Bus */}
+              <button
+                type="button"
+                onClick={onGoToSocioGastos}
+                className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60"
               >
-                <CardContent className="p-3.5 flex flex-col justify-between h-full">
-                  <div className="w-10 h-10 rounded-xl bg-green-50 text-green-700 flex items-center justify-center mb-2">
-                    <Activity className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-[#3A3A3A] leading-tight">Cumplimiento Frecuencias</p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">Vueltas vs turnos caídos</p>
-                  </div>
-                </CardContent>
-              </Card>
+                <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
+                  <Receipt className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-sm sm:text-base font-bold block leading-snug">Gastos del Bus</span>
+                  <span className="text-[11px] text-emerald-200/70 font-medium">Compras y deudas</span>
+                </div>
+              </button>
 
-              {/* 3. Reportes Oficiales en PDF */}
-              <Card
+              {/* 3. Mantenimiento */}
+              <button
+                type="button"
+                onClick={onGoToMantenimiento}
+                className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60"
+              >
+                <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
+                  <Wrench className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-sm sm:text-base font-bold block leading-snug">Mantenimiento</span>
+                  <span className="text-[11px] text-emerald-200/70 font-medium">Aceite y filtros</span>
+                </div>
+              </button>
+
+              {/* 4. Reportes e Informes */}
+              <button
+                type="button"
                 onClick={onGoToReports}
-                className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
+                className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60"
               >
-                <CardContent className="p-3.5 flex flex-col justify-between h-full">
-                  <div className="w-10 h-10 rounded-xl bg-[#912D26]/10 text-[#912D26] flex items-center justify-center mb-2">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-[#3A3A3A] leading-tight">Reportes Oficiales</p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">Informes PDF y Excel</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* 4. Comparar Frecuencias */}
-              <Card
-                onClick={onGoToCompare}
-                className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
-              >
-                <CardContent className="p-3.5 flex flex-col justify-between h-full">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center mb-2">
-                    <ArrowLeftRight className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-[#3A3A3A] leading-tight">Comparar Frecuencias</p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">¿Qué turno rinde más?</p>
-                  </div>
-                </CardContent>
-              </Card>
+                <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-sm sm:text-base font-bold block leading-snug">Reportes e Informes</span>
+                  <span className="text-[11px] text-emerald-200/70 font-medium">PDF y balances</span>
+                </div>
+              </button>
             </div>
 
-            {/* Benchmark de Flota & IPF */}
-            {onGoToBenchmark && (
-              <Card
-                onClick={onGoToBenchmark}
-                id="btn-goto-benchmark"
-                className="mt-2.5 cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/50 to-white"
-              >
-                <CardContent className="flex items-center justify-between p-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-800 shrink-0">
-                      <Award className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-bold text-sm text-[#3A3A3A]">Benchmark de Flota & IPF</p>
-                        <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 tracking-wide">
-                          Simétrico
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500">Ranking Troncal (45 pax) vs Alimentadores (28 pax) e ingreso por vuelta</p>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
-                </CardContent>
-              </Card>
-            )}
+            {/* SECCIÓN 2: AUDITORÍA Y RENDIMIENTO AVANZADO */}
+            <div className="mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-emerald-800" />
+                  <span>Análisis Operativo y Auditoría</span>
+                </p>
+              </div>
 
-            {/* Auditoría y Revisión de Boletos */}
-            {onGoToVentasReview && (
-              <Card
-                onClick={onGoToVentasReview}
-                className="mt-2.5 cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/40 to-white"
-              >
-                <CardContent className="flex items-center justify-between p-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 shrink-0">
-                      <Eye className="w-5 h-5" />
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* Cumplimiento Frecuencias */}
+                <Card
+                  onClick={onGoToOperativo}
+                  className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
+                >
+                  <CardContent className="p-3.5 flex flex-col justify-between h-full">
+                    <div className="w-9 h-9 rounded-xl bg-green-50 text-green-700 flex items-center justify-center mb-2">
+                      <Activity className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="font-bold text-sm text-[#3A3A3A]">Auditoría y Revisión de Boletos</p>
-                      <p className="text-xs text-gray-500">Boletos vendidos por fecha, frecuencia y cobros en ruta</p>
+                      <p className="font-bold text-xs sm:text-sm text-[#3A3A3A] leading-tight">Cumplimiento Frecuencias</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">Vueltas vs turnos caídos</p>
                     </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                </CardContent>
-              </Card>
-            )}
+                  </CardContent>
+                </Card>
+
+                {/* Comparar Frecuencias */}
+                <Card
+                  onClick={onGoToCompare}
+                  className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
+                >
+                  <CardContent className="p-3.5 flex flex-col justify-between h-full">
+                    <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center mb-2">
+                      <ArrowLeftRight className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs sm:text-sm text-[#3A3A3A] leading-tight">Comparar Frecuencias</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">¿Qué turno rinde más?</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Benchmark y Auditoría de Boletos */}
+              <div className="grid grid-cols-1 gap-2 mt-2">
+                {onGoToBenchmark && (
+                  <Card
+                    onClick={onGoToBenchmark}
+                    className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50/40 to-white"
+                  >
+                    <CardContent className="flex items-center justify-between p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-800 shrink-0">
+                          <Award className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-bold text-xs sm:text-sm text-[#3A3A3A]">Benchmark de Flota & IPF</p>
+                            <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 tracking-wide">
+                              Simétrico
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-500">Ranking Troncal (45 pax) vs Alimentadores (28 pax)</p>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {onGoToVentasReview && (
+                  <Card
+                    onClick={onGoToVentasReview}
+                    className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/40 to-white"
+                  >
+                    <CardContent className="flex items-center justify-between p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 shrink-0">
+                          <Eye className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-xs sm:text-sm text-[#3A3A3A]">Auditoría y Revisión de Boletos</p>
+                          <p className="text-[11px] text-gray-500">Boletos vendidos por fecha y frecuencia</p>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+
+            {/* SECCIÓN 3: CONFIGURACIÓN Y REGULARIZACIÓN */}
+            <div className="mt-2">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Settings className="w-3.5 h-3.5 text-slate-700" />
+                  <span>Configuración y Regularización</span>
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                {/* Gestión de Personal */}
+                <Card
+                  onClick={onGoToPersonal}
+                  className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
+                >
+                  <CardContent className="flex items-center justify-between p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-700">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-xs sm:text-sm text-[#3A3A3A]">Personal (Choferes y Ayudantes)</p>
+                        <p className="text-[11px] text-gray-500">Asignar turno activo de hoy y claves PIN</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                  </CardContent>
+                </Card>
+
+                {/* Ficha de Mi Unidad */}
+                <Card
+                  onClick={onGoToFlota}
+                  className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-blue-200 bg-white"
+                >
+                  <CardContent className="flex items-center justify-between p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-700">
+                        <Bus className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-xs sm:text-sm text-[#3A3A3A]">
+                            Mi Autobús (Bus {busNumero})
+                          </p>
+                          <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 tracking-wide">
+                            {activeBus?.placa || "HAA-1234"}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-500">Ficha técnica, odómetro y notas de mantenimiento</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                  </CardContent>
+                </Card>
+
+                {/* Carga Histórica de Cuadernos */}
+                {onGoToCargaHistorica && (
+                  <Card
+                    onClick={onGoToCargaHistorica}
+                    className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50/50 to-white"
+                  >
+                    <CardContent className="flex items-center justify-between p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800 shrink-0">
+                          <BookOpen className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-bold text-xs sm:text-sm text-[#3A3A3A]">Carga Histórica de Cuadernos</p>
+                            <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 tracking-wide">
+                              Poner al día
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-500">Transcribir liquidaciones y vueltas de meses anteriores</p>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Respaldo Seguro de la Base de Datos */}
+                <Card className="rounded-2xl border border-gray-200 bg-white">
+                  <CardContent className="flex items-center gap-3 p-3">
+                    <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-gray-700 shrink-0">
+                      <Database className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-xs sm:text-sm text-[#3A3A3A]">Copia de Seguridad</p>
+                      <p className="text-[11px] text-gray-500">Descarga un archivo JSON de respaldo</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleBackup}
+                      disabled={backupLoading}
+                      className="rounded-xl border-gray-300 text-xs font-bold shrink-0 cursor-pointer"
+                    >
+                      {backupLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Database className="w-3.5 h-3.5 mr-1 text-gray-600" />}
+                      <span>Descargar</span>
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Cerrar Sesión */}
+                <Card
+                  onClick={onLogout}
+                  className="cursor-pointer hover:bg-rose-50/50 transition rounded-2xl border border-gray-200 bg-white"
+                >
+                  <CardContent className="flex items-center justify-between p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600">
+                        <LogOut className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-xs sm:text-sm text-[#3A3A3A]">Cerrar Sesión</p>
+                        <p className="text-[11px] text-gray-500">Salir de la cuenta de {user.nombre}</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* ─── PILAR 3: CONFIGURACIÓN Y REGULARIZACIÓN ─── */}
-        {isSocioOwner && (
-          <div className="mt-1">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[11px] font-black text-[#3A3A3A]/50 uppercase tracking-wider flex items-center gap-1.5">
-                <Settings className="w-3.5 h-3.5 text-[#912D26]" />
-                <span>3. Configuración y Regularización</span>
-              </p>
-            </div>
+        {/* ─── VISTA PARA CONDUCTOR Y AYUDANTE (!isSocioOwner) ─── */}
+        {!isSocioOwner && (
+          <div className="flex flex-col gap-4">
+            {/* Widget de Mantenimiento para Chofer / Ayudante */}
+            {onGoToMantenimiento && (() => {
+              if (moduloMantenimientoActivo) {
+                if (user.rol === "AYUDANTE") {
+                  return (
+                    <AyudanteMantenimientoBar
+                      busId={activeBusId}
+                      busNumero={busNumero}
+                    />
+                  );
+                }
+                return <ChoferMantenimientoWidget onVerMas={undefined} />;
+              }
+              return null;
+            })()}
 
-            <div className="grid grid-cols-1 gap-2.5">
-              {/* Gestión de Personal */}
-              <Card
-                onClick={onGoToPersonal}
-                className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
-              >
-                <CardContent className="flex items-center justify-between p-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-700">
-                      <Users className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-[#3A3A3A]">Personal (Choferes y Ayudantes)</p>
-                      <p className="text-xs text-gray-500">Asignar turno activo de hoy y claves PIN</p>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                </CardContent>
-              </Card>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-black text-[#3A3A3A]/50 uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[#912D26]" />
+                  <span>Día a Día • Ruta de Hoy</span>
+                </p>
+              </div>
 
-              {/* Gestión de Flota / Ficha de Mi Unidad */}
-              <Card
-                onClick={onGoToFlota}
-                className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-blue-200 bg-white"
-              >
-                <CardContent className="flex items-center justify-between p-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-700">
-                      <Bus className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-bold text-sm text-[#3A3A3A]">
-                          {isSuperAdmin ? 'Catálogo de Flota (19 Buses)' : `Mi Autobús (${activeBus ? `Bus ${activeBus.numeroDisco}` : 'Bus 01'})`}
-                        </p>
-                        <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 tracking-wide">
-                          {isSuperAdmin ? '19 Buses' : (activeBus?.placa || 'Hino AK')}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        {isSuperAdmin
-                          ? 'Padrón de unidades físicas, placas y asignación de circuito'
-                          : 'Ficha técnica de tu unidad, placa, odómetro y notas de mantenimiento'}
-                      </p>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                </CardContent>
-              </Card>
+              <div className="grid grid-cols-1 gap-2.5">
+                {user.rol === "AYUDANTE" && onGoToBoletos && (
+                  <AyudanteJornadaCard
+                    user={user}
+                    busNumero={busNumero}
+                    onGoToBoletos={handleAyudanteBoletosClick}
+                  />
+                )}
 
-              {/* Configurar VT (Exclusivo SuperAdmin SaaS) */}
-              {isSuperAdmin && (
+                {/* Acceso para Conductor a sus turnos guardados */}
                 <Card
-                  onClick={onGoToVtConfig}
+                  onClick={onGoToHistory}
                   className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
                 >
                   <CardContent className="flex items-center justify-between p-3.5">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-700">
-                        <Settings className="w-5 h-5" />
+                      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                        <History className="w-5 h-5 text-[#3A3A3A]" />
                       </div>
                       <div>
-                        <p className="font-bold text-sm text-[#3A3A3A]">Rutas y Horarios (Configurar VT)</p>
-                        <p className="text-xs text-gray-500">Horarios y orden de frecuencias de cada vehículo tipo</p>
+                        <p className="font-bold text-sm text-[#3A3A3A]">Mis Registros de Vuelta</p>
+                        <p className="text-xs text-gray-500">Consultar mis liquidaciones de ruta archivadas</p>
                       </div>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-gray-400" />
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Carga Histórica de Cuadernos (Regularización de Fechas Pasadas) */}
-              {onGoToCargaHistorica && (
-                <Card
-                  onClick={onGoToCargaHistorica}
-                  className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50/50 to-white"
-                >
-                  <CardContent className="flex items-center justify-between p-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800 shrink-0">
-                        <BookOpen className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-bold text-sm text-[#3A3A3A]">Carga Histórica de Cuadernos</p>
-                          <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 tracking-wide">
-                            Poner al día
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-500">Transcribir liquidaciones y vueltas de meses anteriores</p>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-black text-[#912D26]">{recordCount}</span>
+                      <ArrowRight className="w-4 h-4 text-gray-400" />
                     </div>
-                    <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
                   </CardContent>
                 </Card>
-              )}
+              </div>
+            </div>
 
-              {/* Respaldo Seguro de la Base de Datos */}
-              <Card className="rounded-2xl border border-gray-200 bg-white">
-                <CardContent className="flex items-center gap-3 p-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-700 shrink-0">
-                    <Database className="w-5 h-5" />
+            {/* Configuración y Salida para Chofer / Ayudante */}
+            <div className="mt-2">
+              <Card
+                onClick={onLogout}
+                className="cursor-pointer hover:bg-rose-50/50 transition rounded-2xl border border-gray-200 bg-white"
+              >
+                <CardContent className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600">
+                      <LogOut className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs sm:text-sm text-[#3A3A3A]">Cerrar Sesión</p>
+                      <p className="text-[11px] text-gray-500">Salir de la cuenta de {user.nombre}</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-sm text-[#3A3A3A]">Copia de Seguridad de Datos</p>
-                    <p className="text-xs text-gray-500">Descarga una copia protegida de tus registros</p>
-                  </div>
-                  <Button
-                    onClick={handleBackup}
-                    disabled={backupLoading}
-                    size="sm"
-                    className="h-9 px-3 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-semibold shrink-0"
-                  >
-                    {backupLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-3.5 h-3.5 mr-1" />}
-                    {backupLoading ? '...' : 'Exportar'}
-                  </Button>
+                  <ArrowRight className="w-4 h-4 text-gray-400" />
                 </CardContent>
               </Card>
             </div>
           </div>
         )}
-
-        {/* Logout */}
-        <Button
-          onClick={onLogout}
-          variant="ghost"
-          className="w-full h-12 rounded-2xl text-[#3A3A3A]/60 hover:text-red-600 hover:bg-red-50 text-sm font-semibold mt-2"
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          Cerrar sesión segura
-        </Button>
       </main>
 
-      {/* Footer */}
-      <footer className="py-4 text-center text-xs text-[#3A3A3A]/40 font-medium pb-24">
-        RutaGo v3.60.27 • Control de Transporte
-      </footer>
-
-      {/* BARRA TÁCTICA FIJA AL PULGAR (THUMB ZONE - ERGONOMÍA A UNA SOLA MANO) */}
       <aside aria-label="Acciones Rápidas" className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-200/90 px-4 py-2.5 shadow-[0_-4px_25px_rgba(0,0,0,0.08)]">
         <div className="max-w-md mx-auto flex items-center gap-2">
           {/* Si es AYUDANTE: Botón táctico primario para emisión de boletos en ruta */}

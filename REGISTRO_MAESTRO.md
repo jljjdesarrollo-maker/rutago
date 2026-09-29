@@ -638,6 +638,27 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
      - Las fórmulas de utilidad neta, entregas de ruta, reportes mensuales y conexiones a base de datos permanecen exactamente iguales.
 
 ---
+---
+
+## 💎 REDISEÑO DEFINITIVO 2X2 Y HOMOLOGACIÓN TOTAL DE LA INTERFAZ DEL SOCIO (2026-09-29)
+- **Referencia Gráfica Aprobada:** Maqueta ejecutiva en tono verde bosque profundo (\`#053225\`), estética minimalista y moderna tipo fintech de transportes.
+- **Corrección de Diseño Aplicada:** Se resolvió el hueco huérfano de la maqueta original convirtiendo el bloque de acciones en una **Cuadrícula Perfecta 2x2 (4 tarjetas ejecutivas)**:
+  1. **Liquidación de Hoy:** Acceso directo para consultar la caja y las vueltas registradas en el turno de hoy.
+  2. **Gastos del Bus:** Registro de compras, facturas, combustible, repuestos y control de deudas con talleres.
+  3. **Mantenimiento:** Supervisión de cambios de aceite, filtros y semáforo preventivo del tacómetro.
+  4. **Reportes e Informes:** Balances financieros mensuales descargables en PDF, comparativas e historial.
+- **Cabecera Minimalista:**
+  - Saludo limpio: *"Hola, Socio 01"*.
+  - Selector esbelto: \`[ 🚌 Bus 01 • HAA-1234 ● ]\` con micro-indicador de licencia SaaS.
+  - Tarjeta de Balance idéntica a la maqueta: verde bosque (\`#053225\`), semáforo en vivo con botón \`↻\`, el gran **Número Rey** (\`$2,828.80 EN LIMPIO\`) y línea divisoria horizontal con las métricas de Ruta y Gastos.
+  - Pastilla de Tripulación en una sola línea discreta (\`Chofer ... • Ayudante ...\`).
+- **Secciones Inferiores Ordenadas:**
+  - Sección de Análisis Operativo y Auditoría (Cumplimiento de frecuencias, Comparador, Benchmark, Auditoría de Boletos).
+  - Sección de Configuración y Regularización (Ficha de la unidad, Personal, Carga histórica de cuadernos, Copia de seguridad y Cerrar sesión).
+- **Compatibilidad de Roles:**
+  - Las pantallas de **Conductor** y **Ayudante** conservan íntegras sus herramientas tácticas de jornada y emisión de boletos.
+
+---
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
