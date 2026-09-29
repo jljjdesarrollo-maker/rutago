@@ -607,6 +607,17 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
   * También se activa automáticamente al cambiar de mes en el selector de periodos.
 
 ---
+---
+
+## ⚡ TRANSICIÓN DINÁMICA DE MES CONTABLE EN "GASTOS DEL SOCIO" (2026-09-29)
+- **Ajuste de Lógica Solicitado:**
+  * Al cambiar de mes contable (mediante \`handlePrevMonth\`, \`handleNextMonth\` o accesos directos), la etiqueta de balance debe activar de inmediato el procedimiento de certeza:
+    1. Activar \`setBalanceStatus("loading")\` y atenuar las cifras con animación suave (\`opacity-70\`).
+    2. Mostrar en ámbar interactivo: \`↻ Actualizando balance • [Mes Seleccionado]\` con delay perceptual (\`minDelay = 350ms\`) para garantizar visibilidad al ojo humano.
+    3. Al confirmar los datos de ruta del mes (\`/api/reports\`), cambiar automáticamente a verde esmeralda: \`● En Vivo • Balance de [Mes Seleccionado]\` con pulso y 100% de brillo.
+    4. La etiqueta ahora integra el nombre completo del mes contable activo de forma unificada y armónica.
+
+---
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).

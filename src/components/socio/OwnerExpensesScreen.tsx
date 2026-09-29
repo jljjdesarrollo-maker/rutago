@@ -362,12 +362,20 @@ export default function OwnerExpensesScreen({
     loading: true,
   });
 
-  // Consulta dinámica en tiempo real a la API de reportes
+  // Consulta dinámica en tiempo real a la API de reportes al cambiar de mes
   useEffect(() => {
     let isCurrent = true;
+    setBalanceStatus('loading');
+    setMonthlyRouteData(prev => ({ ...prev, loading: true }));
+
     const fetchRouteData = async () => {
+      const minDelay = new Promise(resolve => setTimeout(resolve, 350));
       try {
-        const res = await fetch(`/api/reports?type=mensual&month=${selectedYearMonth}`);
+        const [res] = await Promise.all([
+          fetch(`/api/reports?type=mensual&month=${selectedYearMonth}`),
+          minDelay
+        ]);
+
         if (res.ok) {
           const data = await res.json();
           if (isCurrent && data && data.totals) {
@@ -390,6 +398,7 @@ export default function OwnerExpensesScreen({
         console.warn('Error consultando entregas de ruta de la BD:', err);
       }
 
+      await minDelay;
       // Fallback para Agosto 2026 en caso de modo offline
       if (isCurrent && selectedYearMonth === '2026-08') {
         setMonthlyRouteData({
@@ -1047,29 +1056,25 @@ export default function OwnerExpensesScreen({
         <div className="bg-gradient-to-br from-emerald-900 via-teal-950 to-slate-900 rounded-3xl p-4 text-white shadow-xl space-y-3.5 border border-emerald-800/40 relative overflow-hidden">
           <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
             <div className="flex items-center gap-2">
-              {/* Semáforo Inteligente */}
+              {/* Semáforo Inteligente según el Mes Contable */}
               {balanceStatus === "loading" && (
-                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/30 text-[10px] font-bold">
-                  <RefreshCw className="w-2.5 h-2.5 animate-spin text-amber-300" />
-                  <span>Actualizando balance...</span>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/30 text-[11px] font-bold">
+                  <RefreshCw className="w-3 h-3 animate-spin text-amber-300" />
+                  <span>Actualizando balance • {getMonthNameFormatted(selectedYearMonth)}</span>
                 </span>
               )}
               {balanceStatus === "live" && (
-                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/25 text-emerald-200 border border-emerald-400/30 text-[10px] font-bold">
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/25 text-emerald-200 border border-emerald-400/30 text-[11px] font-bold">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>En Vivo • Balance del Mes</span>
+                  <span>En Vivo • Balance de {getMonthNameFormatted(selectedYearMonth)}</span>
                 </span>
               )}
               {(balanceStatus === "stale" || balanceStatus === "error") && (
-                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-orange-500/25 text-orange-200 border border-orange-400/30 text-[10px] font-bold">
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-500/25 text-orange-200 border border-orange-400/30 text-[11px] font-bold">
                   <span className="w-2 h-2 rounded-full bg-orange-400" />
-                  <span>Caché local • Toca ↻</span>
+                  <span>Caché local • {getMonthNameFormatted(selectedYearMonth)} • Toca ↻</span>
                 </span>
               )}
-
-              <span className="text-xs text-emerald-100 font-medium">
-                {getMonthNameFormatted(selectedYearMonth)}
-              </span>
             </div>
 
             <div className="flex items-center gap-2">
