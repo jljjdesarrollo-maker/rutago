@@ -697,6 +697,12 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
      - \`src/components/transport/ChoferMantenimientoWidget.tsx\`
 
 ---
+- **Corrección de Build en Turbopack (Commit ec29c67):**
+  - Se eliminó un \`</div>\` huérfano en la línea 1911 de \`src/components/transport/ChoferMantenimientoWidget.tsx\` que cerraba prematuramente el contenedor principal y causaba error de parsing en Vercel Turbopack (\`Expected ',', got '{'\`).
+  - El archivo fue validado sintácticamente y desplegado a GitHub.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
