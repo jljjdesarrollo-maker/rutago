@@ -1908,7 +1908,6 @@ export function ChoferMantenimientoWidget({
               </div>
             )}
           </div>
-        </div>
 
         {/* ZONA 3: EL RADAR DE TAREAS MECÁNICAS */}
         <div className="space-y-2 pt-0.5">
