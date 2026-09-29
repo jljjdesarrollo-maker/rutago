@@ -494,6 +494,29 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
   * Desbloqueado el build en Vercel y sincronizado con la rama principal `main`.
 
 ---
+---
+
+## 🚀 AUTENTICACIÓN SOBERANA DE SUPERADMIN SAAS Y SEPARACIÓN DE MODELO DE NEGOCIO (2026-09-29)
+- **Diagnóstico y Contexto:**
+  * Al intentar ingresar con \`9999\`, el login fallaba porque en la Fase 2 se eliminó todo código hardcodeado (\`if (pin === "9999")\`) en favor de hash criptográfico en PostgreSQL (\`CuentaSocio\`).
+  * Sin embargo, el bootstrap inicial en caliente dependía de la condición restrictiva \`if (socios.length === 0 && personal.length === 0)\`. Al existir personal o socios en la base de datos de producción, la cuenta de SuperAdmin nunca se auto-generaba.
+  * Por definición del modelo de negocio, el **SuperAdmin SaaS (Vendor / Desarrollador)** es una entidad completamente independiente de los **Socios Propietarios (Transportistas)**.
+- **Implementación y Blindaje Realizado:**
+  1. **\`src/app/api/auth/route.ts\`:**
+     - Implementada **Verificación Soberana de SuperAdmin SaaS**: valida si el PIN coincide con la credencial de entorno autorizada \`process.env.SEED_SUPERADMIN_PIN || "9999"\`.
+     - Si el SuperAdmin no existe en \`CuentaSocio\`, se aprovisiona en caliente con cédula SaaS \`0000000000\`, nombre \`SuperAdmin SaaS (RutaGo Vendor)\`, rol \`SUPERADMIN_SAAS\`, \`esFundadorSaaS: false\` y hash criptográfico con salt único.
+     - Si ya existía, resincroniza automáticamente su hash y salt con la credencial autorizada, evitando cualquier bloqueo o desfasaje.
+     - Retorna sesión con \`rol: "ADMIN"\` y \`subRol: "SUPERADMIN_SAAS"\`.
+  2. **\`src/lib/seed.ts\`:**
+     - Desacoplado el conteo: ahora verifica \`if (adminCount === 0)\` para crear el SuperAdmin y el Socio Fundador, sin bloquearse si ya existe personal en la tabla \`Persona\`.
+  3. **Router de Vistas y Detección de Rol (\`src/app/page.tsx\` y \`src/components/transport/HomeScreen.tsx\`):**
+     - Corregida la condición reactiva de SuperAdmin para incluir \`user?.subRol === "SUPERADMIN_SAAS"\`.
+     - Garantiza que al iniciar sesión, el SuperAdmin sea dirigido directamente a la consola \`SuperAdminHomeScreen\` y a la administración SaaS (\`SaaSAdminScreen\`).
+- **Seguridad Cero-Hardcode Preservada:**
+  - Las contraseñas en PostgreSQL quedan cifradas con hash SHA-256 y \`pinSalt\` criptográfico de 16 bytes.
+  - El PIN autorizado puede ser personalizado en cualquier momento desde las Environment Variables de Vercel mediante \`SEED_SUPERADMIN_PIN\`.
+
+---
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).

@@ -5,24 +5,22 @@ import { generateSalt, hashPinWithSalt } from '@/lib/pin-hash';
 export async function seedIfEmpty() {
   try {
     const adminCount = await db.cuentaSocio.count();
-    const personaCount = await db.persona.count();
-
-    if (adminCount === 0 && personaCount === 0) {
+    if (adminCount === 0) {
       const superAdminPin = process.env.SEED_SUPERADMIN_PIN || '9999';
       const saltSuper = generateSalt();
       const hashSuper = hashPinWithSalt(superAdminPin, saltSuper);
 
       await db.cuentaSocio.create({
         data: {
-          cedula: '1100000000',
-          nombre: 'SuperAdmin SaaS (RutaGo)',
+          cedula: '0000000000',
+          nombre: 'SuperAdmin SaaS (RutaGo Vendor)',
           email: 'admin@rutago.app',
           telefono: '0990000000',
           pinHash: hashSuper,
           pinSalt: saltSuper,
           rol: 'SUPERADMIN_SAAS',
           activo: true,
-          esFundadorSaaS: true,
+          esFundadorSaaS: false,
         },
       });
 

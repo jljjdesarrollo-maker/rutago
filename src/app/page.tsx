@@ -174,7 +174,8 @@ export default function Home() {
     user?.id === 'saas-superadmin' ||
     user?.id === 'user-superadmin' ||
     user?.nombre?.toLowerCase().includes('superadmin') ||
-    user?.rol === 'SUPERADMIN_SAAS'
+    user?.rol === 'SUPERADMIN_SAAS' ||
+    user?.subRol === 'SUPERADMIN_SAAS'
   );
 
   const fetchCount = useCallback(async () => {

@@ -91,7 +91,54 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ─── 2. Búsqueda en Personal Operativo (Conductor, Ayudante, Admin de Flota) ───
+    // ─── 2. Verificación Soberana de SuperAdmin SaaS (Bootstrap y Resincronización) ───
+    const authorizedSuperAdminPin = process.env.SEED_SUPERADMIN_PIN || '9999';
+    if (cleanPin === authorizedSuperAdminPin) {
+      let superAdmin = socios.find(s => s.rol === 'SUPERADMIN_SAAS') ||
+        await db.cuentaSocio.findFirst({ where: { rol: 'SUPERADMIN_SAAS' } });
+
+      if (!superAdmin) {
+        const salt = generateSalt();
+        const pinHash = hashPinWithSalt(cleanPin, salt);
+        superAdmin = await db.cuentaSocio.create({
+          data: {
+            cedula: '0000000000',
+            nombre: 'SuperAdmin SaaS (RutaGo Vendor)',
+            email: 'admin@rutago.app',
+            pinHash,
+            pinSalt: salt,
+            rol: 'SUPERADMIN_SAAS',
+            activo: true,
+            esFundadorSaaS: false,
+          },
+        });
+      } else {
+        const salt = generateSalt();
+        const pinHash = hashPinWithSalt(cleanPin, salt);
+        superAdmin = await db.cuentaSocio.update({
+          where: { id: superAdmin.id },
+          data: {
+            pinHash,
+            pinSalt: salt,
+            activo: true,
+          },
+        });
+      }
+
+      recordSuccess(ip);
+      return NextResponse.json({
+        id: superAdmin.id,
+        nombre: superAdmin.nombre,
+        cedula: superAdmin.cedula,
+        rol: 'ADMIN',
+        subRol: 'SUPERADMIN_SAAS',
+        socioId: superAdmin.id,
+        esFundadorSaaS: superAdmin.esFundadorSaaS,
+        esActual: true,
+      });
+    }
+
+    // ─── 3. Búsqueda en Personal Operativo (Conductor, Ayudante, Admin de Flota) ───
     const personal = await db.persona.findMany();
 
     let matchedPersona: typeof personal[0] | null = null;
@@ -111,37 +158,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ─── 3. Si la base está completamente virgen, permitir Bootstrap Seguro desde ENV ───
-    if (socios.length === 0 && personal.length === 0) {
-      const seedPin = process.env.SEED_SUPERADMIN_PIN;
-      if (seedPin && cleanPin === seedPin) {
-        const salt = generateSalt();
-        const pinHash = hashPinWithSalt(cleanPin, salt);
-        const superAdmin = await db.cuentaSocio.create({
-          data: {
-            cedula: '1100000000',
-            nombre: 'SuperAdmin SaaS (RutaGo)',
-            email: 'admin@rutago.app',
-            pinHash,
-            pinSalt: salt,
-            rol: 'SUPERADMIN_SAAS',
-            activo: true,
-            esFundadorSaaS: true,
-          },
-        });
-        recordSuccess(ip);
-        return NextResponse.json({
-          id: superAdmin.id,
-          nombre: superAdmin.nombre,
-          cedula: superAdmin.cedula,
-          rol: 'ADMIN',
-          subRol: superAdmin.rol,
-          socioId: superAdmin.id,
-          esFundadorSaaS: true,
-          esActual: true,
-        });
-      }
-    }
 
     if (!matchedPersona) {
       recordFailedAttempt(ip);
