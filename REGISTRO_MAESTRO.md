@@ -556,6 +556,26 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
      - Manejo defensivo: solo usuarios reales en base de datos o token cifrado tienen acceso.
 
 ---
+---
+
+## 🎨 REORGANIZACIÓN ARQUITECTÓNICA DE HOMESCREEN (PILAR 1 VS PILAR 3) (2026-09-29)
+- **Decisión de Producto y UX por el Socio Propietario:**
+  * El **Pilar 1 ("Día a Día • Ruta y Caja de Hoy")** se limpia de reportes y auditorías pasadas, quedando enfocado 100% en la operación en caliente (Registrar Liquidación de Hoy, Gastos del Bus y Mantenimiento).
+  * Para los conductores operativos (\`!isSocioOwner\`), se conserva la tarjeta rápida \`Mis Registros\` en Pilar 1.
+  * Para los socios propietarios (\`isSocioOwner\`), se consolidan todos los módulos analíticos y de auditoría en el **Pilar 3 ("Informes y Rendimiento del Negocio")**.
+- **Estructura Reorganizada del Pilar 3 (Socio Propietario):**
+  * Cuadrícula armónica 2x2:
+    1. **Historial de Liquidaciones:** Auditoría y consulta de días archivados con contador reactivo de días (\`recordCount\`).
+    2. **Cumplimiento de Frecuencias:** Vueltas realizadas vs turnos suspendidos o caídos.
+    3. **Reportes Oficiales:** Descarga de reportes contables consolidados en PDF y Excel.
+    4. **Comparar Frecuencias:** Análisis de rendimiento por horarios y turnos.
+  * Tarjetas Destacadas Inferiores:
+    5. **Benchmark de Flota & IPF:** Ranking simétrico de flota Troncal vs Alimentadores.
+    6. **Auditoría y Revisión de Boletos:** Detalle de emisiones en ruta.
+- **Alcance Universal Multi-Tenant SaaS:**
+  * Estos cambios se aplican automáticamente a la cuenta de Socio 01 y a todos los socios presentes y futuros creados en el Padrón SaaS, manteniendo una interfaz unificada, escalable y robusta.
+
+---
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).

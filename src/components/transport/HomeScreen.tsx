@@ -642,71 +642,29 @@ export function HomeScreen({
               </Card>
             )}
 
-            {/* Revisión de Ventas de Boletos */}
-            {isAdmin && (
+            {/* Acceso para Conductor a sus turnos guardados (En el socio pasa al Pilar 3) */}
+            {!isSocioOwner && (
               <Card
-                onClick={onGoToVentasReview}
+                onClick={onGoToHistory}
                 className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
               >
                 <CardContent className="flex items-center justify-between p-3.5">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
-                      <Eye className="w-5 h-5" />
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                      <History className="w-5 h-5 text-[#3A3A3A]" />
                     </div>
                     <div>
-                      <p className="font-bold text-sm text-[#3A3A3A]">Auditoría y Revisión de Boletos</p>
-                      <p className="text-xs text-gray-500">Boletos vendidos por fecha, frecuencia y cobros en ruta</p>
+                      <p className="font-bold text-sm text-[#3A3A3A]">Mis Registros</p>
+                      <p className="text-xs text-gray-500">Consultar mis liquidaciones de ruta archivadas</p>
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-black text-[#912D26]">{recordCount}</span>
+                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                  </div>
                 </CardContent>
               </Card>
             )}
-
-            {/* Frecuencias y Cumplimiento Operativo */}
-            {isAdmin && (
-              <Card
-                onClick={onGoToOperativo}
-                className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
-              >
-                <CardContent className="flex items-center justify-between p-3.5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-green-50 text-green-700 flex items-center justify-center">
-                      <Activity className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-[#3A3A3A]">Cumplimiento de Frecuencias</p>
-                      <p className="text-xs text-gray-500">Vueltas realizadas vs turnos suspendidos o caídos</p>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Historial General de Liquidaciones */}
-            <Card
-              onClick={onGoToHistory}
-              className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
-            >
-              <CardContent className="flex items-center justify-between p-3.5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-                    <History className="w-5 h-5 text-[#3A3A3A]" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm text-[#3A3A3A]">
-                      {isSocioOwner ? 'Historial de Días Liquidado' : 'Mis Registros'}
-                    </p>
-                    <p className="text-xs text-gray-500">Consultar liquidaciones de ruta archivadas</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-black text-[#912D26]">{recordCount}</span>
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                </div>
-              </CardContent>
-            </Card>
 
           </div>
         </div>
@@ -765,7 +723,44 @@ export function HomeScreen({
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
-              {/* Reportes Oficiales en PDF */}
+              {/* 1. Historial General de Liquidaciones Archivadas */}
+              <Card
+                onClick={onGoToHistory}
+                className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
+              >
+                <CardContent className="p-3.5 flex flex-col justify-between h-full">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center">
+                      <History className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                      {recordCount} días
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-[#3A3A3A] leading-tight">Historial de Liquidaciones</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">Auditoría de días archivados</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 2. Frecuencias y Cumplimiento Operativo */}
+              <Card
+                onClick={onGoToOperativo}
+                className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
+              >
+                <CardContent className="p-3.5 flex flex-col justify-between h-full">
+                  <div className="w-10 h-10 rounded-xl bg-green-50 text-green-700 flex items-center justify-center mb-2">
+                    <Activity className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-[#3A3A3A] leading-tight">Cumplimiento Frecuencias</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">Vueltas vs turnos caídos</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 3. Reportes Oficiales en PDF */}
               <Card
                 onClick={onGoToReports}
                 className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
@@ -776,12 +771,12 @@ export function HomeScreen({
                   </div>
                   <div>
                     <p className="font-bold text-sm text-[#3A3A3A] leading-tight">Reportes Oficiales</p>
-                    <p className="text-[11px] text-gray-500 mt-0.5">Informes consolidados en PDF y Excel</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">Informes PDF y Excel</p>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Comparar Frecuencias */}
+              {/* 4. Comparar Frecuencias */}
               <Card
                 onClick={onGoToCompare}
                 className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
@@ -821,6 +816,27 @@ export function HomeScreen({
                     </div>
                   </div>
                   <ArrowRight className="w-4 h-4 text-gray-400 shrink-0" />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Auditoría y Revisión de Boletos */}
+            {onGoToVentasReview && (
+              <Card
+                onClick={onGoToVentasReview}
+                className="mt-2.5 cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50/40 to-white"
+              >
+                <CardContent className="flex items-center justify-between p-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-700 shrink-0">
+                      <Eye className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-[#3A3A3A]">Auditoría y Revisión de Boletos</p>
+                      <p className="text-xs text-gray-500">Boletos vendidos por fecha, frecuencia y cobros en ruta</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-gray-400" />
                 </CardContent>
               </Card>
             )}
