@@ -517,6 +517,18 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
   - El PIN autorizado puede ser personalizado en cualquier momento desde las Environment Variables de Vercel mediante \`SEED_SUPERADMIN_PIN\`.
 
 ---
+---
+
+## 🛠️ CORRECCIÓN CRÍTICA EN RESPALDO INTEGRAL SAAS (/api/backup) (2026-09-29)
+- **Diagnóstico del Error:**
+  * Al pulsar "Descargar Respaldo JSON" en la Consola SaaS, la API arrojaba error \`PrismaClientValidationError: Unknown argument date in prisma.ownerExpense.findMany()\`.
+  * La consulta usaba \`orderBy: { date: "desc" }\`, mientras que el modelo \`OwnerExpense\` en Prisma define la columna de fecha como \`expenseDate\`.
+- **Solución Aplicada:**
+  1. Corregido el campo de ordenamiento a \`orderBy: { expenseDate: "desc" }\` en \`src/app/api/backup/route.ts\`.
+  2. Añadido el modelo \`db.ventaBoleto.findMany({ orderBy: { createdAt: "desc" } })\` al respaldo para que los boletos emitidos en ruta también queden incluidos en la copia de seguridad descargable.
+  3. Actualizada la versión del backup a \`v3.62.0-backup\` con conteo total de \`totalVentasBoletos\`.
+
+---
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).

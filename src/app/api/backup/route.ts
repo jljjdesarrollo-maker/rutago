@@ -3,7 +3,7 @@ import { db } from '@/lib/db';
 
 export async function GET() {
   try {
-    const [records, personas, socios, buses, suscripciones, pagos, ownerExpenses] = await Promise.all([
+    const [records, personas, socios, buses, suscripciones, pagos, ownerExpenses, ventasBoletos] = await Promise.all([
       db.dailyRecord.findMany({
         orderBy: { date: 'desc' },
         include: {
@@ -50,13 +50,16 @@ export async function GET() {
         orderBy: { fechaPago: 'desc' },
       }),
       db.ownerExpense.findMany({
-        orderBy: { date: 'desc' },
+        orderBy: { expenseDate: 'desc' },
+      }),
+      db.ventaBoleto.findMany({
+        orderBy: { createdAt: 'desc' },
       }),
     ]);
 
     const backup = {
       exportDate: new Date().toISOString(),
-      version: 'v3.61.0-backup',
+      version: 'v3.62.0-backup',
       app: 'rutago',
       records,
       personas,
@@ -65,6 +68,7 @@ export async function GET() {
       suscripciones,
       pagos,
       ownerExpenses,
+      ventasBoletos,
       summary: {
         totalRecords: records.length,
         totalPersonas: personas.length,
@@ -73,6 +77,7 @@ export async function GET() {
         totalSuscripciones: suscripciones.length,
         totalPagos: pagos.length,
         totalOwnerExpenses: ownerExpenses.length,
+        totalVentasBoletos: ventasBoletos.length,
         dateRange: records.length > 0
           ? { from: records[records.length - 1].date, to: records[0].date }
           : null,
