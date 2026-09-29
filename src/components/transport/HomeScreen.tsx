@@ -102,6 +102,9 @@ export function HomeScreen({
     user.subRol === 'SUPERADMIN_SAAS'
   );
 
+  // Soberanía del Socio Propietario / Administrador sobre el autobús asignado
+  const isSocioOwner = Boolean(isAdmin || user.rol === 'SOCIO' || user.rol === 'ADMIN');
+
   const [backupLoading, setBackupLoading] = useState(false);
   const activeBusId = getActiveBusId() || 'BUS-01';
   const defaultYearMonth = getCurrentYearMonth();
@@ -166,7 +169,7 @@ export function HomeScreen({
   // Calcular balance financiero, tripulación y suscripción en vivo para el socio (EXCLUSIVO ADMIN / SOCIO)
   // El chofer y el ayudante no deben ejecutar estas consultas contables para garantizar entrada instantánea
   useEffect(() => {
-    if (isSuperAdmin || !isAdmin) return;
+    if (isSuperAdmin || !isSocioOwner) return;
 
     // 1. Cargar suscripción del bus activo
     try {
@@ -391,8 +394,8 @@ export function HomeScreen({
           </div>
         </div>
 
-        {/* Resumen Ejecutivo Financiero del Socio (Solo Administrador) */}
-        {isAdmin && (
+        {/* Resumen Ejecutivo Financiero del Socio (Solo Administrador / Socio Propietario) */}
+        {isSocioOwner && (
           <div className="flex flex-col gap-2.5 mb-1">
             {/* Tarjeta de Licencia SaaS */}
             <div className="bg-slate-900 text-white rounded-2xl p-3 border border-slate-700 shadow-sm flex items-center justify-between">
@@ -506,7 +509,7 @@ export function HomeScreen({
           // Si el módulo está activo para este bus:
           if (moduloMantenimientoActivoVal) {
             // En la interfaz del socio (isAdmin): reemplazar vista de chofer por la etiqueta ejecutiva semafórica
-            if (isAdmin) {
+            if (isSocioOwner) {
               return (
                 <SocioMantenimientoWidget
                   busId={activeBusId}
@@ -528,7 +531,7 @@ export function HomeScreen({
           }
 
           // Si el socio aún no lo ha configurado o es nuevo en la suscripción, se le presenta la invitación optativa
-          if (isAdmin) {
+          if (isSocioOwner) {
             return (
               <Card className="rounded-3xl border-2 border-dashed border-amber-300/80 bg-gradient-to-br from-amber-50/60 via-white to-amber-50/20 p-4 shadow-xs">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -584,7 +587,7 @@ export function HomeScreen({
               />
             )}
             {/* Gastos del Socio Propietario (Acceso Destacado al Negocio) */}
-            {isAdmin && onGoToSocioGastos && (
+            {isSocioOwner && onGoToSocioGastos && (
               <Card
                 onClick={onGoToSocioGastos}
                 className="cursor-pointer hover:shadow-md transition-all rounded-2xl border-2 border-emerald-400/80 bg-gradient-to-r from-emerald-50/70 via-white to-emerald-50/30 shadow-xs"
@@ -612,7 +615,7 @@ export function HomeScreen({
             )}
 
             {/* Mantenimiento Mecánico y Tacómetro del Bus */}
-            {isAdmin && onGoToMantenimiento && (
+            {isSocioOwner && onGoToMantenimiento && (
               <Card
                 onClick={onGoToMantenimiento}
                 className="cursor-pointer hover:shadow-md transition-all rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-50/60 to-white shadow-xs"
@@ -693,7 +696,7 @@ export function HomeScreen({
                   </div>
                   <div>
                     <p className="font-bold text-sm text-[#3A3A3A]">
-                      {isAdmin ? 'Historial de Días Liquidado' : 'Mis Registros'}
+                      {isSocioOwner ? 'Historial de Días Liquidado' : 'Mis Registros'}
                     </p>
                     <p className="text-xs text-gray-500">Consultar liquidaciones de ruta archivadas</p>
                   </div>
@@ -710,7 +713,7 @@ export function HomeScreen({
 
         {/* ─── PILAR 2: REGULARIZACIÓN Y DATOS ANTERIORES ─── */}
         {/* Exclusivo para el Socio Propietario / Administrador (Oculto para Chofer y Ayudante) */}
-        {isAdmin && onGoToCargaHistorica && (
+        {isSocioOwner && onGoToCargaHistorica && (
           <div className="mt-1">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[11px] font-black text-amber-900/60 uppercase tracking-wider flex items-center gap-1.5">
@@ -752,7 +755,7 @@ export function HomeScreen({
         )}
 
         {/* ─── PILAR 3: ANÁLISIS Y REPORTES FINANCIEROS ─── */}
-        {isAdmin && (
+        {isSocioOwner && (
           <div className="mt-1">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[11px] font-black text-[#3A3A3A]/50 uppercase tracking-wider flex items-center gap-1.5">
@@ -825,7 +828,7 @@ export function HomeScreen({
         )}
 
         {/* ─── PILAR 4: CONFIGURACIÓN Y EQUIPO ─── */}
-        {isAdmin && (
+        {isSocioOwner && (
           <div className="mt-1">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[11px] font-black text-[#3A3A3A]/50 uppercase tracking-wider flex items-center gap-1.5">
@@ -984,7 +987,7 @@ export function HomeScreen({
           )}
 
           {/* Si es SOCIO / ADMIN: Acceso directo a Gastos del Bus y Mantenimiento */}
-          {isAdmin && (
+          {isSocioOwner && (
             <>
               {onGoToSocioGastos && (
                 <Button

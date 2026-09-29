@@ -112,50 +112,12 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         return;
       }
 
-      // Si es 404 o 500 (por ejemplo en el ambiente de desarrollo Vite donde no hay API server), aplicar fallback
-      if (pinValue === '1234' || pinValue === '2107') {
-        const adminSession = {
-          id: 'admin-001',
-          nombre: 'Administrador (Socio)',
-          rol: 'ADMIN',
-          esActual: true,
-        };
-        localStorage.setItem('ct_session', JSON.stringify(adminSession));
-        triggerBackgroundSyncMantenimiento(adminSession);
-        onLogin(adminSession);
-        return;
-      }
-
-      setError('PIN incorrecto');
-      setPin('');
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || "PIN incorrecto o error en servidor");
+      setPin("");
     } catch {
-      // Fallback para ambiente local de pruebas o modo sin conexión
-      if (pinValue === '1234' || pinValue === '2107') {
-        const adminSession = {
-          id: 'admin-001',
-          nombre: 'Administrador (Socio)',
-          rol: 'ADMIN',
-          esActual: true,
-        };
-        localStorage.setItem('ct_session', JSON.stringify(adminSession));
-        triggerBackgroundSyncMantenimiento(adminSession);
-        onLogin(adminSession);
-        return;
-      } else if (pinValue === '5555') {
-        const ayudanteSession = {
-          id: 'ayudante-001',
-          nombre: 'Ayudante de Ruta',
-          rol: 'AYUDANTE',
-          esActual: true,
-        };
-        localStorage.setItem('ct_session', JSON.stringify(ayudanteSession));
-        triggerBackgroundSyncMantenimiento(ayudanteSession);
-        onLogin(ayudanteSession);
-        return;
-      }
-
-      setError('PIN incorrecto');
-      setPin('');
+      setError("Error de conexión. Verifique su acceso a internet.");
+      setPin("");
     } finally {
       setLoading(false);
     }

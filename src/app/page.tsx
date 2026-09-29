@@ -169,7 +169,7 @@ export default function Home() {
     } catch { /* ignore */ }
   }, [view, currentEstado, vtSession, esUltimaFrecuencia]);
 
-  const isAdmin = user?.rol === 'ADMIN';
+  const isAdmin = user?.rol === 'ADMIN' || user?.rol === 'SOCIO';
   const isSuperAdmin = Boolean(
     user?.id === 'saas-superadmin' ||
     user?.id === 'user-superadmin' ||

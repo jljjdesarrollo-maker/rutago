@@ -529,6 +529,33 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
   3. Actualizada la versión del backup a \`v3.62.0-backup\` con conteo total de \`totalVentasBoletos\`.
 
 ---
+---
+
+## 🚀 ACTIVACIÓN DE SOBERANÍA TOTAL PARA ROL SOCIO PROPIETARIO Y LIMPIEZA DE FALLBACKS (2026-09-29)
+- **Diagnóstico Reportado por el Socio:**
+  * Al ingresar con la nueva cuenta de Socio Propietario creada en el Padrón SaaS, la interfaz se mostraba idéntica a la del Conductor/Chofer (ocultando los gastos del bus, la carga histórica, reportes oficiales y personal).
+  * Al ingresar con el PIN antiguo `2107`, la interfaz mostraba todas las herramientas de gestión del socio pero bajo la identidad genérica "Administrador (Socio)".
+- **Causa Raíz Identificada:**
+  * En `src/app/page.tsx`, la variable de control estaba definida como `const isAdmin = user?.rol === 'ADMIN';`.
+  * La nueva cuenta de socio se autentica legítimamente desde PostgreSQL con `rol: 'SOCIO'`, lo que provocaba que `isAdmin` evaluara como `false`, degradando la interfaz a la vista restringida de Conductor.
+  * En `src/components/transport/LoginScreen.tsx`, aún existían fallbacks quemados de versiones tempranas (`1234` y `2107`) que generaban una sesión artificial `admin-001`.
+- **Modificaciones Aplicadas:**
+  1. **\`src/app/page.tsx\`:**
+     - Actualizado a `const isAdmin = user?.rol === 'ADMIN' || user?.rol === 'SOCIO';`.
+     - Habilitado el acceso a auditoría de liquidaciones (`RecordDetail`), historial (`HistoryScreen`) y conteo general (`fetchCount`).
+  2. **\`src/components/transport/HomeScreen.tsx\`:**
+     - Implementada la constante soberana: `const isSocioOwner = Boolean(isAdmin || user.rol === 'SOCIO' || user.rol === 'ADMIN');`.
+     - Desbloqueados los 4 Pilares del Socio Propietario para `user.rol === 'SOCIO'`:
+       * **Pilar 1:** Resumen Ejecutivo Financiero y Widget Semafórico de Mantenimiento.
+       * **Pilar 2:** Regularización de Fechas Pasadas (Carga Histórica de Cuadernos).
+       * **Pilar 3:** Informes y Rendimiento del Negocio (Reportes Oficiales PDF y Benchmark de Flota & IPF).
+       * **Pilar 4:** Configuración y Personal (Gestión de Chofer y Ayudante del Bus 01).
+       * **Barra Táctica:** Botones ergonómicos `[ Gastos del Bus ]` y `[ Mantenimiento ]`.
+  3. **\`src/components/transport/LoginScreen.tsx\`:**
+     - Erradicados los condicionales hardcodeados de `1234`, `2107` y `5555`. Cero sesiones artificiales en caliente.
+     - Manejo defensivo: solo usuarios reales en base de datos o token cifrado tienen acceso.
+
+---
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
