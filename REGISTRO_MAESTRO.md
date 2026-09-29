@@ -618,6 +618,26 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
     4. La etiqueta ahora integra el nombre completo del mes contable activo de forma unificada y armónica.
 
 ---
+---
+
+## 🎨 REDISEÑO EJECUTIVO UI/UX DE LA INTERFAZ DEL SOCIO (2026-09-29)
+- **Objetivo:** Resolver la sobrecarga visual y fatiga cognitiva detectada en la interfaz principal del socio (\`HomeScreen.tsx\`), preservando el 100% de la lógica, datos y APIs existentes.
+- **Cambios Aplicados:**
+  1. **Tarjeta Ejecutiva con el "Número Rey":**
+     - La **Ganancia Real en Limpio** (\`ownerSummary.netProfit\`) ahora ocupa el centro con tipografía grande y dominante (\`text-3xl sm:text-4xl font-black\`).
+     - Las métricas de Ruta (Recaudado) y Gastos directos del Socio se consolidaron como soportes elegantes de auditoría en la base de la tarjeta.
+     - Conserva íntegro el Semáforo de Certeza Contable (\`loading\` / \`live\` / \`stale\`) y el botón táctil de actualización instantánea (\`↻\`).
+  2. **Cabecera Esbelta y Liviana (Eliminación del Scroll Forzado):**
+     - La alerta de Licencia SaaS se transformó en una franja delgada y moderna (\`px-3.5 py-2\`), conservando el estado de la suscripción y el botón de WhatsApp.
+     - La pastilla de Tripulación de Hoy se compactó en una sola línea elegante con acceso directo a reasignación de personal.
+  3. **Reorganización Fluida de Pilares:**
+     - **Pilar 1: Día a Día (Operación y Caja de Hoy)** -> Gastos y Negocio del Bus, Mantenimiento Preventivo.
+     - **Pilar 2: Informes y Rendimiento del Negocio** -> Historial de liquidaciones, Cumplimiento de frecuencias, Reportes en PDF, Comparador de frecuencias, Benchmark de flota y Auditoría de boletos.
+     - **Pilar 3: Configuración y Regularización** -> Personal / Tripulación, Mi Autobús (Ficha técnica), Carga Histórica de Cuadernos (Regularización de fechas pasadas) y Copia de seguridad.
+  4. **Cero Impacto en la Lógica de Negocio:**
+     - Las fórmulas de utilidad neta, entregas de ruta, reportes mensuales y conexiones a base de datos permanecen exactamente iguales.
+
+---
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
