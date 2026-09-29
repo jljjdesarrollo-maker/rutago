@@ -476,6 +476,24 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+---
+
+## 🛠️ HOTFIX DEPLOYMENT VERCEL (2026-09-29)
+- **Problema Detectado en Despliegue Vercel (Commit 86a6fea):**
+  * Error en Turbopack build durante `next build`:
+    `Export getCatalogoMaestroGlobal doesn't exist in target module ./src/lib/fleet-storage.ts`
+    en `src/components/transport/mantenimiento/MantenimientoEstacionesModal.tsx:35:1`.
+- **Causa Raíz:**
+  * `getCatalogoMaestroGlobal` se encontraba importado erróneamente desde `@/lib/fleet-storage` en lugar de `@/lib/mantenimiento-catalogo`.
+- **Solución Implementada:**
+  * Corregido el import en `src/components/transport/mantenimiento/MantenimientoEstacionesModal.tsx`:
+    - `import { MantenimientoCatalogoItem, MantenimientoBusItem, getCatalogoMaestroGlobal } from '@/lib/mantenimiento-catalogo';`
+    - `import { saveBusOdometer } from '@/lib/fleet-storage';`
+  * Verificado y validado estáticamente con el resto del módulo y catálogo oficial.
+- **Impacto y Despliegue:**
+  * Desbloqueado el build en Vercel y sincronizado con la rama principal `main`.
+
+---
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).

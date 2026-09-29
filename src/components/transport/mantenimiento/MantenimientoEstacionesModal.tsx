@@ -31,8 +31,9 @@ import {
 import {
   MantenimientoCatalogoItem,
   MantenimientoBusItem,
+  getCatalogoMaestroGlobal,
 } from '@/lib/mantenimiento-catalogo';
-import { getCatalogoMaestroGlobal, saveBusOdometer } from '@/lib/fleet-storage';
+import { saveBusOdometer } from '@/lib/fleet-storage';
 import { calcularDesgasteRegularizacion, saveParadaPago } from '@/lib/paradas-vt-storage';
 import { saveOwnerExpense, saveOwnerExpenseToApi } from '@/lib/owner-expenses-storage';
 import type { PaymentAbono, SocioModalidadPago } from '@/types/expenses';
