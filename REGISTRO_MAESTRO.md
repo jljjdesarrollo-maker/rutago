@@ -714,15 +714,35 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
     - Se definió explícitamente `isConductor = currentUser?.rol === 'CONDUCTOR'` e `isSocio = !isSuperAdmin && !isConductor`, protegiendo la privacidad de gastos de taller, edición de recetas y cambio de flotas de los socios propietarios.
 
 ---
+- **v3.60.29 (Copiloto de Ruta para el Chofer y Proyección Temporal en Días):**
+  - **Auditoría de VT y Matriz de Rodaje:**
+    - Auditoría oficial de distancias y de los 18 cuadernos de turnos (`VT1` al `VT15`, `P1` al `P3`).
+    - Determinación del promedio diario de operación de la flota: **280 km/día** (3 vueltas redondas Loja-Vilcabamba de 84 km = 252 km + extensiones a El Tambo, Yangana, La Elvira o Zahuayco).
+  - **Proyección Temporal Táctica en Días de Ruta:**
+    - Se incorporó la función `calcularProyeccionTiempo(kmRestantes)` en `ChoferMantenimientoWidget.tsx`.
+    - Cada componente en el radar ahora muestra su tiempo estimado sin costo computacional ni llamadas de red (100% offline, integer math):
+      * `¡Fosa hoy!` (límite superado)
+      * `~1 día de ruta (hoy o mañana)` (hasta 300 km)
+      * `~X días (esta semana)` (hasta 900 km)
+      * `~X días (~1 sem)` (hasta 1,800 km)
+      * `~X días (quincena)` (hasta 3,500 km)
+      * `~X días (~1 mes)` (hasta 6,000 km)
+  - **Consejos Proactivos de Copiloto (Organización vs Imposición):**
+    - Para combo de lubricadora (aceite): aviso preventivo *"💡 Coordinar ~$75 de la caja de ruta con el ayudante para fosa"*.
+    - Para raches de freno: recordatorio de empoderamiento *"🔧 Calibración rápida en patio con tu llave • Mano de obra propia $0"*.
+    - Para reparaciones mayores del dueño: aviso de coordinación *"🛠️ Reparación de taller mayor: Notificar al socio para programar turno"*.
+  - **Preservación Total de Funcionalidades:** Cero regresiones; la botonera 2x2, el semáforo de 4 chips, el odómetro del ayudante y los modales de servicio permanecen 100% operativos.
+
+---
 
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado Actual:
+   - **v3.60.29:** Copiloto de ruta del chofer con proyección temporal auditada (~280 km/día), consejos de coordinación y preservación 100% funcional.
    - **v3.60.28:** Claridad semántica en panel de conductor, scroll suave ergonómico y blindaje estricto de roles socio/chofer.
-   - **Fase 3 SaaS:** Multi-Tenant y Soberanía por Socio 100% completada.
 4. Próxima Etapa Operativa:
-   - Continuar con la extracción modular o pruebas en campo.
+   - Continuar con la extracción modular de `MantenimientoHistorialModal.tsx` o pruebas de campo.
 5. Indicar al agente:  
    `"Continuamos con la modularización de MantenimientoScreen o con la Fase 4: Pruebas de Campo"`.
 

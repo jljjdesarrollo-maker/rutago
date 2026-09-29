@@ -60,6 +60,53 @@ import {
 import { syncMantenimientoBidireccional, flushMantenimientoOutbox, getMantenimientoOutbox } from '@/lib/mantenimiento-sync';
 import { MantenimientoSyncChip } from './MantenimientoSyncDiagnostic';
 
+const PROMEDIO_KM_DIA_FLOTA = 280; // Promedio auditado de rotación de VT en la cooperativa (~250-300 km/día)
+
+function calcularProyeccionTiempo(kmRestantes: number): { texto: string; badgeClass: string } {
+  if (kmRestantes <= 0) {
+    return {
+      texto: '¡Fosa hoy!',
+      badgeClass: 'bg-rose-100 text-rose-800 border-rose-300 font-black',
+    };
+  }
+  const dias = Math.max(1, Math.round(kmRestantes / PROMEDIO_KM_DIA_FLOTA));
+  if (dias === 1) {
+    return {
+      texto: '~1 día de ruta (hoy o mañana)',
+      badgeClass: 'bg-amber-100 text-amber-900 border-amber-300 font-extrabold',
+    };
+  }
+  if (dias <= 3) {
+    return {
+      texto: `~${dias} días (esta semana)`,
+      badgeClass: 'bg-amber-50 text-amber-900 border-amber-200 font-bold',
+    };
+  }
+  if (dias <= 7) {
+    return {
+      texto: `~${dias} días (~1 sem)`,
+      badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200 font-bold',
+    };
+  }
+  if (dias <= 15) {
+    return {
+      texto: `~${dias} días (quincena)`,
+      badgeClass: 'bg-slate-100 text-slate-700 border-slate-200 font-medium',
+    };
+  }
+  if (dias <= 30) {
+    return {
+      texto: `~${dias} días (~1 mes)`,
+      badgeClass: 'bg-slate-50 text-slate-600 border-slate-200 font-medium',
+    };
+  }
+  const meses = (dias / 30).toFixed(1);
+  return {
+    texto: `~${meses} meses`,
+    badgeClass: 'bg-slate-50 text-slate-500 border-slate-200 font-medium',
+  };
+}
+
 export function ChoferMantenimientoWidget({
   onVerMas,
   onGoToHistory,
@@ -1937,8 +1984,10 @@ export function ChoferMantenimientoWidget({
               <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
                 Alcance de Inspección
               </span>
-              <span className="text-[10px] font-bold text-slate-400">
-                {filtroAlcance === 'CHOFER' ? 'Fosa, engrase y filtros rápidos' : 'Catálogo completo (incluye taller)'}
+              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                <span>{filtroAlcance === 'CHOFER' ? 'Fosa, engrase y filtros rápidos' : 'Catálogo completo (incluye taller)'}</span>
+                <span className="text-slate-300">•</span>
+                <span className="text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.2 rounded text-[9px]">~280 km/día</span>
               </span>
             </div>
 
@@ -2060,22 +2109,53 @@ export function ChoferMantenimientoWidget({
                         ) : null}
                       </div>
 
-                      {/* Kilometraje y Alerta */}
-                      <p className="text-[10px] text-slate-500 pl-4 mt-0.5">
-                        {tarea.esVencido ? (
-                          <span className="text-rose-700 font-black">
-                            ¡VENCIDO! Excedido por {Math.abs(tarea.kmRestantes).toLocaleString()} km
-                          </span>
-                        ) : tarea.esUrgente ? (
-                          <span className="text-amber-800 font-black">
-                            ⚠️ Urgente en ruta • Faltan {tarea.kmRestantes.toLocaleString()} km (de {tarea.intervaloKm.toLocaleString()} km)
-                          </span>
-                        ) : (
-                          <span>
-                            Faltan <strong className="text-slate-800">{tarea.kmRestantes.toLocaleString()} km</strong> (de {tarea.intervaloKm.toLocaleString()} km)
-                          </span>
-                        )}
-                      </p>
+                      {/* Kilometraje, Alerta y Proyección Temporal en Días */}
+                      <div className="flex items-center gap-1.5 flex-wrap pl-4 mt-0.5">
+                        <p className="text-[10px] text-slate-500">
+                          {tarea.esVencido ? (
+                            <span className="text-rose-700 font-black">
+                              ¡VENCIDO! Excedido por {Math.abs(tarea.kmRestantes).toLocaleString()} km
+                            </span>
+                          ) : tarea.esUrgente ? (
+                            <span className="text-amber-800 font-black">
+                              ⚠️ Urgente en ruta • Faltan {tarea.kmRestantes.toLocaleString()} km (de {tarea.intervaloKm.toLocaleString()} km)
+                            </span>
+                          ) : (
+                            <span>
+                              Faltan <strong className="text-slate-800">{tarea.kmRestantes.toLocaleString()} km</strong> (de {tarea.intervaloKm.toLocaleString()} km)
+                            </span>
+                          )}
+                        </p>
+                        {(() => {
+                          const proy = calcularProyeccionTiempo(tarea.kmRestantes);
+                          return (
+                            <span className={`text-[9.5px] px-1.5 py-0.5 rounded-md border inline-flex items-center gap-1 ${proy.badgeClass}`}>
+                              <span>⏱️</span>
+                              <span>{proy.texto}</span>
+                            </span>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Consejos Tácticos de Ayuda Operativa (Copiloto) */}
+                      {tarea.codigo === 'MNT-ACEITE-MOT' && tarea.kmRestantes <= 800 && (
+                        <div className="ml-4 mt-1 text-[9.5px] text-amber-900 bg-amber-50/90 border border-amber-200/80 rounded-lg px-2 py-0.5 flex items-center gap-1 font-semibold">
+                          <span>💡</span>
+                          <span>Coordinar ~$75 de la caja de ruta con el ayudante para fosa</span>
+                        </div>
+                      )}
+                      {esChoferRutina && tarea.kmRestantes <= 250 && (
+                        <div className="ml-4 mt-1 text-[9.5px] text-indigo-900 bg-indigo-50/90 border border-indigo-200/80 rounded-lg px-2 py-0.5 flex items-center gap-1 font-semibold">
+                          <span>🔧</span>
+                          <span>Calibración rápida en patio con tu llave • Mano de obra propia $0</span>
+                        </div>
+                      )}
+                      {!tarea.asignadoChofer && tarea.esUrgente && (
+                        <div className="ml-4 mt-1 text-[9.5px] text-slate-700 bg-slate-100 border border-slate-200/80 rounded-lg px-2 py-0.5 flex items-center gap-1 font-medium">
+                          <span>🛠️</span>
+                          <span>Reparación de taller mayor: Notificar al socio para programar turno</span>
+                        </div>
+                      )}
 
                       {/* Historial Rápido del Componente a la Vista (Fase 2) */}
                       <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1.5 flex-wrap mt-0.5 pl-4">

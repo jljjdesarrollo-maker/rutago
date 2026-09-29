@@ -88,6 +88,13 @@
    - Blindaje de gobernanza en `MantenimientoScreen.tsx`: segregación explícita de `isConductor` para proteger recetas de taller y deudas privadas del socio propietario.
    - Commit: `feat(conductor): v3.60.28 - claridad semantica chofer vs socio, scroll suave y blindaje de gobernanza`
 
+17. **v3.60.29 (Copiloto de Ruta Chofer y Proyección Temporal en Días):** ✅ COMPLETADA
+   - Auditoría de los 18 VT (cuadernos de turnos) y tramos oficiales: calibración del factor de rodaje medio de la flota (**280 km/día**).
+   - Implementación de `calcularProyeccionTiempo(kmRestantes)` en `ChoferMantenimientoWidget.tsx`: traducción táctica a días (`¡Fosa hoy!`, `~1 día`, `~X días (esta semana)`, `~X días (~1 sem)`, `~X días (quincena)`).
+   - Consejos proactivos de copiloto para lubricadora (coordinar caja con ayudante), raches de freno ($0 mano de obra propia) y taller mayor.
+   - Preservación 100% inmutable de la botonera 2x2, semáforo de 4 chips y modales operativos existentes.
+   - Commit: `feat(chofer): v3.60.29 - copiloto de ruta proyeccion temporal en dias y consejos preventivos`
+
 ---
 
 ### 🏛️ REGLAS DE ARQUITECTURA OFICIAL IMPLEMENTADAS:
