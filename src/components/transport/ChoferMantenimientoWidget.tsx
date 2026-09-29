@@ -60,7 +60,15 @@ import {
 import { syncMantenimientoBidireccional, flushMantenimientoOutbox, getMantenimientoOutbox } from '@/lib/mantenimiento-sync';
 import { MantenimientoSyncChip } from './MantenimientoSyncDiagnostic';
 
-export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void }) {
+export function ChoferMantenimientoWidget({
+  onVerMas,
+  onGoToHistory,
+  recordCount,
+}: {
+  onVerMas?: () => void;
+  onGoToHistory?: () => void;
+  recordCount?: number;
+}) {
   const { toast } = useToast();
 
   const [activeBusId, setActiveBusId] = useState<string>(() => {
@@ -1652,30 +1660,15 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
   if (!getBusModuloMantenimientoActivo(activeBusId) || items.length === 0) return null;
 
   return (
-    <Card className="rounded-2xl border-2 border-amber-300/80 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20 shadow-xs overflow-hidden">
-      <CardContent className="p-3.5 space-y-3">
-        {/* ZONA 1: TABLERO DE COMANDO DIGITAL & SEMÁFORO TÁCTIL REACTIVO */}
-        <div className="bg-slate-950 rounded-2xl p-3.5 border border-slate-800 text-white shadow-md space-y-3">
-          <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-800/80">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shadow-xs shrink-0">
-                <Gauge className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-black tracking-wider text-slate-400">
-                    Tacómetro Oficial
-                  </span>
-                  <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-[9px] font-black px-1.5 py-0">
-                    Bus {disco}
-                  </Badge>
-                </div>
-                <div className="text-xl font-black text-white tracking-tight flex items-baseline gap-1">
-                  <span>{(kmActual ?? 187420).toLocaleString()}</span>
-                  <span className="text-xs font-bold text-amber-400">KM</span>
-                </div>
-              </div>
-            </div>
+    <div className="space-y-4">
+        {/* ZONA 1: TARJETA HERO DEL CONDUCTOR (IDÉNTICA A LA MAQUETA EN #053225) */}
+        <div className="bg-[#053225] rounded-3xl p-5 border border-emerald-900/60 text-white shadow-xl space-y-4 relative overflow-hidden">
+          {/* Fila superior: Pastilla En Vivo + Disco */}
+          <div className="flex items-center justify-between pb-3 border-b border-emerald-800/60">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Tacómetro Oficial • Bus {disco}</span>
+            </span>
 
             <div className="flex items-center gap-1.5">
               <MantenimientoSyncChip busId={activeBusId} />
@@ -1685,7 +1678,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
                   setIsHistorialModalOpen(true);
                   ejecutarSincronizacionManual();
                 }}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 cursor-pointer transition-colors"
+                className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-emerald-200 transition cursor-pointer"
                 title="Ver Historial de Mantenimientos"
               >
                 <History className="w-4 h-4" />
@@ -1693,139 +1686,174 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             </div>
           </div>
 
-          {/* SEMÁFORO TÁCTIL REACTIVO (4 CHIPS DE FILTRADO INSTANTÁNEO) */}
-          <div className="grid grid-cols-4 gap-1.5">
-            {/* 🔴 Vencidos */}
-            <button
-              type="button"
-              onClick={() => setFiltroSemaforo(f => f === 'VENCIDOS' ? 'TODOS' : 'VENCIDOS')}
-              className={`py-1.5 px-1 rounded-xl text-center transition-all cursor-pointer border select-none ${
-                filtroSemaforo === 'VENCIDOS'
-                  ? 'bg-rose-600 text-white border-rose-400 shadow-md ring-2 ring-rose-400/50'
-                  : countVencidos > 0
-                  ? 'bg-rose-950/50 text-rose-300 border-rose-800/60 hover:bg-rose-900/60'
-                  : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:bg-slate-800/40'
-              }`}
-            >
-              <span className="text-[10px] font-black block leading-tight flex items-center justify-center gap-1">
-                <span className={`w-1.5 h-1.5 rounded-full ${countVencidos > 0 ? 'bg-rose-500 animate-ping' : 'bg-slate-500'}`} />
-                Vencidos
-              </span>
-              <span className="text-sm font-black block leading-tight mt-0.5">{countVencidos}</span>
-            </button>
+          {/* Número Rey: Kilometraje Oficial */}
+          <div className="text-center py-1">
+            <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight drop-shadow-sm flex items-baseline justify-center gap-2">
+              <span>{(kmActual ?? 187420).toLocaleString()}</span>
+              <span className="text-sm font-black text-amber-400">KM</span>
+            </div>
+            <div className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-emerald-200/90 mt-1">
+              KILOMETRAJE REGISTRADO POR AYUDANTE
+            </div>
+          </div>
 
-            {/* 🟡 Por Vencer */}
-            <button
-              type="button"
-              onClick={() => setFiltroSemaforo(f => f === 'POR_VENCER' ? 'TODOS' : 'POR_VENCER')}
-              className={`py-1.5 px-1 rounded-xl text-center transition-all cursor-pointer border select-none ${
-                filtroSemaforo === 'POR_VENCER'
-                  ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-md ring-2 ring-amber-400/50'
-                  : countPorVencer > 0
-                  ? 'bg-amber-950/50 text-amber-300 border-amber-800/60 hover:bg-amber-900/60'
-                  : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:bg-slate-800/40'
-              }`}
-            >
-              <span className="text-[10px] font-black block leading-tight flex items-center justify-center gap-1">
-                <span className={`w-1.5 h-1.5 rounded-full ${countPorVencer > 0 ? 'bg-amber-400' : 'bg-slate-500'}`} />
-                Próximos
-              </span>
-              <span className="text-sm font-black block leading-tight mt-0.5">{countPorVencer}</span>
-            </button>
+          {/* Semáforo Táctil Reactivo (4 Chips) */}
+          <div className="pt-3 border-t border-emerald-800/60">
+            <div className="grid grid-cols-4 gap-1.5">
+              {/* 🔴 Vencidos */}
+              <button
+                type="button"
+                onClick={() => setFiltroSemaforo(f => f === 'VENCIDOS' ? 'TODOS' : 'VENCIDOS')}
+                className={`py-1.5 px-1 rounded-2xl text-center transition-all cursor-pointer border select-none ${
+                  filtroSemaforo === 'VENCIDOS'
+                    ? 'bg-rose-600 text-white border-rose-400 shadow-md ring-2 ring-rose-400/50'
+                    : countVencidos > 0
+                    ? 'bg-rose-950/60 text-rose-300 border-rose-800/60 hover:bg-rose-900/60'
+                    : 'bg-emerald-950/60 text-emerald-300/70 border-emerald-800/50 hover:bg-emerald-900/40'
+                }`}
+              >
+                <span className="text-[10px] font-black block leading-tight flex items-center justify-center gap-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${countVencidos > 0 ? 'bg-rose-500 animate-ping' : 'bg-slate-400'}`} />
+                  Vencidos
+                </span>
+                <span className="text-sm font-black block leading-tight mt-0.5">{countVencidos}</span>
+              </button>
 
-            {/* 🟢 Al Día */}
-            <button
-              type="button"
-              onClick={() => setFiltroSemaforo(f => f === 'AL_DIA' ? 'TODOS' : 'AL_DIA')}
-              className={`py-1.5 px-1 rounded-xl text-center transition-all cursor-pointer border select-none ${
-                filtroSemaforo === 'AL_DIA'
-                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-md ring-2 ring-emerald-400/50'
-                  : 'bg-emerald-950/40 text-emerald-300 border-emerald-800/50 hover:bg-emerald-900/50'
-              }`}
-            >
-              <span className="text-[10px] font-black block leading-tight flex items-center justify-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                Al Día
-              </span>
-              <span className="text-sm font-black block leading-tight mt-0.5">{countAlDia}</span>
-            </button>
+              {/* 🟡 Por Vencer */}
+              <button
+                type="button"
+                onClick={() => setFiltroSemaforo(f => f === 'POR_VENCER' ? 'TODOS' : 'POR_VENCER')}
+                className={`py-1.5 px-1 rounded-2xl text-center transition-all cursor-pointer border select-none ${
+                  filtroSemaforo === 'POR_VENCER'
+                    ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-md ring-2 ring-amber-400/50'
+                    : countPorVencer > 0
+                    ? 'bg-amber-950/60 text-amber-300 border-amber-800/60 hover:bg-amber-900/60'
+                    : 'bg-emerald-950/60 text-emerald-300/70 border-emerald-800/50 hover:bg-emerald-900/40'
+                }`}
+              >
+                <span className="text-[10px] font-black block leading-tight flex items-center justify-center gap-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${countPorVencer > 0 ? 'bg-amber-400' : 'bg-slate-400'}`} />
+                  Próximos
+                </span>
+                <span className="text-sm font-black block leading-tight mt-0.5">{countPorVencer}</span>
+              </button>
 
-            {/* Chip Neutro: Todos */}
-            <button
-              type="button"
-              onClick={() => setFiltroSemaforo('TODOS')}
-              className={`py-1.5 px-1 rounded-xl text-center transition-all cursor-pointer border select-none ${
-                filtroSemaforo === 'TODOS'
-                  ? 'bg-slate-700 text-white border-slate-500 shadow-md ring-2 ring-slate-400/50'
-                  : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:bg-slate-800/50'
-              }`}
-            >
-              <span className="text-[10px] font-black block leading-tight">Total</span>
-              <span className="text-sm font-black block leading-tight mt-0.5">
-                {filtroAlcance === 'CHOFER' ? countChofer : countTodos}
-              </span>
-            </button>
+              {/* 🟢 Al Día */}
+              <button
+                type="button"
+                onClick={() => setFiltroSemaforo(f => f === 'AL_DIA' ? 'TODOS' : 'AL_DIA')}
+                className={`py-1.5 px-1 rounded-2xl text-center transition-all cursor-pointer border select-none ${
+                  filtroSemaforo === 'AL_DIA'
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-300 shadow-md ring-2 ring-emerald-400/50'
+                    : 'bg-emerald-950/60 text-emerald-300 border-emerald-800/50 hover:bg-emerald-900/50'
+                }`}
+              >
+                <span className="text-[10px] font-black block leading-tight flex items-center justify-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Al Día
+                </span>
+                <span className="text-sm font-black block leading-tight mt-0.5">{countAlDia}</span>
+              </button>
+
+              {/* Chip Neutro: Total */}
+              <button
+                type="button"
+                onClick={() => setFiltroSemaforo('TODOS')}
+                className={`py-1.5 px-1 rounded-2xl text-center transition-all cursor-pointer border select-none ${
+                  filtroSemaforo === 'TODOS'
+                    ? 'bg-white/20 text-white border-white/40 shadow-md ring-2 ring-white/30'
+                    : 'bg-emerald-950/60 text-emerald-200/80 border-emerald-800/50 hover:bg-emerald-900/50'
+                }`}
+              >
+                <span className="text-[10px] font-black block leading-tight">Total</span>
+                <span className="text-sm font-black block leading-tight mt-0.5">
+                  {filtroAlcance === 'CHOFER' ? countChofer : countTodos}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ZONA 2: ACCESO RÁPIDO A PARADAS FRECUENTES (ZONA DEL PULGAR) */}
-        <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            {/* Botón A: 🛢️ Fosa / Lubricadora (Combo Rápido) */}
-            <button
-              type="button"
-              onClick={() => handleAbrirEstacionChofer('LUBRICADORA')}
-              className="flex items-center gap-2.5 p-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 active:scale-[0.98] text-white shadow-md cursor-pointer transition-all hover:brightness-105 select-none"
-            >
-              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">
-                🛢️
-              </div>
-              <div className="text-left min-w-0">
-                <span className="text-[9px] font-black uppercase tracking-wider text-emerald-200 block leading-tight">
-                  Cada 5.000 KM
-                </span>
-                <span className="text-xs font-black text-white block leading-tight mt-0.5">
-                  Fosa / Lubricadora
-                </span>
-                <span className="text-[10px] text-emerald-100 font-medium truncate block leading-tight">
-                  Aceite + Filtros
-                </span>
-              </div>
-            </button>
+        {/* ZONA 2: CUADRÍCULA EJECUTIVA 2x2 PARA EL CONDUCTOR (#053225) */}
+        <div className="grid grid-cols-2 gap-3.5">
+          {/* 1. 🛢️ Fosa / Lubricadora */}
+          <button
+            type="button"
+            onClick={() => handleAbrirEstacionChofer('LUBRICADORA')}
+            className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60 select-none"
+          >
+            <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-xl">
+              🛢️
+            </div>
+            <div>
+              <span className="text-sm sm:text-base font-bold block leading-snug">Fosa / Lubricadora</span>
+              <span className="text-[11px] text-emerald-200/70 font-medium">Aceite y filtros (5.000 KM)</span>
+            </div>
+          </button>
 
-            {/* Botón B: 🔧 Arreglo Rápido / Imprevisto */}
-            <button
-              type="button"
-              onClick={() => {
-                setArregloDescripcion('');
-                setArregloKm(kmActual.toString());
-                setArregloTaller('');
-                setArregloFactura('');
-                setArregloCosto('');
-                setArregloPagador('AYUDANTE');
-                setArregloSocioModalidad('TRANSFERENCIA_TOTAL');
-                setArregloSocioAbono('');
-                setArregloFecha(new Date().toISOString().split('T')[0]);
-                setIsArregloModalOpen(true);
-              }}
-              className="flex items-center gap-2.5 p-3 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-700 active:scale-[0.98] text-white shadow-md cursor-pointer transition-all hover:brightness-105 select-none"
-            >
-              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">
-                🔧
+          {/* 2. 🔧 Arreglo en Ruta */}
+          <button
+            type="button"
+            onClick={() => {
+              setArregloDescripcion('');
+              setArregloKm(kmActual.toString());
+              setArregloTaller('');
+              setArregloFactura('');
+              setArregloCosto('');
+              setArregloPagador('AYUDANTE');
+              setArregloSocioModalidad('TRANSFERENCIA_TOTAL');
+              setArregloSocioAbono('');
+              setArregloFecha(new Date().toISOString().split('T')[0]);
+              setIsArregloModalOpen(true);
+            }}
+            className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60 select-none"
+          >
+            <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-xl">
+              🔧
+            </div>
+            <div>
+              <span className="text-sm sm:text-base font-bold block leading-snug">Arreglo en Ruta</span>
+              <span className="text-[11px] text-emerald-200/70 font-medium">Soldadura, mangueras...</span>
+            </div>
+          </button>
+
+          {/* 3. 📑 Mis Registros de Vuelta */}
+          <button
+            type="button"
+            onClick={onGoToHistory || onVerMas}
+            className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60 select-none"
+          >
+            <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
+              <History className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm sm:text-base font-bold block leading-snug">Mis Vueltas</span>
+                {recordCount !== undefined && (
+                  <span className="text-xs font-black text-amber-300 bg-white/10 px-2 py-0.5 rounded-full">{recordCount}</span>
+                )}
               </div>
-              <div className="text-left min-w-0">
-                <span className="text-[9px] font-black uppercase tracking-wider text-amber-200 block leading-tight">
-                  Imprevisto en Ruta
-                </span>
-                <span className="text-xs font-black text-white block leading-tight mt-0.5">
-                  Arreglo Rápido
-                </span>
-                <span className="text-[10px] text-amber-100 font-medium truncate block leading-tight">
-                  Soldadura, mangueras...
-                </span>
-              </div>
-            </button>
-          </div>
+              <span className="text-[11px] text-emerald-200/70 font-medium">Liquidaciones archivadas</span>
+            </div>
+          </button>
+
+          {/* 4. 🛠️ Talleres Especializados */}
+          <button
+            type="button"
+            onClick={() => setMostrarTalleresEspecializados(prev => !prev)}
+            className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60 select-none"
+          >
+            <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
+              <Wrench className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-sm sm:text-base font-bold block leading-snug">
+                {mostrarTalleresEspecializados ? 'Cerrar Talleres' : 'Talleres'}
+              </span>
+              <span className="text-[11px] text-emerald-200/70 font-medium">Caja, frenos, motor...</span>
+            </div>
+          </button>
+        </div>
 
           {/* Acordeón Colapsable Sutil para Talleres Especializados */}
           <div className="rounded-xl border border-slate-200 bg-white/90 overflow-hidden shadow-2xs">
@@ -2094,7 +2122,7 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
             </button>
           </div>
         )}
-      </CardContent>
+      
 
       {/* Micro-modal Bottom Sheet de 1 Toque para Labor Propia $0 del Chofer (FASE 2) */}
       {itemRutinaModal && (
@@ -4087,6 +4115,6 @@ export function ChoferMantenimientoWidget({ onVerMas }: { onVerMas?: () => void 
           </div>
         </div>
       )}
-    </Card>
+    </div>
   );
 }

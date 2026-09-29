@@ -672,6 +672,31 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
   - **Beneficio Operativo:** Cero trabajo adicional para el chofer o socio (no se requiere llenar hojas ficticias en cero), manteniendo un reporte 100% veraz y transparente para la cooperativa y el socio.
 
 ---
+---
+
+## 🎨 REDISEÑO Y ARMONIZACIÓN VISUAL DE LA INTERFAZ DEL CONDUCTOR (2026-09-29)
+- **Objetivo:** Lograr coherencia gráfica total en toda la aplicación siguiendo la misma jerarquía estética que la pantalla del Socio (paleta corporativa Verde Bosque \`#053225\`, tipografía minimalista, bordes \`rounded-3xl\`, Tarjeta Hero con Número Rey y Cuadrícula Táctica 2x2).
+- **Cero Inventos (Basado estrictamente en las funciones reales del código):**
+  1. **Cabecera Minimalista:**
+     - Saludo: *"Hola, [Nombre Conductor]"*.
+     - Pastilla del Autobús: \`[ 🚌 Bus 01 • HAA-1234 ● En Turno ]\`.
+     - Tarjeta compacta de compañero de ruta: \`Tripulación: [Nombre Ayudante] (Ayudante en Caja) • En Ruta\`.
+  2. **Tarjeta Hero del Conductor (\`#053225\`):**
+     - Tacómetro Oficial del bus (\`187,420 KM\`) como Número Rey, con subtítulo de confirmación *"KILOMETRAJE REGISTRADO POR AYUDANTE"*.
+     - Chip de sincronización en tiempo real y botón de historial.
+     - Línea divisoria inferior con el semáforo reactivo táctil de 4 chips: *🔴 Vencidos | 🟡 Próximos | 🟢 Al Día | Total*.
+  3. **Cuadrícula Ejecutiva 2x2 (\`#053225\`):**
+     - 🛢️ **Fosa / Lubricadora:** Acceso directo a cambio de aceite y filtros cada 5.000 KM.
+     - 🔧 **Arreglo en Ruta:** Acceso directo al formulario rápido para imprevistos (soldadura, mangueras).
+     - 📑 **Mis Vueltas:** Historial de liquidaciones archivadas con badge del total de registros (\`recordCount\`).
+     - 🛠️ **Talleres Especializados:** Alternador de acordeón para Caja/Corona, Frenos, Motor, etc.
+  4. **Barra Fija Inferior:**
+     - Botón de Mantenimiento actualizado al color corporativo \`#053225\` con borde esmeralda en lugar del amarillo antiguo.
+  5. **Archivos Actualizados:**
+     - \`src/components/transport/HomeScreen.tsx\`
+     - \`src/components/transport/ChoferMantenimientoWidget.tsx\`
+
+---
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).

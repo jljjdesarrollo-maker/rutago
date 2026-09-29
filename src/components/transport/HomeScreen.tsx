@@ -516,8 +516,43 @@ export function HomeScreen({
             <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
           </div>
         </header>
+      ) : user.rol === "CONDUCTOR" ? (
+        /* Header Minimalista para Conductor (Coherente con la del Socio) */
+        <header className="pt-6 pb-2 px-5 bg-white">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <span className="text-sm font-medium text-slate-500 block leading-tight">Hola,</span>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
+                {user.nombre || "Conductor"}
+              </h1>
+            </div>
+
+            {/* Pastilla del Autobús */}
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-full px-3.5 py-1.5 shadow-2xs">
+              <Bus className="w-4 h-4 text-emerald-800" />
+              <span className="text-xs font-bold text-slate-800">
+                Bus {busNumero} • {activeBus?.placa || "HAA-1234"}
+              </span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500" title="En Turno" />
+            </div>
+          </div>
+
+          {/* Compañero de Ruta Compacto */}
+          <div className="mt-1 bg-slate-50 border border-slate-200/80 rounded-2xl px-3.5 py-2 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 truncate">
+              <Users className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+              <span className="font-semibold text-slate-700">Compañero:</span>
+              <span className="text-slate-600 truncate">
+                {crewInfo.ayudanteNombre || "Sin asignar"} (Ayudante en Caja)
+              </span>
+            </div>
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+              En Ruta
+            </span>
+          </div>
+        </header>
       ) : (
-        /* Header Institucional para Conductor y Ayudante */
+        /* Header Institucional para Ayudante */
         <header className="pt-6 pb-3 px-5 bg-gradient-to-b from-[#912D26]/10 via-transparent to-transparent">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
@@ -849,7 +884,13 @@ export function HomeScreen({
                     />
                   );
                 }
-                return <ChoferMantenimientoWidget onVerMas={undefined} />;
+                return (
+                    <ChoferMantenimientoWidget
+                      onVerMas={onGoToHistory}
+                      onGoToHistory={onGoToHistory}
+                      recordCount={recordCount}
+                    />
+                  );
               }
               return null;
             })()}
@@ -871,7 +912,8 @@ export function HomeScreen({
                   />
                 )}
 
-                {/* Acceso para Conductor a sus turnos guardados */}
+                {/* Acceso para Ayudante a turnos guardados (para el conductor ya está en su cuadrícula 2x2) */}
+                {user.rol !== "CONDUCTOR" && (
                 <Card
                   onClick={onGoToHistory}
                   className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
@@ -892,6 +934,7 @@ export function HomeScreen({
                     </div>
                   </CardContent>
                 </Card>
+                )}
               </div>
             </div>
 
@@ -938,9 +981,9 @@ export function HomeScreen({
               {onGoToMantenimiento && (
                 <Button
                   onClick={onGoToMantenimiento}
-                  className="flex-1 h-12 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95 transition cursor-pointer"
+                  className="flex-1 h-12 rounded-2xl bg-[#053225] hover:bg-[#073b2d] text-white font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-md shadow-emerald-950/20 active:scale-95 transition cursor-pointer border border-emerald-800/60"
                 >
-                  <Wrench className="w-4 h-4" />
+                  <Wrench className="w-4 h-4 text-emerald-300" />
                   <span>Mantenimiento</span>
                 </Button>
               )}
