@@ -1,8 +1,9 @@
 /**
  * @file turno-secuencia-tracker.ts
  * @description Motor de inferencia y cálculo de turnos (VTs) basado en los últimos
- * 3 arqueos diarios del ayudante con filtro anti-anomalías (reemplazos por daño mecánico)
- * y protocolo para unidades nuevas en calibración.
+ * arqueos del ayudante con avance estricto de días calendario (la cooperativa no se detiene
+ * si el bus está en taller o el ayudante no arquea), filtro anti-anomalías por daño mecánico
+ * y protocolo transparente para unidades en calibración.
  */
 
 export interface ArqueoResumenTurno {
@@ -20,6 +21,8 @@ export interface ResultadoProyeccionTurno {
   arqueosAnalizados: ArqueoResumenTurno[];
   turnoProyectado: string;
   turnoBaseNumero: number;
+  diasTranscurridosDesdeUltimoArqueo: number;
+  fechaUltimoArqueo?: string;
   esAnomaliaDetectada: boolean;
   mensajeDetalle: string;
   esManual: boolean;
@@ -35,11 +38,36 @@ export function extraerNumeroVT(vtCode: string): number {
 }
 
 /**
- * Formatea un número a código VT oficial (ej: 8 -> "VT08")
+ * Formatea un número a código VT oficial (ej: 8 -> "VT08", 10 -> "VT10")
  */
 export function formatearCodigoVT(num: number): string {
   const norm = ((num - 1) % 15) + 1;
   return `VT${String(norm).padStart(2, '0')}`;
+}
+
+/**
+ * Calcula la diferencia exacta en días naturales entre dos fechas (YYYY-MM-DD)
+ */
+export function diferenciaEnDiasCalendario(fechaA: string, fechaB: string): number {
+  if (!fechaA || !fechaB) return 1;
+  const matchA = fechaA.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const matchB = fechaB.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!matchA || !matchB) return 1;
+  const utcA = Date.UTC(parseInt(matchA[1], 10), parseInt(matchA[2], 10) - 1, parseInt(matchA[3], 10));
+  const utcB = Date.UTC(parseInt(matchB[1], 10), parseInt(matchB[2], 10) - 1, parseInt(matchB[3], 10));
+  const diffMs = utcB - utcA;
+  return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+}
+
+/**
+ * Obtiene la fecha local actual en formato YYYY-MM-DD
+ */
+export function obtenerFechaHoyLocal(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dia}`;
 }
 
 /**
@@ -127,13 +155,19 @@ export async function obtenerUltimosArqueosBus(
 }
 
 /**
- * Calcula la proyección del turno para hoy basándose en al menos los 3 últimos arqueos,
- * aplicando el filtro anti-anomalías por auxilio mecánico.
+ * Calcula la proyección del turno para hoy considerando:
+ * 1. La fecha del último arqueo y los días calendario transcurridos hasta HOY.
+ *    (El rol de la cooperativa avanza +1 diario inexorablemente, aunque el bus haya estado en mecánica o sin arqueo).
+ * 2. Los 3 últimos arqueos para validar consistencia o detectar si el último fue un auxilio mecánico anómalo.
+ * 3. Selección manual como override si el socio o chofer lo indica.
  */
 export function calcularProyeccionSecuencia(
   arqueosTotales: ArqueoResumenTurno[],
-  manualVT?: string | null
+  manualVT?: string | null,
+  fechaHoy?: string
 ): ResultadoProyeccionTurno {
+  const hoyStr = fechaHoy || obtenerFechaHoyLocal();
+
   // Si el usuario fijó manualmente su turno hoy, respetarlo como override prioritario
   if (manualVT && manualVT.startsWith('VT')) {
     const num = extraerNumeroVT(manualVT);
@@ -143,8 +177,9 @@ export function calcularProyeccionSecuencia(
       arqueosAnalizados: arqueosTotales.slice(-3),
       turnoProyectado: formatearCodigoVT(num),
       turnoBaseNumero: num,
+      diasTranscurridosDesdeUltimoArqueo: 0,
       esAnomaliaDetectada: false,
-      mensajeDetalle: `Turno asignado manualmente por el socio/chofer (${formatearCodigoVT(num)}).`,
+      mensajeDetalle: `Turno fijado manualmente por el socio/chofer (${formatearCodigoVT(num)}).`,
       esManual: true,
     };
   }
@@ -153,60 +188,73 @@ export function calcularProyeccionSecuencia(
 
   // CASO 1: Menos de 3 arqueos (Unidad en calibración o nueva en la flota)
   if (n < 3) {
-    // Si tiene 1 o 2 arqueos, proyectamos provisionalmente el siguiente pero indicando calibración
     const ultimo = n > 0 ? arqueosTotales[n - 1] : null;
-    const numProv = ultimo ? ((extraerNumeroVT(ultimo.vtCode) % 15) + 1) : 1;
-    const vtProv = formatearCodigoVT(numProv);
+    let numCalculado = 1;
+    let diasTrans = 0;
+
+    if (ultimo) {
+      diasTrans = diferenciaEnDiasCalendario(ultimo.date, hoyStr);
+      const numUltimo = extraerNumeroVT(ultimo.vtCode);
+      // El calendario avanza +1 por cada día calendario transcurrido
+      numCalculado = ((numUltimo - 1 + diasTrans) % 15) + 1;
+    }
+
+    const vtProv = formatearCodigoVT(numCalculado);
 
     return {
       estado: 'CALIBRANDO',
       conteoArqueos: n,
       arqueosAnalizados: arqueosTotales,
       turnoProyectado: vtProv,
-      turnoBaseNumero: numProv,
+      turnoBaseNumero: numCalculado,
+      diasTranscurridosDesdeUltimoArqueo: diasTrans,
+      fechaUltimoArqueo: ultimo?.date,
       esAnomaliaDetectada: false,
-      mensajeDetalle: `Unidad en calibración inicial (${n} de 3 arqueos requeridos). Puedes seleccionar tu turno hoy manualmente.`,
+      mensajeDetalle: ultimo
+        ? `Último arqueo: ${ultimo.date} (${ultimo.vtCode}). Han transcurrido ${diasTrans} días calendario (+${diasTrans} turnos en el rol de la cooperativa) ➔ Proyectado: ${vtProv}.`
+        : `Unidad en calibración inicial (${n} de 3 arqueos). Selecciona tu turno asignado hoy.`,
       esManual: false,
     };
   }
 
   // CASO 2: 3 o más arqueos registrados
   const ultimosTres = arqueosTotales.slice(-3);
-  const a3 = ultimosTres[0]; // hace 2 días atrás
-  const a2 = ultimosTres[1]; // ayer o día previo
+  const a3 = ultimosTres[0]; // hace 2 arqueos atrás
+  const a2 = ultimosTres[1]; // penúltimo arqueo
   const a1 = ultimosTres[2]; // el arqueo más reciente cerrado
 
   const num3 = extraerNumeroVT(a3.vtCode);
   const num2 = extraerNumeroVT(a2.vtCode);
   const num1 = extraerNumeroVT(a1.vtCode);
 
-  // En una cooperativa de 15 VTs continuos, la distancia cíclica normal es +1 diario:
-  // delta(a, b) = (b - a + 15) % 15
+  // Días calendario transcurridos desde el último arqueo (a1.date) hasta hoy
+  const diasTranscurridos = diferenciaEnDiasCalendario(a1.date, hoyStr);
+
+  // Analizar si a1 fue una anomalía (reemplazo o auxilio mecánico imprevisto)
   const delta32 = (num2 - num3 + 15) % 15;
   const delta21 = (num1 - num2 + 15) % 15;
+  const esSaltoAnomaloEnA1 = delta32 === 1 && delta21 !== 1 && delta21 !== 0;
 
   let esAnomalia = false;
   let mensaje = '';
   let siguienteNumero = 1;
 
-  // Analizar si a1 fue una anomalía (reemplazo o auxilio mecánico imprevisto)
-  // Ejemplo: si a3->a2 avanzó normalmente (+1), pero a1 saltó a un turno totalmente distante (ej: +6 turnos)
-  const esSaltoAnomaloEnA1 = delta32 === 1 && delta21 !== 1 && delta21 !== 0;
-
   if (esSaltoAnomaloEnA1) {
     esAnomalia = true;
-    // Si a1 fue un reemplazo de emergencia, la secuencia natural de la unidad continuaba desde a2
-    // Ejemplo: a3=VT05, a2=VT06, a1=VT14 (daño de otra unidad). Hoy le corresponde continuar el rol: VT07 o VT08.
-    siguienteNumero = ((num2 + 1) % 15) + 1;
-    mensaje = `Aviso: El último arqueo (${a1.vtCode}) fue un reemplazo o cruce atípico. Secuencia regular recalculada desde rol habitual.`;
-  } else if (delta21 === 1) {
-    // Secuencia regular perfecta (+1)
-    siguienteNumero = (num1 % 15) + 1;
-    mensaje = `Secuencia confirmada (+1) por los últimos 3 arqueos (${a3.vtCode} → ${a2.vtCode} → ${a1.vtCode}).`;
+    // Si a1 fue auxilio de otra unidad, calculamos los días transcurridos desde a2 (su rol natural)
+    const diasDesdeA2 = diferenciaEnDiasCalendario(a2.date, hoyStr);
+    siguienteNumero = ((num2 - 1 + diasDesdeA2) % 15) + 1;
+    mensaje = `Aviso: El último arqueo (${a1.date}: ${a1.vtCode}) fue un auxilio mecánico atípico. Rol natural recalculado desde ${a2.date} (${a2.vtCode}) + ${diasDesdeA2} días calendario.`;
   } else {
-    // Si la secuencia no es estrictamente +1 pero hay 3 registros, avanzar desde el último
-    siguienteNumero = (num1 % 15) + 1;
-    mensaje = `Proyección basada en últimos arqueos cerrados (${a1.vtCode}).`;
+    // Cálculo oficial por rotación de calendario de la compañía:
+    // Cada día transcurrido desde el último arqueo avanza +1 turno en la rotación de 15 VTs
+    siguienteNumero = ((num1 - 1 + diasTranscurridos) % 15) + 1;
+
+    if (diasTranscurridos > 1) {
+      mensaje = `Último arqueo auditado: ${a1.date} (${a1.vtCode}). Transcurrieron ${diasTranscurridos} días de calendario (taller/sin arqueo). Como el calendario de la compañía avanza continuamente, hoy le corresponde ${formatearCodigoVT(siguienteNumero)}.`;
+    } else {
+      mensaje = `Secuencia confirmada (+1) por los últimos 3 arqueos (${a3.vtCode} → ${a2.vtCode} → ${a1.vtCode}). Hoy le corresponde ${formatearCodigoVT(siguienteNumero)}.`;
+    }
   }
 
   const vtFinal = formatearCodigoVT(siguienteNumero);
@@ -217,6 +265,8 @@ export function calcularProyeccionSecuencia(
     arqueosAnalizados: ultimosTres,
     turnoProyectado: vtFinal,
     turnoBaseNumero: siguienteNumero,
+    diasTranscurridosDesdeUltimoArqueo: diasTranscurridos,
+    fechaUltimoArqueo: a1.date,
     esAnomaliaDetectada: esAnomalia,
     mensajeDetalle: mensaje,
     esManual: false,

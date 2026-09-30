@@ -24,6 +24,10 @@ import {
 import { type MantenimientoBusItem } from '@/lib/mantenimiento-catalogo';
 import { type EstacionServicioId } from '@/lib/mantenimiento-estaciones';
 import { type VTConfiguracionItem } from '@/types/vt-ventanas';
+import {
+  obtenerUltimosArqueosBus,
+  calcularProyeccionSecuencia,
+} from '@/lib/turno-secuencia-tracker';
 
 interface ChoferTurnoVentanasCardProps {
   busId: string;
@@ -48,11 +52,25 @@ export function ChoferTurnoVentanasCard({
       const saved = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
       if (saved) return saved;
     }
-    return 'VT08'; // Default de prueba con ventana diurna ejemplar
+    return 'VT01';
   });
-
   const [mostrarTodasFrecuencias, setMostrarTodasFrecuencias] = useState(false);
   const [cambiandoTurno, setCambiandoTurno] = useState(false);
+
+  // Inferencia inteligente del turno según arqueos reales y días transcurridos
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
+      if (!saved) {
+        obtenerUltimosArqueosBus(disco, busId).then((arqueos) => {
+          const proy = calcularProyeccionSecuencia(arqueos);
+          if (proy && proy.turnoProyectado) {
+            setSelectedVTCode(proy.turnoProyectado);
+          }
+        });
+      }
+    }
+  }, [busId, disco]);
 
   // Handshake de Version Fingerprint en segundo plano (0ms de bloqueo de UI)
   useEffect(() => {
@@ -99,254 +117,202 @@ export function ChoferTurnoVentanasCard({
     return getAlertaEnlaceCritico(selectedVTCode);
   }, [selectedVTCode]);
 
-  // Cruzar ventana con ítems que necesitan mantenimiento pronto (< 600 km)
-  const itemsOportunidad = useMemo(() => {
-    if (!ventanaMayor || ventanaMayor.duracionMinutos < 60) return [];
-    return itemsMantenimiento.filter((it) => {
-      const proxKm = it.ultimoKm + it.intervaloKm;
-      const restante = proxKm - kmActual;
-      return restante <= 600; // Por vencer o vencidos
-    });
-  }, [ventanaMayor, itemsMantenimiento, kmActual]);
+  // Si no hay VT seleccionado o no existe
+  if (!vtActual) {
+    return null;
+  }
 
   return (
-    <div className={`space-y-3.5 ${className}`}>
-      {/* ─── TARJETA PRINCIPAL DEL TURNO OPERATIVO ─── */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 text-white shadow-xl relative overflow-hidden">
-        {/* Glow decorativo de fondo */}
-        <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Encabezado: Turno actual + Selector */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+    <div
+      className={`rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden ${className}`}
+    >
+      {/* ─── Cabecera del Turno con Selector Rápido ─── */}
+      <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-4 text-white">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-              <Compass className="w-4 h-4" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-xs font-black">
+              {disco}
             </span>
             <div>
-              <span className="text-[10px] uppercase font-black tracking-widest text-slate-400 block">
-                Hoja de Ruta del Turno
-              </span>
-              <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                <span>{vtActual ? vtActual.nombre : selectedVTCode}</span>
-                <span className="text-xs font-bold text-amber-400 bg-amber-950/60 border border-amber-600/40 px-2 py-0.5 rounded-full">
-                  Bus {disco}
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Turno Asignado Hoy
+              </p>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-base font-black text-white">
+                  {vtActual.codigo}
+                </h3>
+                <span className="text-xs text-slate-300 font-medium">
+                  ({vtActual.nombre || `${vtActual.frecuencias.length} Frecuencias`})
                 </span>
-              </h3>
+              </div>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setCambiandoTurno(!cambiandoTurno)}
-            className="h-8 px-2.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1 transition cursor-pointer"
-          >
-            <span>{cambiandoTurno ? 'Cerrar' : 'Cambiar Turno'}</span>
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${cambiandoTurno ? 'rotate-180' : ''}`} />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setCambiandoTurno(!cambiandoTurno)}
+              className="flex items-center gap-1 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20 active:scale-95 transition-all cursor-pointer"
+            >
+              <span>Cambiar Turno</span>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+
+            {/* Dropdown de Selección de VT */}
+            {cambiandoTurno && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl animate-in fade-in zoom-in-95">
+                <p className="mb-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Seleccionar VT Oficial
+                </p>
+                <div className="max-h-56 overflow-y-auto space-y-1">
+                  {configFlota.vts.map((v) => (
+                    <button
+                      key={v.codigo}
+                      onClick={() => handleSelectVT(v.codigo)}
+                      className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                        v.codigo.toUpperCase() === selectedVTCode.toUpperCase()
+                          ? 'bg-blue-600 text-white'
+                          : 'text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span>{v.codigo}</span>
+                      <span className="text-[10px] opacity-80">
+                        {v.frecuencias.length} carreras
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Selector Desplegable de Turno VT */}
-        {cambiandoTurno && (
-          <div className="mt-3 p-3 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-2 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-400 font-bold">Selecciona el VT asignado hoy por secretaría:</span>
-              <span className="text-[10px] text-emerald-400 font-mono font-bold">15 Turnos Oficiales</span>
-            </div>
-            <div className="grid grid-cols-5 gap-1.5">
-              {configFlota.vts.map((v) => {
-                const isSelected = v.codigo.toUpperCase() === selectedVTCode.toUpperCase();
-                return (
-                  <button
-                    key={v.codigo}
-                    type="button"
-                    onClick={() => handleSelectVT(v.codigo)}
-                    className={`py-2 px-1 rounded-xl text-xs font-black transition cursor-pointer border ${
-                      isSelected
-                        ? 'bg-emerald-600 text-white border-emerald-400 shadow-md ring-1 ring-emerald-300'
-                        : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
-                    }`}
-                  >
-                    {v.codigo}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ─── ALERTA PREVENTIVA DE ENLACE CRÍTICO ─── */}
+        {/* Alerta de enlace crítico (si existe) */}
         {alertaEnlace && (
-          <div className="mt-3 p-3 rounded-2xl bg-amber-950/70 border border-amber-500/50 text-amber-200 space-y-1.5 animate-in fade-in duration-200">
-            <div className="flex items-center gap-2 font-black text-xs text-amber-300">
-              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>{alertaEnlace.titulo}</span>
-            </div>
-            <p className="text-xs text-amber-200/90 leading-relaxed pl-6">
-              {alertaEnlace.descripcion}
-            </p>
-            <div className="pl-6 pt-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wide bg-amber-900/60 border border-amber-600/40 text-amber-300 px-2 py-0.5 rounded-md">
-                💡 {alertaEnlace.sugerencia}
-              </span>
-            </div>
+          <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-amber-500/20 border border-amber-400/30 px-3 py-1.5 text-xs text-amber-200">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+            <span className="font-medium">{alertaEnlace.descripcion}</span>
           </div>
         )}
+      </div>
 
-        {/* ─── VENTANAS LIBRES OPERATIVAS EN LOJA ─── */}
-        <div className="mt-3.5 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] uppercase tracking-wider font-extrabold text-slate-300 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Ventanas Libres para Taller en Loja</span>
-            </span>
-            <span className="bg-emerald-950/80 text-emerald-300 border border-emerald-600/30 text-[10px] font-mono px-2 py-0.5 rounded-full font-bold">
-              {ventanas.length} Ventana{ventanas.length !== 1 ? 's' : ''}
-            </span>
+      {/* ─── Ventana Técnica Mayor (Recomendada para taller) ─── */}
+      {ventanaMayor && (
+        <div className="border-b border-slate-100 bg-emerald-50/70 p-3.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
+                <Clock className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
+                    Ventana Técnica Mayor ({ventanaMayor.ciudad})
+                  </span>
+                  <span className="rounded-full bg-emerald-200 px-1.5 py-0.2 text-[9px] font-bold text-emerald-900">
+                    Recomendada
+                  </span>
+                </div>
+                <p className="text-sm font-black text-slate-900">
+                  {ventanaMayor.duracionTexto} libres ({ventanaMayor.horaInicio} a {ventanaMayor.horaFin})
+                </p>
+              </div>
+            </div>
+
+            {onAbrirEstacion && (
+              <button
+                onClick={() => onAbrirEstacion('LUBRICADORA')}
+                className="flex items-center gap-1 rounded-xl bg-emerald-700 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-xs hover:bg-emerald-800 active:scale-95 transition-all cursor-pointer shrink-0"
+              >
+                <Wrench className="h-3 w-3" />
+                <span>Usar Ventana</span>
+              </button>
+            )}
           </div>
+        </div>
+      )}
 
-          {ventanas.length === 0 ? (
-            <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 text-center text-xs text-slate-400">
-              Este turno tiene enlaces continuos sin ventanas prolongadas en Loja.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {ventanas.map((v, idx) => {
-                const esMayor = v.duracionMinutos >= 120;
-                const duracionTexto = formatearMinutosLegible(v.duracionMinutos);
-
-                return (
-                  <div
-                    key={`${v.horaInicio}-${idx}`}
-                    className={`p-3 rounded-2xl border transition ${
-                      esMayor
-                        ? 'bg-gradient-to-br from-emerald-950/60 via-slate-900 to-slate-900 border-emerald-500/40 shadow-sm'
-                        : 'bg-slate-950/60 border-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between pb-1.5">
-                      <span className="text-xs font-black text-white font-mono flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        {v.horaInicio} a {v.horaFin}
-                      </span>
-                      <span
-                        className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
-                          esMayor
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
-                            : 'bg-slate-800 text-slate-300 border-slate-700'
-                        }`}
-                      >
-                        {duracionTexto} libres
-                      </span>
-                    </div>
-
-                    <p className="text-[11px] text-slate-300 mt-1 leading-snug">
-                      <strong className="text-emerald-300">Apto para:</strong>{' '}
-                      {v.mantenimientosSugeridos.slice(0, 3).join(', ')}
-                    </p>
-
-                    {v.aptoParaTallerMayor && (
-                      <div className="mt-2 flex items-center justify-between pt-1.5 border-t border-emerald-900/40">
-                        <span className="text-[10px] text-amber-300 font-bold flex items-center gap-1">
-                          <Wrench className="w-3 h-3 text-amber-400" />
-                          Apto para Fosa y Muelles
-                        </span>
-                        {onAbrirEstacion && (
-                          <button
-                            type="button"
-                            onClick={() => onAbrirEstacion('FRENOS_PULMONES')}
-                            className="text-[10px] font-extrabold text-emerald-400 hover:text-emerald-300 underline cursor-pointer"
-                          >
-                            Ir a Taller →
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+      {/* ─── Lista de Ventanas Operativas del Turno ─── */}
+      <div className="p-3.5">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+            <Compass className="h-3.5 w-3.5 text-slate-400" />
+            Ventanas de Espera en Terminal
+          </span>
+          <span className="text-[10px] text-slate-400 font-mono">
+            {ventanas.length} {ventanas.length === 1 ? 'intervalo' : 'intervalos'}
+          </span>
         </div>
 
-        {/* ─── CRUCE INTELIGENTE: OPORTUNIDAD TÉCNICA EN VIVO ─── */}
-        {itemsOportunidad.length > 0 && ventanaMayor && (
-          <div className="mt-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-100 space-y-2 animate-in fade-in duration-200">
-            <div className="flex items-center gap-2 text-xs font-black text-amber-300">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>Oportunidad de Mantenimiento para Hoy</span>
-            </div>
-            <p className="text-xs text-amber-200/90 leading-relaxed">
-              En tu ventana de <strong>{formatearMinutosLegible(ventanaMayor.duracionMinutos)}</strong> ({ventanaMayor.horaInicio} a {ventanaMayor.horaFin}), puedes aprovechar para revisar:
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {itemsOportunidad.map((it) => {
-                const rest = it.ultimoKm + it.intervaloKm - kmActual;
-                return (
-                  <span
-                    key={it.id}
-                    className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-lg bg-amber-950/80 border border-amber-500/40 text-amber-200"
-                  >
-                    <span>{it.nombre}</span>
-                    <span className="text-amber-400 font-mono">
-                      ({rest <= 0 ? '¡Vencido!' : `restan ${rest} km`})
+        {ventanas.length === 0 ? (
+          <p className="text-xs text-slate-400 italic py-2 text-center">
+            No hay ventanas operativas registradas para este turno.
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {ventanas.map((v, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-xs transition-colors hover:bg-slate-100"
+              >
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                  <div>
+                    <span className="font-bold text-slate-800">
+                      {v.ciudad}
                     </span>
+                    <span className="ml-1 text-[11px] text-slate-500">
+                      ({v.horaInicio} – {v.horaFin})
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`font-mono font-bold text-[11px] px-2 py-0.5 rounded-full ${
+                      v.esMayor
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : v.duracionMinutos >= 60
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {v.duracionTexto}
                   </span>
-                );
-              })}
-            </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* ─── HOJA DE RUTA DETALLADA CON CABECERAS PARROQUIALES ─── */}
-        <div className="mt-3.5 pt-3 border-t border-slate-800">
+        {/* ─── Desglose de Frecuencias Oficiales ─── */}
+        <div className="mt-3 pt-2.5 border-t border-slate-100">
           <button
-            type="button"
             onClick={() => setMostrarTodasFrecuencias(!mostrarTodasFrecuencias)}
-            className="w-full flex items-center justify-between text-xs text-slate-300 hover:text-white font-bold transition py-1 cursor-pointer"
+            className="flex w-full items-center justify-between text-[11px] font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
           >
-            <span className="flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Desglose de Frecuencias y Horas de Cabecera</span>
-            </span>
-            <span className="flex items-center gap-1 text-slate-400 text-[11px]">
-              {mostrarTodasFrecuencias ? 'Ocultar' : 'Ver Frecuencias'}
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${mostrarTodasFrecuencias ? 'rotate-180' : ''}`} />
-            </span>
+            <span>Ver {vtActual.frecuencias.length} carreras del itinerario</span>
+            <ChevronDown
+              className={`h-3.5 w-3.5 transition-transform ${
+                mostrarTodasFrecuencias ? 'rotate-180' : ''
+              }`}
+            />
           </button>
 
-          {mostrarTodasFrecuencias && vtActual && (
-            <div className="mt-2.5 space-y-2 animate-in fade-in duration-150">
-              <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400">
-                ℹ️ Las horas de salida desde cabeceras (El Tambo, Yangana, La Elvira) están calculadas con el tiempo oficial para llegar al control a tiempo.
-              </div>
-
-              <div className="divide-y divide-slate-800/80 rounded-2xl bg-slate-950/60 border border-slate-800 overflow-hidden">
-                {vtActual.frecuencias.map((f, i) => {
-                  const paramRuta = resolverParametrosRuta(f.routeFrom, f.routeTo, f.time);
-
-                  return (
-                    <div key={`${f.time}-${i}`} className="p-2.5 text-xs flex flex-col gap-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono font-black text-amber-400 text-sm">
-                          {f.time}
-                        </span>
-                        <span className="text-[11px] font-bold text-slate-300">
-                          {f.routeFrom} ➔ {f.routeTo}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          Llegada ~{paramRuta.horaLlegada}
-                        </span>
-                      </div>
-
-                      {paramRuta.cabeceraSalidaReal && (
-                        <div className="text-[10px] font-extrabold text-emerald-300 bg-emerald-950/40 border border-emerald-500/20 px-2 py-0.5 rounded-md inline-block self-start mt-0.5">
-                          {paramRuta.cabeceraSalidaReal}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+          {mostrarTodasFrecuencias && (
+            <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+              {vtActual.frecuencias.map((f, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between rounded-lg bg-slate-50 px-2.5 py-1.5 text-[11px] text-slate-700"
+                >
+                  <span className="font-mono font-bold text-slate-900">
+                    {f.time}
+                  </span>
+                  <span>
+                    {f.routeFrom} ➔ {f.routeTo}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>

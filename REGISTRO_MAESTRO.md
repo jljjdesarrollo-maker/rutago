@@ -1461,3 +1461,33 @@ En caso de migrar a otra cuenta:
 * **Validación:**
   - TypeScript: `npx tsc --noEmit` completado con 0 errores.
   - JSX: 100% verificado.
+
+---
+
+# 🚀 VERSIÓN 3.60.52: INTEGRACIÓN DEL FACTOR TEMPORAL CALENDARIO EN LA ROTACIÓN DE VTs (2026-09-30)
+
+## 📌 1. CASO REAL OPERATIVO Y MOTIVACIÓN
+* Se analizó el caso real de la Unidad 01:
+  - Último arqueo cerrado en el sistema: **27 de Septiembre con VT07**.
+  - Fecha actual: **30 de Septiembre**.
+  - **Días transcurridos:** 3 días naturales (la unidad estuvo en mecánica 2 días sin arqueos).
+* **Regla Maestra de la Cooperativa:**  
+  *"El calendario de la compañía no sufre alteración porque una unidad se dañe, no trabaje o no arquee."*  
+  Cada día calendario que transcurre avanza inexorablemente +1 turno en el rol de rotación de la flota.
+
+## 🛠️ 2. SOLUCIÓN IMPLEMENTADA
+* **Cálculo de Días Calendario Transcurridos en `turno-secuencia-tracker.ts`:**
+  - Función `diferenciaEnDiasCalendario(fechaUltimoArqueo, fechaHoy)`.
+  - Proyección oficial:  
+    `Turno_Hoy = ((Turno_UltimoArqueo - 1 + diasCalendarioTranscurridos) % 15) + 1`
+  - Desglose cronológico exacto para el caso real:
+    * 27 Sep: `VT07` (último arqueo auditado)
+    * 28 Sep: `VT08` (+1 día, en mecánica)
+    * 29 Sep: `VT09` (+2 días, en mecánica)
+    * 30 Sep (HOY): **`VT10`** (+3 días ➔ Proyección oficial confirmada).
+* **Actualización en `ChoferTurnoVentanasCard.tsx`:**
+  - Se eliminó el default quemado `'VT08'`.
+  - Ahora inicializa dinámicamente llamando a `calcularProyeccionSecuencia` respetando los días calendario transcurridos.
+* **Validación:**
+  - TypeScript: `npx tsc --noEmit` completado con 0 errores.
+  - JSX: 100% verificado.
