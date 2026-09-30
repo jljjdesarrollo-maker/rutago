@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CONFIGURACION_FLOTA_DEFAULT, calcularVentanasParaFrecuencias } from '@/lib/vt-ventanas-catalogo';
-import { FlotaConfiguracionCompleta, VTConfiguracionItem } from '@/types/vt-ventanas';
+import { getServerConfig, updateServerConfig } from '@/lib/server-vt-config';
+import { CONFIGURACION_FLOTA_DEFAULT } from '@/lib/vt-ventanas-catalogo';
 
 export const dynamic = 'force-dynamic';
-
-// Estado en memoria del servidor
-let memoryFullConfig: FlotaConfiguracionCompleta = { ...CONFIGURACION_FLOTA_DEFAULT };
 
 /**
  * GET /api/config/vt-full
@@ -14,9 +11,10 @@ let memoryFullConfig: FlotaConfiguracionCompleta = { ...CONFIGURACION_FLOTA_DEFA
  */
 export async function GET() {
   try {
+    const fullConfig = getServerConfig();
     return NextResponse.json({
       success: true,
-      data: memoryFullConfig,
+      data: fullConfig,
     });
   } catch (error) {
     console.error('[API vt-full] Error:', error);
@@ -40,37 +38,12 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { vts, modoRetenActivo, fechaInicioReten, busAnclaReten } = body;
-
-    const nuevaVersion = (memoryFullConfig.version || 1) + 1;
-    const nuevoUpdatedAt = new Date().toISOString();
-
-    // Si se enviaron VTs modificados, recalcular sus ventanas automáticamente
-    let vtsActualizados: VTConfiguracionItem[] = memoryFullConfig.vts;
-    if (Array.isArray(vts) && vts.length > 0) {
-      vtsActualizados = vts.map((item: any) => {
-        const ventanasRecalculadas = calcularVentanasParaFrecuencias(item.codigo, item.frecuencias || []);
-        return {
-          ...item,
-          ventanas: ventanasRecalculadas,
-        };
-      });
-    }
-
-    memoryFullConfig = {
-      version: nuevaVersion,
-      updatedAt: nuevoUpdatedAt,
-      modoRetenActivo: typeof modoRetenActivo === 'boolean' ? modoRetenActivo : memoryFullConfig.modoRetenActivo,
-      fechaInicioReten: fechaInicioReten !== undefined ? fechaInicioReten : memoryFullConfig.fechaInicioReten,
-      busAnclaReten: busAnclaReten || memoryFullConfig.busAnclaReten,
-      hash: `vt-cfg-v${nuevaVersion}-${Date.now()}`,
-      vts: vtsActualizados,
-    };
+    const updatedConfig = updateServerConfig(body);
 
     return NextResponse.json({
       success: true,
-      data: memoryFullConfig,
-      message: `Configuración actualizada a versión ${nuevaVersion} exitosamente`,
+      data: updatedConfig,
+      message: `Configuración actualizada a versión ${updatedConfig.version} exitosamente`,
     });
   } catch (error) {
     console.error('[API vt-full PUT] Error:', error);

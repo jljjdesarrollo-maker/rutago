@@ -1,18 +1,7 @@
 import { NextResponse } from 'next/server';
-import { CONFIGURACION_FLOTA_DEFAULT } from '@/lib/vt-ventanas-catalogo';
-import { FlotaConfiguracionFingerprint } from '@/types/vt-ventanas';
+import { getServerFingerprint } from '@/lib/server-vt-config';
 
 export const dynamic = 'force-dynamic';
-
-// Estado en memoria del servidor (actualizable vía PUT por SuperAdmin o configurable en BD)
-let memoryFingerprint: FlotaConfiguracionFingerprint = {
-  version: CONFIGURACION_FLOTA_DEFAULT.version,
-  updatedAt: CONFIGURACION_FLOTA_DEFAULT.updatedAt,
-  modoRetenActivo: CONFIGURACION_FLOTA_DEFAULT.modoRetenActivo,
-  fechaInicioReten: CONFIGURACION_FLOTA_DEFAULT.fechaInicioReten,
-  busAnclaReten: CONFIGURACION_FLOTA_DEFAULT.busAnclaReten,
-  hash: CONFIGURACION_FLOTA_DEFAULT.hash,
-};
 
 /**
  * GET /api/config/vt-version
@@ -21,9 +10,10 @@ let memoryFingerprint: FlotaConfiguracionFingerprint = {
  */
 export async function GET() {
   try {
+    const fingerprint = getServerFingerprint();
     return NextResponse.json({
       success: true,
-      data: memoryFingerprint,
+      data: fingerprint,
     });
   } catch (error) {
     console.error('[API vt-version] Error:', error);

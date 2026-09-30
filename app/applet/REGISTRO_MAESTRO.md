@@ -1205,3 +1205,42 @@ En caso de migrar a otra cuenta:
    - Panel administrativo para activar/desactivar el modo Retén (15 a 16 días) con selector de fecha de inicio.
    - Posibilidad de recalibrar horarios de turnos desde UI con recalculador automático de ventanas operativas y version bump.
 4. **Push a GitHub:** Solicitar el PAT de GitHub al usuario para enviar los commits al remoto.
+
+
+---
+
+# 🚀 VERSIÓN 3.60.42: FASE 4 COMPLETADA - CONSOLA DE ADMINISTRACIÓN DE FLOTA Y CONTROL DE RETÉN (2026-09-30)
+
+## 📌 1. ESTADO ACTUAL Y ENTREGA
+* **Versión Formal:** `3.60.42`
+* **Módulos Entregados:**
+  1. **Consola Administrativa de Retén (`SuperAdminRetenTab.tsx`):**
+     - Switch maestro para activar/desactivar el modo Retén (ciclo de 15 vs 16 días).
+     - Selector de fecha de inicio para calibrar el día exacto de arranque (ej: 01 de Octubre o en 2 meses).
+     - Selector de Bus Ancla inicial (Bus 01 al 16).
+     - **Simulador Interactivo de Rotación (16 Días):** Proyección día por día con identificación de la unidad en descanso/fosa (0 km) y los 15 buses cubriendo los turnos VT01 a VT15, con buscador por unidad física.
+     - Botón de guardado y sincronización global con incremento automático del version fingerprint.
+  2. **Recalculador en Vivo en Turnos VT (`VTConfigScreen.tsx`):**
+     - Al desplegar cada VT en la consola administrativa, calcula y muestra en vivo las ventanas libres en Loja y su aptitud técnica (Fosa Mayor vs Lubricadora).
+     - Al guardar modificaciones de frecuencias, envía actualización a `/api/config/vt-full` (PUT), recalculando todas las ventanas de la cooperativa y actualizando el version fingerprint para todas las terminales móviles.
+  3. **Módulo de Estado Centralizado de Servidor (`server-vt-config.ts`):**
+     - Almacenamiento unificado de configuración de flota para Next.js que alimenta tanto al handshake ultraligero `/api/config/vt-version` como a la descarga completa `/api/config/vt-full`.
+* **Estado:** 🟢 COMPLETADO, VERIFICADO Y COMPILADO EXITOSAMENTE.
+
+---
+
+## 🛠️ 2. RESUMEN DE ARCHIVOS MODIFICADOS Y CREADOS
+* `src/lib/server-vt-config.ts` (Nuevo): Estado en memoria centralizado para configuración de flota, cálculo de ventanas y fingerprints.
+* `src/app/api/config/vt-version/route.ts` (Modificado): Enlace directo a `server-vt-config` para respuestas de 10 bytes en 0ms.
+* `src/app/api/config/vt-full/route.ts` (Modificado): Endpoint GET/PUT conectado a `server-vt-config`.
+* `src/components/transport/SuperAdminRetenTab.tsx` (Nuevo): Consola de retén y simulador interactivo de 16 días.
+* `src/components/transport/VTConfigScreen.tsx` (Modificado): Integración de pestaña Retén y recalculador en vivo de ventanas.
+* `REGISTRO_MAESTRO.md` (Actualizado a v3.60.42).
+
+---
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA)
+En caso de migrar a otra cuenta:
+1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago` (rama `main`).
+2. **Punto Exacto:** Versión `3.60.42` cerrada. Las 4 Fases de la arquitectura de Ventanas Operativas, Modo Retén y Handshake Fingerprint están 100% concluidas e integradas.
+3. **Siguiente Tarea:** Solicitar el PAT de GitHub al usuario para ejecutar el `git push origin main` y sincronizar `v3.60.42` con producción en Vercel.

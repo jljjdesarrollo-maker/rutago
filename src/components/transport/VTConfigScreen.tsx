@@ -14,6 +14,9 @@ import { type PromoViajeGratisConfig, loadPromoConfig, savePromoConfig, DEFAULT_
 import { type ConfiguracionKilometrajeRutas, DEFAULT_CONFIG_KILOMETRAJE_RUTAS } from '@/types/rutas-km';
 import { getLocalRutasKmConfig, saveLocalRutasKmConfig, syncRutasKmConfig } from '@/lib/rutas-km-storage';
 import { SuperAdminMantenimientoTab } from './SuperAdminMantenimientoTab';
+import { SuperAdminRetenTab } from './SuperAdminRetenTab';
+import { calcularVentanasParaFrecuencias, formatearMinutosLegible } from '@/lib/vt-ventanas-catalogo';
+import { getConfiguracionFlotaLocal, guardarConfiguracionLocal } from '@/lib/vt-ventanas-storage';
 
 interface VTItem {
   id: string;
@@ -34,7 +37,7 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
   const [expandedVt, setExpandedVt] = useState<string | null>(null);
   const [editFrecuencias, setEditFrecuencias] = useState<Record<string, Array<{ routeFrom: string; routeTo: string; time: string }>>>({});
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'TURNOS' | 'DESPACHO' | 'KILOMETRAJE' | 'MANTENIMIENTO'>('TURNOS');
+  const [activeTab, setActiveTab] = useState<'TURNOS' | 'RETEN' | 'DESPACHO' | 'KILOMETRAJE' | 'MANTENIMIENTO'>('TURNOS');
   const [searchVt, setSearchVt] = useState('');
 
   // Viaje Gratis promo config
@@ -204,6 +207,30 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
       if (!res.ok) throw new Error('Error al guardar');
       const updated = await res.json();
       setVts(prev => prev.map(v => v.id === vtId ? { ...v, frecuencias: updated.frecuencias } : v));
+      
+      // Sincronizar catálogo de ventanas operativas y version fingerprint
+      const targetVt = vts.find(v => v.id === vtId);
+      if (targetVt) {
+        const cfgLocal = getConfiguracionFlotaLocal();
+        const vtsActualizados = cfgLocal.vts.map(v => 
+          v.codigo.toUpperCase() === targetVt.codigo.toUpperCase()
+            ? { ...v, frecuencias: editFrecuencias[vtId] || [] }
+            : v
+        );
+        fetch('/api/config/vt-full', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vts: vtsActualizados }),
+        })
+          .then(r => r.json())
+          .then(d => {
+            if (d.success && d.data) {
+              guardarConfiguracionLocal(d.data);
+            }
+          })
+          .catch(() => {});
+      }
+
       toast({ title: 'Guardado', description: `Frecuencias de ${vts.find(v => v.id === vtId)?.codigo} actualizadas` });
     } catch {
       toast({ title: 'Error', description: 'No se pudo guardar', variant: 'destructive' });
@@ -356,6 +383,46 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
                 {/* Expanded: Frecuencias list */}
                 {isExpanded && (
                   <div className="border-t border-[#D6D6D6] p-4 space-y-3">
+                    {/* Ventanas Operativas Calculadas en Vivo */}
+                    {(() => {
+                      const ventanasCalc = calcularVentanasParaFrecuencias(vt.codigo, frecs);
+                      return (
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-emerald-700" />
+                              Ventanas Libres en Loja ({ventanasCalc.length})
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              Motor Oficial de Flota
+                            </span>
+                          </div>
+                          {ventanasCalc.length === 0 ? (
+                            <p className="text-[11px] text-slate-400">Sin ventanas libres prolongadas en Loja.</p>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                              {ventanasCalc.map((v, vIdx) => (
+                                <div key={vIdx} className="flex flex-col gap-0.5 text-xs bg-white p-2 rounded-xl border border-slate-200">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-mono font-black text-slate-900">
+                                      {v.horaInicio} - {v.horaFin}
+                                    </span>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                      v.aptoParaTallerMayor ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'
+                                    }`}>
+                                      {formatearMinutosLegible(v.duracionMinutos)}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-500">
+                                    {v.aptoParaTallerMayor ? '✓ Apto Fosa Mayor / Muelles' : '✓ Lubricadora / Ruta'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {frecs.length === 0 && (
                       <p className="text-sm text-[#3A3A3A]/50 text-center py-4">Sin frecuencias</p>
                     )}
