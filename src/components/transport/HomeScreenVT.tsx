@@ -134,10 +134,10 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
   const [syncingPending, setSyncingPending] = useState(false);
   const [pendingCheckDone, setPendingCheckDone] = useState(false);
 
-  // ─── Control de Autorización y Concurrencia de Ayudante ───
+  // ─── Control de Autorización Operativa ───
   const isAuthorized = currentUser
-    ? (currentUser.rol === 'AYUDANTE' && !!ayudante && currentUser.id === ayudante.id)
-    : !!ayudante;
+    ? (currentUser.rol === 'AYUDANTE' || currentUser.rol === 'SOCIO' || currentUser.rol === 'ADMIN')
+    : true;
 
   useEffect(() => {
     Promise.all([
@@ -257,7 +257,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
   };
 
   const startSession = (vtCode: string, forceNew = false) => {
-    if (!ayudante || !isAuthorized) return;
+    if (!isAuthorized) return;
     const sessionDate = selectedDate;
 
     // ─── REGLA: Solo 1 VT activa por fecha ───
@@ -513,7 +513,14 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
           </div>
 
           <div className="flex items-center gap-2 relative z-10">
-            <BusSelector compact />
+            {currentUser?.rol === "ADMIN" || currentUser?.rol === "SOCIO" ? (
+              <BusSelector compact />
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 text-emerald-200 text-xs font-bold border border-emerald-500/20">
+                <Bus className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Bus {getActiveBus().numeroDisco}</span>
+              </div>
+            )}
             {onBack && (
               <button
                 type="button"
@@ -529,40 +536,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
       </div>
 
       <div className="flex-1 px-4 sm:px-5 py-4 space-y-4 max-w-lg mx-auto w-full pb-32">
-        {/* ─── 1. Estado de Tripulación y Autorización ─── */}
-        {ayudante ? (
-          <div className={`flex items-center justify-between rounded-2xl px-4 py-3 border shadow-xs ${
-            isAuthorized ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' : 'bg-rose-50 border-rose-200 text-rose-950'
-          }`}>
-            <div className="flex items-center gap-3 truncate">
-              {isAuthorized ? (
-                <CheckCircle className="w-5 h-5 text-emerald-700 shrink-0" />
-              ) : (
-                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
-              )}
-              <div className="truncate">
-                <p className="font-bold text-xs sm:text-sm truncate">
-                  {ayudante.nombre}
-                </p>
-                <p className="text-[10px] text-slate-500">
-                  {isAuthorized ? 'Ayudante oficial en caja autorizado para hoy' : 'Turno activo no corresponde a tu usuario'}
-                </p>
-              </div>
-            </div>
-            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0 ${
-              isAuthorized ? 'bg-emerald-200 text-emerald-900' : 'bg-rose-200 text-rose-900'
-            }`}>
-              {isAuthorized ? 'Autorizado' : 'Bloqueado'}
-            </span>
-          </div>
-        ) : (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-amber-950">
-            <p className="text-sm font-bold">Sin ayudante asignado para hoy</p>
-            <p className="text-xs text-amber-800 mt-0.5">El Administrador debe asignar un ayudante activo en Personal.</p>
-          </div>
-        )}
-
-        {/* ─── 2. Selector del Día de la Jornada Laboral (Ergonomía de 3 Chips) ─── */}
+        {/* ─── 1. Día de la Jornada y Responsable de Cobro (Caja) ─── */}
         <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200/90">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -888,7 +862,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
           </div>
         </div>
 
-        {/* ─── 5. Estado de Impresora Bluetooth ─── */}
+        {/* ─── 3. Impresora Térmica Bluetooth ─── */}
         <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-200/90">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5 truncate">
@@ -928,13 +902,13 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
           </div>
         </div>
 
-        {/* ─── 6. Botón Primario de Arranque ─── */}
+        {/* ─── 4. Iniciar Jornada Laboral ─── */}
         <button
           type="button"
           onClick={handleStart}
-          disabled={!selectedVT || !ayudante || !isAuthorized || pendingVentasCount > 0}
+          disabled={!selectedVT || !isAuthorized || pendingVentasCount > 0}
           className={`w-full py-4 sm:py-5 rounded-2xl font-black text-base sm:text-lg flex items-center justify-center gap-2 transition-all shadow-xl ${
-            selectedVT && ayudante && isAuthorized && pendingVentasCount === 0
+            selectedVT && isAuthorized && pendingVentasCount === 0
               ? 'bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white border border-emerald-800/60 cursor-pointer'
               : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
           }`}

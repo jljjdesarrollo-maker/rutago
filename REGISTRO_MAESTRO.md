@@ -846,14 +846,41 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+---
+
+## 🚌 v3.60.33: ARMONIZACIÓN DE CABECERA Y BLINDAJE OPERATIVO EN CONFIGURACIÓN DE JORNADA (2026-09-29)
+
+- **Problema de Negocio y Riesgo Operativo Detectado:**
+  - El selector desplegable de autobuses en la cabecera permitía a un ayudante cambiar libremente de unidad, arriesgando abrir turnos en buses ajenos de otros socios cooperados.
+  - Existía un banner superior redundante y contradictorio (*"1. Estado de Tripulación y Autorización"* con Juan Pérez estático) que chocaba con la selección táctil de *Titular vs Reemplazo* del Paso 1.
+  - La condición de bloqueo `isAuthorized` dependía de un único ayudante retornado por la API (`currentUser.id === ayudante.id`), impidiendo que ayudantes autorizados o reemplazos operaran de forma fluida.
+
+- **Soluciones Implementadas en `src/components/transport/HomeScreenVT.tsx`:**
+  - **Cabecera Diferenciada por Roles:**
+    - `ADMIN` / `SOCIO`: Mantienen el selector rápido `<BusSelector compact />` para supervisar y configurar múltiples unidades de su propiedad.
+    - `AYUDANTE` / Operativo: Se muestra un badge institucional informativo y fijo (`🚌 Bus {disco}`), eliminando cualquier riesgo de error o confusión de unidad.
+  - **Retiro del Banner Redundante de Tripulación:**
+    - Se eliminó el bloque estático superior de tripulación. Toda la responsabilidad del cobro vive de forma limpia y transparente en el **Paso 1: Día de la Jornada y Responsable de Cobro (Caja)**.
+  - **Desbloqueo Operativo y Limpieza de Autorización:**
+    - Se autoriza de forma nativa a cualquier usuario autenticado con rol `AYUDANTE`, `SOCIO` o `ADMIN`.
+    - Se retiró la dependencia bloqueante de `!ayudante` en `startSession`, permitiendo operación offline y multisesión sin fricción.
+  - **Estructura y Numeración Armonizada (Pasos 1 al 5):**
+    1. Día de la Jornada y Responsable de Cobro (Caja)
+    2. Selector de Grupo de Turno (VT)
+    3. Frecuencias del Grupo VT Seleccionado
+    4. Impresora Térmica Bluetooth
+    5. Botón Primario de Arranque
+  - **`package.json`:** Versión incrementada a `3.60.33`.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado Actual:
-   - **v3.60.32:** Responsable de cobro en ruta (Titular vs Reemplazo con memoria inteligente en 1 toque) integrado a `HomeScreenVT.tsx`, `AyudanteJornadaCard.tsx` y propagado a toda la contabilidad del bus.
+   - **v3.60.33:** Armonización de cabecera de `HomeScreenVT.tsx`: bus fijo para ayudantes (evita cruce con buses ajenos), selector solo para socios/admins, retiro del banner redundante superior de tripulación y numeración armónica 1 a 5.
+   - **v3.60.32:** Responsable de cobro en ruta (Titular vs Reemplazo con memoria inteligente en 1 toque) integrado y propagado a toda la contabilidad del bus.
    - **v3.60.31:** Retiro del odómetro inicial en `HomeScreenVT.tsx` para arranque ágil en 2 toques (veeduría intacta en Arqueo General).
    - **v3.60.30:** Armonización integral de la interfaz del Ayudante (Día de jornada con chips rápidos, tarjetas de VT con hora de primera salida, tarjeta Hero `#053225` con Número Rey de caja de ruta y cuadrícula 2x2).
-   - **v3.60.29:** Copiloto de ruta del chofer con proyección temporal auditada (~280 km/día).
-   - **v3.60.28:** Claridad semántica en panel de conductor y blindaje de roles.
 4. Próxima Etapa Operativa:
    - Armonización de pantallas de ruta (`TicketScreen.tsx`, `ArqueoScreen.tsx`, `ArqueoGeneralScreen.tsx`) o extracción modular de `MantenimientoHistorialModal.tsx`.
