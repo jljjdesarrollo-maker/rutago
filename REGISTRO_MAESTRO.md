@@ -1491,3 +1491,35 @@ En caso de migrar a otra cuenta:
 * **Validación:**
   - TypeScript: `npx tsc --noEmit` completado con 0 errores.
   - JSX: 100% verificado.
+
+---
+
+# 🚀 VERSIÓN 3.60.53: IMPLEMENTACIÓN OFICIAL DEL ESCENARIO B PARA EL TAMBO Y EXTENSIONES PARROQUIALES (2026-09-30)
+
+## 📌 1. REGLA OPERATIVA OFICIAL CONFIRMADA (ESCENARIO B)
+* **Retornos desde El Tambo:**
+  - La hora fijada en la programación corresponde al paso y sello oficial por **MALACATOS**.
+  - La unidad parte de la cabecera de El Tambo **60 minutos antes** (`Rol - 60 min`).
+  - El tiempo de espera en El Tambo se calcula con respecto a la salida real:  
+    $$\text{Tiempo Disponible en El Tambo} = (\text{Hora Rol Malacatos} - 60\text{ min}) - \text{Hora Llegada a El Tambo}$$
+  - El arribo a Loja se produce 60 minutos después de Malacatos:  
+    $$\text{Llegada a Base Loja} = \text{Hora Rol Malacatos} + 60\text{ min}$$
+  - El tiempo de espera en Loja antes de la siguiente salida:  
+    $$\text{Tiempo Disponible en Loja} = \text{Hora Siguiente Salida Loja} - \text{Llegada a Base Loja}$$
+
+## 📊 2. AUDITORÍA OFICIAL INTEGRAL DE VT10 (CALIBRADO AL 100%)
+* **Carrera 1 (06:40 Loja ➔ El Tambo):** Llega 08:40. Sale de cabecera a las 09:15 ➔ **35 minutos libres en El Tambo**.
+* **Carrera 2 (10:15 Malacatos ➔ Loja):** Sale 09:15 de El Tambo, sella 10:15 en Malacatos, llega 11:15 a Loja. Siguiente salida 12:10 ➔ **55 minutos libres en Base Loja**.
+* **Carrera 3 (12:10 Loja ➔ El Tambo):** Llega 14:10. Sale de cabecera a las 16:15 ➔ **2 horas 05 minutos libres en El Tambo**.
+* **Carrera 4 (17:15 Malacatos ➔ Loja):** Sale 16:15 de El Tambo, sella 17:15 en Malacatos, llega 18:15 a Loja. Siguiente salida 19:30 ➔ **1 hora 15 minutos libres en Base Loja (Ventana Mayor)**.
+* **Carrera 5 (19:30 Loja ➔ Vilcabamba):** Llega 21:00. Pernocta hasta 05:40 ➔ **8 horas 40 minutos en Vilcabamba**.
+* **Carrera 6 (05:40 Vilcabamba ➔ Loja):** Arribo a Loja 07:10 (Fin de jornada).
+
+## 🛠️ 3. ARCHIVOS MODIFICADOS Y VALIDACIONES
+* `src/types/vt-ventanas.ts`: Incorporación de `horaSalidaRealEfectiva` en `VTFrecuenciaDetallada`.
+* `src/lib/vt-ventanas-catalogo.ts`: 
+  - Cálculo de la hora de salida efectiva real de cabecera en `resolverParametrosRuta`.
+  - Recálculo exacto de las ventanas de espera en `calcularVentanasParaFrecuencias`.
+  - Incremento de versión a `version: 2` en `CONFIGURACION_FLOTA_DEFAULT`.
+* `src/lib/vt-ventanas-storage.ts`: Autoinvalidación de caché cuando `version < 2`.
+* **TypeScript:** `npx tsc --noEmit` completado con 0 errores.

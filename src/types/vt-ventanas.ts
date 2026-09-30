@@ -34,7 +34,7 @@ export interface VTFrecuenciaDetallada {
   horaLlegadaEstimada: string;        // Calculada con base en tiempos de viaje oficiales
   tiempoViajeMinutos: number;         // 90 (Vilca), 120 (Tambo/Elvira), etc.
   esPernoctaRetorno?: boolean;        // true si es la primera vuelta del día 2 tras pernocta
-  cabeceraSalidaReal?: string;        // Ej. "Salida 16:15 El Tambo -> Malacatos 17:15"
+  cabeceraSalidaReal?: string;  horaSalidaRealEfectiva?: string;        // Ej. "Salida 16:15 El Tambo -> Malacatos 17:15"
 }
 
 export interface VTConfiguracionItem {

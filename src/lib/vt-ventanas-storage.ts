@@ -25,7 +25,7 @@ export function getConfiguracionFlotaLocal(): FlotaConfiguracionCompleta {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.vts && Array.isArray(parsed.vts) && parsed.version) {
+      if (parsed && parsed.vts && Array.isArray(parsed.vts) && parsed.version >= CONFIGURACION_FLOTA_DEFAULT.version) {
         return parsed as FlotaConfiguracionCompleta;
       }
     }

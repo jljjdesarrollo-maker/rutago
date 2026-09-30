@@ -1,6 +1,21 @@
 /**
  * Catálogo Maestro y Motor Recalculador de Ventanas Operativas (RutaGo)
  * Conforme a las reglas de viaje oficiales de Transportes Vilcabamba Turis
+ *
+ * REGLAS OFICIALES CONFIRMADAS (Escenario B):
+ * 1. Loja ⇄ Vilcabamba: 1h 30m (90 min).
+ * 2. Loja → El Tambo: 2h 00m (120 min).
+ * 3. El Tambo → Malacatos → Loja:
+ *    - La hora señalada en el rol corresponde al paso y sello por MALACATOS.
+ *    - La unidad sale de la cabecera de El Tambo 60 minutos antes.
+ *    - El tiempo de espera en El Tambo es: HoraSalidaReal (Rol - 60m) - HoraLlegada.
+ *    - Llega a Loja 60 minutos después de Malacatos (Rol + 60m).
+ * 4. Loja → La Elvira / Yangana / Zahuayco: 2h 00m (120 min).
+ * 5. La Elvira / Yangana / Zahuayco → Vilcabamba → Loja:
+ *    - La hora señalada en el rol corresponde a la salida desde VILCABAMBA.
+ *    - La unidad sale de la parroquia 30 minutos antes.
+ *    - El tiempo de espera en la parroquia es: HoraSalidaReal (Rol - 30m) - HoraLlegada.
+ *    - Llega a Loja 90 minutos después de Vilcabamba (Rol + 90m).
  */
 
 import {
@@ -65,70 +80,82 @@ export function formatearMinutosLegible(minutos: number): string {
   return `${h}h ${m}m`;
 }
 
-// ─── RESOLVER DURACIÓN Y DESTINO SEGÚN RUTA ───
+// ─── RESOLVER DURACIÓN, DESTINO Y SALIDAS REALES SEGÚN RUTA ───
 export function resolverParametrosRuta(
   routeFrom: string,
   routeTo: string,
   horaFijada: string
-): { tiempoViajeMinutos: number; horaLlegada: string; cabeceraSalidaReal?: string } {
+): {
+  tiempoViajeMinutos: number;
+  horaLlegada: string;
+  horaSalidaRealEfectiva: string;
+  cabeceraSalidaReal?: string;
+} {
   const from = (routeFrom || '').trim().toLowerCase();
   const to = (routeTo || '').trim().toLowerCase();
 
-  // 1. Loja -> Parroquias
+  // 1. Salidas desde Loja hacia Parroquias
   if (from === 'loja') {
     if (to.includes('tambo')) {
       return {
         tiempoViajeMinutos: TIEMPOS_VIAJE_OFICIALES.LOJA_A_EL_TAMBO,
         horaLlegada: sumarMinutosAHora(horaFijada, TIEMPOS_VIAJE_OFICIALES.LOJA_A_EL_TAMBO),
+        horaSalidaRealEfectiva: horaFijada,
       };
     }
     if (to.includes('elvira')) {
       return {
         tiempoViajeMinutos: TIEMPOS_VIAJE_OFICIALES.LOJA_A_LA_ELVIRA,
         horaLlegada: sumarMinutosAHora(horaFijada, TIEMPOS_VIAJE_OFICIALES.LOJA_A_LA_ELVIRA),
+        horaSalidaRealEfectiva: horaFijada,
       };
     }
     if (to.includes('yangana')) {
       return {
         tiempoViajeMinutos: TIEMPOS_VIAJE_OFICIALES.LOJA_A_YANGANA,
         horaLlegada: sumarMinutosAHora(horaFijada, TIEMPOS_VIAJE_OFICIALES.LOJA_A_YANGANA),
+        horaSalidaRealEfectiva: horaFijada,
       };
     }
     if (to.includes('zahuayco') || to.includes('zahuyco')) {
       return {
         tiempoViajeMinutos: TIEMPOS_VIAJE_OFICIALES.LOJA_A_ZAHUAYCO,
         horaLlegada: sumarMinutosAHora(horaFijada, TIEMPOS_VIAJE_OFICIALES.LOJA_A_ZAHUAYCO),
+        horaSalidaRealEfectiva: horaFijada,
       };
     }
-    // Default a Vilcabamba
+    // Salida estándar Loja -> Vilcabamba
     return {
       tiempoViajeMinutos: TIEMPOS_VIAJE_OFICIALES.LOJA_A_VILCABAMBA,
       horaLlegada: sumarMinutosAHora(horaFijada, TIEMPOS_VIAJE_OFICIALES.LOJA_A_VILCABAMBA),
+      horaSalidaRealEfectiva: horaFijada,
     };
   }
 
   // 2. Retorno El Tambo -> Loja
-  // REGLA OFICIAL: La hora señalada en el rol es de paso por MALACATOS.
-  // La unidad salió de El Tambo 60 min antes.
+  // REGLA OFICIAL (ESCENARIO B): La hora señalada en el rol es de paso por MALACATOS.
+  // La unidad sale de El Tambo 60 min antes y llega a Loja 60 min después de Malacatos.
   if (from.includes('tambo') && to === 'loja') {
     const salidaRealElTambo = sumarMinutosAHora(horaFijada, -TIEMPOS_VIAJE_OFICIALES.EL_TAMBO_A_MALACATOS);
     const llegadaLoja = sumarMinutosAHora(horaFijada, TIEMPOS_VIAJE_OFICIALES.MALACATOS_A_LOJA);
     return {
       tiempoViajeMinutos: TIEMPOS_VIAJE_OFICIALES.EL_TAMBO_A_MALACATOS + TIEMPOS_VIAJE_OFICIALES.MALACATOS_A_LOJA,
       horaLlegada: llegadaLoja,
+      horaSalidaRealEfectiva: salidaRealElTambo,
       cabeceraSalidaReal: `Salida de El Tambo: ${salidaRealElTambo} (Paso por Malacatos: ${horaFijada})`,
     };
   }
 
   // 3. Retorno La Elvira / Yangana / Zahuayco -> Loja
   // REGLA OFICIAL: La hora señalada en el rol es desde VILCABAMBA.
-  // La unidad salió de la parroquia 30 min antes.
+  // La unidad salió de la parroquia 30 min antes y llega a Loja 90 min después de Vilcabamba.
   if ((from.includes('elvira') || from.includes('yangana') || from.includes('zahu')) && to === 'loja') {
     const salidaRealCabecera = sumarMinutosAHora(horaFijada, -TIEMPOS_VIAJE_OFICIALES.LA_ELVIRA_A_VILCABAMBA);
     const llegadaLoja = sumarMinutosAHora(horaFijada, TIEMPOS_VIAJE_OFICIALES.VILCABAMBA_A_LOJA);
     return {
       tiempoViajeMinutos: TIEMPOS_VIAJE_OFICIALES.LA_ELVIRA_A_VILCABAMBA + TIEMPOS_VIAJE_OFICIALES.VILCABAMBA_A_LOJA,
       horaLlegada: llegadaLoja,
+      horaSalidaRealEfectiva: salidaRealCabecera,
       cabeceraSalidaReal: `Salida de Cabecera: ${salidaRealCabecera} (Paso por Vilcabamba: ${horaFijada})`,
     };
   }
@@ -137,6 +164,7 @@ export function resolverParametrosRuta(
   return {
     tiempoViajeMinutos: TIEMPOS_VIAJE_OFICIALES.VILCABAMBA_A_LOJA,
     horaLlegada: sumarMinutosAHora(horaFijada, TIEMPOS_VIAJE_OFICIALES.VILCABAMBA_A_LOJA),
+    horaSalidaRealEfectiva: horaFijada,
   };
 }
 
@@ -179,14 +207,14 @@ export function asignarMantenimientosSugeridos(tipo: TipoVentanaOperativa, durac
     return [
       'MNT-REGULACION-RACHES',    // Rápido en terminal
       'MNT-REVISION-LIQUIDOS',    // Refrigerante, hidrolina, frenos
-      'MNT-ABASTECER-DIESEL',
+      'MNT-ABASTECER-DIESEL',    
     ];
   }
 
   return [];
 }
 
-// ─── MOTOR RECALCULADOR DE VENTANAS OPERATIVAS ───
+// ─── MOTOR RECALCULADOR DE VENTANAS OPERATIVAS (ESCENARIO B APLICADO) ───
 export function calcularVentanasParaFrecuencias(
   codigoVT: string,
   frecuencias: VTFrecuenciaDetallada[]
@@ -198,7 +226,9 @@ export function calcularVentanasParaFrecuencias(
     const siguiente = frecuencias[i + 1];
 
     const horaLlegada = actual.horaLlegadaEstimada;
-    const horaSalidaSiguiente = siguiente.time;
+    // REGLA OFICIAL: La salida para la espera en cabecera es la salida REAL de esa cabecera
+    // (ej: si siguiente es El Tambo, sale 60 min antes de Malacatos)
+    const horaSalidaSiguiente = siguiente.horaSalidaRealEfectiva || siguiente.time;
     const duracion = diferenciaMinutosEntreHoras(horaLlegada, horaSalidaSiguiente);
 
     // Determinar la ubicación de la espera
@@ -228,6 +258,11 @@ export function calcularVentanasParaFrecuencias(
     const mantenimientos = asignarMantenimientosSugeridos(tipo, duracion);
     const tiempoTxt = formatearMinutosLegible(duracion);
 
+    let desc = `${tiempoTxt} libres en ${ubicacion} (${horaLlegada} - ${horaSalidaSiguiente})`;
+    if (!esBaseLoja && siguiente.cabeceraSalidaReal) {
+      desc = `${tiempoTxt} libres en ${ubicacion} (${horaLlegada} - ${horaSalidaSiguiente}, rol: ${siguiente.time})`;
+    }
+
     ventanas.push({
       id: `${codigoVT.toLowerCase()}-v${i + 1}`,
       tipo,
@@ -239,7 +274,7 @@ export function calcularVentanasParaFrecuencias(
       vueltaSiguienteIndex: i + 1,
       esAptaParaTaller: tipo === 'VENTANA_DIURNA_LOJA',
       mantenimientosSugeridos: mantenimientos,
-      descripcionAmigable: `${tiempoTxt} libres en ${ubicacion} (${horaLlegada} - ${horaSalidaSiguiente})`,
+      descripcionAmigable: desc,
     });
   }
 
@@ -249,7 +284,7 @@ export function calcularVentanasParaFrecuencias(
 // ─── GENERADOR OFICIAL DEL CATÁLOGO COMPLETO (VT1 a VT15) ───
 export function generarCatalogoOficialVTs(): VTConfiguracionItem[] {
   return VT_DATA.map((item) => {
-    // 1. Enriquecer frecuencias con tiempos de viaje oficiales y cabeceras
+    // 1. Enriquecer frecuencias con tiempos de viaje oficiales, cabeceras y salidas reales
     const frecuenciasDetalladas: VTFrecuenciaDetallada[] = item.frecuencias.map((f, idx) => {
       const res = resolverParametrosRuta(f.routeFrom, f.routeTo, f.time);
       return {
@@ -259,12 +294,13 @@ export function generarCatalogoOficialVTs(): VTConfiguracionItem[] {
         time: f.time,
         horaLlegadaEstimada: res.horaLlegada,
         tiempoViajeMinutos: res.tiempoViajeMinutos,
+        horaSalidaRealEfectiva: res.horaSalidaRealEfectiva,
         cabeceraSalidaReal: res.cabeceraSalidaReal,
         esPernoctaRetorno: idx === item.frecuencias.length - 1 && item.frecuencias.length >= 6,
       };
     });
 
-    // 2. Calcular ventanas operativas
+    // 2. Calcular ventanas operativas con la salida real de cada tramo
     const ventanas = calcularVentanasParaFrecuencias(item.codigo, frecuenciasDetalladas);
 
     // 3. Evaluar alertas de enlace crítico
@@ -294,11 +330,11 @@ export function generarCatalogoOficialVTs(): VTConfiguracionItem[] {
 
 // ─── CONFIGURACIÓN MAESTRA POR DEFECTO ───
 export const CONFIGURACION_FLOTA_DEFAULT: FlotaConfiguracionCompleta = {
-  version: 1,
-  updatedAt: '2026-09-30T16:30:00.000Z',
+  version: 2,
+  updatedAt: '2026-09-30T16:50:00.000Z',
   modoRetenActivo: false, // Actualmente desactivado (15 días continuos)
   fechaInicioReten: undefined,
   busAnclaReten: '01',
-  hash: 'vt-cfg-v1-20260930',
+  hash: 'vt-cfg-v2-escenario-b-20260930',
   vts: generarCatalogoOficialVTs(),
 };
