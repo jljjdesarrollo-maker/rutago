@@ -5,6 +5,7 @@ import { type FrecuenciaEstado, type VTSession, loadPromoConfig, calcularEstadoT
 import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta, type TipoPasajero,
          getZonaParada, isParadaPrincipal, ZONA_COLORS, type ZonaColor, PARADA_ZONA } from '@/lib/tarifas-data';
 import { getActiveBusId } from '@/lib/fleet-storage';
+import { getEcuadorDateString } from '@/lib/date-helpers';
 import { saveVenta } from '@/lib/indexeddb';
 import { type ConnectionInfo } from '@/hooks/use-connection';
 import { Check, User, UserRound, Printer, Bluetooth, Clock, AlertTriangle, ArrowRight } from 'lucide-react';
@@ -199,7 +200,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     }
 
     const now = new Date();
-    const fechaCal = now.toISOString().split('T')[0];
+    const fechaCal = getEcuadorDateString(now);
     const fechaOperacion = session.fecha || fechaCal;
     const diaTurno = fechaCal > fechaOperacion ? 2 : 1;
     const hora = now.toTimeString().slice(0, 5);
@@ -366,7 +367,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           <div className="flex-1 text-center">
             <div className="text-sm font-bold leading-tight flex items-center justify-center gap-1.5">
               <span>{estado.hora} · {rutaMatched}</span>{tiempoEstado.minutosTranscurridos > 0 && <span className="text-[9px] font-mono bg-black/20 px-1 py-0.5 rounded text-white/90" title="Minutos transcurridos desde la hora programada de salida">{tiempoEstado.minutosTranscurridos}m</span>}
-              {(session.fecha && new Date().toISOString().split('T')[0] > session.fecha) && (
+              {(session.fecha && getEcuadorDateString() > session.fecha) && (
                 <span className="bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.2 rounded uppercase">Día 2</span>
               )}
             </div>

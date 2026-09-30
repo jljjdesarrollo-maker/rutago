@@ -7,6 +7,7 @@ import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVen
 import { Bus, User, UserCheck, UserPlus, ArrowRight, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays, Clock, Moon } from 'lucide-react';
 import { BusSelector } from './BusSelector';
 import { getActiveBus } from '@/lib/fleet-storage';
+import { getEcuadorDateString, getEcuadorYesterdayDateString } from '@/lib/date-helpers';
 
 // Version build — se actualiza con cada deploy
 const APP_VERSION = 'v3.60.30';
@@ -112,11 +113,9 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
     console.log('[Printer]', msg);
   };
 
-  // ─── Fechas de la Jornada Laboral ───
-  const todayStr = new Date().toISOString().split('T')[0];
-  const yesterdayDate = new Date();
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+  // ─── Fechas de la Jornada Laboral (Zona Oficial Ecuador UTC-5) ───
+  const todayStr = getEcuadorDateString();
+  const yesterdayStr = getEcuadorYesterdayDateString();
 
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [dateWarning, setDateWarning] = useState('');

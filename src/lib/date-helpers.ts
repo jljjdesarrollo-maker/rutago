@@ -1,30 +1,51 @@
 /**
  * Utilidades de fecha y mes para Rutas, Finanzas y Socio Propietario en RutaGo
+ * Configurado con la zona horaria oficial del transporte en Ecuador: America/Guayaquil (UTC-5)
  */
 
+export const ECUADOR_TIMEZONE = 'America/Guayaquil';
+
 /**
- * Obtiene el mes actual en formato YYYY-MM según la hora local
+ * Obtiene la fecha actual en formato YYYY-MM-DD según la zona horaria de Ecuador (America/Guayaquil)
+ * Evita el salto prematuro de día provocado por toISOString() en horario nocturno (después de las 19:00).
  */
-export function getCurrentYearMonth(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
+export function getEcuadorDateString(date: Date = new Date()): string {
+  try {
+    return date.toLocaleDateString('en-CA', { timeZone: ECUADOR_TIMEZONE });
+  } catch {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
 }
 
 /**
- * Obtiene la fecha actual en formato YYYY-MM-DD según la hora local
+ * Obtiene la fecha de ayer en formato YYYY-MM-DD según la zona horaria de Ecuador
+ */
+export function getEcuadorYesterdayDateString(): string {
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  return getEcuadorDateString(yesterday);
+}
+
+/**
+ * Obtiene la fecha actual en formato YYYY-MM-DD según la hora local de Ecuador
  */
 export function getTodayDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return getEcuadorDateString();
 }
 
 /**
- * Formatea un string 'YYYY-MM' al nombre en español (ej. 'Agosto 2026')
+ * Obtiene el mes actual en formato YYYY-MM según la hora de Ecuador
+ */
+export function getCurrentYearMonth(): string {
+  const ymd = getEcuadorDateString();
+  return ymd.slice(0, 7);
+}
+
+/**
+ * Formatea un string 'YYYY-MM' al nombre en español (ej. 'Septiembre 2026')
  */
 export function formatMonthName(ym: string): string {
   if (!ym || !ym.includes('-')) return ym || '';

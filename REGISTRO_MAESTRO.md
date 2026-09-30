@@ -874,13 +874,39 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+---
+
+## 🕒 v3.60.34: CORRECCIÓN DE ZONA HORARIA OFICIAL DE ECUADOR (AMERICA/GUAYAQUIL UTC-5) (2026-09-29)
+
+- **Diagnóstico del Error de Fecha Reportado (30/09 vs 29/09):**
+  - El código utilizaba `new Date().toISOString().split('T')[0]` para determinar el día de la jornada ("HOY").
+  - En JavaScript, `toISOString()` convierte la fecha a UTC (GMT+0).
+  - Ecuador continental opera en la zona horaria **`America/Guayaquil` (UTC-5 sin horario de verano)**.
+  - A partir de las 19:00 (7:00 PM) de Ecuador, la hora en UTC ya supera las 00:00 del día siguiente.
+  - En consecuencia, en horas de la noche la aplicación saltaba prematuramente al día de mañana (`30-09-2026`), cuando en Loja/Ecuador todavía era **29-09-2026**, distorsionando la caja diaria y provocando que los boletos se marcaran erróneamente como "Día 2".
+
+- **Solución Arquitectónica Implementada:**
+  - **`src/lib/date-helpers.ts`:**
+    - Se crearon utilidades dedicadas que fuerzan la zona horaria oficial del transporte: `ECUADOR_TIMEZONE = 'America/Guayaquil'`.
+    - `getEcuadorDateString(date = new Date())`: Retorna `YYYY-MM-DD` anclado a Ecuador, sin importar la zona horaria del servidor o del navegador.
+    - `getEcuadorYesterdayDateString()`: Retorna con total precisión matemática la fecha contable de ayer en Ecuador.
+  - **`src/components/transport/HomeScreenVT.tsx`:**
+    - `todayStr` y `yesterdayStr` ahora se obtienen con `getEcuadorDateString()` y `getEcuadorYesterdayDateString()`.
+    - "HOY" muestra de forma veraz y garantizada `2026-09-29`.
+  - **`src/components/transport/TicketScreen.tsx`:**
+    - `fechaCal` y la verificación de "Día 2" se calculan con la zona horaria de Ecuador, evitando falsos saltos de día durante los recorridos nocturnos del bus.
+  - **`package.json`:** Versión incrementada a `3.60.34`.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado Actual:
-   - **v3.60.33:** Armonización de cabecera de `HomeScreenVT.tsx`: bus fijo para ayudantes (evita cruce con buses ajenos), selector solo para socios/admins, retiro del banner redundante superior de tripulación y numeración armónica 1 a 5.
-   - **v3.60.32:** Responsable de cobro en ruta (Titular vs Reemplazo con memoria inteligente en 1 toque) integrado y propagado a toda la contabilidad del bus.
-   - **v3.60.31:** Retiro del odómetro inicial en `HomeScreenVT.tsx` para arranque ágil en 2 toques (veeduría intacta en Arqueo General).
-   - **v3.60.30:** Armonización integral de la interfaz del Ayudante (Día de jornada con chips rápidos, tarjetas de VT con hora de primera salida, tarjeta Hero `#053225` con Número Rey de caja de ruta y cuadrícula 2x2).
-4. Próxima Etapa Operativa:
-   - Armonización de pantallas de ruta (`TicketScreen.tsx`, `ArqueoScreen.tsx`, `ArqueoGeneralScreen.tsx`) o extracción modular de `MantenimientoHistorialModal.tsx`.
+   - **v3.60.34:** Corrección de zona horaria oficial Ecuador (`America/Guayaquil` UTC-5) en `date-helpers.ts`, `HomeScreenVT.tsx` y `TicketScreen.tsx`. HOY muestra de forma correcta `2026-09-29`.
+   - **v3.60.33:** Armonización de cabecera de `HomeScreenVT.tsx` (bus fijo para ayudantes, selector para socios) y retiro del banner redundante de tripulación.
+   - **v3.60.32:** Responsable de cobro en ruta (Titular vs Reemplazo con memoria inteligente en 1 toque).
+   - **v3.60.31:** Retiro del odómetro inicial en `HomeScreenVT.tsx`.
+   - **v3.60.30:** Armonización de UI del Ayudante (Día con chips, horas en VTs, tarjeta Hero `#053225`).
+4. Próxima Tarea al conectar la nueva cuenta:
+   - Pedir el token PAT de GitHub al usuario para hacer el `git push origin main` de `v3.60.34` o continuar con la siguiente pantalla de ruta.
