@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { type VTSession } from './types-boletos';
 import type { UserSession } from './types';
 import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVentasPendientesByVT } from '@/lib/indexeddb';
-import { Bus, User, ArrowRight, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays, Clock, Gauge, Moon } from 'lucide-react';
+import { Bus, User, ArrowRight, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays, Clock, Moon } from 'lucide-react';
 import { BusSelector } from './BusSelector';
-import { getActiveBus, getLatestBusOdometer, saveBusOdometer } from '@/lib/fleet-storage';
+import { getActiveBus } from '@/lib/fleet-storage';
 
 // Version build — se actualiza con cada deploy
 const APP_VERSION = 'v3.60.30';
@@ -96,9 +96,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
   const [existingUnfinished, setExistingUnfinished] = useState(false);
   const [confirmNewSession, setConfirmNewSession] = useState(false);
 
-  // Odómetro inicial de la jornada
-  const [odometroInicial, setOdometroInicial] = useState<string>('');
-  const [odometroSistema, setOdometroSistema] = useState<number>(0);
+
 
   // Printer state
   const [printerStatus, setPrinterStatus] = useState<'unknown' | 'connecting' | 'connected' | 'error' | 'unavailable'>('unknown');
@@ -161,15 +159,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
           setAyudante({ id: activeAyud.id, nombre: activeAyud.nombre, pin: activeAyud.pin });
         }
 
-        // Cargar odómetro actual del bus activo
-        try {
-          const bus = getActiveBus();
-          const km = getLatestBusOdometer(bus.id);
-          setOdometroSistema(km);
-          setOdometroInicial(km > 0 ? km.toString() : '');
-        } catch {
-          // ignore
-        }
+
       })
       .catch(err => console.error('Error cargando datos:', err))
       .finally(() => setLoading(false));
@@ -272,12 +262,6 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
     const effectiveAyudanteNombre = currentUser?.nombre || ayudante.nombre;
     const currentActiveBus = getActiveBus();
 
-    // Guardar odómetro inicial si fue ingresado
-    const kmNum = parseInt(odometroInicial, 10);
-    if (!isNaN(kmNum) && kmNum > 0) {
-      saveBusOdometer(currentActiveBus.numeroDisco, kmNum.toString(), sessionDate);
-    }
-
     const newSession: VTSession = {
       vtCode: vt.codigo,
       nombre: vt.nombre,
@@ -287,7 +271,6 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
       busId: currentActiveBus.id,
       numeroDisco: currentActiveBus.numeroDisco,
       placaBus: currentActiveBus.placa,
-      odometroInicial: !isNaN(kmNum) && kmNum > 0 ? kmNum : undefined,
     };
 
     // ─── Limpieza completa al forzar nuevo VT ───
@@ -643,40 +626,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
           )}
         </div>
 
-        {/* ─── 3. Odómetro Inicial del Autobús ─── */}
-        <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200/90">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h2 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-2 uppercase tracking-wide">
-                <Gauge className="w-4 h-4 text-emerald-800" />
-                <span>Odómetro Inicial del Bus</span>
-              </h2>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Alimenta el tacómetro del conductor y las alertas de mantenimiento
-              </p>
-            </div>
-            {odometroSistema > 0 && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                Sistema: {odometroSistema.toLocaleString()} KM
-              </span>
-            )}
-          </div>
-
-          <div className="relative mt-2">
-            <input
-              type="number"
-              value={odometroInicial}
-              onChange={e => setOdometroInicial(e.target.value)}
-              placeholder={odometroSistema > 0 ? odometroSistema.toString() : 'Ej: 187420'}
-              className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 text-slate-900 font-black text-lg focus:border-emerald-600 focus:outline-none transition-colors"
-            />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">
-              KM TABLERO
-            </span>
-          </div>
-        </div>
-
-        {/* ─── 4. Selector de Grupo de Turno (VT) ─── */}
+        {/* ─── 2. Selector de Grupo de Turno (VT) ─── */}
         <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200/90">
           <div className="flex items-center justify-between mb-3">
             <div>

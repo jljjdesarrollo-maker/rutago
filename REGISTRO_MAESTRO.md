@@ -799,12 +799,32 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+---
+
+## ⚡ v3.60.31: OPTIMIZACIÓN DEL ARRANQUE DE JORNADA Y VEEDURÍA DEL ODÓMETRO (2026-09-29)
+
+- **Decisión de Gobernanza y Negocio:**
+  - El ayudante ejerce un rol fundamental como **veedor externo e imparcial** frente al chofer para auditar el kilometraje real de la unidad y evitar manipulación o conflictos internos sobre desgaste de repuestos y consumo de combustible.
+  - Sin embargo, esta función de veeduría y auditoría pertenece exclusivamente al **Arqueo General (`ArqueoGeneralScreen.tsx`)** al finalizar la jornada, donde el sistema precarga el odómetro de salida, el ayudante digita el tacómetro final directamente del tablero físico, y el sistema valida la tolerancia semafórica frente a los km teóricos del VT.
+  - Al inicio del turno (`HomeScreenVT.tsx`), solicitar el odómetro inicial generaba una duplicidad innecesaria y fricción operativa cuando el ayudante necesita iniciar su jornada en 2 toques ágiles para arrancar la venta de boletos sin demorar la salida del autobús de terminal.
+
+- **Cambios Realizados en el Código:**
+  - **`src/components/transport/HomeScreenVT.tsx`:**
+    - Se retiró la tarjeta y el input de *"Odómetro Inicial del Bus"*.
+    - Se limpiaron los estados locales (`odometroInicial`, `odometroSistema`) y las llamadas redundantes a `fleet-storage` al iniciar el turno.
+    - El flujo de configuración de turno queda limpio y directo: **Paso 1: Día de Jornada** (`[ HOY ]`, `[ AYER ]`, `[ OTRA FECHA ]`) ➔ **Paso 2: Grupo de Vuelta de Turno (VT)**.
+  - **`package.json`:**
+    - Versión incrementada a `3.60.31`.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado Actual:
+   - **v3.60.31:** Retiro del odómetro inicial en `HomeScreenVT.tsx` para arranque ágil en 2 toques; la veeduría neutral del kilometraje por parte del ayudante se mantiene 100% activa y blindada en el Arqueo General (`ArqueoGeneralScreen.tsx`).
    - **v3.60.30:** Armonización integral de la interfaz del Ayudante (Día de jornada con chips rápidos, tarjetas de VT con hora de primera salida, tarjeta Hero `#053225` con Número Rey de caja de ruta y cuadrícula 2x2).
    - **v3.60.29:** Copiloto de ruta del chofer con proyección temporal auditada (~280 km/día).
    - **v3.60.28:** Claridad semántica en panel de conductor y blindaje de roles.
 4. Próxima Etapa Operativa:
-   - Armonización de acentos finales en pantallas de ruta (`TicketScreen.tsx`, `ArqueoScreen.tsx`, `ArqueoGeneralScreen.tsx`) o extracción modular de `MantenimientoHistorialModal.tsx`.
+   - Armonización de pantallas de ruta (`TicketScreen.tsx`, `ArqueoScreen.tsx`, `ArqueoGeneralScreen.tsx`) o extracción modular de `MantenimientoHistorialModal.tsx`.
