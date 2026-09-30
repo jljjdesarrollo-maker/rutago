@@ -1316,3 +1316,27 @@ En caso de migrar a otra cuenta:
 En caso de migrar a otra cuenta:
 1. **Repositorio:** \`https://github.com/jljjdesarrollo-maker/rutago\` (rama \`main\`).
 2. **Punto Exacto:** Versión \`3.60.45\` cerrada y desplegada en Vercel. Tanto la Consola de Retén (\`SuperAdminRetenTab\`) como la Hero Card de Alertas Patrimoniales del Socio (\`SocioMantenimientoWidget\`) y la Matriz de Enlaces Críticos (\`VT14->VT15\` y \`VT10->VT11\`) están 100% integradas, conectadas en la UI y sincronizadas con producción.
+
+---
+
+# 🚀 VERSIÓN 3.60.46: HOTFIX CRÍTICO - IMPORT DE SPARKLES Y NAVEGACIÓN DIRECTA EN PASTILLAS DE MANTENIMIENTO DEL SOCIO (2026-09-30)
+
+## 📌 1. DIAGNÓSTICO DEL PROBLEMA
+* **Síntoma en Producción:** Al ingresar como Socio y hacer clic en la pastilla o tarjeta de mantenimientos vencidos (🔴 Vencidos), la aplicación mostraba la pantalla de error \`"¡Algo salió mal!"\` (\`global-error.tsx\`).
+* **Causa Raíz:** En \`src/components/transport/SocioMantenimientoWidget.tsx\`, la sección de *Asesoría Patrimonial de Ventanas Operativas* (que se renderiza cuando \`criticosCount > 0 || proximosCount > 0\`) utilizaba el componente \`<Sparkles />\` de \`lucide-react\`, pero \`Sparkles\` no estaba importado en la cabecera del archivo. Al desplegar el modal, React intentaba instanciar un componente indefinido y disparaba la excepción global.
+
+## 🛠️ 2. SOLUCIÓN IMPLEMENTADA
+1. **Importación de \`Sparkles\`:** Añadido \`Sparkles\` a la importación de \`lucide-react\` en \`src/components/transport/SocioMantenimientoWidget.tsx\`.
+2. **Navegación Táctil Directa en Pastillas Numéricas:**
+   - Conectados eventos directos con \`stopPropagation()\` en las pastillas:
+     - \`🔴 {criticosCount}\`: abre el modal filtrando inmediatamente por \`VENCIDOS\`.
+     - \`🟡 {proximosCount}\`: abre el modal filtrando inmediatamente por \`PROXIMOS\`.
+     - \`🟢 {alDiaCount}\`: abre el modal filtrando inmediatamente por \`AL_DIA\`.
+3. **Verificación Integral:**
+   - Auditoría de todas las etiquetas JSX del componente: todas resueltas.
+   - Verificación estricta de compilador (\`npx tsc --noEmit\`: 0 errores).
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA)
+En caso de migrar a otra cuenta:
+1. **Repositorio:** \`https://github.com/jljjdesarrollo-maker/rutago\` (rama \`main\`).
+2. **Punto Exacto:** Versión \`3.60.46\` activa en Vercel. El modal ejecutivo de mantenimiento del socio abre de forma instantánea al tocar tanto la tarjeta general como cada pastilla específica.

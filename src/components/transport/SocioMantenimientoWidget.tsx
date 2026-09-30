@@ -34,6 +34,7 @@ import {
   TrendingUp,
   SlidersHorizontal,
   Info,
+  Sparkles,
 } from 'lucide-react';
 import {
   getAllBuses,
@@ -390,24 +391,39 @@ export function SocioMantenimientoWidget({
             {/* Pastillas Numéricas de Resumen */}
             <div className="flex items-center gap-1.5">
               <span
-                className={`text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1 ${
-                  criticosCount > 0 ? 'bg-rose-100 text-rose-800 font-extrabold' : 'bg-slate-100 text-slate-400'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFiltroSeleccionado('VENCIDOS');
+                  setIsModalOpen(true);
+                }}
+                className={`text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer hover:scale-105 active:scale-95 transition-transform ${
+                  criticosCount > 0 ? 'bg-rose-100 text-rose-800 font-extrabold ring-1 ring-rose-300' : 'bg-slate-100 text-slate-400'
                 }`}
-                title="Mantenimientos Vencidos"
+                title="Ver Mantenimientos Vencidos"
               >
                 🔴 {criticosCount}
               </span>
               <span
-                className={`text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1 ${
-                  proximosCount > 0 ? 'bg-amber-100 text-amber-800 font-extrabold' : 'bg-slate-100 text-slate-400'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFiltroSeleccionado('PROXIMOS');
+                  setIsModalOpen(true);
+                }}
+                className={`text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer hover:scale-105 active:scale-95 transition-transform ${
+                  proximosCount > 0 ? 'bg-amber-100 text-amber-800 font-extrabold ring-1 ring-amber-300' : 'bg-slate-100 text-slate-400'
                 }`}
-                title="Mantenimientos Próximos"
+                title="Ver Mantenimientos Próximos"
               >
                 🟡 {proximosCount}
               </span>
               <span
-                className="text-[10px] font-black px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 flex items-center gap-1"
-                title="Mantenimientos Al Día"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFiltroSeleccionado('AL_DIA');
+                  setIsModalOpen(true);
+                }}
+                className="text-[10px] font-black px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 flex items-center gap-1 cursor-pointer hover:scale-105 active:scale-95 transition-transform ring-1 ring-emerald-300"
+                title="Ver Mantenimientos Al Día"
               >
                 🟢 {alDiaCount}
               </span>
