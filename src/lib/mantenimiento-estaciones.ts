@@ -62,7 +62,7 @@ export const PLANTILLAS_NIVEL_CONTROL: Record<NivelControlMantenimiento, Plantil
   },
   TOTAL: {
     id: 'TOTAL',
-    nombre: 'Control Total (29)',
+    nombre: 'Control Total (31)',
     badge: 'Full Hino AK',
     descripcion: 'Auditoría integral de los 5 bloques mecánicos, baterías 24V, transmisión mayor y metales.',
     color: 'blue',
@@ -1651,17 +1651,53 @@ export function resolveMantenimientoItemsParaBus(
 
     // Si ya existe un estado guardado con calibración (ej. servicio histórico o taller), preservarlo
     if (itemGuardado && typeof itemGuardado.ultimoKm === "number" && itemGuardado.ultimoKm > 0) {
+      const tieneOverride = typeof intervalosPersonalizados[c.codigo] === "number" && intervalosPersonalizados[c.codigo] > 0;
+      const corregirCaja = c.codigo === "MNT-MNT-CAJA" && itemGuardado.intervaloKm === 150000 && !tieneOverride;
       return {
         id: itemGuardado.id || `mbus-${c.id}-${busId}`,
         catalogoId: c.id,
         codigo: c.codigo,
         nombre: c.nombre,
         categoria: c.categoria,
-        intervaloKm: intervaloFinal,
+        intervaloKm: corregirCaja ? c.intervaloKmOficial : intervaloFinal,
         ultimoKm: itemGuardado.ultimoKm,
         fechaUltimo: itemGuardado.fechaUltimo || "2026-09-08",
         tallerMecanico: itemGuardado.tallerMecanico || "",
         costoEstimado: typeof itemGuardado.costoEstimado === "number" ? itemGuardado.costoEstimado : 0,
+        repuestoDetalle: c.especificacionLubricanteRepuesto,
+        asignadoChofer: esChofer,
+        activo: estaActivo,
+      };
+    }
+
+    if (c.codigo === "MNT-BRONCES-SINCRONIZADOS") {
+      return {
+        id: `mbus-${c.id}-${busId}`,
+        catalogoId: c.id,
+        codigo: c.codigo,
+        nombre: c.nombre,
+        categoria: c.categoria,
+        intervaloKm: intervaloFinal,
+        ultimoKm: Math.max(0, odometroActual - 28000), // 28.000 km de uso, 112.000 km restantes (Al Día)
+        fechaUltimo: "2026-09-10",
+        costoEstimado: 0,
+        repuestoDetalle: c.especificacionLubricanteRepuesto,
+        asignadoChofer: esChofer,
+        activo: estaActivo,
+      };
+    }
+
+    if (c.codigo === "MNT-MNT-CAJA") {
+      return {
+        id: `mbus-${c.id}-${busId}`,
+        catalogoId: c.id,
+        codigo: c.codigo,
+        nombre: c.nombre,
+        categoria: c.categoria,
+        intervaloKm: intervaloFinal,
+        ultimoKm: Math.max(0, odometroActual - 56000), // 56.000 km de uso, 224.000 km restantes (Al Día)
+        fechaUltimo: "2026-08-15",
+        costoEstimado: 0,
         repuestoDetalle: c.especificacionLubricanteRepuesto,
         asignadoChofer: esChofer,
         activo: estaActivo,

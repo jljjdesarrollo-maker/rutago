@@ -378,6 +378,40 @@ export function MantenimientoScreen({
           activo: true,
         };
       }
+      // Bronces y Palillos de Caja (Preventivo 1.5 Años - 140.000 km)
+      if (c.codigo === 'MNT-BRONCES-SINCRONIZADOS') {
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
+          ultimoKm: Math.max(0, baseKm - 28000),
+          fechaUltimo: '2026-09-10',
+          costoEstimado: 0,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: false,
+          activo: true,
+        };
+      }
+      // Reparación Mayor de Caja (Overhaul 3 Años - 280.000 km)
+      if (c.codigo === 'MNT-MNT-CAJA') {
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
+          ultimoKm: Math.max(0, baseKm - 56000),
+          fechaUltimo: '2026-08-15',
+          costoEstimado: 0,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: false,
+          activo: true,
+        };
+      }
       // Demás ítems del catálogo Hino AK calibrados con 20% de desgaste (Al Día)
       return {
         id: `mbus-${c.id}-calibrado`,
@@ -415,11 +449,21 @@ export function MantenimientoScreen({
       }
     }
 
-    // Aplicar sobreescrituras de intervalo guardadas para esta unidad física
-    if (itemsExistentes.length > 0 && Object.keys(customIntervalos).length > 0) {
+    // Sincronizar fielmente con el catálogo oficial de fábrica (nombres, categorías y calibración de montaña)
+    if (itemsExistentes.length > 0) {
+      const catalogoActivoTemp = catalogo.filter(c => c.activoBiblioteca);
       itemsExistentes = itemsExistentes.map(it => {
-        if (it.codigo && customIntervalos[it.codigo] && it.intervaloKm !== customIntervalos[it.codigo]) {
-          return { ...it, intervaloKm: customIntervalos[it.codigo] };
+        const ofi = catalogoActivoTemp.find(c => c.codigo === it.codigo);
+        if (ofi) {
+          const tieneOverride = typeof customIntervalos[ofi.codigo] === 'number' && customIntervalos[ofi.codigo] > 0;
+          const corregirCaja = ofi.codigo === 'MNT-MNT-CAJA' && it.intervaloKm === 150000 && !tieneOverride;
+          return {
+            ...it,
+            nombre: ofi.nombre,
+            categoria: ofi.categoria,
+            repuestoDetalle: ofi.especificacionLubricanteRepuesto || it.repuestoDetalle,
+            intervaloKm: tieneOverride ? customIntervalos[ofi.codigo] : (corregirCaja ? ofi.intervaloKmOficial : it.intervaloKm),
+          };
         }
         return it;
       });

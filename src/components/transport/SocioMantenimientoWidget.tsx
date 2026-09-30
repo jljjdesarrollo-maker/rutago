@@ -110,6 +110,15 @@ function getImpactoOperativo(item: MantenimientoBusItem): string {
   if (cod === 'MNT-AIRE-ACONDICIONADO') {
     return 'Protege el compresor de A/C contra gripado, evita fugas en cañerías y previene rotura de banda motriz por falla del rulimán.';
   }
+  if (cod === 'MNT-BRONCES-SINCRONIZADOS') {
+    return 'Vital para sincronizados y canastillas de palillos (2da, 3ra, 4ta). Su recambio a los 140k km previene la destrucción de piñones de $400+.';
+  }
+  if (cod === 'MNT-MNT-CAJA') {
+    return 'Reparación mayor de caja (3 años / 280k km). Renovación de rulimanes NTN de alta carga y rectificación para evitar roturas en cuestas.';
+  }
+  if (cod === 'MNT-KIT-EMBRAGUE') {
+    return 'Protege la volante de motor contra remaches. Mantiene el acople progresivo y evita patinamiento de embrague en curvas de montaña.';
+  }
   if (cod === 'MNT-ACEITE-CAJA' || cod === 'MNT-ACEITE-CORONA' || cat === 'TRANSMISION') {
     return 'Protección de engranajes y piñones hipoides sometidos a alto torque en circuitos interprovinciales y troncales.';
   }

@@ -822,10 +822,38 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+---
+
+## 🚌 VERSIÓN 3.60.37: AUDITORÍA INTEGRAL DE LA INTERFAZ DEL SOCIO Y CALIBRACIÓN DE TRANSMISIÓN EN UNIDADES
+
+**Fecha:** 2026-09-29 / 2026-09-30  
+**Versión:** 3.60.37  
+**Módulo:** Interfaz del Socio (`SocioMantenimientoWidget.tsx`), Pantalla de Gestión de Unidad (`MantenimientoScreen.tsx`), Estaciones de Servicio y Plantillas de Control (`mantenimiento-estaciones.ts`)  
+**Estado:** 🟢 AUDITADO, SIN ERRORES, COMPLETO Y SINCRONIZADO EN GITHUB
+
+### 1. Auditoría de la Interfaz del Socio Propietario:
+- **Etiqueta Ejecutiva en Cabecera (`SocioMantenimientoWidget.tsx`):**
+  - Integra semaforización en tiempo real (🔴 Vencidos, 🟡 Próximos, 🟢 Al Día).
+  - Al abrir el modal ejecutivo, el socio visualiza el diagnóstico completo de sus componentes con barra de desgaste porcentual y km restantes.
+  - **Impacto Operativo Detallado de Transmisión:**
+    - `MNT-BRONCES-SINCRONIZADOS`: Detalla la protección de canastillas de palillos (2da, 3ra, 4ta) y ahorro de piñones de $400+.
+    - `MNT-MNT-CAJA`: Explica el overhaul trianual (280k km) y sustitución de rulimanes NTN de carga.
+    - `MNT-KIT-EMBRAGUE`: Explica la protección de volante de motor contra remaches en cuestas de montaña.
+- **Pantalla Integral de Mantenimiento de Unidad (`MantenimientoScreen.tsx`):**
+  - **Sincronización Automática:** Cuando el socio abre su unidad, el sistema coteja los ítems guardados con el catálogo oficial activo. Si la caja estaba en 150.000 km por versiones legadas y no tiene un override manual del socio, se auto-calibra al estándar oficial de montaña (**280.000 km**).
+  - **Nuevo Componente:** `MNT-BRONCES-SINCRONIZADOS` (140.000 km) se incorpora automáticamente a la unidad con 28.000 km de uso base inicial (112.000 km restantes, en estado óptimo verde).
+  - **Plantilla de Control Total:** Actualizada de "Control Total (29)" a **"Control Total (31)"** para reflejar con exactitud las 31 normas de fábrica.
+  - **Cartera de Talleres y Modal de Abonos:** Operando con integridad contable, vinculación de comprobantes, método de pago y anulación segura con sello de auditoría.
+- **Estación de Taller `MNT_MAYOR` (Caja y Corona):**
+  - Permite marcar y resetear individualmente los 4 componentes de transmisión (`MNT-BRONCES-SINCRONIZADOS`, `MNT-MNT-CAJA`, `MNT-KIT-EMBRAGUE`, `MNT-ACEITE-CAJA`), activando la cascada correspondiente sin tocar los demás componentes.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado Actual:
+   - **v3.60.37:** Auditoría integral de la interfaz del socio (Widget ejecutivo, MantenimientoScreen, Taller Mayor y Control Total 31 normas sin errores).
    - **v3.60.36:** Blindaje de persistencia en PostgreSQL y sincronización de catálogo SuperAdmin (31 normas institucionales garantizadas).
    - **v3.60.35:** Calibración oficial de Transmisión (Caja 280k, Bronces/Palillos 140k, Embrague 100k, Aceite 30k) y efecto cascada en taller.
    - **v3.60.34:** Corrección de zona horaria oficial Ecuador (`America/Guayaquil` UTC-5). HOY = 2026-09-29.
