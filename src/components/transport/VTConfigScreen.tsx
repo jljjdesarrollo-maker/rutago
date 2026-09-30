@@ -283,6 +283,20 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
           {/* Fila 1 - Columna 2 */}
           <button
             type="button"
+            onClick={() => setActiveTab('RETEN')}
+            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all w-full text-center ${
+              activeTab === 'RETEN'
+                ? 'bg-purple-700 text-white shadow-sm ring-2 ring-purple-700/20'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200/60'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 shrink-0 text-purple-300" />
+            <span className="truncate">2. Retén Flota (16 Días)</span>
+          </button>
+
+          {/* Fila 2 - Columna 1 */}
+          <button
+            type="button"
             onClick={() => setActiveTab('DESPACHO')}
             className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all w-full text-center ${
               activeTab === 'DESPACHO'
@@ -291,10 +305,10 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
             }`}
           >
             <Clock className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">2. Despacho y Seguridad</span>
+            <span className="truncate">3. Despacho y Seguridad</span>
           </button>
 
-          {/* Fila 2 - Columna 1 */}
+          {/* Fila 2 - Columna 2 */}
           <button
             type="button"
             onClick={() => setActiveTab('KILOMETRAJE')}
@@ -305,21 +319,21 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
             }`}
           >
             <Gauge className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">3. Kilometraje y Km</span>
+            <span className="truncate">4. Kilometraje y Km</span>
           </button>
 
-          {/* Fila 2 - Columna 2 */}
+          {/* Fila 3 - Columna Completa */}
           <button
             type="button"
             onClick={() => setActiveTab('MANTENIMIENTO')}
-            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all w-full text-center ${
+            className={`col-span-2 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all w-full text-center ${
               activeTab === 'MANTENIMIENTO'
                 ? 'bg-amber-500 text-slate-950 shadow-sm ring-2 ring-amber-500/20'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200/60'
             }`}
           >
             <Wrench className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">4. Taller Hino AK (19)</span>
+            <span className="truncate">5. Taller Hino AK (19 Ítems Maestros)</span>
           </button>
         </div>
       </div>
@@ -923,6 +937,13 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
         {activeTab === 'MANTENIMIENTO' && (
           <div className="space-y-4">
             <SuperAdminMantenimientoTab />
+          </div>
+        )}
+
+        {/* ─── PESTAÑA 5: CONSOLA DE RETÉN Y ROTACIÓN DE FLOTA (16 DÍAS) ─── */}
+        {activeTab === 'RETEN' && (
+          <div className="space-y-4">
+            <SuperAdminRetenTab />
           </div>
         )}
       </main>

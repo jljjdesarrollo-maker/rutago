@@ -1266,3 +1266,25 @@ En caso de migrar a otra cuenta:
 ## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS
 * **Repositorio Oficial:** \`https://github.com/jljjdesarrollo-maker/rutago\` (rama \`main\`).
 * **Punto Exacto:** Versión \`3.60.43\` con hotfix de enrutamiento aplicado y desplegado en Vercel. Fases 1 a 4 operativas en producción.
+
+---
+
+# 🚀 VERSIÓN 3.60.44: CONEXIÓN VISUAL DE PESTAÑA RETÉN EN CONSOLA SUPERADMIN (2026-09-30)
+
+## 📌 1. ESTADO ACTUAL Y ENTREGA
+* **Versión Formal:** \`3.60.44\`
+* **Módulo Habilitado en UI:**
+  - Conectada la pestaña visual **"2. Retén Flota (16 Días)"** en la botonera de navegación de \`VTConfigScreen.tsx\` (SuperAdmin ➔ *Mallas de Horarios & Parámetros Técnicos*).
+  - Vinculado el renderizado activo de \`<SuperAdminRetenTab />\` con:
+    1. Switch maestro de activación de ciclo (15 días continuo vs 16 días con retén).
+    2. Selector de fecha de arranque y Bus Ancla inicial.
+    3. Simulador interactivo de rotación de 16 días con detección de fosa/descanso (0 km) y buscador por bus físico.
+    4. Sincronización y actualización global con version fingerprint.
+* **Archivos Modificados:**
+  - \`src/components/transport/VTConfigScreen.tsx\`
+  - \`REGISTRO_MAESTRO.md\`
+* **Estado:** 🟢 COMPLETADO Y DESPLEGADO EN PRODUCCIÓN.
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS
+* **Repositorio Oficial:** \`https://github.com/jljjdesarrollo-maker/rutago\` (rama \`main\`).
+* **Punto Exacto:** Versión \`3.60.44\` activa en Vercel. Consola de Retén accesible desde el panel SuperAdmin.
