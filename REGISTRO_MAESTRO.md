@@ -818,11 +818,40 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+---
+
+## 👥 v3.60.32: RESPONSABLE DE COBRO EN RUTA (TITULAR VS REEMPLAZO CON MEMORIA INTELIGENTE) (2026-09-29)
+
+- **Contexto Operativo del Transporte:**
+  - El ayudante titular suele ser fijo por unidad pero pide permisos (1 a 4 días). Durante esos días cubren reemplazos informales (rotativos o de ocasión), y al regresar, el titular regulariza la información cargando los días atrasados.
+  - Sin identificación del cobrador real, se rompía la trazabilidad de custodia del dinero y las responsabilidades ante faltantes o reclamos.
+
+- **Solución Implementada (Opción 1 - Cero Fricción ni Burocracia):**
+  - **`src/components/transport/HomeScreenVT.tsx`:**
+    - Se agregó el control de **Responsable de Cobro (Caja)** en el Paso 1 de configuración:
+      - `[ 👤 Titular ({Nombre}) ]`: Selección por defecto en 1 toque.
+      - `[ ➕ Reemplazo ]`: Al activarlo, despliega el campo para escribir el nombre de quién cobró.
+    - **Memoria Inteligente Local (`localStorage: rg_historial_reemplazos`):**
+      - Sugerencias rápidas en chips táctiles de los últimos reemplazos utilizados (ej: `[ Carlitos ]`, `[ Luis Mendoza ]`). Un toque llena el campo automáticamente.
+      - Guarda dinámicamente nombres nuevos sin requerir registros previos en base de datos.
+    - **Trazabilidad Global Automática:**
+      - El campo `ayudanteNombre` de la sesión se formatea como `"${nombreReemplazo} (Reemplazo)"`.
+      - Se propaga de forma 100% nativa a los boletos, arqueos de cada vuelta (`ArqueoScreen`), liquidación final (`ArqueoGeneralScreen`), y reportes de producción del Socio.
+  - **`src/components/transport/AyudanteJornadaCard.tsx`:**
+    - La tarjeta Hero del Ayudante muestra en el subtítulo: `Fecha: AAAA-MM-DD • Reemplazo: {Nombre}` cuando el turno fue ejecutado por un reemplazo.
+  - **`src/components/transport/types-boletos.ts`:**
+    - Campos opcionales añadidos a `VTSession`: `esReemplazo?: boolean;` y `nombreReemplazo?: string;`.
+  - **`package.json`:**
+    - Versión incrementada a `3.60.32`.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado Actual:
-   - **v3.60.31:** Retiro del odómetro inicial en `HomeScreenVT.tsx` para arranque ágil en 2 toques; la veeduría neutral del kilometraje por parte del ayudante se mantiene 100% activa y blindada en el Arqueo General (`ArqueoGeneralScreen.tsx`).
+   - **v3.60.32:** Responsable de cobro en ruta (Titular vs Reemplazo con memoria inteligente en 1 toque) integrado a `HomeScreenVT.tsx`, `AyudanteJornadaCard.tsx` y propagado a toda la contabilidad del bus.
+   - **v3.60.31:** Retiro del odómetro inicial en `HomeScreenVT.tsx` para arranque ágil en 2 toques (veeduría intacta en Arqueo General).
    - **v3.60.30:** Armonización integral de la interfaz del Ayudante (Día de jornada con chips rápidos, tarjetas de VT con hora de primera salida, tarjeta Hero `#053225` con Número Rey de caja de ruta y cuadrícula 2x2).
    - **v3.60.29:** Copiloto de ruta del chofer con proyección temporal auditada (~280 km/día).
    - **v3.60.28:** Claridad semántica en panel de conductor y blindaje de roles.

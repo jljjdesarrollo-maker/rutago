@@ -38,6 +38,8 @@ export interface VTSession {
   numeroDisco?: string;
   placaBus?: string;
   odometroInicial?: number;
+  esReemplazo?: boolean;
+  nombreReemplazo?: string;
 }
 
 // ─── Viaje Gratis Promotion ───

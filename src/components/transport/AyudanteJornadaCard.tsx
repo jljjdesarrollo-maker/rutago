@@ -93,7 +93,11 @@ export function AyudanteJornadaCard({ user, busNumero, onGoToBoletos }: Ayudante
               {tieneTurnoActivo ? `Turno Activo • ${activeSession?.vtCode}` : 'Jornada Laboral'}
             </span>
             <span className="text-[11px] text-emerald-100/70 font-medium">
-              {tieneTurnoActivo ? `Fecha: ${activeSession?.fecha}` : `Bus ${busNumero} • Coo. Vilcabambaturis`}
+              {tieneTurnoActivo
+                ? activeSession?.esReemplazo && activeSession?.nombreReemplazo
+                  ? `Fecha: ${activeSession.fecha} • Reemplazo: ${activeSession.nombreReemplazo}`
+                  : `Fecha: ${activeSession?.fecha}`
+                : `Bus ${busNumero} • Coo. Vilcabambaturis`}
             </span>
           </div>
         </div>

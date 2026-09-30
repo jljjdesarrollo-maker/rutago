@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { type VTSession } from './types-boletos';
 import type { UserSession } from './types';
 import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVentasPendientesByVT } from '@/lib/indexeddb';
-import { Bus, User, ArrowRight, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays, Clock, Moon } from 'lucide-react';
+import { Bus, User, UserCheck, UserPlus, ArrowRight, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays, Clock, Moon } from 'lucide-react';
 import { BusSelector } from './BusSelector';
 import { getActiveBus } from '@/lib/fleet-storage';
 
@@ -123,6 +123,12 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
   const [checkingDate, setCheckingDate] = useState(false);
   const [showCustomDate, setShowCustomDate] = useState(false);
 
+  // ─── Responsable de Cobro (Titular vs Reemplazo) ───
+  const [esReemplazo, setEsReemplazo] = useState(false);
+  const [nombreReemplazo, setNombreReemplazo] = useState("");
+  const [historialReemplazos, setHistorialReemplazos] = useState<string[]>([]);
+  const [reemplazoError, setReemplazoError] = useState("");
+
   // ─── Bloqueo por ventas pendientes de VTs anteriores ───
   const [pendingVentasCount, setPendingVentasCount] = useState(0);
   const [syncingPending, setSyncingPending] = useState(false);
@@ -177,11 +183,27 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
             if (estados.length > 0) {
               setExistingSession(saved);
               setExistingUnfinished(true);
+              if (saved.esReemplazo && saved.nombreReemplazo) {
+                setEsReemplazo(true);
+                setNombreReemplazo(saved.nombreReemplazo);
+              }
             }
           }
         }
       }
     } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('rg_historial_reemplazos');
+      if (stored) {
+        const list = JSON.parse(stored);
+        if (Array.isArray(list)) setHistorialReemplazos(list.slice(0, 5));
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   useEffect(() => {
@@ -257,9 +279,28 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
       return;
     }
 
+    if (esReemplazo && !nombreReemplazo.trim()) {
+      setReemplazoError("Ingresa el nombre de la persona que cobró");
+      return;
+    }
+    setReemplazoError("");
+
     const vt = vts.find(v => v.codigo === vtCode)!;
-    const effectiveAyudanteId = currentUser?.id || ayudante.id;
-    const effectiveAyudanteNombre = currentUser?.nombre || ayudante.nombre;
+    const effectiveAyudanteId = esReemplazo ? `reemplazo-${Date.now()}` : (currentUser?.id || ayudante?.id || "ayudante-01");
+    let effectiveAyudanteNombre = currentUser?.nombre || ayudante?.nombre || "Ayudante Titular";
+    
+    const cleanReemplazo = nombreReemplazo.trim();
+    if (esReemplazo && cleanReemplazo) {
+      effectiveAyudanteNombre = `${cleanReemplazo} (Reemplazo)`;
+      try {
+        const updatedList = Array.from(new Set([cleanReemplazo, ...historialReemplazos])).slice(0, 5);
+        setHistorialReemplazos(updatedList);
+        localStorage.setItem("rg_historial_reemplazos", JSON.stringify(updatedList));
+      } catch {
+        // ignore
+      }
+    }
+
     const currentActiveBus = getActiveBus();
 
     const newSession: VTSession = {
@@ -271,6 +312,8 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
       busId: currentActiveBus.id,
       numeroDisco: currentActiveBus.numeroDisco,
       placaBus: currentActiveBus.placa,
+      esReemplazo: esReemplazo && Boolean(cleanReemplazo),
+      nombreReemplazo: esReemplazo && cleanReemplazo ? cleanReemplazo : undefined,
     };
 
     // ─── Limpieza completa al forzar nuevo VT ───
@@ -624,6 +667,114 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
               <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-700" /> Verificando datos contables...
             </div>
           )}
+
+          {/* ─── Responsable de Cobro en Ruta (Titular vs Reemplazo) ─── */}
+          <div className="mt-3.5 pt-3.5 border-t border-slate-100">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-emerald-800" />
+                <span>Responsable de Cobro (Caja)</span>
+              </label>
+              {esReemplazo ? (
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                  Cobro por Reemplazo
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  Titular en Ruta
+                </span>
+              )}
+            </div>
+
+            {/* Selector Titular vs Reemplazo */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEsReemplazo(false);
+                  setReemplazoError("");
+                }}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border active:scale-95 ${
+                  !esReemplazo
+                    ? "bg-[#053225] text-white border-emerald-900 shadow-xs ring-1 ring-emerald-500"
+                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                <User className="w-3.5 h-3.5" />
+                <span className="truncate">{currentUser?.nombre || ayudante?.nombre || "Titular"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setEsReemplazo(true)}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border active:scale-95 ${
+                  esReemplazo
+                    ? "bg-amber-600 text-white border-amber-700 shadow-xs ring-1 ring-amber-400"
+                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Reemplazo</span>
+              </button>
+            </div>
+
+            {/* Despliegue cuando cobró un reemplazo */}
+            {esReemplazo && (
+              <div className="mt-2.5 p-3 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2">
+                <label className="text-[11px] font-black text-amber-900 block">
+                  Nombre de quien cobró ese día:
+                </label>
+                <input
+                  type="text"
+                  value={nombreReemplazo}
+                  onChange={(e) => {
+                    setNombreReemplazo(e.target.value);
+                    if (e.target.value.trim()) setReemplazoError("");
+                  }}
+                  placeholder="Ej: Carlitos, Luis Mendoza, Don Pedro..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-amber-300 text-slate-900 font-bold text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 placeholder:text-slate-400"
+                />
+
+                {reemplazoError && (
+                  <p className="text-[11px] text-red-600 font-bold flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3 text-red-500 shrink-0" />
+                    {reemplazoError}
+                  </p>
+                )}
+
+                {/* Sugerencias de Memoria Rápida */}
+                {historialReemplazos.length > 0 && (
+                  <div>
+                    <span className="text-[10px] text-amber-800 font-semibold block mb-1">
+                      Frecuentes (toca para autocompletar):
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {historialReemplazos.map((nombre, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setNombreReemplazo(nombre);
+                            setReemplazoError("");
+                          }}
+                          className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition active:scale-95 ${
+                            nombreReemplazo.trim() === nombre
+                              ? "bg-amber-700 text-white shadow-xs"
+                              : "bg-white text-amber-900 border border-amber-200 hover:bg-amber-100"
+                          }`}
+                        >
+                          {nombre}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-[10px] text-amber-800/80 leading-tight">
+                  💡 Este nombre figurará en los arqueos, comprobantes y reportes de producción del bus.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ─── 2. Selector de Grupo de Turno (VT) ─── */}
