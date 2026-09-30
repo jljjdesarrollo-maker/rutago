@@ -318,6 +318,8 @@ export type EstacionServicioId =
   | 'RADIADOR'
   | 'CHOFER_RUTINA';
 
+export type ComboUnidadItem = ItemEstacionConfig;
+
 export interface ItemEstacionConfig {
   codigo: string;
   nombre: string;
@@ -990,11 +992,13 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
   items: ItemEstacionConfig[];
   codigosPreMarcados: string[];
   codigosExcluidos: string[];
+  checks: Record<string, boolean>;
+  codigosExtras: string[];
 } {
   const safeBusId = busId || "BUS-01";
   const estacionBase = ESTACIONES_SERVICIO_CONFIG[estacionId];
   if (!estacionBase) {
-    return { items: [], codigosPreMarcados: [], codigosExcluidos: [] };
+    return { items: [], codigosPreMarcados: [], codigosExcluidos: [], checks: {}, codigosExtras: [] };
   }
 
   // RESOLUCIÓN JERÁRQUICA EN TIEMPO REAL:
@@ -1022,20 +1026,28 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
   }));
 
   if (typeof window === "undefined") {
+    const checksInit: Record<string, boolean> = {};
+    baseItemsActualizados.forEach(it => { checksInit[it.codigo] = Boolean(it.preMarcado); });
     return {
       items: baseItemsActualizados,
       codigosPreMarcados: baseItemsActualizados.filter(it => it.preMarcado).map(it => it.codigo),
       codigosExcluidos: [],
+      checks: checksInit,
+      codigosExtras: [],
     };
   }
 
   try {
     const raw = localStorage.getItem(STORAGE_PREFIX_COMBO_UNIDAD + safeBusId + "_" + estacionId);
     if (!raw) {
+      const checksInit: Record<string, boolean> = {};
+      baseItemsActualizados.forEach(it => { checksInit[it.codigo] = Boolean(it.preMarcado); });
       return {
         items: baseItemsActualizados,
         codigosPreMarcados: baseItemsActualizados.filter(it => it.preMarcado).map(it => it.codigo),
         codigosExcluidos: [],
+        checks: checksInit,
+        codigosExtras: [],
       };
     }
 
@@ -1084,18 +1096,26 @@ export function getComboUnidad(busId: string, estacionId: EstacionServicioId): {
 
     const itemsFinales = Array.from(itemsMap.values());
     const codigosPreMarcados = itemsFinales.filter(it => it.preMarcado).map(it => it.codigo);
+    const checks: Record<string, boolean> = {};
+    itemsFinales.forEach(it => { checks[it.codigo] = Boolean(it.preMarcado); });
 
     return {
       items: itemsFinales,
       codigosPreMarcados,
       codigosExcluidos: codigosExcluidosArr,
+      checks,
+      codigosExtras: Array.isArray(data.codigosExtras) ? data.codigosExtras : [],
     };
   } catch (err) {
     console.error("Error cargando combo personalizado de unidad:", err);
+    const fallbackChecks: Record<string, boolean> = {};
+    baseItemsActualizados.forEach(it => { fallbackChecks[it.codigo] = Boolean(it.preMarcado); });
     return {
       items: baseItemsActualizados,
       codigosPreMarcados: baseItemsActualizados.filter(it => it.preMarcado).map(it => it.codigo),
       codigosExcluidos: [],
+      checks: fallbackChecks,
+      codigosExtras: [],
     };
   }
 }

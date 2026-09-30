@@ -97,16 +97,23 @@ export function MantenimientoEstacionesModal({
     if (!config) return;
 
     const comboData = getComboUnidad(activeBusId, estacionId);
-    setComboUnidadItems(comboData.items);
-    setComboUnidadChecks(comboData.checks);
+    const checksMap: Record<string, boolean> = { ...(comboData.checks || {}) };
+    if (Object.keys(checksMap).length === 0 && Array.isArray(comboData.items)) {
+      comboData.items.forEach(it => {
+        checksMap[it.codigo] = Boolean(it.preMarcado);
+      });
+    }
+
+    setComboUnidadItems(comboData.items || []);
+    setComboUnidadChecks(checksMap);
     setComboUnidadExtras(comboData.codigosExtras || []);
     setComboCodigosExcluidos(comboData.codigosExcluidos || []);
     setBusquedaExtraModal('');
     setModoConfigurarCombo(false);
 
     // Precargar ítems seleccionados para asentar
-    const preMarcados = comboData.items
-      .filter(it => comboData.checks[it.codigo])
+    const preMarcados = (comboData.items || [])
+      .filter(it => Boolean(checksMap[it.codigo]))
       .map(it => it.codigo);
     setEstacionCodigosSeleccionados(preMarcados);
 
@@ -220,12 +227,19 @@ export function MantenimientoEstacionesModal({
   const handleRestablecerComboBase = () => {
     resetComboUnidad(activeBusId, estacionId);
     const recargado = getComboUnidad(activeBusId, estacionId);
-    setComboUnidadItems(recargado.items);
-    setComboUnidadChecks(recargado.checks);
+    const checksMap: Record<string, boolean> = { ...(recargado.checks || {}) };
+    if (Object.keys(checksMap).length === 0 && Array.isArray(recargado.items)) {
+      recargado.items.forEach(it => {
+        checksMap[it.codigo] = Boolean(it.preMarcado);
+      });
+    }
+
+    setComboUnidadItems(recargado.items || []);
+    setComboUnidadChecks(checksMap);
     setComboUnidadExtras(recargado.codigosExtras || []);
     setComboCodigosExcluidos(recargado.codigosExcluidos || []);
     setEstacionCodigosSeleccionados(
-      recargado.items.filter(it => recargado.checks[it.codigo]).map(it => it.codigo)
+      (recargado.items || []).filter(it => Boolean(checksMap[it.codigo])).map(it => it.codigo)
     );
 
     toast({

@@ -849,10 +849,44 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+---
+
+## 🛠️ VERSIÓN 3.60.38: CORRECCIÓN DE ERROR EN APERTURA DE ESTACIONES DE TALLER (FRENOS, LUBRICADORA, CAJA)
+
+**Fecha:** 2026-09-29 / 2026-09-30  
+**Versión:** 3.60.38  
+**Módulo:** Modal de Estaciones de Taller (`MantenimientoEstacionesModal.tsx`) y Resolutor de Combos de Unidad (`mantenimiento-estaciones.ts`)  
+**Estado:** 🟢 CORREGIDO, BLINDADO, COMPROBADO Y SINCRONIZADO EN GITHUB
+
+### 1. Diagnóstico del Error Reportado por el Usuario:
+- **Síntoma:** Al ingresar como Socio 01 a la sección *"Estaciones de Taller"* y seleccionar por ejemplo *"Frenos, Rodaje y Suspensión"* (o Lubricadora / Caja), aparecía una pantalla oscura con el mensaje:
+  > *"Ajustando datos de mantenimiento - Se protegió tu sesión para evitar cierres inesperados. Puedes reintentar o volver al inicio sin perder ningún registro."*
+- **Causa Raíz:**
+  1. En `MantenimientoEstacionesModal.tsx`, al abrir la estación seleccionada, se invocaba `getComboUnidad(activeBusId, estacionId)`.
+  2. `getComboUnidad` devolvía un objeto con `{ items, codigosPreMarcados, codigosExcluidos }`, **pero no incluía la propiedad `checks`**.
+  3. En la línea 109 de `MantenimientoEstacionesModal.tsx`:
+     `const preMarcados = comboData.items.filter(it => comboData.checks[it.codigo]).map(it => it.codigo);`
+     Al ser `comboData.checks` igual a `undefined`, la evaluación `undefined['MNT-ZAPATAS-POST']` disparaba inmediatamente una excepción de JavaScript:
+     `TypeError: Cannot read properties of undefined (reading 'MNT-ZAPATAS-POST')`.
+  4. El componente `<SafeErrorBoundary>` configurado en `src/app/page.tsx` capturó la excepción para proteger la sesión del usuario y no cerrar abruptamente la aplicación.
+
+### 2. Solución Aplicada:
+1. **Enriquecimiento del Contrato en `mantenimiento-estaciones.ts` (`getComboUnidad`):**
+   - Se tipó y expandió el retorno de `getComboUnidad` para que siempre entregue `{ items, codigosPreMarcados, codigosExcluidos, checks, codigosExtras }`.
+   - Se construyó el mapa `checks: Record<string, boolean>` en todos los caminos de resolución (SSR, sin datos previos, datos personalizados de BD/local y excepciones).
+   - Se exportó el alias tipado `export type ComboUnidadItem = ItemEstacionConfig;`.
+2. **Blindaje Defensivo en `MantenimientoEstacionesModal.tsx`:**
+   - Se encapsuló la lectura con `{ ...(comboData.checks || {}) }`. Si viene vacío o indefinido, itera de manera segura sobre `comboData.items` asignando `Boolean(it.preMarcado)`.
+   - Se corrigieron tanto la apertura del modal en `useEffect` como la restauración de receta en `handleRestablecerComboBase`.
+   - La estación abre de inmediato de forma suave, sin parpadeos ni errores.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado Actual:
+   - **v3.60.38:** Corrección del crash en apertura de Estaciones de Taller (Frenos, Lubricadora, Caja) resolviendo `checks` en `getComboUnidad` y `MantenimientoEstacionesModal.tsx`.
    - **v3.60.37:** Auditoría integral de la interfaz del socio (Widget ejecutivo, MantenimientoScreen, Taller Mayor y Control Total 31 normas sin errores).
    - **v3.60.36:** Blindaje de persistencia en PostgreSQL y sincronización de catálogo SuperAdmin (31 normas institucionales garantizadas).
    - **v3.60.35:** Calibración oficial de Transmisión (Caja 280k, Bronces/Palillos 140k, Embrague 100k, Aceite 30k) y efecto cascada en taller.
