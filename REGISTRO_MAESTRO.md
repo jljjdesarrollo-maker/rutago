@@ -1288,3 +1288,31 @@ En caso de migrar a otra cuenta:
 ## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS
 * **Repositorio Oficial:** \`https://github.com/jljjdesarrollo-maker/rutago\` (rama \`main\`).
 * **Punto Exacto:** Versión \`3.60.44\` activa en Vercel. Consola de Retén accesible desde el panel SuperAdmin.
+
+---
+
+# 🚀 VERSIÓN 3.60.45: BLINDAJE Y CONEXIÓN DE ALERTAS PATRIMONIALES Y OPERATIVAS (2026-09-30)
+
+## 📌 1. ESTADO ACTUAL Y ENTREGA
+* **Versión Formal:** \`3.60.45\`
+* **Módulos y Alertas Implementadas:**
+  1. **Montaje de la Hero Card de Asesoría Patrimonial del Socio (\`HomeScreen.tsx\`):**
+     - Se insertó \`<SocioMantenimientoWidget />\` en la pantalla de inicio del Socio Propietario inmediatamente debajo de la cuadrícula 2x2.
+     - Permite al socio ver en vivo el semáforo gerencial de la unidad (Rojo / Amarillo / Verde), pastillas de conteo de ítems (\`🔴 Vencidos\`, \`🟡 Próximos\`, \`🟢 Al Día\`) y la recomendación patrimonial de ventanas operativas diurnas en Loja y días de retén para 0 carreras perdidas.
+  2. **Activación de Alerta de Enlace Crítico VT10 ➔ VT11 y Formato Estructurado:**
+     - En \`src/lib/vt-ventanas-catalogo.ts\`: Registrada la transición crítica de \`VT10\` hacia \`VT11\` (llegada a Loja 07:10, salida VT11 07:30, margen de solo 20 min).
+     - En \`src/lib/vt-ventanas-storage.ts\`: Se tipó y transformó \`getAlertaEnlaceCritico\` para devolver un objeto estructurado \`{ titulo, descripcion, sugerencia }\`. Esto corrigió el error en \`ChoferTurnoVentanasCard.tsx\` donde los títulos y descripciones no se renderizaban al recibir un string plano.
+  3. **Proyección Dinámica de Días en Alertas de Mantenimiento (\`ChoferMantenimientoWidget.tsx\`):**
+     - Se reemplazó la división fija por la constante \`280 km\` por la función \`getKmPromedioDiarioFlota()\`, calculando el kilometraje real de la flota y ajustando el divisor dinámicamente si el modo retén está activo (16 días vs 15 días).
+* **Archivos Modificados:**
+  - \`src/components/transport/HomeScreen.tsx\`
+  - \`src/components/transport/ChoferMantenimientoWidget.tsx\`
+  - \`src/lib/vt-ventanas-storage.ts\`
+  - \`src/lib/vt-ventanas-catalogo.ts\`
+  - \`REGISTRO_MAESTRO.md\`
+* **Estado:** 🟢 COMPLETADO, VERIFICADO CON TypeScript (0 ERRORES) Y SINCRONIZADO.
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA)
+En caso de migrar a otra cuenta:
+1. **Repositorio:** \`https://github.com/jljjdesarrollo-maker/rutago\` (rama \`main\`).
+2. **Punto Exacto:** Versión \`3.60.45\` cerrada y desplegada en Vercel. Tanto la Consola de Retén (\`SuperAdminRetenTab\`) como la Hero Card de Alertas Patrimoniales del Socio (\`SocioMantenimientoWidget\`) y la Matriz de Enlaces Críticos (\`VT14->VT15\` y \`VT10->VT11\`) están 100% integradas, conectadas en la UI y sincronizadas con producción.

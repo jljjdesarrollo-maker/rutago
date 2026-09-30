@@ -77,9 +77,37 @@ export function getVentanaMayorParaVT(codigoVT: string): VentanaOperativa | null
   return diurnasLoja[0];
 }
 
-export function getAlertaEnlaceCritico(codigoVT: string): string | null {
+export interface AlertaEnlaceDetalle {
+  titulo: string;
+  descripcion: string;
+  sugerencia: string;
+}
+
+export function getAlertaEnlaceCritico(codigoVT: string): AlertaEnlaceDetalle | null {
+  const norm = (codigoVT || '').toUpperCase().replace('VT0', 'VT');
+  if (norm === 'VT14') {
+    return {
+      titulo: 'Enlace Crítico con VT15 (Holgura de 5 min en Loja)',
+      descripcion: 'Llegada a Loja a las 07:40 y salida de VT15 a las 07:45. Solo 5 minutos de tiempo entre turnos.',
+      sugerencia: 'Abastecer diésel y revisar unidad la noche previa en Vilcabamba para evitar retrasos.',
+    };
+  }
+  if (norm === 'VT10') {
+    return {
+      titulo: 'Enlace Ajustado con VT11 (Holgura de 20 min en Loja)',
+      descripcion: 'Llegada a Loja a las 07:10 y salida de VT11 a las 07:30. Riesgo de congestión matutina en el ingreso a Loja.',
+      sugerencia: 'Verificar presión de neumáticos y niveles en cabecera de Vilcabamba antes del retorno.',
+    };
+  }
   const vt = getVTConfiguracion(codigoVT);
-  return vt?.alertaEnlaceSiguiente || null;
+  if (vt?.alertaEnlaceSiguiente) {
+    return {
+      titulo: 'Alerta Preventiva de Enlace de Turno',
+      descripcion: vt.alertaEnlaceSiguiente,
+      sugerencia: 'Planificar revisiones previas a la hora de salida de la frecuencia.',
+    };
+  }
+  return null;
 }
 
 export function isModoRetenActivo(): boolean {

@@ -60,17 +60,30 @@ import {
 import { syncMantenimientoBidireccional, flushMantenimientoOutbox, getMantenimientoOutbox } from '@/lib/mantenimiento-sync';
 import { MantenimientoSyncChip } from './MantenimientoSyncDiagnostic';
 import { ChoferTurnoVentanasCard } from './ChoferTurnoVentanasCard';
+import { getConfiguracionFlotaLocal } from '@/lib/vt-ventanas-storage';
 
-const PROMEDIO_KM_DIA_FLOTA = 280; // Promedio auditado de rotación de VT en la cooperativa (~250-300 km/día)
+function getKmPromedioDiarioFlota(): number {
+  try {
+    const cfg = getConfiguracionFlotaLocal();
+    if (cfg && cfg.vts && cfg.vts.length > 0) {
+      const totalKm = cfg.vts.reduce((sum, v) => sum + (v.kmTeoricoTotal || 250), 0);
+      const divisor = cfg.modoRetenActivo ? 16 : 15;
+      return Math.round(totalKm / divisor) || 280;
+    }
+  } catch {
+    // fallback
+  }
+  return 280;
+}
 
-function calcularProyeccionTiempo(kmRestantes: number): { texto: string; badgeClass: string } {
+function calcularProyeccionTiempo(kmRestantes: number, kmDia: number = getKmPromedioDiarioFlota()): { texto: string; badgeClass: string } {
   if (kmRestantes <= 0) {
     return {
       texto: '¡Fosa hoy!',
       badgeClass: 'bg-rose-100 text-rose-800 border-rose-300 font-black',
     };
   }
-  const dias = Math.max(1, Math.round(kmRestantes / PROMEDIO_KM_DIA_FLOTA));
+  const dias = Math.max(1, Math.round(kmRestantes / kmDia));
   if (dias === 1) {
     return {
       texto: '~1 día de ruta (hoy o mañana)',

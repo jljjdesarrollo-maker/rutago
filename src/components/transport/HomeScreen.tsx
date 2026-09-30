@@ -656,6 +656,11 @@ export function HomeScreen({
               </button>
             </div>
 
+            {/* ─── RADAR Y ASESORÍA PATRIMONIAL DE VENTANAS OPERATIVAS (SOCIO PROPIETARIO) ─── */}
+            <SocioMantenimientoWidget
+              onGoToMantenimiento={onGoToMantenimiento}
+            />
+
             {/* SECCIÓN 2: AUDITORÍA Y RENDIMIENTO AVANZADO */}
             <div className="mt-2">
               <div className="flex items-center justify-between mb-2">

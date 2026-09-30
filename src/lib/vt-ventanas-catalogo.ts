@@ -272,6 +272,9 @@ export function generarCatalogoOficialVTs(): VTConfiguracionItem[] {
     if (item.codigo === 'VT14') {
       alertaEnlaceSiguiente =
         '⚠️ Enlace Crítico con VT15: Llegada a Loja 07:40 y salida VT15 07:45 (solo 5 min de holgura). Abastecer diésel y revisar unidad la noche previa en Vilcabamba.';
+    } else if (item.codigo === 'VT10') {
+      alertaEnlaceSiguiente =
+        '⚠️ Enlace Ajustado con VT11: Llegada a Loja 07:10 y salida VT11 07:30 (solo 20 min de holgura). Verificar niveles y presión de neumáticos en cabecera.';
     }
 
     // 4. Kilometraje teórico aproximado del paquete
