@@ -1389,3 +1389,27 @@ En caso de migrar a otra cuenta:
   - `@/lib/vt-ventanas-catalogo` (para `formatearMinutosLegible`).
 * Se ejecutó el build completo de producción `npm run build` con Next.js 16 (Turbopack) y Prisma:
   - **Resultado:** `Compiled successfully in 16.6s`, 37 páginas estáticas y dinámicas generadas con 0 errores.
+
+---
+
+# 🚀 VERSIÓN 3.60.49: REDISEÑO COHERENTE Y FLUIDO DE LA PANTALLA DEDICADA DE DISPONIBILIDAD (2026-09-30)
+
+## 📌 1. MOTIVACIÓN
+* En la versión anterior, al hacer clic en la alerta de disponibilidad, la pantalla dedicada presentaba bloqueo de scroll y corte de contenido inferior debido a un doble contenedor `overflow-y-auto` y una saturación vertical excesiva (tarjetas sobredimensionadas).
+
+## 🛠️ 2. SOLUCIÓN IMPLEMENTADA
+* **Arquitectura de Scroll Nativo y Altura Exacta:**
+  - Se eliminó el contenedor externo anidado que causaba scroll-locking.
+  - El modal ahora opera con `h-[100dvh]` en móviles y `sm:h-[88vh]` en pantallas de escritorio con `overscroll-contain`.
+  - **Cabecera fija superior (`header`)** con botón de volver, tacómetro auditado y disco del bus siempre accesibles.
+  - **Pie de acciones fijo inferior (`footer`)** con botones `[ Volver al Panel ]` y `[ Abrir Taller Integral ]` permanentemente visibles.
+* **Síntesis y Jerarquía Coherente (Reducción de altura del 60% sin perder datos):**
+  - **Bloque 1 (Disponibilidad):**
+    * Tarjeta principal de **HOY** resaltada con borde azul cian y horarios exactos (*"Tiene 3h 10m disponible desde 10:30 a 13:40 en Loja"*).
+    * Franja ejecutiva de **Parada Mayor (Día de Retén)**: 24h libres sin perder carreras.
+    * **Cronología Táctica Compacta:** Tabla limpia de 4 filas con los siguientes días y sus ventanas en Loja.
+  - **Bloque 2 (Mantenimientos):**
+    * Tarjetas compactas horizontales de una sola pieza para ítems vencidos (🔴) y próximos (🟡), con su recomendación operativa directa conectada a la disponibilidad.
+* **Calidad y Validación:**
+  - TypeScript: `npx tsc --noEmit` completado con 0 errores.
+  - Tags JSX: 100% resueltos.
