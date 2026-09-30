@@ -42,6 +42,15 @@ export function SuperAdminMantenimientoTab() {
         setCatalogo(remote);
       }
     });
+
+    const handleUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<MantenimientoCatalogoItem[]>;
+      if (customEvent?.detail && Array.isArray(customEvent.detail)) {
+        setCatalogo(customEvent.detail);
+      }
+    };
+    window.addEventListener('rg_catalogo_maestro_updated', handleUpdate);
+    return () => window.removeEventListener('rg_catalogo_maestro_updated', handleUpdate);
   }, []);
   const [filtroCategoria, setFiltroCategoria] = useState<string>('TODAS');
   const [busqueda, setBusqueda] = useState<string>('');
@@ -85,7 +94,7 @@ export function SuperAdminMantenimientoTab() {
     setCatalogo(defaultData);
     toast({
       title: 'Restablecido a Fábrica',
-      description: 'Se restablecieron los 19 mantenimientos oficiales de fábrica Hino AK.',
+      description: 'Se restablecieron los 31 mantenimientos oficiales de fábrica Hino AK.',
     });
   };
 

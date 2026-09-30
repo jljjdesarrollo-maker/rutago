@@ -490,50 +490,84 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
   },
 ];
 
-const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v3_60_21';
+const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v3_60_35';
+
+/**
+ * Fusión inteligente y blindaje del catálogo maestro:
+ * - Asegura la presencia inmutable de los 31 ítems oficiales de fábrica Hino AK.
+ * - Sincroniza nombres, categorías, prioridades y efectos cascada oficiales.
+ * - Actualiza intervalos base oficiales (ej: Overhaul Caja 280.000 km, Bronces 140.000 km).
+ * - Preserva ítems personalizados creados por el SuperAdministrador.
+ */
+export function mergeConCatalogoFabrica(listaCandidata: any[]): { items: MantenimientoCatalogoItem[]; modificado: boolean } {
+  const codigosExcluidos = new Set(['MNT-SECADOR-AIRE', 'MNT-COMPRESOR-AIRE', 'MNT-BANDAS-FRENO', 'MNT-LAVADO-INTERCOOLER']);
+  const listaBase = (Array.isArray(listaCandidata) ? listaCandidata : []).filter(
+    (p: any) => p && p.codigo && !codigosExcluidos.has(p.codigo)
+  );
+
+  let modificado = listaBase.length !== (Array.isArray(listaCandidata) ? listaCandidata.length : 0);
+  const codigosPresentes = new Set(listaBase.map((p: any) => p.codigo));
+
+  // 1. Mapear ítems existentes
+  const resultado: MantenimientoCatalogoItem[] = listaBase.map((item: any) => {
+    const oficial = CATALOGO_MAESTRO_HINO_AK.find(c => c.codigo === item.codigo);
+    if (oficial) {
+      const necesitaUpdateOficial =
+        item.nombre !== oficial.nombre ||
+        item.categoria !== oficial.categoria ||
+        (oficial.codigo === 'MNT-MNT-CAJA' && Number(item.intervaloKmOficial) === 150000) ||
+        (oficial.codigo === 'MNT-KIT-EMBRAGUE' && Number(item.intervaloKmOficial) !== 100000);
+
+      if (necesitaUpdateOficial) {
+        modificado = true;
+      }
+
+      return {
+        ...item,
+        nombre: oficial.nombre,
+        categoria: oficial.categoria,
+        intervaloKmOficial: necesitaUpdateOficial ? oficial.intervaloKmOficial : (Number(item.intervaloKmOficial) || oficial.intervaloKmOficial),
+        intervaloDiasAprox: oficial.intervaloDiasAprox,
+        prioridad: oficial.prioridad,
+        efectoCascadaCodigos: oficial.efectoCascadaCodigos || item.efectoCascadaCodigos,
+        especificacionLubricanteRepuesto: item.especificacionLubricanteRepuesto || oficial.especificacionLubricanteRepuesto,
+        codigoRepuestoReferencia: item.codigoRepuestoReferencia || oficial.codigoRepuestoReferencia,
+        observacionesMecanica: item.observacionesMecanica || oficial.observacionesMecanica,
+      };
+    }
+    return item as MantenimientoCatalogoItem;
+  });
+
+  // 2. Insertar cualquier ítem oficial faltante (ej. MNT-BRONCES-SINCRONIZADOS)
+  CATALOGO_MAESTRO_HINO_AK.forEach(oficial => {
+    if (!codigosPresentes.has(oficial.codigo)) {
+      resultado.push(oficial);
+      modificado = true;
+    }
+  });
+
+  return { items: resultado, modificado };
+}
 
 export function getCatalogoMaestroGlobal(): MantenimientoCatalogoItem[] {
   if (typeof window === 'undefined') return CATALOGO_MAESTRO_HINO_AK;
   try {
     const raw = localStorage.getItem(STORAGE_KEY_CATALOGO);
     if (!raw) {
+      try {
+        localStorage.removeItem('rutago_mantenimiento_catalogo_maestro_v3_60_21');
+      } catch {}
       localStorage.setItem(STORAGE_KEY_CATALOGO, JSON.stringify(CATALOGO_MAESTRO_HINO_AK));
+      syncCatalogoGlobalToApi(CATALOGO_MAESTRO_HINO_AK);
       return CATALOGO_MAESTRO_HINO_AK;
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      // Filtrar ítems legados o retirados a reserva para análisis futuro
-      const codigosExcluidos = new Set(['MNT-SECADOR-AIRE', 'MNT-COMPRESOR-AIRE', 'MNT-BANDAS-FRENO', 'MNT-LAVADO-INTERCOOLER']);
-      let listaBase = parsed.filter((p: MantenimientoCatalogoItem) => !codigosExcluidos.has(p.codigo));
-      let modificado = listaBase.length !== parsed.length;
-
-      // Sincronización inteligente: asegurar que nuevos ítems oficiales de fábrica estén presentes
-      const codigosMap = new Set(listaBase.map((p: MantenimientoCatalogoItem) => p.codigo));
-      const actualizados = listaBase.map((item: MantenimientoCatalogoItem) => {
-        // Preservar fielmente las ediciones del SuperAdministrador (intervaloKmOficial, nombre, etc.)
-        const oficial = CATALOGO_MAESTRO_HINO_AK.find(c => c.codigo === item.codigo);
-        if (oficial) {
-          return {
-            ...oficial,
-            ...item,
-            intervaloKmOficial: Number(item.intervaloKmOficial) || oficial.intervaloKmOficial,
-          };
-        }
-        return item;
-      });
-
-      CATALOGO_MAESTRO_HINO_AK.forEach(oficial => {
-        if (!codigosMap.has(oficial.codigo)) {
-          actualizados.push(oficial);
-          modificado = true;
-        }
-      });
-
-      if (modificado) {
-        localStorage.setItem(STORAGE_KEY_CATALOGO, JSON.stringify(actualizados));
-      }
-      return actualizados;
+    const { items, modificado } = mergeConCatalogoFabrica(parsed);
+    if (modificado) {
+      localStorage.setItem(STORAGE_KEY_CATALOGO, JSON.stringify(items));
+      syncCatalogoGlobalToApi(items);
     }
+    return items;
   } catch (err) {
     console.error('Error al leer catalogo maestro de mantenimiento:', err);
   }
@@ -637,10 +671,15 @@ export async function fetchCatalogoGlobalFromApi(): Promise<MantenimientoCatalog
     const res = await fetch('/api/config/mantenimiento?globalCatalog=true', { cache: 'no-store' });
     if (!res.ok) return null;
     const json = await res.json();
-    if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-      localStorage.setItem(STORAGE_KEY_CATALOGO, JSON.stringify(json.data));
-      window.dispatchEvent(new CustomEvent('rg_catalogo_maestro_updated', { detail: json.data }));
-      return json.data;
+    if (json.success) {
+      const candidata = Array.isArray(json.data) && json.data.length > 0 ? json.data : CATALOGO_MAESTRO_HINO_AK;
+      const { items, modificado } = mergeConCatalogoFabrica(candidata);
+      localStorage.setItem(STORAGE_KEY_CATALOGO, JSON.stringify(items));
+      if (modificado || !Array.isArray(json.data) || json.data.length === 0) {
+        syncCatalogoGlobalToApi(items);
+      }
+      window.dispatchEvent(new CustomEvent('rg_catalogo_maestro_updated', { detail: items }));
+      return items;
     }
   } catch {
     // fallback seguro

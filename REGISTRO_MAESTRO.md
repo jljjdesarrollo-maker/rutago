@@ -784,10 +784,49 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+---
+
+## 🛡️ VERSIÓN 3.60.36: BLINDAJE DE PERSISTENCIA EN BD Y SINCRONIZACIÓN DE CATÁLOGO SUPERADMIN (31 NORMAS)
+
+**Fecha:** 2026-09-29 / 2026-09-30  
+**Versión:** 3.60.36  
+**Módulo:** SuperAdmin Mantenimiento (`SuperAdminMantenimientoTab.tsx`), Catálogo Global (`mantenimiento-catalogo.ts`) y API PostgreSQL (`/api/config/mantenimiento`)  
+**Estado:** 🟢 IMPLEMENTADO, AUDITADO, ALMACENADO EN BASE DE DATOS Y SINCRONIZADO EN GITHUB
+
+### 1. Diagnóstico de la Auditoría Solicitada por el Usuario:
+- **Problema detectado:** Al abrir el panel del SuperAdmin, la pestaña de catálogo maestro mostraba una lista desactualizada o sin `MNT-BRONCES-SINCRONIZADOS`, y `MNT-MNT-CAJA` figuraba con el kilometraje viejo (150.000 km).
+- **Causa raíz identificada:**
+  1. `STORAGE_KEY_CATALOGO` seguía anclada a la clave antigua `_v3_60_21`. El navegador leía el caché desactualizado.
+  2. Al ejecutar `fetchCatalogoGlobalFromApi()`, la respuesta remota del servidor (si tenía un catálogo previo guardado en BD con 30 ítems) sobrescribía ciegamente el estado de React con `setCatalogo(remote)`, eliminando al nuevo componente de la memoria del cliente.
+  3. Al hacer merge en versiones previas, `{ ...oficial, ...item }` permitía que el nombre viejo y el kilometraje viejo del ítem guardado anularan los valores de fábrica actualizados.
+
+### 2. Solución y Blindaje en Base de Datos:
+1. **Fusión Inteligente Inmutable (`mergeConCatalogoFabrica`):**
+   - Garantiza que los **31 ítems oficiales** existan siempre, tanto al leer del navegador como al recibir datos de la nube.
+   - Si detecta que faltan normas (como `MNT-BRONCES-SINCRONIZADOS`) o que la caja está en 150.000 km, aplica la corrección a 280.000 km y 140.000 km respectivamente.
+   - Preserva intactos todos los ítems personalizados que el SuperAdmin haya agregado manualmente.
+2. **Persistencia Automática en PostgreSQL (`busVT` / `SYS_CONFIG_MANTENIMIENTO`):**
+   - Cada vez que se detecta una divergencia de fábrica, se invoca `syncCatalogoGlobalToApi(items)`.
+   - La API ejecuta un `upsert` sobre la tabla `busVT` con clave `SYS_CONFIG_MANTENIMIENTO`, asegurando que la base de datos central en la nube quede permanentemente nutrida y respaldada con los 31 ítems.
+3. **Sincronización Reactiva en `SuperAdminMantenimientoTab.tsx`:**
+   - Se añadió un listener para el evento global `rg_catalogo_maestro_updated`.
+   - Se actualizó el texto descriptivo del botón de restauración a: *"Se restablecieron los 31 mantenimientos oficiales de fábrica Hino AK"*.
+   - Se limpió la clave obsoleta de `localStorage` y se migró a `_v3_60_35`.
+
+### 3. Distribución Oficial Auditada por Categorías (31 Ítems):
+- **TRANSMISION (6 ítems):** Kit Embrague (100k), Aceite Caja (30k), Aceite Corona (30k), Bronces y Palillos (140k), Reparación Mayor Caja (280k), Mantenimiento Corona (150k).
+- **MOTOR (11 ítems):** Aceite Motor (5k), Filtro Aceite (5k), Filtro Trampa (5k), Filtro Diésel (5k), Válvulas/Toberas (50k), Bandas Motor (100k), Termostato (100k), Rotación Baterías (8.6k), Baterías Par (200k), Radiador/Coolant (100k), Metales Motor (800k).
+- **SISTEMA_AIRE (6 ítems):** Soplado Filtro Aire (5k), Lavado Malla Pasillo (5k), Mangueras Admisión (10k), Filtro Aire Pequeño (20k), Filtro Aire Grande (40k), Aire Acondicionado (110k).
+- **RODAJE (5 ítems):** Engrase Chasis (1.5k), Alineación Llantas (15k), Bocinas Post (50k), Bocinas Del (60k), Muelles/Bujes (50k).
+- **FRENOS (3 ítems):** Raches de Freno (800 km), Zapatas Posteriores (12.5k), Zapatas Delanteras (11k).
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado Actual:
+   - **v3.60.36:** Blindaje de persistencia en PostgreSQL y sincronización de catálogo SuperAdmin (31 normas institucionales garantizadas).
    - **v3.60.35:** Calibración oficial de Transmisión (Caja 280k, Bronces/Palillos 140k, Embrague 100k, Aceite 30k) y efecto cascada en taller.
    - **v3.60.34:** Corrección de zona horaria oficial Ecuador (`America/Guayaquil` UTC-5). HOY = 2026-09-29.
    - **v3.60.33:** Armonización de cabecera de `HomeScreenVT.tsx` (bus fijo para ayudantes, selector para socios).
