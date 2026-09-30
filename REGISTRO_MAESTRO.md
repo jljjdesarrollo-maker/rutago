@@ -899,14 +899,47 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
+---
+
+## 🔬 ANÁLISIS DE REPARACIONES MAYORES (CAJA, MOTOR, CORONA) Y ASISTENTE DE SÍNTOMAS PREDICTIVOS
+
+### 1. Contexto Real Reportado: Reparación Mayor de Caja Hino AK (Bus 01)
+- **Documentos analizados:**
+  - *Nota de Entrega 4393:* Plato de embrague Exedy + manguera de lubricación separador Hino.
+  - *Proforma 2283:* ~20 repuestos mayores (Rulimanes NTN NUPK312, NUP212, NUPK310; sincronizadores 2da, 3ra, 4ta; piñones de 4ta maza 32D y corredizo 29D Samgong Gear; canastillas, galletas, seguros, retenes).
+  - *Libreta taller:* Desarme completo de tren de 4ta y sincronizados.
+- **Diagnóstico:** Arrastre de embrague + juego axial en rulimanes provocó fatiga catastrófica en 4ta.
+
+### 2. Los 3 Pilares del Tren Motriz Pesado (Caja, Motor, Corona):
+1. **Caja de Cambios:** Falla típica por sincronizados desgastados, arrastre de embrague o falta de valvulina. Síntomas: rasca al entrar marcha, zumbido en neutro, palanca salta en bajada.
+2. **Motor:** Falla típica por recalentamiento, lubricación, inyección o desgaste de aros/camisas. Síntomas: temperatura sobre lo normal, presión de aceite baja en ralentí, pérdida de fuerza en cuesta, humo negro/azul.
+3. **Corona (Diferencial):** Falla típica por juego en corona/piñón de ataque o satélites/planetarios. Síntomas: zumbido que aumenta con la velocidad, golpe ("clac") al acelerar y desacelerar, fuga de valvulina por retenes de manzana o yugo.
+
+### 3. Propuesta de Arquitectura en RutaGo:
+#### A. Para el Chofer: "Asistente de Síntomas en 1 Toque" (Cero tipeo engorroso)
+- Pantalla táctil rápida con 3 pestañas: `[⚙️ Caja/Embrague]` `[🛢️ Motor]` `[🔄 Corona/Ejes]`.
+- Chips de síntomas observables por el chofer:
+  - *Caja:* "Rasca 4ta", "Rasca 2da", "Palanca salta", "Pedal embrague duro/bajo", "Zumbido al rodar".
+  - *Motor:* "Temperatura sube en cuesta", "Poco pique/fuerza", "Humo excesivo", "Testigo aceite parpadea".
+  - *Corona:* "Golpe al acelerar/soltar", "Zumbido a más de 50 km/h", "Olor a valvulina caliente".
+- Al pulsar un chip y guardar, se genera una alerta instantánea clasificada por gravedad (Verde: Preventivo, Amarillo: Advertencia, Rojo: Crítico/Detener unidad).
+
+#### B. Para el Socio: "Asistente Diagnóstico & Expediente Clínico de la Unidad"
+- **Asistente de Diagnóstico:** Cuando el chofer marca "Rasca 4ta", el sistema le traduce al socio:
+  - *"Posible causa: Sincronizador de 4ta desgastado o embrague arrastrando. Riesgo: Si se rueda más de 300 km en este estado, se dañará el piñón de maza y rulimán con costo estimado 10x mayor"*.
+- **Expediente Digital de Reparaciones Mayores (Hoja de Vida):**
+  - Permite pegar el texto de la proforma o subir foto.
+  - Guarda los repuestos clave con marca (Exedy, NTN, Samgong) y kilometraje.
+  - **Función Comparativa para la Próxima Reparación:** Botón *"Ver última intervención de Caja/Motor/Corona"*, indicando exactamente cuántos km duró cada repuesto y qué marca rindió mejor.
+
+---
+
 ## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado Actual:
-   - **v3.60.34:** Corrección de zona horaria oficial Ecuador (`America/Guayaquil` UTC-5) en `date-helpers.ts`, `HomeScreenVT.tsx` y `TicketScreen.tsx`. HOY muestra de forma correcta `2026-09-29`.
-   - **v3.60.33:** Armonización de cabecera de `HomeScreenVT.tsx` (bus fijo para ayudantes, selector para socios) y retiro del banner redundante de tripulación.
-   - **v3.60.32:** Responsable de cobro en ruta (Titular vs Reemplazo con memoria inteligente en 1 toque).
-   - **v3.60.31:** Retiro del odómetro inicial en `HomeScreenVT.tsx`.
-   - **v3.60.30:** Armonización de UI del Ayudante (Día con chips, horas en VTs, tarjeta Hero `#053225`).
+   - **v3.60.34:** Corrección de zona horaria oficial Ecuador (`America/Guayaquil` UTC-5). HOY = 2026-09-29.
+   - **v3.60.33:** Armonización de cabecera de `HomeScreenVT.tsx` (bus fijo para ayudantes, selector para socios).
+   - **Análisis de Reparaciones Mayores:** Planteado el Asistente de Síntomas del Chofer y Expediente Clínico de Reparaciones Mayores (Caja, Motor, Corona).
 4. Próxima Tarea al conectar la nueva cuenta:
-   - Pedir el token PAT de GitHub al usuario para hacer el `git push origin main` de `v3.60.34` o continuar con la siguiente pantalla de ruta.
+   - Presentar la propuesta de interfaz e implementar el **Asistente de Síntomas del Chofer (1 Toque)** y el **Expediente de Reparaciones Mayores de Tren Motriz** en el módulo de Mantenimiento y Chofer.
