@@ -1373,3 +1373,19 @@ En caso de migrar a otra cuenta:
 En caso de migrar a otra cuenta:
 1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago` (rama `main`).
 2. **Punto Exacto:** Versión `3.60.47` activa. El socio ve la alerta 1x2 debajo de la cuadrícula 2x2 y al ingresar tiene la pantalla limpia con los 5 tiempos disponibles (HOY resaltado) y solo los mantenimientos vencidos/próximos.
+
+---
+
+# 🚀 VERSIÓN 3.60.48: RESOLUCIÓN DE RUTAS DE IMPORTACIÓN PARA COMPILACIÓN LIMPIA EN VERCEL (2026-09-30)
+
+## 📌 1. MOTIVACIÓN
+* En el despliegue a Vercel con Turbopack, las importaciones en `SocioMantenimientoWidget.tsx` apuntaban a alias auxiliares (`bus-odometer-storage`, `mantenimiento-config-storage`) y `formatearMinutosLegible` no estaba en `vt-ventanas-storage`.
+
+## 🛠️ 2. SOLUCIÓN IMPLEMENTADA
+* Se corrigieron los módulos canónicos:
+  - `@/lib/fleet-storage` (para odómetro, buses y suscripciones).
+  - `@/lib/mantenimiento-catalogo` (para `getCatalogoMaestroGlobal`).
+  - `@/lib/mantenimiento-estaciones` (para plantillas de control y cálculo de ítems).
+  - `@/lib/vt-ventanas-catalogo` (para `formatearMinutosLegible`).
+* Se ejecutó el build completo de producción `npm run build` con Next.js 16 (Turbopack) y Prisma:
+  - **Resultado:** `Compiled successfully in 16.6s`, 37 páginas estáticas y dinámicas generadas con 0 errores.

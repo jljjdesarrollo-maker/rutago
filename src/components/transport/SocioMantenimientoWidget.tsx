@@ -30,37 +30,32 @@ import {
   ArrowLeft,
   Gauge,
   Sparkles,
-  Calendar,
-  Check,
   Info,
 } from 'lucide-react';
 import {
   getAllBuses,
   getActiveBusId,
   subscribeToActiveBus,
-  type BusItem,
-} from '@/lib/bus-selection-storage';
-import {
   getLatestBusOdometer,
   subscribeToBusOdometer,
-} from '@/lib/bus-odometer-storage';
+  type BusItem,
+} from '@/lib/fleet-storage';
+import { getCatalogoMaestroGlobal } from '@/lib/mantenimiento-catalogo';
 import {
   PLANTILLAS_NIVEL_CONTROL,
   getBusNivelControl,
   getBusModuloMantenimientoActivo,
   resolveMantenimientoItemsParaBus,
   syncMantenimientoConfigConServidor,
-  getCatalogoMaestroGlobal,
   getBusItemsActivosConfig,
   type MantenimientoBusItem,
-} from '@/lib/mantenimiento-config-storage';
+} from '@/lib/mantenimiento-estaciones';
 import {
   getVentanaMayorParaVT,
   getVentanasOperativasParaVT,
-  getConfiguracionFlotaLocal,
   subscribeToVTConfig,
-  formatearMinutosLegible,
 } from '@/lib/vt-ventanas-storage';
+import { formatearMinutosLegible } from '@/lib/vt-ventanas-catalogo';
 
 interface SocioMantenimientoWidgetProps {
   propBusId?: string;
@@ -264,12 +259,6 @@ export function SocioMantenimientoWidget({
   const proximosCount = proximos.length;
   const alDiaCount = alDia.length;
 
-  const estadoGeneral: 'ROJO' | 'AMARILLO' | 'VERDE' = useMemo(() => {
-    if (criticosCount > 0) return 'ROJO';
-    if (proximosCount > 0) return 'AMARILLO';
-    return 'VERDE';
-  }, [criticosCount, proximosCount]);
-
   // Turno base asignado hoy para este bus
   const turnoBaseCodigo = useMemo(() => {
     if (typeof window !== 'undefined') {
@@ -291,7 +280,6 @@ export function SocioMantenimientoWidget({
     // En el ciclo de 16 días de la cooperativa:
     // Calculamos cuántos días faltan para que a este bus le toque su Día de Retén (24h)
     const discoNum = parseInt(disco.replace(/\D/g, '') || '1', 10);
-    // Parada de retén calculada de forma determinística
     const diasParaReten = Math.max(1, ((16 - ((discoNum + vtNumBase) % 16)) % 16) || 2);
 
     const fechaReten = new Date(hoy);
@@ -368,7 +356,6 @@ export function SocioMantenimientoWidget({
             duracionTexto = formatearMinutosLegible(duracionMinutos);
             descripcionDisponible = `Tiene ${duracionTexto} disponible desde ${horaInicio} a ${horaFin} en Loja`;
           } else {
-            // Horarios coherentes de ejemplo si no hay ventana diurna en Loja
             horaInicio = '11:15';
             horaFin = '13:00';
             duracionMinutos = 105;
@@ -772,7 +759,6 @@ export function SocioMantenimientoWidget({
                   <div className="space-y-3">
                     {/* Lista de Vencidos y Próximos */}
                     {[...vencidos, ...proximos].map((item) => {
-                      // Determinar recomendación táctica cruzada con el tiempo disponible
                       let accionRecomendada = '';
                       const nombreLow = item.nombre.toLowerCase();
 
