@@ -1244,3 +1244,25 @@ En caso de migrar a otra cuenta:
 1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago` (rama `main`).
 2. **Punto Exacto:** Versión `3.60.42` cerrada. Las 4 Fases de la arquitectura de Ventanas Operativas, Modo Retén y Handshake Fingerprint están 100% concluidas e integradas.
 3. **Siguiente Tarea:** Solicitar el PAT de GitHub al usuario para ejecutar el `git push origin main` y sincronizar `v3.60.42` con producción en Vercel.
+
+---
+
+# 🚀 VERSIÓN 3.60.43: HOTFIX ENRUTAMIENTO VERCEL - ELIMINACIÓN DE CARPETA HUÉRFANA app/ (2026-09-30)
+
+## 📌 1. PROBLEMA Y DIAGNÓSTICO
+* **Síntoma en Producción:** Tras el despliegue del commit \`d32fc5c\` en Vercel, la aplicación devolvía \`404 | This page could not be found.\` en cualquier acceso.
+* **Causa Raíz en Log de Vercel:**
+  \`\`\`text
+  13:19:19.536 Route (pages)
+  13:19:19.537 ─ ○ /404
+  \`\`\`
+  Next.js App Router solo generó la ruta \`/404\`. La presencia de un directorio \`app/\` huérfano en la raíz del repositorio (\`app/applet/REGISTRO_MAESTRO.md\`) causó que Next.js anulara la detección de \`src/app/\`. Al no haber páginas dentro de \`app/\`, Next.js compiló únicamente la página 404.
+
+## 🛠️ 2. SOLUCIÓN IMPLEMENTADA
+1. Eliminada la carpeta espuria \`app/\` (\`git rm -r app/\`) del árbol de Git.
+2. Restablecida la detección estándar de \`src/app/\` con todas sus rutas activas (\`/\`, \`/print-test\`, \`/api/*\`).
+3. Actualizado \`REGISTRO_MAESTRO.md\` con la bitácora del incidente.
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS
+* **Repositorio Oficial:** \`https://github.com/jljjdesarrollo-maker/rutago\` (rama \`main\`).
+* **Punto Exacto:** Versión \`3.60.43\` con hotfix de enrutamiento aplicado y desplegado en Vercel. Fases 1 a 4 operativas en producción.
