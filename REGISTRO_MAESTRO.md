@@ -1413,3 +1413,25 @@ En caso de migrar a otra cuenta:
 * **Calidad y Validación:**
   - TypeScript: `npx tsc --noEmit` completado con 0 errores.
   - Tags JSX: 100% resueltos.
+
+---
+
+# 🚀 VERSIÓN 3.60.50: SINCRONIZACIÓN REACTIVA ESTRICTA ENTRE SUPER ADMIN Y ALERTA DE RETÉN (2026-09-30)
+
+## 📌 1. OBSERVACIÓN Y MOTIVACIÓN DEL USUARIO
+* El usuario constató acertadamente que, al estar los retenes apagados en la configuración del Super Admin (`modoRetenActivo: false`), la alerta del socio no debe proyectar ni prometer un "Día de Retén" inexistente, ya que la flota opera bajo el Ciclo Continuo de 15 Días.
+
+## 🛠️ 2. SOLUCIÓN IMPLEMENTADA
+* **Vinculación Reactiva en `SocioMantenimientoWidget.tsx`:**
+  - Se vinculó el estado con `isModoRetenActivo()` y la suscripción `subscribeToVTConfig()`.
+* **Comportamiento cuando el Retén está APAGADO (`modoRetenActivo === false` - Estado Actual):**
+  - **En el Dashboard (Card 1):** El pie de la tarjeta muestra `🔄 Ciclo Continuo: 15 turnos de ruta` (en lugar de anticipar un retén apagado).
+  - **En la Pantalla Dedicada:**
+    * Se oculta la tarjeta de Parada Mayor y se presenta el banner: *"Régimen Operativo: Ciclo Continuo de 15 Días (Retén Desactivado en Super Admin)"*.
+    * Los 5 días mostrados son estrictamente turnos de ruta continuos con sus horarios reales en Loja. Ningún día figura como retén.
+    * Para piezas pesadas, la recomendación sugiere aprovechar las ventanas diurnas mayores en Loja o relevo técnico en terminal.
+* **Comportamiento cuando el Retén es ENCENDIDO por el Super Admin (`modoRetenActivo === true`):**
+  - Se muestra automáticamente en tiempo real la Parada Mayor de 24h libres y el día exacto de fosa.
+* **Validación:**
+  - TypeScript: `npx tsc --noEmit` completado con 0 errores.
+  - JSX: 100% verificado.

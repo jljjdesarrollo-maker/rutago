@@ -5,20 +5,16 @@
  * Características principales:
  * 1. En el Dashboard (debajo de la cuadrícula 2x2):
  *    - Layout 1x2 de alto contraste y balance visual:
- *      * Card 1: Disponibilidad y Tiempos en Loja (Ventana de Hoy con horas exactas + Parada Mayor de Retén).
+ *      * Card 1: Disponibilidad y Tiempos en Loja (Ventana de Hoy con horas exactas + Estado real de Retén/Ciclo Continuo).
  *      * Card 2: Semáforo y Alertas de Mantenimiento (🔴 Vencidos | 🟡 Próximos) con colores de contraste.
  *
  * 2. Al ingresar (Pantalla Dedicada Ejecutiva):
- *    - Arquitectura libre de bloqueo de scroll (h-[100dvh] en móvil y h-[90vh] en desktop con scroll nativo fluido).
+ *    - Respeta estrictamente la configuración del Super Admin (modoRetenActivo):
+ *      * Si el Retén está APAGADO (Ciclo Continuo 15 días): NO inventa días de retén. Muestra los 5 turnos de ruta continuos
+ *        con sus horarios reales en Loja y recomienda aprovechar las ventanas mayores o relevo técnico.
+ *      * Si el Retén está ENCENDIDO (Ciclo 16 días): Muestra la Parada Mayor de 24h libres y el día exacto de fosa.
+ *    - Arquitectura libre de bloqueo de scroll (h-[100dvh] en móvil y h-[88vh] en desktop con scroll nativo fluido).
  *    - Cabecera fija superior y pie fijo inferior siempre visibles.
- *    - Presenta EXCLUSIVAMENTE 2 cosas con diseño compacto y coherente:
- *      - COSA 1: ¿Cuándo tiene tiempo para hacer mantenimiento?
- *        * Fila principal de HOY resaltada con horarios exactos de Loja.
- *        * Franja ejecutiva de Parada Mayor (Día de Retén - 24h libres).
- *        * Cronología compacta tipo tabla de los siguientes días en ruta.
- *      - COSA 2: ¿Qué mantenimientos debe o puede realizar?
- *        * Lista ÚNICAMENTE los componentes vencidos o próximos a vencer, en tarjetas horizontales compactas
- *          cruzadas con la recomendación táctica del tiempo disponible.
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -37,6 +33,7 @@ import {
   Info,
   Calendar,
   X,
+  Repeat,
 } from 'lucide-react';
 import {
   getAllBuses,
@@ -60,6 +57,8 @@ import {
   getVentanaMayorParaVT,
   getVentanasOperativasParaVT,
   subscribeToVTConfig,
+  isModoRetenActivo,
+  getConfiguracionFlotaLocal,
 } from '@/lib/vt-ventanas-storage';
 import { formatearMinutosLegible } from '@/lib/vt-ventanas-catalogo';
 
@@ -108,6 +107,7 @@ export function SocioMantenimientoWidget({
 }: SocioMantenimientoWidgetProps) {
   const [activeBusId, setActiveBusId] = useState<string>(() => propBusId || getActiveBusId());
   const [isViewOpen, setIsViewOpen] = useState(false);
+  const [modoRetenActivo, setModoRetenActivo] = useState<boolean>(() => isModoRetenActivo());
 
   // Tacómetro auditado en tiempo real
   const resolverKmActual = useCallback((bId: string): number => {
@@ -159,7 +159,7 @@ export function SocioMantenimientoWidget({
 
   const [items, setItems] = useState<MantenimientoBusItem[]>(() => cargarItems(activeBusId));
 
-  // Suscripción a cambios de bus y odómetro
+  // Suscripción a cambios de bus, odómetro y configuración de retén
   useEffect(() => {
     if (propBusId && propBusId !== activeBusId) {
       setActiveBusId(propBusId);
@@ -181,6 +181,7 @@ export function SocioMantenimientoWidget({
 
     const handleSync = () => {
       setItems(cargarItems(activeBusId));
+      setModoRetenActivo(isModoRetenActivo());
     };
 
     window.addEventListener('rg_mantenimiento_config_sync', handleSync);
@@ -193,7 +194,9 @@ export function SocioMantenimientoWidget({
       setItems(cargarItems(activeBusId));
     });
 
-    const unsubVT = subscribeToVTConfig(() => {});
+    const unsubVT = subscribeToVTConfig((cfg) => {
+      setModoRetenActivo(Boolean(cfg.modoRetenActivo));
+    });
 
     return () => {
       unsubBus();
@@ -211,7 +214,6 @@ export function SocioMantenimientoWidget({
   const disco = currentBus?.numeroDisco || '01';
   const nivelControl = getBusNivelControl(activeBusId);
   const plantillaNivel = PLANTILLAS_NIVEL_CONTROL[nivelControl] || PLANTILLAS_NIVEL_CONTROL.BASICO;
-  const placa = currentBus?.placa || 'TAA-5152';
 
   // Cálculos de desgaste y semaforización ejecutiva
   const itemsCalculados: MantenimientoCalculadoItem[] = useMemo(() => {
@@ -275,7 +277,7 @@ export function SocioMantenimientoWidget({
     return num === 1 ? 'VT08' : `VT${String(numVT).padStart(2, '0')}`;
   }, [activeBusId, disco]);
 
-  // Cálculo de los Próximos 5 Tiempos Disponibles y Día de Retén
+  // Cálculo de los Próximos 5 Tiempos Disponibles según el estado REAL de retén en Super Admin
   const { proximosTiempos, diaRetenInfo } = useMemo(() => {
     const hoy = new Date();
     const match = turnoBaseCodigo.match(/\d+/);
@@ -298,7 +300,8 @@ export function SocioMantenimientoWidget({
 
       const esHoy = i === 0;
       const esManana = i === 1;
-      const esDiaReten = i === diasParaReten;
+      // Solo hay día de retén si el Super Admin lo activó explícitamente (modoRetenActivo === true)
+      const esDiaReten = modoRetenActivo && (i === diasParaReten);
 
       const diaNombre = DIAS_SEMANA[d.getDay()];
       const diaNum = d.getDate();
@@ -314,6 +317,7 @@ export function SocioMantenimientoWidget({
         etiquetaFecha = `${diaNombre} ${diaNum} ${mesAbr} (en ${i} días)`;
       }
 
+      // En ciclo continuo (retén apagado), se avanza 1 turno por día en la rotación de 15 VTs
       const vtNumDia = ((vtNumBase - 1 + i) % 15) + 1;
       const vtCodigo = `VT${String(vtNumDia).padStart(2, '0')}`;
 
@@ -385,6 +389,7 @@ export function SocioMantenimientoWidget({
     }
 
     const diaRetenInfo = {
+      activo: modoRetenActivo,
       diasFaltantes: diasParaReten,
       textoExacto: `Tiene 24h disponibles el ${diaSemanaReten} ${diaNumReten} de ${mesReten} (en ${diasParaReten} ${diasParaReten === 1 ? 'día' : 'días'})`,
       fechaCompleta: `${diaSemanaReten} ${diaNumReten} de ${mesReten}`,
@@ -392,7 +397,7 @@ export function SocioMantenimientoWidget({
     };
 
     return { proximosTiempos: listaTiempos, diaRetenInfo };
-  }, [turnoBaseCodigo, disco]);
+  }, [turnoBaseCodigo, disco, modoRetenActivo]);
 
   const tiempoHoy = proximosTiempos[0] || {
     descripcionDisponible: 'Tiene 3h 10m disponible desde 10:30 a 13:40 en Loja',
@@ -445,14 +450,21 @@ export function SocioMantenimientoWidget({
             </h4>
           </div>
 
-          {/* Footer Card 1: Parada Mayor (Retén) */}
-          <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-amber-300/90 font-bold">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>
-                Retén en {diaRetenInfo.diasFaltantes} {diaRetenInfo.diasFaltantes === 1 ? 'día' : 'días'} (24h libres)
+          {/* Footer Card 1: Estado Real de Retén según Super Admin */}
+          <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+            {modoRetenActivo ? (
+              <span className="flex items-center gap-1.5 text-amber-300/90 font-bold">
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>
+                  Retén en {diaRetenInfo.diasFaltantes} {diaRetenInfo.diasFaltantes === 1 ? 'día' : 'días'} (24h libres)
+                </span>
               </span>
-            </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-slate-300 font-medium">
+                <Repeat className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span>Ciclo Continuo: 15 turnos de ruta</span>
+              </span>
+            )}
             <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
           </div>
         </div>
@@ -638,28 +650,48 @@ export function SocioMantenimientoWidget({
                   </p>
                 </div>
 
-                {/* Franja Ejecutiva de Parada Mayor (Día de Retén) */}
-                <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-950 via-slate-900 to-slate-900 text-white border border-amber-500/50 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span className="text-[11px] font-black text-amber-300 uppercase tracking-wide">
-                        Parada Mayor (Día de Retén)
-                      </span>
+                {/* Si el Retén está ACTIVO en Super Admin: Mostrar Parada Mayor */}
+                {modoRetenActivo ? (
+                  <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-950 via-slate-900 to-slate-900 text-white border border-amber-500/50 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span className="text-[11px] font-black text-amber-300 uppercase tracking-wide">
+                          Parada Mayor (Día de Retén)
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-sm font-black text-white">
+                        &quot;{diaRetenInfo.textoExacto}&quot;
+                      </p>
+                      <p className="text-[11px] text-amber-200/90 font-medium">
+                        💡 Fosa completa (24h) para caja, embrague o zapatas con 0 carreras perdidas.
+                      </p>
                     </div>
-                    <p className="text-xs sm:text-sm font-black text-white">
-                      &quot;{diaRetenInfo.textoExacto}&quot;
-                    </p>
-                    <p className="text-[11px] text-amber-200/90 font-medium">
-                      💡 Fosa completa (24h) para caja, embrague o zapatas con 0 carreras perdidas.
-                    </p>
+                    <span className="self-start sm:self-center text-[10px] font-mono bg-amber-400 text-slate-950 px-2.5 py-1 rounded-full font-black shrink-0">
+                      24h Libres
+                    </span>
                   </div>
-                  <span className="self-start sm:self-center text-[10px] font-mono bg-amber-400 text-slate-950 px-2.5 py-1 rounded-full font-black shrink-0">
-                    24h Libres
-                  </span>
-                </div>
+                ) : (
+                  /* Si el Retén está APAGADO: Aviso de Régimen Continuo */
+                  <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Repeat className="w-4 h-4 text-slate-500 shrink-0" />
+                      <div>
+                        <span className="font-bold text-slate-900 block">
+                          Régimen Operativo: Ciclo Continuo de 15 Días (Retén Desactivado)
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          Todos los buses cubren turnos diarios de ruta continuos. Aprovecha las ventanas diurnas de Loja para taller.
+                        </span>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="bg-white text-[10px] font-mono shrink-0">
+                      15 VTs Continuos
+                    </Badge>
+                  </div>
+                )}
 
-                {/* Cronología Compacta de los Próximos Días */}
+                {/* Cronología Compacta de los Próximos 5 Días en Ruta */}
                 <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs">
                   <div className="p-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1">
@@ -772,7 +804,12 @@ export function SocioMantenimientoWidget({
                       ) {
                         accionRecomendada = `Hacer HOY en la ventana de Loja (${tiempoHoy.horaInicio} a ${tiempoHoy.horaFin}) sin perder carreras.`;
                       } else {
-                        accionRecomendada = `Programar para la Parada Mayor (${diaRetenInfo.textoExacto}) para tener 24h libres en fosa.`;
+                        // Si el retén está activo, se programa para el retén; si está apagado, se sugiere ventana mayor o relevo técnico
+                        if (modoRetenActivo) {
+                          accionRecomendada = `Programar para la Parada Mayor (${diaRetenInfo.textoExacto}) para tener 24h libres en fosa.`;
+                        } else {
+                          accionRecomendada = `Aprovechar la ventana diurna mayor en Loja o coordinar relevo técnico en terminal.`;
+                        }
                       }
 
                       return (
