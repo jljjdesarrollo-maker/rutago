@@ -735,202 +735,52 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 ---
 
-## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
-1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
-2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
-3. Estado Actual:
-   - **v3.60.29:** Copiloto de ruta del chofer con proyección temporal auditada (~280 km/día), consejos de coordinación y preservación 100% funcional.
-   - **v3.60.28:** Claridad semántica en panel de conductor, scroll suave ergonómico y blindaje estricto de roles socio/chofer.
-4. Próxima Etapa Operativa:
-   - Continuar con la extracción modular de `MantenimientoHistorialModal.tsx` o pruebas de campo.
-5. Indicar al agente:  
-   `"Continuamos con la modularización de MantenimientoScreen o con la Fase 4: Pruebas de Campo"`.
-
-
-
-
-------
-
-## 🎟️ v3.60.30: ARMONIZACIÓN INTEGRAL DE LA INTERFAZ DEL AYUDANTE (DÍA DE JORNADA, VT CON HORA INICIAL Y PALETA #053225) (2026-09-29)
-
-- **Objetivo:** Cerrar la armonización visual y ergonómica de los 3 roles operativos (Socio listo en v3.60.26, Conductor listo en v3.60.29, y ahora Ayudante en v3.60.30), erradicando el viejo rojo granate `#912D26` y sustituyéndolo por la identidad institucional Verde Bosque `#053225` con acabados de alta ergonomía para el cobro y control de caja en carretera.
-
-- **1. Selección de Fecha de la Jornada Laboral (`HomeScreenVT.tsx`):**
-  - **Ergonomía de 3 Chips Táctiles para Movimiento:**
-    - `[ 🟢 HOY (Fecha actual) ]`: Selección por defecto en 1 toque.
-    - `[ 🟡 AYER (Fecha anterior) ]`: Para liquidación extemporánea o cierre de turnos sin fricción.
-    - `[ 📅 OTRA FECHA ]`: Para regularizaciones o auditorías pasadas.
-  - **Micro-Auditoría de Integridad Contable:**
-    - Verificación reactiva si ya existen datos o ventas pendientes en `localStorage` o `IndexedDB` para la fecha elegida.
-
-- **2. Selección de Grupo de Vuelta de Turno (VT) con Hora de Inicio (`HomeScreenVT.tsx`):**
-  - **Filtro Rápido por Pestañas de Destino:**
-    - `[ Todos ]` `[ Vilcabamba ]` `[ El Tambo ]` `[ Yangana ]` `[ La Elvira ]` `[ Zahuayco ]` para encontrar el turno en menos de 2 segundos.
-  - **Tarjeta Táctica Optimizada de 3 Niveles:**
-    - **Nivel 1 (Identidad):** Código del turno (`VT10`, `VT03`) + Pastilla de destino con color de ruta (`El Tambo`, `Yangana`, `La Elvira`, `Zahuayco`).
-    - **Nivel 2 (PROTAGONISTA - Ancla Mental del Personal):** **Hora de la Primera Frecuencia (`🕒 06:40`)** con subtítulo *"Primera salida"*, permitiendo al ayudante validar su turno en 0.3 segundos.
-    - **Nivel 3 (Detalle Operativo):** Cantidad de vueltas programadas (`4 vueltas`, `6 vueltas`) + indicador ámbar `🌙 Pernocta (Día 1 → 2)` únicamente cuando el turno duerme fuera de Loja.
-    - **Depuración Anti-Ruido:** Se eliminó el badge repetitivo e innecesario `"Mismo día"` que saturaba el 90% de las tarjetas.
-
-- **3. Odómetro Inicial Integrado:**
-  - Entrada de odómetro con formato numérico grande y comparativa contra el último registro de `fleet-storage`, alimentando directamente el tacómetro del Conductor y el radar preventivo.
-
-- **4. Dashboard Principal del Ayudante (`HomeScreen.tsx` y `AyudanteJornadaCard.tsx`):**
-  - **Cabecera Institucional:** Saludo *"Hola, [Nombre Ayudante]"*, pastilla del bus `[ 🚌 Bus 01 • HAA-1234 ● En Turno ]` y compañero de tripulación `Tripulación: [Nombre Conductor] (Conductor al Volante) • En Ruta`.
-  - **Tarjeta Hero del Ayudante (`#053225` - Bordes `rounded-3xl`):**
-    - **Sin turno activo:** Botón táctil prominente `[ ▶ CONFIGURAR DÍA Y GRUPO VT ]`.
-    - **Con turno activo:** Gran **Número Rey** de producción en tiempo real (`$184.50 EN CAJA DE RUTA`), subtítulo con `VT`, fecha y odómetro, y línea divisoria horizontal con Pasajeros, Vueltas cerradas y Próxima salida programada.
-  - **Cuadrícula Táctica 2x2 (`#053225`):**
-    - 🎫 **Emitir Boletos:** Salto inmediato a la frecuencia abierta.
-    - 💵 **Arqueo y Gastos:** Cuadre de caja y registro de gastos de ruta (diésel/peajes) con fotos de comprobantes.
-    - ⏱️ **Vueltas del Día:** Visualización del progreso de frecuencias programadas.
-    - 📑 **Mis Registros:** Historial de liquidaciones archivadas con badge de `recordCount`.
-  - **Barra de Supervisión y Novedad Mecánica (`AyudanteMantenimientoBar.tsx`):**
-    - Enlace a supervisión técnica con botón rápido para reportar novedades mecánicas.
-
-- **5. Archivos Actualizados:**
-  - `src/components/transport/HomeScreen.tsx`
-  - `src/components/transport/HomeScreenVT.tsx`
-  - `src/components/transport/AyudanteJornadaCard.tsx`
-  - `src/components/transport/AyudanteMantenimientoBar.tsx`
-  - `src/components/transport/types-boletos.ts`
-  - `package.json`
-  - `REGISTRO_MAESTRO.md`
-
 ---
 
----
+## ⚙️ VERSIÓN 3.60.35: CALIBRACIÓN OFICIAL DE TRANSMISIÓN (CAJA, EMBRAGUE Y BRONCES) Y BLINDAJE OPERATIVO
 
-## ⚡ v3.60.31: OPTIMIZACIÓN DEL ARRANQUE DE JORNADA Y VEEDURÍA DEL ODÓMETRO (2026-09-29)
+**Fecha:** 2026-09-29 / 2026-09-30  
+**Versión:** 3.60.35  
+**Módulo:** Mantenimiento Preventivo / Taller de Transmisión (`MNT_MAYOR`), Catálogo Maestro de Fábrica y Efecto Cascada  
+**Estado:** 🟢 IMPLEMENTADO, VERIFICADO Y SINCRONIZADO EN GITHUB
 
-- **Decisión de Gobernanza y Negocio:**
-  - El ayudante ejerce un rol fundamental como **veedor externo e imparcial** frente al chofer para auditar el kilometraje real de la unidad y evitar manipulación o conflictos internos sobre desgaste de repuestos y consumo de combustible.
-  - Sin embargo, esta función de veeduría y auditoría pertenece exclusivamente al **Arqueo General (`ArqueoGeneralScreen.tsx`)** al finalizar la jornada, donde el sistema precarga el odómetro de salida, el ayudante digita el tacómetro final directamente del tablero físico, y el sistema valida la tolerancia semafórica frente a los km teóricos del VT.
-  - Al inicio del turno (`HomeScreenVT.tsx`), solicitar el odómetro inicial generaba una duplicidad innecesaria y fricción operativa cuando el ayudante necesita iniciar su jornada en 2 toques ágiles para arrancar la venta de boletos sin demorar la salida del autobús de terminal.
+### 1. Decisiones Estratégicas y de Roadmap:
+1. **Descartada la Asociación de Talleres:** Se eliminó la propuesta de asociar talleres y sugerencias comerciales a cada síntoma para mantener la interfaz ágil, sin distracciones ni sobrecarga burocrática para el socio y chofer.
+2. **Congelado para Fase Futura (Bien Documentado):**
+   - El *Asistente de Síntomas Predictivos (1 Toque en Cabina)* y el *Expediente Clínico Digital con Fotos de Proformas* quedan formalmente diseñados y documentados en este registro maestro para implementarse en una fase posterior.
+   - **Motivo:** La versión actual de RutaGo es sumamente robusta, estable y lista para operación. Desplegar funcionalidades masivas ahora retrasaría la puesta en marcha de la cooperativa.
+3. **Calibración Precisa del Tren de Transmisión (Hino AK - Loja - Vilcabamba):**
+   - Basado en la reparación real del Bus 01 (Nota de Entrega 4393 y Proforma 2283) y la matemática operativa de 280 km/día en curvas y cuestas de montaña.
 
-- **Cambios Realizados en el Código:**
-  - **`src/components/transport/HomeScreenVT.tsx`:**
-    - Se retiró la tarjeta y el input de *"Odómetro Inicial del Bus"*.
-    - Se limpiaron los estados locales (`odometroInicial`, `odometroSistema`) y las llamadas redundantes a `fleet-storage` al iniciar el turno.
-    - El flujo de configuración de turno queda limpio y directo: **Paso 1: Día de Jornada** (`[ HOY ]`, `[ AYER ]`, `[ OTRA FECHA ]`) ➔ **Paso 2: Grupo de Vuelta de Turno (VT)**.
-  - **`package.json`:**
-    - Versión incrementada a `3.60.31`.
+### 2. Estructura Oficial de los 4 Componentes de Transmisión:
+1. **`MNT-ACEITE-CAJA` (Valvulina de Caja):**
+   - **Intervalo:** `30.000 km` (~3 a 4 meses).
+   - **Fluido:** SAE 80W-90 / 85W-140 API GL-4.
+2. **`MNT-KIT-EMBRAGUE` (Kit de Embrague Completo):**
+   - **Intervalo:** `100.000 km` (~1 año).
+   - **Componentes:** Plato Exedy 350mm, disco, rulimán de empuje y manguera separadora.
+   - **Criterio de Alarma:** Mantenido estrictamente en 100.000 km (con aviso a los 90.000 km) para evitar el desgaste hasta los remaches, protegiendo la volante del motor contra rayaduras térmicas.
+3. **`MNT-BRONCES-SINCRONIZADOS` (Preventivo Intermedio de Caja - 1.5 Años):** 🆕
+   - **Intervalo:** `140.000 km` (~1.5 años / 540 días).
+   - **Componentes:** Canastillas de agujas (palillos), bronces sincronizados (2da, 3ra, 4ta), resortes, pupos, retenes y seguros.
+   - **Beneficio Financiero:** Evita que el juego axial destruya los piñones Samgong de $400+.
+4. **`MNT-MNT-CAJA` (Reparación Mayor de Caja - Overhaul 3 Años):**
+   - **Intervalo:** `280.000 km` (~3 años / 1080 días).
+   - **Componentes:** Desarme integral, juego de rulimanes mayores de carga NTN (NUPK312, NUP212, NUPK310), piñonería mayor y rectificación general.
 
----
-
----
-
-## 👥 v3.60.32: RESPONSABLE DE COBRO EN RUTA (TITULAR VS REEMPLAZO CON MEMORIA INTELIGENTE) (2026-09-29)
-
-- **Contexto Operativo del Transporte:**
-  - El ayudante titular suele ser fijo por unidad pero pide permisos (1 a 4 días). Durante esos días cubren reemplazos informales (rotativos o de ocasión), y al regresar, el titular regulariza la información cargando los días atrasados.
-  - Sin identificación del cobrador real, se rompía la trazabilidad de custodia del dinero y las responsabilidades ante faltantes o reclamos.
-
-- **Solución Implementada (Opción 1 - Cero Fricción ni Burocracia):**
-  - **`src/components/transport/HomeScreenVT.tsx`:**
-    - Se agregó el control de **Responsable de Cobro (Caja)** en el Paso 1 de configuración:
-      - `[ 👤 Titular ({Nombre}) ]`: Selección por defecto en 1 toque.
-      - `[ ➕ Reemplazo ]`: Al activarlo, despliega el campo para escribir el nombre de quién cobró.
-    - **Memoria Inteligente Local (`localStorage: rg_historial_reemplazos`):**
-      - Sugerencias rápidas en chips táctiles de los últimos reemplazos utilizados (ej: `[ Carlitos ]`, `[ Luis Mendoza ]`). Un toque llena el campo automáticamente.
-      - Guarda dinámicamente nombres nuevos sin requerir registros previos en base de datos.
-    - **Trazabilidad Global Automática:**
-      - El campo `ayudanteNombre` de la sesión se formatea como `"${nombreReemplazo} (Reemplazo)"`.
-      - Se propaga de forma 100% nativa a los boletos, arqueos de cada vuelta (`ArqueoScreen`), liquidación final (`ArqueoGeneralScreen`), y reportes de producción del Socio.
-  - **`src/components/transport/AyudanteJornadaCard.tsx`:**
-    - La tarjeta Hero del Ayudante muestra en el subtítulo: `Fecha: AAAA-MM-DD • Reemplazo: {Nombre}` cuando el turno fue ejecutado por un reemplazo.
-  - **`src/components/transport/types-boletos.ts`:**
-    - Campos opcionales añadidos a `VTSession`: `esReemplazo?: boolean;` y `nombreReemplazo?: string;`.
-  - **`package.json`:**
-    - Versión incrementada a `3.60.32`.
-
----
-
----
-
-## 🚌 v3.60.33: ARMONIZACIÓN DE CABECERA Y BLINDAJE OPERATIVO EN CONFIGURACIÓN DE JORNADA (2026-09-29)
-
-- **Problema de Negocio y Riesgo Operativo Detectado:**
-  - El selector desplegable de autobuses en la cabecera permitía a un ayudante cambiar libremente de unidad, arriesgando abrir turnos en buses ajenos de otros socios cooperados.
-  - Existía un banner superior redundante y contradictorio (*"1. Estado de Tripulación y Autorización"* con Juan Pérez estático) que chocaba con la selección táctil de *Titular vs Reemplazo* del Paso 1.
-  - La condición de bloqueo `isAuthorized` dependía de un único ayudante retornado por la API (`currentUser.id === ayudante.id`), impidiendo que ayudantes autorizados o reemplazos operaran de forma fluida.
-
-- **Soluciones Implementadas en `src/components/transport/HomeScreenVT.tsx`:**
-  - **Cabecera Diferenciada por Roles:**
-    - `ADMIN` / `SOCIO`: Mantienen el selector rápido `<BusSelector compact />` para supervisar y configurar múltiples unidades de su propiedad.
-    - `AYUDANTE` / Operativo: Se muestra un badge institucional informativo y fijo (`🚌 Bus {disco}`), eliminando cualquier riesgo de error o confusión de unidad.
-  - **Retiro del Banner Redundante de Tripulación:**
-    - Se eliminó el bloque estático superior de tripulación. Toda la responsabilidad del cobro vive de forma limpia y transparente en el **Paso 1: Día de la Jornada y Responsable de Cobro (Caja)**.
-  - **Desbloqueo Operativo y Limpieza de Autorización:**
-    - Se autoriza de forma nativa a cualquier usuario autenticado con rol `AYUDANTE`, `SOCIO` o `ADMIN`.
-    - Se retiró la dependencia bloqueante de `!ayudante` en `startSession`, permitiendo operación offline y multisesión sin fricción.
-  - **Estructura y Numeración Armonizada (Pasos 1 al 5):**
-    1. Día de la Jornada y Responsable de Cobro (Caja)
-    2. Selector de Grupo de Turno (VT)
-    3. Frecuencias del Grupo VT Seleccionado
-    4. Impresora Térmica Bluetooth
-    5. Botón Primario de Arranque
-  - **`package.json`:** Versión incrementada a `3.60.33`.
-
----
-
----
-
-## 🕒 v3.60.34: CORRECCIÓN DE ZONA HORARIA OFICIAL DE ECUADOR (AMERICA/GUAYAQUIL UTC-5) (2026-09-29)
-
-- **Diagnóstico del Error de Fecha Reportado (30/09 vs 29/09):**
-  - El código utilizaba `new Date().toISOString().split('T')[0]` para determinar el día de la jornada ("HOY").
-  - En JavaScript, `toISOString()` convierte la fecha a UTC (GMT+0).
-  - Ecuador continental opera en la zona horaria **`America/Guayaquil` (UTC-5 sin horario de verano)**.
-  - A partir de las 19:00 (7:00 PM) de Ecuador, la hora en UTC ya supera las 00:00 del día siguiente.
-  - En consecuencia, en horas de la noche la aplicación saltaba prematuramente al día de mañana (`30-09-2026`), cuando en Loja/Ecuador todavía era **29-09-2026**, distorsionando la caja diaria y provocando que los boletos se marcaran erróneamente como "Día 2".
-
-- **Solución Arquitectónica Implementada:**
-  - **`src/lib/date-helpers.ts`:**
-    - Se crearon utilidades dedicadas que fuerzan la zona horaria oficial del transporte: `ECUADOR_TIMEZONE = 'America/Guayaquil'`.
-    - `getEcuadorDateString(date = new Date())`: Retorna `YYYY-MM-DD` anclado a Ecuador, sin importar la zona horaria del servidor o del navegador.
-    - `getEcuadorYesterdayDateString()`: Retorna con total precisión matemática la fecha contable de ayer en Ecuador.
-  - **`src/components/transport/HomeScreenVT.tsx`:**
-    - `todayStr` y `yesterdayStr` ahora se obtienen con `getEcuadorDateString()` y `getEcuadorYesterdayDateString()`.
-    - "HOY" muestra de forma veraz y garantizada `2026-09-29`.
-  - **`src/components/transport/TicketScreen.tsx`:**
-    - `fechaCal` y la verificación de "Día 2" se calculan con la zona horaria de Ecuador, evitando falsos saltos de día durante los recorridos nocturnos del bus.
-  - **`package.json`:** Versión incrementada a `3.60.34`.
-
----
-
----
-
-## 🔬 ANÁLISIS DE REPARACIONES MAYORES (CAJA, MOTOR, CORONA) Y ASISTENTE DE SÍNTOMAS PREDICTIVOS
-
-### 1. Contexto Real Reportado: Reparación Mayor de Caja Hino AK (Bus 01)
-- **Documentos analizados:**
-  - *Nota de Entrega 4393:* Plato de embrague Exedy + manguera de lubricación separador Hino.
-  - *Proforma 2283:* ~20 repuestos mayores (Rulimanes NTN NUPK312, NUP212, NUPK310; sincronizadores 2da, 3ra, 4ta; piñones de 4ta maza 32D y corredizo 29D Samgong Gear; canastillas, galletas, seguros, retenes).
-  - *Libreta taller:* Desarme completo de tren de 4ta y sincronizados.
-- **Diagnóstico:** Arrastre de embrague + juego axial en rulimanes provocó fatiga catastrófica en 4ta.
-
-### 2. Los 3 Pilares del Tren Motriz Pesado (Caja, Motor, Corona):
-1. **Caja de Cambios:** Falla típica por sincronizados desgastados, arrastre de embrague o falta de valvulina. Síntomas: rasca al entrar marcha, zumbido en neutro, palanca salta en bajada.
-2. **Motor:** Falla típica por recalentamiento, lubricación, inyección o desgaste de aros/camisas. Síntomas: temperatura sobre lo normal, presión de aceite baja en ralentí, pérdida de fuerza en cuesta, humo negro/azul.
-3. **Corona (Diferencial):** Falla típica por juego en corona/piñón de ataque o satélites/planetarios. Síntomas: zumbido que aumenta con la velocidad, golpe ("clac") al acelerar y desacelerar, fuga de valvulina por retenes de manzana o yugo.
-
-### 3. Propuesta de Arquitectura en RutaGo:
-#### A. Para el Chofer: "Asistente de Síntomas en 1 Toque" (Cero tipeo engorroso)
-- Pantalla táctil rápida con 3 pestañas: `[⚙️ Caja/Embrague]` `[🛢️ Motor]` `[🔄 Corona/Ejes]`.
-- Chips de síntomas observables por el chofer:
-  - *Caja:* "Rasca 4ta", "Rasca 2da", "Palanca salta", "Pedal embrague duro/bajo", "Zumbido al rodar".
-  - *Motor:* "Temperatura sube en cuesta", "Poco pique/fuerza", "Humo excesivo", "Testigo aceite parpadea".
-  - *Corona:* "Golpe al acelerar/soltar", "Zumbido a más de 50 km/h", "Olor a valvulina caliente".
-- Al pulsar un chip y guardar, se genera una alerta instantánea clasificada por gravedad (Verde: Preventivo, Amarillo: Advertencia, Rojo: Crítico/Detener unidad).
-
-#### B. Para el Socio: "Asistente Diagnóstico & Expediente Clínico de la Unidad"
-- **Asistente de Diagnóstico:** Cuando el chofer marca "Rasca 4ta", el sistema le traduce al socio:
-  - *"Posible causa: Sincronizador de 4ta desgastado o embrague arrastrando. Riesgo: Si se rueda más de 300 km en este estado, se dañará el piñón de maza y rulimán con costo estimado 10x mayor"*.
-- **Expediente Digital de Reparaciones Mayores (Hoja de Vida):**
-  - Permite pegar el texto de la proforma o subir foto.
-  - Guarda los repuestos clave con marca (Exedy, NTN, Samgong) y kilometraje.
-  - **Función Comparativa para la Próxima Reparación:** Botón *"Ver última intervención de Caja/Motor/Corona"*, indicando exactamente cuántos km duró cada repuesto y qué marca rindió mejor.
+### 3. Reglas de Cascada y Comportamiento del Modal en Taller:
+- **En `src/lib/mantenimiento-catalogo.ts`:**
+  - `EFECTO_CASCADA_TRANSMISION`:
+    - `MNT-MNT-CAJA` -> resetea `MNT-ACEITE-CAJA`, `MNT-VALVULINA-CAJA`, `MNT-KIT-EMBRAGUE`, `MNT-BRONCES-SINCRONIZADOS`.
+    - `MNT-BRONCES-SINCRONIZADOS` -> resetea `MNT-ACEITE-CAJA`, `MNT-VALVULINA-CAJA`.
+- **En `src/lib/mantenimiento-estaciones.ts`:**
+  - Estación `MNT_MAYOR` actualizada con `MNT-BRONCES-SINCRONIZADOS` (140.000 km).
+  - `MNT-MNT-CAJA` calibrado a 280.000 km.
+  - `resolverCascadaEstacion` sincronizado con los 4 componentes.
+  - Mapeo `MAPA_ESTACION_NATURAL["MNT-BRONCES-SINCRONIZADOS"] = "MNT_MAYOR"`.
+- **En `ChoferMantenimientoWidget.tsx`:**
+  - Cada componente cuenta con checkbox independiente.
+  - Al asentar la parada de taller, únicamente se reinicia el odómetro de los componentes marcados, blindando y preservando intacto el historial de los demás componentes.
 
 ---
 
@@ -938,8 +788,9 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
 2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
 3. Estado Actual:
+   - **v3.60.35:** Calibración oficial de Transmisión (Caja 280k, Bronces/Palillos 140k, Embrague 100k, Aceite 30k) y efecto cascada en taller.
    - **v3.60.34:** Corrección de zona horaria oficial Ecuador (`America/Guayaquil` UTC-5). HOY = 2026-09-29.
    - **v3.60.33:** Armonización de cabecera de `HomeScreenVT.tsx` (bus fijo para ayudantes, selector para socios).
-   - **Análisis de Reparaciones Mayores:** Planteado el Asistente de Síntomas del Chofer y Expediente Clínico de Reparaciones Mayores (Caja, Motor, Corona).
 4. Próxima Tarea al conectar la nueva cuenta:
-   - Presentar la propuesta de interfaz e implementar el **Asistente de Síntomas del Chofer (1 Toque)** y el **Expediente de Reparaciones Mayores de Tren Motriz** en el módulo de Mantenimiento y Chofer.
+   - Validar con el usuario el flujo en ruta y auditoría general de los módulos antes de salida a producción.
+   - Mantener congelado el Asistente de Síntomas hasta que el cliente decida activar la siguiente fase de desarrollo.

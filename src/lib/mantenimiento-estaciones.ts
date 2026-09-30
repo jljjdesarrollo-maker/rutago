@@ -433,12 +433,21 @@ export const ESTACIONES_SERVICIO_CONFIG: Record<EstacionServicioId, EstacionServ
     colorBg: "bg-purple-50",
     items: [
       {
-        codigo: "MNT-MNT-CAJA",
-        nombre: "Mantenimiento de Caja",
-        intervaloKm: 150000,
+        codigo: "MNT-BRONCES-SINCRONIZADOS",
+        nombre: "Bronces y Palillos de Caja (Preventivo 1.5 Años)",
+        intervaloKm: 140000,
         preMarcado: false,
         esCascadaTrigger: true,
-        cascadaAfecta: ["MNT-KIT-EMBRAGUE", "MNT-ACEITE-CAJA"],
+        cascadaAfecta: ["MNT-ACEITE-CAJA"],
+        opcionalTexto: "Canastillas de agujas y sincronizados (2da, 3ra, 4ta)",
+      },
+      {
+        codigo: "MNT-MNT-CAJA",
+        nombre: "Reparación Mayor de Caja (Overhaul 3 Años)",
+        intervaloKm: 280000,
+        preMarcado: false,
+        esCascadaTrigger: true,
+        cascadaAfecta: ["MNT-KIT-EMBRAGUE", "MNT-BRONCES-SINCRONIZADOS", "MNT-ACEITE-CAJA"],
       },
       {
         codigo: "MNT-MNT-CORONA",
@@ -450,13 +459,13 @@ export const ESTACIONES_SERVICIO_CONFIG: Record<EstacionServicioId, EstacionServ
       },
       {
         codigo: "MNT-KIT-EMBRAGUE",
-        nombre: "Kit de Embrague",
+        nombre: "Kit de Embrague (Plato Exedy, Disco y Manguera)",
         intervaloKm: 100000,
         preMarcado: false,
       },
       {
         codigo: "MNT-ACEITE-CAJA",
-        nombre: "Aceite de Caja",
+        nombre: "Aceite de Caja (Valvulina SAE 80W-90 / 85W-140)",
         intervaloKm: 30000,
         preMarcado: false,
       },
@@ -740,6 +749,7 @@ export const MAPA_ESTACION_NATURAL: Record<string, EstacionServicioId> = {
 
   // 6. MNT_MAYOR (Caja y Corona)
   "MNT-KIT-EMBRAGUE": "MNT_MAYOR",
+  "MNT-BRONCES-SINCRONIZADOS": "MNT_MAYOR",
   "MNT-MNT-CAJA": "MNT_MAYOR",
   "MNT-MNT-CORONA": "MNT_MAYOR",
 
@@ -788,6 +798,11 @@ export function resolverCascadaEstacion(codigosSeleccionados: string[]): string[
 
   if (resultado.has('MNT-MNT-CAJA')) {
     resultado.add('MNT-KIT-EMBRAGUE');
+    resultado.add('MNT-BRONCES-SINCRONIZADOS');
+    resultado.add('MNT-ACEITE-CAJA');
+  }
+
+  if (resultado.has('MNT-BRONCES-SINCRONIZADOS')) {
     resultado.add('MNT-ACEITE-CAJA');
   }
 
