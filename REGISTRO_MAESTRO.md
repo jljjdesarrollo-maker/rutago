@@ -1435,3 +1435,29 @@ En caso de migrar a otra cuenta:
 * **Validación:**
   - TypeScript: `npx tsc --noEmit` completado con 0 errores.
   - JSX: 100% verificado.
+
+---
+
+# 🚀 VERSIÓN 3.60.51: MOTOR DE INFERENCIA DE TURNOS BASADO EN LOS ÚLTIMOS 3 ARQUEOS Y FILTRO ANTI-ANOMALÍAS (2026-09-30)
+
+## 📌 1. MOTIVACIÓN Y VISIÓN DEL USUARIO
+* **Regla de oro: No inventar, preguntar.**
+* Se eliminó el valor quemado de prueba (`VT08`).
+* En la realidad operativa de la cooperativa, las unidades sufren auxilios mecánicos o reemplazos imprevistos. Tomar solo el último turno de ayer inducía a error si ese día la unidad cubrió a un compañero dañado.
+* Se requiere analizar al menos **3 arqueos consecutivos del ayudante** para determinar la secuencia real de rotación.
+* Para unidades nuevas o en calibración (< 3 arqueos), el sistema debe ser transparente y permitir la selección manual directa sin inventar datos.
+
+## 🛠️ 2. SOLUCIÓN IMPLEMENTADA
+* **Nuevo Módulo `src/lib/turno-secuencia-tracker.ts`:**
+  - `obtenerUltimosArqueosBus(disco, busId)`: Consulta `/api/records` y `localStorage` con orden cronológico y filtro por unidad.
+  - `calcularProyeccionSecuencia(arqueos, manualVT)`:
+    * **3 o más arqueos:** Calcula la cadencia cíclica regular (+1 en módulo 15).
+    * **Filtro Anti-Anomalías:** Si detecta un salto atípico en el último arqueo debido a reemplazo de emergencia, corrige la anomalía y reanuda el rol natural de la unidad.
+    * **Unidades Nuevas (< 3 arqueos):** Entra en estado `CALIBRANDO` indicando el avance (`X de 3 arqueos`) y solicitando la selección manual.
+* **Integración en `SocioMantenimientoWidget.tsx`:**
+  - Muestra el estado del cálculo: `Inferencia Arqueos`, `Calibrando (X/3)` o `Turno Manual`.
+  - Agrega en la pantalla dedicada la auditoría de arqueos recientes: `VT_hace2días ➔ VT_ayer ➔ Hoy: VT_actual`.
+  - **Selector Rápido de Turno:** Permite al socio cambiar su turno con un toque si hoy la cooperativa le ordenó realizar un turno extraordinario (`[ ¿Haces otro turno hoy? ]`), con opción de `[ Restaurar automático ]`.
+* **Validación:**
+  - TypeScript: `npx tsc --noEmit` completado con 0 errores.
+  - JSX: 100% verificado.

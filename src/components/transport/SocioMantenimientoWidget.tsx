@@ -3,18 +3,21 @@
  * @description Alerta ejecutiva 1x2 y Pantalla Dedicada Coherente para el Socio Propietario.
  *
  * Características principales:
- * 1. En el Dashboard (debajo de la cuadrícula 2x2):
- *    - Layout 1x2 de alto contraste y balance visual:
- *      * Card 1: Disponibilidad y Tiempos en Loja (Ventana de Hoy con horas exactas + Estado real de Retén/Ciclo Continuo).
- *      * Card 2: Semáforo y Alertas de Mantenimiento (🔴 Vencidos | 🟡 Próximos) con colores de contraste.
+ * 1. Detección Inteligente del Turno (Sin Inventos):
+ *    - Infiere el turno de hoy analizando los últimos 3 arqueos cerrados del ayudante (/api/records).
+ *    - Filtro Anti-Anomalías: Si el último arqueo fue un reemplazo de emergencia por daño mecánico,
+ *      recalcula el rol natural del bus.
+ *    - Unidades Nuevas / En Calibración (< 3 arqueos): Informa con transparencia el estado de calibración
+ *      y permite al socio indicar manualmente su turno de hoy.
+ *    - Flexibilidad Total: El socio puede cambiar su turno asignado en cualquier momento si hoy cubre un auxilio mecánico.
  *
- * 2. Al ingresar (Pantalla Dedicada Ejecutiva):
- *    - Respeta estrictamente la configuración del Super Admin (modoRetenActivo):
- *      * Si el Retén está APAGADO (Ciclo Continuo 15 días): NO inventa días de retén. Muestra los 5 turnos de ruta continuos
- *        con sus horarios reales en Loja y recomienda aprovechar las ventanas mayores o relevo técnico.
- *      * Si el Retén está ENCENDIDO (Ciclo 16 días): Muestra la Parada Mayor de 24h libres y el día exacto de fosa.
- *    - Arquitectura libre de bloqueo de scroll (h-[100dvh] en móvil y h-[88vh] en desktop con scroll nativo fluido).
- *    - Cabecera fija superior y pie fijo inferior siempre visibles.
+ * 2. Estado Real del Retén según Super Admin:
+ *    - Si los retenes están APAGADOS: 100% turnos de ruta continuos (15 VTs).
+ *    - Si los retenes están ACTIVADOS: Proyecta la Parada Mayor de 24h libres en fosa.
+ *
+ * 3. Pantalla Dedicada Ergonómica:
+ *    - Altura exacta adaptable (h-[100dvh] en móvil / sm:h-[88vh] en desktop).
+ *    - Sin conflicto de scroll-locking con cabecera y pie fijos.
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -34,6 +37,9 @@ import {
   Calendar,
   X,
   Repeat,
+  History,
+  SlidersHorizontal,
+  RotateCcw,
 } from 'lucide-react';
 import {
   getAllBuses,
@@ -58,9 +64,16 @@ import {
   getVentanasOperativasParaVT,
   subscribeToVTConfig,
   isModoRetenActivo,
-  getConfiguracionFlotaLocal,
 } from '@/lib/vt-ventanas-storage';
 import { formatearMinutosLegible } from '@/lib/vt-ventanas-catalogo';
+import {
+  obtenerUltimosArqueosBus,
+  calcularProyeccionSecuencia,
+  extraerNumeroVT,
+  formatearCodigoVT,
+  type ResultadoProyeccionTurno,
+  type ArqueoResumenTurno,
+} from '@/lib/turno-secuencia-tracker';
 
 interface SocioMantenimientoWidgetProps {
   propBusId?: string;
@@ -101,6 +114,8 @@ const MESES_COMPLETOS = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
+const LISTA_VTS_OFICIALES = Array.from({ length: 15 }, (_, i) => `VT${String(i + 1).padStart(2, '0')}`);
+
 export function SocioMantenimientoWidget({
   propBusId,
   onGoToMantenimiento,
@@ -108,6 +123,19 @@ export function SocioMantenimientoWidget({
   const [activeBusId, setActiveBusId] = useState<string>(() => propBusId || getActiveBusId());
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [modoRetenActivo, setModoRetenActivo] = useState<boolean>(() => isModoRetenActivo());
+  const [mostrarSelectorTurno, setMostrarSelectorTurno] = useState(false);
+
+  // Turno manual seleccionado por el socio (almacenado por bus)
+  const [manualVT, setManualVT] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(`rg_socio_manual_vt_${activeBusId}`) || null;
+    }
+    return null;
+  });
+
+  // Historial de arqueos y proyección calculada
+  const [arqueosHistorial, setArqueosHistorial] = useState<ArqueoResumenTurno[]>([]);
+  const [cargandoArqueos, setCargandoArqueos] = useState<boolean>(true);
 
   // Tacómetro auditado en tiempo real
   const resolverKmActual = useCallback((bId: string): number => {
@@ -159,20 +187,46 @@ export function SocioMantenimientoWidget({
 
   const [items, setItems] = useState<MantenimientoBusItem[]>(() => cargarItems(activeBusId));
 
-  // Suscripción a cambios de bus, odómetro y configuración de retén
+  // Cargar arqueos del ayudante para este bus
+  const refrescarArqueos = useCallback(async (bId: string) => {
+    setCargandoArqueos(true);
+    const busesList = getAllBuses();
+    const current = busesList.find((b) => b.id === bId);
+    const disco = current?.numeroDisco || '01';
+    try {
+      const data = await obtenerUltimosArqueosBus(disco, bId);
+      setArqueosHistorial(data);
+    } catch {
+      setArqueosHistorial([]);
+    } finally {
+      setCargandoArqueos(false);
+    }
+  }, []);
+
+  // Suscripción a cambios de bus y sincronización
   useEffect(() => {
     if (propBusId && propBusId !== activeBusId) {
       setActiveBusId(propBusId);
       setKmActual(resolverKmActual(propBusId));
       setItems(cargarItems(propBusId));
+      if (typeof window !== 'undefined') {
+        setManualVT(localStorage.getItem(`rg_socio_manual_vt_${propBusId}`) || null);
+      }
+      refrescarArqueos(propBusId);
     }
-  }, [propBusId, activeBusId, resolverKmActual, cargarItems]);
+  }, [propBusId, activeBusId, resolverKmActual, cargarItems, refrescarArqueos]);
 
   useEffect(() => {
+    refrescarArqueos(activeBusId);
+
     const unsubBus = subscribeToActiveBus((bus: BusItem) => {
       setActiveBusId(bus.id);
       setKmActual(resolverKmActual(bus.id));
       setItems(cargarItems(bus.id));
+      if (typeof window !== 'undefined') {
+        setManualVT(localStorage.getItem(`rg_socio_manual_vt_${bus.id}`) || null);
+      }
+      refrescarArqueos(bus.id);
     });
 
     syncMantenimientoConfigConServidor(activeBusId).then(() => {
@@ -182,6 +236,7 @@ export function SocioMantenimientoWidget({
     const handleSync = () => {
       setItems(cargarItems(activeBusId));
       setModoRetenActivo(isModoRetenActivo());
+      refrescarArqueos(activeBusId);
     };
 
     window.addEventListener('rg_mantenimiento_config_sync', handleSync);
@@ -207,13 +262,42 @@ export function SocioMantenimientoWidget({
       window.removeEventListener('rg_owner_expenses_sync', handleSync);
       window.removeEventListener('rg_mantenimientos_auto_reconciliados', handleSync);
     };
-  }, [activeBusId, resolverKmActual, cargarItems]);
+  }, [activeBusId, resolverKmActual, cargarItems, refrescarArqueos]);
 
   const buses = getAllBuses();
   const currentBus = buses.find((b) => b.id === activeBusId);
   const disco = currentBus?.numeroDisco || '01';
   const nivelControl = getBusNivelControl(activeBusId);
   const plantillaNivel = PLANTILLAS_NIVEL_CONTROL[nivelControl] || PLANTILLAS_NIVEL_CONTROL.BASICO;
+
+  // Cálculo de Proyección con Algoritmo de 3 Arqueos Mínimos + Anti-Anomalías
+  const proyeccionTurno: ResultadoProyeccionTurno = useMemo(() => {
+    return calcularProyeccionSecuencia(arqueosHistorial, manualVT);
+  }, [arqueosHistorial, manualVT]);
+
+  const turnoBaseCodigo = proyeccionTurno.turnoProyectado;
+  const vtNumBase = proyeccionTurno.turnoBaseNumero;
+
+  // Handler para selección manual del socio
+  const handleSeleccionarManualVT = (codigo: string) => {
+    setManualVT(codigo);
+    setMostrarSelectorTurno(false);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`rg_socio_manual_vt_${activeBusId}`, codigo);
+      } catch {}
+    }
+  };
+
+  const handleRestaurarAutomatico = () => {
+    setManualVT(null);
+    setMostrarSelectorTurno(false);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(`rg_socio_manual_vt_${activeBusId}`);
+      } catch {}
+    }
+  };
 
   // Cálculos de desgaste y semaforización ejecutiva
   const itemsCalculados: MantenimientoCalculadoItem[] = useMemo(() => {
@@ -266,23 +350,9 @@ export function SocioMantenimientoWidget({
   const proximosCount = proximos.length;
   const alDiaCount = alDia.length;
 
-  // Turno base asignado hoy para este bus
-  const turnoBaseCodigo = useMemo(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`rg_chofer_selected_vt_${activeBusId}`);
-      if (saved) return saved;
-    }
-    const num = parseInt(disco.replace(/\D/g, '') || '1', 10);
-    const numVT = ((num * 7) % 15) + 1;
-    return num === 1 ? 'VT08' : `VT${String(numVT).padStart(2, '0')}`;
-  }, [activeBusId, disco]);
-
-  // Cálculo de los Próximos 5 Tiempos Disponibles según el estado REAL de retén en Super Admin
+  // Cálculo de los Próximos 5 Tiempos Disponibles en Ruta basados en la Inferencia Real
   const { proximosTiempos, diaRetenInfo } = useMemo(() => {
     const hoy = new Date();
-    const match = turnoBaseCodigo.match(/\d+/);
-    const vtNumBase = match ? parseInt(match[0], 10) : 8;
-
     const discoNum = parseInt(disco.replace(/\D/g, '') || '1', 10);
     const diasParaReten = Math.max(1, ((16 - ((discoNum + vtNumBase) % 16)) % 16) || 2);
 
@@ -300,7 +370,6 @@ export function SocioMantenimientoWidget({
 
       const esHoy = i === 0;
       const esManana = i === 1;
-      // Solo hay día de retén si el Super Admin lo activó explícitamente (modoRetenActivo === true)
       const esDiaReten = modoRetenActivo && (i === diasParaReten);
 
       const diaNombre = DIAS_SEMANA[d.getDay()];
@@ -317,9 +386,9 @@ export function SocioMantenimientoWidget({
         etiquetaFecha = `${diaNombre} ${diaNum} ${mesAbr} (en ${i} días)`;
       }
 
-      // En ciclo continuo (retén apagado), se avanza 1 turno por día en la rotación de 15 VTs
+      // En ciclo continuo (15 VTs), se avanza 1 turno por día en la rotación oficial
       const vtNumDia = ((vtNumBase - 1 + i) % 15) + 1;
-      const vtCodigo = `VT${String(vtNumDia).padStart(2, '0')}`;
+      const vtCodigo = formatearCodigoVT(vtNumDia);
 
       let horaInicio = '10:30';
       let horaFin = '13:40';
@@ -397,11 +466,11 @@ export function SocioMantenimientoWidget({
     };
 
     return { proximosTiempos: listaTiempos, diaRetenInfo };
-  }, [turnoBaseCodigo, disco, modoRetenActivo]);
+  }, [disco, vtNumBase, modoRetenActivo]);
 
   const tiempoHoy = proximosTiempos[0] || {
     descripcionDisponible: 'Tiene 3h 10m disponible desde 10:30 a 13:40 en Loja',
-    vtCodigo: 'VT08',
+    vtCodigo: turnoBaseCodigo,
     duracionTexto: '3h 10m',
     horaInicio: '10:30',
     horaFin: '13:40',
@@ -416,7 +485,7 @@ export function SocioMantenimientoWidget({
     <>
       {/* ─── ALERTA EJECUTIVA 1x2 (DEBAJO DE LA CUADRÍCULA 2x2 EN EL DASHBOARD) ─── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3">
-        {/* Card 1: Disponibilidad y Tiempo (Formato Claro y Exacto) */}
+        {/* Card 1: Disponibilidad y Tiempo (Inferencia Real por Arqueos) */}
         <div
           onClick={() => setIsViewOpen(true)}
           className="group cursor-pointer rounded-3xl p-4 sm:p-5 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 text-white border border-blue-500/40 hover:border-blue-400 shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between"
@@ -434,9 +503,20 @@ export function SocioMantenimientoWidget({
                 Disponibilidad Operativa
               </span>
             </div>
-            <span className="text-[10px] font-mono bg-emerald-950/80 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-              0 carreras perdidas
-            </span>
+            
+            {proyeccionTurno.estado === 'CALIBRANDO' ? (
+              <span className="text-[10px] font-mono bg-amber-950/80 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
+                Calibrando ({proyeccionTurno.conteoArqueos}/3)
+              </span>
+            ) : proyeccionTurno.esManual ? (
+              <span className="text-[10px] font-mono bg-indigo-950/80 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">
+                Turno Manual
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono bg-emerald-950/80 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                Inferencia Arqueos
+              </span>
+            )}
           </div>
 
           {/* Mensaje Principal: Texto Claro y Exacto */}
@@ -444,6 +524,11 @@ export function SocioMantenimientoWidget({
             <p className="text-xs text-slate-300 font-semibold flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
               Hoy en ruta ({tiempoHoy.vtCodigo}):
+              {proyeccionTurno.esAnomaliaDetectada && (
+                <span className="text-[10px] text-amber-300 font-bold ml-1">
+                  (Anti-Anomalía Activo)
+                </span>
+              )}
             </p>
             <h4 className="text-sm sm:text-base font-black text-white leading-tight">
               &quot;{tiempoHoy.descripcionDisponible}&quot;
@@ -610,7 +695,7 @@ export function SocioMantenimientoWidget({
             </header>
 
             {/* 2. Cuerpo Desplazable con UN SOLO SCROLL FLUIDO */}
-            <main className="flex-1 overflow-y-auto overscroll-contain p-3.5 sm:p-5 space-y-5">
+            <main className="flex-1 overflow-y-auto overscroll-contain p-3.5 sm:p-5 space-y-4">
               {/* ═══════════════════════════════════════════════════════════════
                   COSA 1: ¿CUÁNDO TIENE TIEMPO PARA HACER MANTENIMIENTO?
                   ═══════════════════════════════════════════════════════════════ */}
@@ -629,25 +714,118 @@ export function SocioMantenimientoWidget({
                   </span>
                 </div>
 
-                {/* Tarjeta de Alto Impacto: HOY EN RUTA */}
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-white border-2 border-blue-500/80 shadow-xs space-y-1.5">
+                {/* Tarjeta de Alto Impacto: HOY EN RUTA con Selector de Turno */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-blue-50 via-white to-white border-2 border-blue-500/80 shadow-xs space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-black uppercase px-2 py-0.5 rounded-full bg-blue-600 text-white flex items-center gap-1 text-[10px]">
                       <Sparkles className="w-3 h-3 text-amber-300" />
                       Disponible Hoy Mismo
                     </span>
-                    <span className="font-bold text-blue-900 font-mono text-[11px]">
-                      Turno {tiempoHoy.vtCodigo} • {tiempoHoy.duracionTexto} libres
+
+                    {/* Botón para cambiar turno si hoy cubre auxilio mecánico */}
+                    <button
+                      type="button"
+                      onClick={() => setMostrarSelectorTurno(!mostrarSelectorTurno)}
+                      className="text-[11px] font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1 underline underline-offset-2 cursor-pointer"
+                    >
+                      <SlidersHorizontal className="w-3 h-3" />
+                      <span>{mostrarSelectorTurno ? 'Ocultar turnos' : `¿Haces otro turno hoy?`}</span>
+                    </button>
+                  </div>
+
+                  {/* Selector rápido de turno */}
+                  {mostrarSelectorTurno && (
+                    <div className="p-3 rounded-xl bg-slate-100 border border-slate-300 space-y-2 animate-in fade-in duration-100">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-slate-800">
+                          Selecciona el turno asignado hoy:
+                        </span>
+                        {manualVT && (
+                          <button
+                            type="button"
+                            onClick={handleRestaurarAutomatico}
+                            className="text-[10px] font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1 cursor-pointer"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            Restaurar automático
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {LISTA_VTS_OFICIALES.map((codigo) => {
+                          const esActivo = codigo === tiempoHoy.vtCodigo;
+                          return (
+                            <button
+                              key={codigo}
+                              type="button"
+                              onClick={() => handleSeleccionarManualVT(codigo)}
+                              className={`py-1 text-xs font-mono font-black rounded-lg border transition-all cursor-pointer ${
+                                esActivo
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                  : 'bg-white text-slate-700 border-slate-300 hover:bg-blue-50'
+                              }`}
+                            >
+                              {codigo}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-blue-900 font-mono text-xs">
+                        Turno {tiempoHoy.vtCodigo} • {tiempoHoy.duracionTexto} libres en Loja
+                      </span>
+                      {proyeccionTurno.esManual && (
+                        <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700">
+                          Manual
+                        </span>
+                      )}
+                    </div>
+                    <h5 className="text-sm sm:text-base font-black text-slate-900 leading-snug">
+                      &quot;{tiempoHoy.descripcionDisponible}&quot;
+                    </h5>
+                    <p className="text-xs text-slate-600 font-medium">
+                      💡 <strong>Da tiempo para:</strong> {tiempoHoy.sugerenciaTaller}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Explicación Transparente de la Inferencia por Arqueos */}
+                <div className="p-3 rounded-2xl bg-slate-100/90 border border-slate-200 space-y-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 flex items-center gap-1 text-[11px]">
+                      <History className="w-3.5 h-3.5 text-slate-500" />
+                      Origen del Turno (Auditoría de Arqueos del Ayudante)
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500">
+                      {proyeccionTurno.conteoArqueos} {proyeccionTurno.conteoArqueos === 1 ? 'arqueo' : 'arqueos'} en base
                     </span>
                   </div>
 
-                  <h5 className="text-sm sm:text-base font-black text-slate-900 leading-snug">
-                    &quot;{tiempoHoy.descripcionDisponible}&quot;
-                  </h5>
-
-                  <p className="text-xs text-slate-600 font-medium">
-                    💡 <strong>Da tiempo para:</strong> {tiempoHoy.sugerenciaTaller}
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    {proyeccionTurno.mensajeDetalle}
                   </p>
+
+                  {proyeccionTurno.arqueosAnalizados.length > 0 && (
+                    <div className="pt-1 flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-semibold text-slate-500">Secuencia reciente:</span>
+                      {proyeccionTurno.arqueosAnalizados.map((a, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white border border-slate-300 text-slate-700"
+                        >
+                          {a.date.slice(5)}: <strong>{a.vtCode}</strong>
+                        </span>
+                      ))}
+                      <span className="text-[10px] text-slate-400">➔</span>
+                      <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-blue-600 text-white">
+                        Hoy: {tiempoHoy.vtCodigo}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Si el Retén está ACTIVO en Super Admin: Mostrar Parada Mayor */}
@@ -673,15 +851,15 @@ export function SocioMantenimientoWidget({
                   </div>
                 ) : (
                   /* Si el Retén está APAGADO: Aviso de Régimen Continuo */
-                  <div className="p-3 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-between gap-2 text-xs">
+                  <div className="p-2.5 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2">
                       <Repeat className="w-4 h-4 text-slate-500 shrink-0" />
                       <div>
-                        <span className="font-bold text-slate-900 block">
+                        <span className="font-bold text-slate-900 block text-[11px]">
                           Régimen Operativo: Ciclo Continuo de 15 Días (Retén Desactivado)
                         </span>
-                        <span className="text-[11px] text-slate-500">
-                          Todos los buses cubren turnos diarios de ruta continuos. Aprovecha las ventanas diurnas de Loja para taller.
+                        <span className="text-[10px] text-slate-500">
+                          Todos los buses cubren turnos diarios de ruta continuos. Aprovecha las ventanas de Loja para taller.
                         </span>
                       </div>
                     </div>
@@ -804,7 +982,6 @@ export function SocioMantenimientoWidget({
                       ) {
                         accionRecomendada = `Hacer HOY en la ventana de Loja (${tiempoHoy.horaInicio} a ${tiempoHoy.horaFin}) sin perder carreras.`;
                       } else {
-                        // Si el retén está activo, se programa para el retén; si está apagado, se sugiere ventana mayor o relevo técnico
                         if (modoRetenActivo) {
                           accionRecomendada = `Programar para la Parada Mayor (${diaRetenInfo.textoExacto}) para tener 24h libres en fosa.`;
                         } else {
