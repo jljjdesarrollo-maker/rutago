@@ -895,3 +895,225 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 4. Próxima Tarea al conectar la nueva cuenta:
    - Validar con el usuario el flujo en ruta y auditoría general de los módulos antes de salida a producción.
    - Mantener congelado el Asistente de Síntomas hasta que el cliente decida activar la siguiente fase de desarrollo.
+
+
+------
+
+## ⏱️ VERSIÓN 3.60.39 (EN ANÁLISIS): OPTIMIZACIÓN DE TIEMPO LIBRE ENTRE TURNOS Y MANTENIMIENTO PREVENTIVO
+**Fecha:** 2026-09-30  
+**Módulo:** Programación de Mantenimiento / Análisis de Turnos y Rutas VT  
+**Estado:** 🟡 EN FASE DE ANÁLISIS (CÓDIGO CONGELADO - SIN MODIFICACIONES)
+
+### 1. Parámetros Oficiales de Tiempos de Viaje Registrados:
+* **Loja ⇄ Vilcabamba:** 1 hora y 30 minutos (90 min).
+* **Loja → El Tambo (Ida):** 2 horas (120 min).
+* **El Tambo → Malacatos → Loja (Retorno):**
+  - La hora señalada en la programación para los retornos de El Tambo corresponde a la salida desde **Malacatos**.
+  - Tiempo Malacatos → Loja: 1 hora (60 min).
+  - Tiempo El Tambo → Malacatos: 1 hora (60 min).
+  - *Ejemplo de cálculo:* Si el retorno registrado hacia Loja marca las 17:10 (en Malacatos), la unidad partió de El Tambo a las 16:10 para llegar a Malacatos a las 17:10 y culminar en Loja a las 18:10.
+* **Loja → La Elvira (Ida):** 2 horas (120 min).
+* **La Elvira → Vilcabamba → Loja (Retorno):**
+  - La hora señalada en la programación corresponde a la salida desde **Vilcabamba**.
+  - Tiempo La Elvira → Vilcabamba: 30 minutos (30 min).
+  - Tiempo Vilcabamba → Loja: 1 hora y 30 minutos (90 min).
+* **Rutas Yangana y Zahuyco:**
+  - Aplican exactamente las mismas reglas de viaje que La Elvira.
+  - La hora programada de retorno es desde **Vilcabamba** (1h 30min hasta Loja), con un traslado de 30 minutos desde el punto de origen hacia Vilcabamba.
+
+### 2. Protocolo de Seguridad y Continuidad:
+* Conexión con repositorio GitHub `https://github.com/jljjdesarrollo-maker/rutago` validada.
+* PAT recibido de forma volátil y protegido: **cero almacenamiento de tokens o credenciales en archivos o configuraciones locales/remotas**.
+* Código de la aplicación se mantiene estrictamente congelado y sin modificaciones hasta recibir la instrucción explícita del usuario.
+
+### 3. Primera Tarea Pendiente:
+* Recibir o analizar la tabla de asignación de turnos y grupos de unidades VT para cruzar con estos tiempos y calcular las ventanas exactas de tiempo libre disponibles para mantenimientos preventivos.
+
+### 4. Fórmulas Oficiales de Cálculo de Tiempo Libre (Ventanas de Mantenimiento):
+
+#### A. Ruta Loja ⇄ Vilcabamba
+* **Llegada a Vilcabamba:** Hora Salida Loja + 01:30
+* **Tiempo Libre en Vilcabamba:** Hora Retorno Vilcabamba - Llegada a Vilcabamba
+* **Llegada a Base Loja:** Hora Retorno Vilcabamba + 01:30
+* **Tiempo Libre en Loja antes de siguiente frecuencia:** Hora Siguiente Salida Loja - Llegada a Base Loja
+
+#### B. Ruta Loja ⇄ El Tambo
+* **Llegada a El Tambo:** Hora Salida Loja + 02:00
+* **Salida de El Tambo:** Hora Programada Malacatos - 01:00
+* **Tiempo Libre en El Tambo:** Salida de El Tambo - Llegada a El Tambo
+* **Llegada a Base Loja:** Hora Programada Malacatos + 01:00
+* **Tiempo Libre en Loja antes de siguiente frecuencia:** Hora Siguiente Salida Loja - Llegada a Base Loja
+
+#### C. Rutas Loja ⇄ La Elvira / Yangana / Zahuyco
+* **Llegada a Destino:** Hora Salida Loja + 02:00
+* **Salida desde Destino:** Hora Programada Vilcabamba - 00:30
+* **Tiempo Libre en Destino:** Salida desde Destino - Llegada a Destino
+* **Llegada a Base Loja:** Hora Programada Vilcabamba + 01:30
+* **Tiempo Libre en Loja antes de siguiente frecuencia:** Hora Siguiente Salida Loja - Llegada a Base Loja
+
+### 5. Análisis Integral de Frecuencias y Tiempos de Retorno (VT01 a VT15):
+* Registrado en bitácora el análisis completo de las frecuencias de ida, tiempo de estadía para el retorno en destino, llegada a Loja y tiempos de holgura en base.
+* Se incluye la rotación secuencial de las 15 unidades (Bus 1 a Bus 15) donde cada bus continúa al día siguiente con el VT subsiguiente (VT1 -> VT2 -> ... -> VT15 -> VT1).
+
+### 6. Propuestas Estratégicas para Aprovechamiento Operativo de Tiempos Libres:
+1. Asignador Inteligente de Mantenimiento por Ventanas (Match Duración Servicio vs Tiempo Libre en Loja).
+2. Proyección Predictiva en el Ciclo Rotativo de 15 Días (Planificar taller con antelación en el turno con mayor holgura).
+3. Matriz de Alertas Operativas de Enlace (Blindaje de transiciones críticas como VT14->VT15 de 5 min y VT10->VT11 de 20 min).
+4. Protocolo de Inspección en Cabeceras Parroquiales (Aprovechar estadías de 1h a 2h en El Tambo, Vilcabamba y La Elvira para chequeo de raches y tambores).
+5. Panel Visual Gantt de Ocupación y Talleres para Despacho y Socios.
+
+### 7. Calibración de Tiempos de Taller y Criterio Operativo Institucional:
+* **Kit de Embrague (100k) y Correctivos Mayores:** Se clasifican como **Parada Programada / Pérdida de 1 Día de Trabajo** (no se ejecutan en ventanas entre frecuencias).
+* **Aceite de Caja y Corona (30k):** Tiempo estimado de ejecución en lubricadora: **1h30 a 2h30**, o durante la **Pernocta en Base Loja**.
+* **Paquetes de Muelles y Bujes (50k):** Tiempo estimado de sustitución/mantenimiento: **2h a 2h30** o durante la **Pernocta en Base Loja (8h a 10h)**.
+* **Aceite de Motor y Filtros (5k):** Ventana de **1h00 a 1h30**.
+* **Zapatas de Freno y Rodaje (11k-15k):** Ventana de **1h30 a 2h30** o pernocta.
+* **Engrase, Raches y Soplado (800 km - 1.5k):** Ventana corta de **25 a 45 min**.
+
+### 8. Planteamiento Estratégico: Asesor Autónomo de Mantenimiento y Operación (Cero Carga para el Socio):
+* **Contexto de Datos Reales:**
+  - El ayudante registra boletos en tiempo real O hace el arqueo de caja al cierre del día (con 0 a 48h de desfase).
+  - La rotación VT1-VT15 es determinista y matemática: conociendo el último turno registrado, el sistema conoce el presente y proyecta el futuro de toda la quincena.
+* **Propuesta de Arquitectura:**
+  1. Motor de Proyección Predictiva Determinista (Ciclo Rotativo VT).
+  2. Copiloto Pasivo / Asesor Proactivo para Conductor y Socio.
+  3. Sugerencia de Ventana Ideal "Cero Fricción" (Taller sin perder turnos).
+  4. Protocolo de Resiliencia ante Desfase de Arqueo (Buffer de 1 a 2 días).
+
+### 9. Diagnóstico de la Predicción Actual y Manejo del Retén:
+* **Diagnóstico del Código Existente:**
+  - Actualmente, `kmRestantes` se calcula restando el odómetro del último cambio al último odómetro ingresado por el ayudante/conductor (`odometroActualBus`).
+  - La proyección en días (`calcularProyeccionTiempo`) usa una constante plana de `PROMEDIO_KM_DIA_FLOTA = 280 km/día`.
+* **Realidad Operativa Informada por el Usuario:**
+  - Actualmente **NO hay día de retén** activo (el ciclo rota directamente VT1 -> VT2 -> ... -> VT15 -> VT1, 15 días continuos).
+  - En aproximadamente 2 meses la cooperativa podría reactivar el día de retén (ciclo de 16 días: VT1 a VT15 + Retén).
+* **Solución Propuesta (Motor Híbrido Resiliente):**
+  1. **Interruptor de Retén Activo:** Variable configurable (`incluyeReten: false` actualmente; `true` cuando se reactive).
+  2. **Km Teórico por Turno Real vs Promedio Plano:** En lugar de 280 km genéricos, cada VT aporta su kilometraje real auditado. Si cae en retén, aporta 0 km.
+  3. **Auto-Calibración con Arqueo:** El tacómetro real del ayudante calibra el acumulador cada vez que se guarda el arqueo; mientras no haya arqueo (hasta 48h), la predicción teórica mantiene las alertas vivas y precisas.
+
+### 10. Arquitectura de Roles, Gobierno del Retén y Matriz de Beneficiarios:
+* **Gobierno de Flota (Quién activa el Retén):**
+  - Actor: `SUPERADMIN_SAAS` / Directiva de la Cooperativa (Control Central).
+  - Ubicación: Módulo de Configuración de Flota y Rutas (`AdminRutasKmScreen` / `AdminFlotaModal`).
+  - Motivo: Altera el ciclo global de 15 a 16 días para todos los buses del 1 al 15 de forma sincronizada desde una fecha efectiva determinada.
+* **Beneficiarios y Roles:**
+  1. `SOCIO`: Planificación financiera y de taller en el día de retén (0 km rodados, día completo libre).
+  2. `CHOFER`: Hoja de ruta inteligente diaria, horarios traducidos en cabecera y alertas de enlaces justos.
+  3. `AYUDANTE`: Arqueo de caja y boletaje sin presión; sus egresos de lubricadora/taller resetean mantenimientos.
+  4. `SUPERADMIN_SAAS`: Visibilidad global del estado preventivo de la flota y cumplimiento del rol.
+* **Interfaces Afectadas y Diseño de Modificaciones:**
+  - Panel Central SuperAdmin (Interruptor institucional de Retén + Fecha inicio).
+  - `HomeScreenVT` / `ChoferMantenimientoWidget` (Tarjeta del Turno de Hoy para el Chofer).
+  - `SocioMantenimientoWidget` / `MantenimientoScreen` (Radar Predictivo de Ventanas Libres).
+  - Formulario de Arqueo / Cierre de Caja (Conciliación automática de km y auto-reset por egresos).
+
+### 11. Refactorización Integral de Roles, Módulos y Dinámica Real del Retén:
+* **Chofer (Responsable Absoluto del Mantenimiento):**
+  - Manejo integral de estaciones de taller (`ChoferMantenimientoWidget`), lubricadoras, fosas, frenos y suspensiones.
+  - Registro de mantenimientos ejecutados y clasificación del pagador:
+    a) Pagado por Ayudante (gasto operativo diario deducido de la producción).
+    b) Pagado por Socio (dinero directo del dueño del bus).
+  - Ejecución de ventanas libres (diurnas de 1h30 a 2h30) y pernoctas.
+
+* **Ayudante (Responsable Financiero de la Jornada):**
+  - Boletaje en carretera (`TicketScreen`), conteo físico de efectivo y caja común.
+  - Egresos operativos menores de ruta (diésel, peaje, lavado rápido).
+  - Cierre y Arqueo General (`ArqueoGeneralScreen`), entrega de la producción neta del día.
+
+* **Socio Propietario (Gestión Patrimonial y Utilidad Neta Real):**
+  - Registra sus gastos directos pagados con su propio dinero (`OwnerExpensesScreen`): repuestos mayores, llantas, letras bancarias, aportes de cooperativa.
+  - Visualiza el Estado de Resultados (`OwnerIncomeStatementModal`):
+    Utilidad Neta = Producción Neta del Ayudante - Gastos Propios del Socio.
+
+* **Dinámica Real del Retén (Secretaría / Reemplazo de Turno):**
+  - La unidad en Retén inicia en estado "Guardia Libre" (0 km, apta para mantenimiento mayor o descanso).
+  - Si la secretaría comunica que la Unidad X no trabaja por daño/taller:
+    La unidad en retén activa el modo: "Cubre a Unidad X (Turno VT_Y)".
+    Asume el paquete de frecuencias de esa unidad para ese día.
+    La unidad parada no rueda (0 km) y la unidad de retén factura la producción y suma el kilometraje.
+
+### 12. Simplificación SaaS Práctica y Arquitectura de Alertas por Actor:
+* **Desacoplamiento SaaS Multi-Tenant (Adopción Parcial de Unidades):**
+  - No se asume que todos los socios de la cooperativa tengan la app de pago.
+  - El ayudante de la unidad que está de retén simplemente selecciona directamente en HomeScreenVT el grupo VT que va a cubrir (ej. VT10) por disposición de secretaría, o un checkbox "Cubriendo turno especial / reemplazo".
+  - Si la unidad no reemplaza a nadie, no se abre jornada y se computa como Día de Retén Libre (0 km para taller o descanso).
+* **Diseño de Alertas para el SOCIO (Vista Ejecutiva Patrimonial):**
+  - Ubicación: Dashboard del Socio (HomeScreen.tsx modo SOCIO) y SocioMantenimientoWidget.tsx.
+  - Componente: Hero Card de Asesoría de Flota (Semáforo de 3 estados).
+  - Recomendación de Ventana: Match entre componente por vencer y la ventana libre del chofer en Loja (>= 1h30 o retén).
+  - Impacto Financiero: Avisos de paradas programadas (embrague 100k) en días de retén para proteger la Utilidad Neta mensual.
+* **Diseño de Alertas para el AYUDANTE (Veedor Discreto):**
+  - Ubicación: AyudanteMantenimientoBar.tsx.
+  - Estilo: Minimalista, no intrusivo (chip discreto "🟢 Unidad al día" o "⚠️ Aviso mecánico derivado a Chofer").
+  - Única interacción: Botón "Reportar Novedad en Ruta" (chillidos, fugas de aire, vibraciones).
+
+### 13. Arquitectura de Ventanas Dinámicas en BD, Recalculador Automático y Hoja de Ruta:
+* **Persistencia Dinámica en PostgreSQL (Anti-Hardcode):**
+  - Los tiempos de frecuencias y las ventanas libres no se queman en código.
+  - Se vinculan al modelo `BusVT` en PostgreSQL con un schema estructurado para `ventanasOperativas`.
+  - Parámetros por ventana: `tipo` (DIURNA_LOJA, PERNOCTA_LOJA, CABECERA, PERNOCTA_EXTERNA), `horaInicio`, `horaFin`, `duracionMinutos`, `mantenimientosAptos` (array de códigos de catálogo).
+* **Motor Recalculador de Ventanas (Gestión de Cambios Futuros):**
+  - Fórmula: Ventana en Loja = Hora Salida Vuelta (N+1) - Hora Llegada Vuelta (N).
+  - Si la cooperativa cambia un horario de un VT en la administración, el motor recalcula automáticamente las holguras y actualiza las ventanas en BD.
+  - Soporte Offline-First: Los clientes (chofer, socio, ayudante) sincronizan la configuración en local (localStorage / IndexedDB) para operar sin señal.
+* **Hoja de Ruta de Implementación Estructurada:**
+  - Fase 1: Modelo relacional y sincronizador de Ventanas Operativas y Retén en BD.
+  - Fase 2: Cuadro de Mando del Chofer (Horarios reales, ventanas libres y alertas de enlace).
+  - Fase 3: Asesor Patrimonial del Socio (Radar de Ventana Oportuna y Alerta de Retén).
+  - Fase 4: Consola de Edición y Recalibración de VT para Administración.
+
+### 14. Arquitectura de Alta Eficiencia: Versión Fingerprint (Cero Consultas Innecesarias a BD):
+* **Realidad Operativa:**
+  - Los horarios de las rutas y turnos VT cambian muy rara vez (meses o años).
+  - Consultar la base de datos en cada apertura degrada el rendimiento móvil y gasta datos en carretera.
+* **Estrategia Fingerprint / Version Hash (0ms de Carga):**
+  - La aplicación almacena la configuración de VTs y ventanas en almacenamiento local ultrarrápido (localStorage / IndexedDB).
+  - Al iniciar sesión en línea, la app ejecuta un handshake ultraligero de 10 bytes:
+    `GET /api/config/vt-version` -> `{ version: 1, updatedAt: "2026-09-30" }`.
+  - Si la versión local coincide con la del servidor: CERO consultas a la BD. Carga instantánea a 0 ms.
+  - Solo si la versión del servidor cambió (porque el administrador modificó turnos o activó el retén): se descarga el nuevo catálogo y se actualiza el caché.
+* **Consolidación Integral del Ecosistema:**
+  - Retén autónomo con selector directo del ayudante en caso de reemplazo dispuesto por secretaría.
+  - Chofer como responsable técnico exclusivo de las estaciones de servicio.
+  - Socio enfocado en sus gastos de capital propio y Utilidad Neta Real.
+  - Ayudante como operador financiero y veedor discreto.
+
+
+---
+
+# 🚀 VERSIÓN 3.60.39: ARQUITECTURA OFICIAL DE VENTANAS OPERATIVAS, GESTIÓN DE RETÉN Y VERSIÓN FINGERPRINT (2026-09-30)
+
+## 📌 1. ESTADO ACTUAL Y PUNTO EXACTO DE ENTREGA
+* **Versión Formal:** `3.60.39`
+* **Módulo:** Arquitectura de Gobernanza de Flota, Ventanas Operativas Dinámicas, Estrategia Fingerprint (0ms de carga) y Desacoplamiento de Roles (Socio, Chofer, Ayudante).
+* **Estado:** 🟢 DOCUMENTADO Y BLINDADO EN REGISTRO MAESTRO. Listo para ejecutar Fase 1 (Persistencia de Ventanas y Endpoint de Versión).
+
+---
+
+## 🏛️ 2. RESUMEN EJECUTIVO DE DECISIONES DE NEGOCIO Y TÉCNICAS
+1. **Gobierno del Retén:**
+   - Modo Actual: Ciclo de 15 días continuos (`VT01` -> `VT15` -> `VT01`).
+   - Modo Futuro (~2 meses): Ciclo de 16 días (`VT01` a `VT15` + `DÍA DE RETÉN`).
+   - Protocolo Real de Secretaría: Si la secretaría comunica que una unidad está parada por daño o mantenimiento, la unidad en retén asume el VT de esa unidad directamente desde `HomeScreenVT`. Si ninguna unidad se para, la unidad de retén tiene el día 100% libre (0 km) para mantenimiento mayor sin perder carreras.
+2. **Desacoplamiento Estricto de Roles:**
+   - **Chofer:** Responsable absoluto del mantenimiento del vehículo (estaciones de servicio, paradas en taller en ventanas libres, reporte de pagador: ayudante con producción o socio de su bolsillo).
+   - **Ayudante:** Responsable financiero de la ruta (venta de boletos, arqueo parcial, cierre general con entrega de Producción Neta). Veedor discreto con cápsula mínima y botón de reporte de novedades mecánicas.
+   - **Socio:** Responsable patrimonial. Registra sus propios gastos con dinero de su bolsillo (no con producción del día) y audita la **Utilidad Neta Real** (`OwnerExpensesScreen` y `OwnerIncomeStatementModal`).
+3. **Estrategia Fingerprint / Version Hash (0ms de latencia):**
+   - Los turnos cambian con muy baja frecuencia (meses o años).
+   - El cliente móvil guarda la data en `localStorage` y solo hace un handshake ligero de 10 bytes (`GET /api/config/vt-version`).
+   - Si la versión es idéntica: CERO consultas a la base de datos PostgreSQL. Carga inmediata a 0 ms sin consumir datos en ruta.
+
+---
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA)
+En caso de agotarse la cuota de Google AI Studio y continuar en otra cuenta:
+1. **Repositorio Oficial:** `https://github.com/jljjdesarrollo-maker/rutago`
+2. **Rama:** `main`
+3. **Punto Exacto:** Se cerró la versión `3.60.39` con las especificaciones arquitectónicas y diseño funcional completo.
+4. **Primera Tarea Pendiente:** Ejecutar la **Fase 1**:
+   - Crear el modelo y estructura de persistencia para `ventanasOperativas` en PostgreSQL / Prisma.
+   - Implementar el endpoint ultraligero `/api/config/vt-version` para el micro-chequeo de versión (Fingerprint).
+   - Sembrar las ventanas auditadas de los 15 grupos VT con tiempos oficiales de cabecera.
+5. **Autenticación GitHub:** Solicitar el Personal Access Token (PAT) al usuario para operaciones con el repositorio remoto.
