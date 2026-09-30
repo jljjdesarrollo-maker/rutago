@@ -529,6 +529,27 @@ export function SocioMantenimientoWidget({
                 </div>
               </div>
 
+              {/* Asesor Patrimonial de Ventanas Oportunas (VT & Retén) */}
+              {(criticosCount > 0 || proximosCount > 0) && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-950 via-slate-900 to-slate-900 border border-blue-500/40 text-white space-y-2 shadow-sm animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      Asesoría Patrimonial de Ventanas Operativas
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      0 carreras perdidas
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-200 leading-relaxed">
+                    💡 <strong>Oportunidad en Ruta:</strong> Para componentes con alerta de fosa, recuerda que en turnos con ventanas diurnas prolongadas en Loja (como el <strong>VT08</strong> con 3h 10m de 10:30 a 13:40), el chofer puede realizar trabajos de lubricadora, caja y muelles sin que el bus pierda carreras.
+                  </p>
+                  <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                    🛡️ <strong>Paradas Mayores (Embrague / Caja):</strong> Para intervenciones que requieren un día completo de taller, te recomendamos programarlas para el <strong>Día de Retén</strong> de la unidad para proteger la Utilidad Neta del mes.
+                  </p>
+                </div>
+              )}
+
               {/* Barra de Filtros Rápidos */}
               <div className="flex items-center justify-between gap-2 pt-1">
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">

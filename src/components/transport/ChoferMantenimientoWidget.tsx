@@ -59,6 +59,7 @@ import {
 } from '@/lib/mantenimiento-estaciones';
 import { syncMantenimientoBidireccional, flushMantenimientoOutbox, getMantenimientoOutbox } from '@/lib/mantenimiento-sync';
 import { MantenimientoSyncChip } from './MantenimientoSyncDiagnostic';
+import { ChoferTurnoVentanasCard } from './ChoferTurnoVentanasCard';
 
 const PROMEDIO_KM_DIA_FLOTA = 280; // Promedio auditado de rotación de VT en la cooperativa (~250-300 km/día)
 
@@ -338,6 +339,7 @@ export function ChoferMantenimientoWidget({
   const [registroFecha, setRegistroFecha] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [registroCosto, setRegistroCosto] = useState<string>('');
   const [registroTaller, setRegistroTaller] = useState<string>('');
+  const [pagadorRegistroRapido, setPagadorRegistroRapido] = useState<'AYUDANTE' | 'SOCIO'>('AYUDANTE');
 
   const handleGuardarRegistroChofer = () => {
     if (!modalItem) return;
@@ -417,9 +419,9 @@ export function ChoferMantenimientoWidget({
       esRetroactivo: km < kmActual || fechaFinal < today,
       kmRodadosDesdeServicio: Math.max(0, kmActual - km),
       costoTotal: costoNum,
-      pagador: 'AYUDANTE',
-      montoCubiertoAyudante: costoNum,
-      descontadoEnVT: false,
+      pagador: pagadorRegistroRapido,
+      montoCubiertoAyudante: pagadorRegistroRapido === 'AYUDANTE' ? costoNum : 0,
+      descontadoEnVT: pagadorRegistroRapido === 'AYUDANTE',
       detalleTrabajo: `${modalItem.nombre} - Cambio / Servicio realizado`,
       itemsRealizados: [modalItem.nombre],
       codigosMantenimiento: modalItem.codigo ? [modalItem.codigo] : [],
@@ -1841,6 +1843,17 @@ export function ChoferMantenimientoWidget({
           </div>
         </div>
 
+        {/* ZONA 1.5: HOJA DE RUTA DEL TURNO Y VENTANAS LIBRES DE TALLER (0 ms Fingerprint) */}
+        <ChoferTurnoVentanasCard
+          busId={activeBusId}
+          disco={disco}
+          kmActual={kmActual}
+          itemsMantenimiento={itemsBus}
+          onAbrirEstacion={(estacionId) => {
+            handleAbrirEstacionChofer(estacionId);
+          }}
+        />
+
         {/* ZONA 2: CUADRÍCULA EJECUTIVA 2x2 PARA EL CONDUCTOR (#053225) */}
         <div className="grid grid-cols-2 gap-3.5">
           {/* 1. 🛢️ Fosa / Lubricadora */}
@@ -2341,6 +2354,55 @@ export function ChoferMantenimientoWidget({
                   placeholder="ej. Lubricadora Vilcabamba / Mecánica Central"
                   className="h-9 rounded-xl text-xs bg-slate-50 border-slate-300"
                 />
+              </div>
+
+              <div>
+                <Label className="text-xs font-bold text-slate-700 block mb-1">
+                  Costo Pagado ($)
+                </Label>
+                <Input
+                  type="number"
+                  step="0.50"
+                  value={registroCosto}
+                  onChange={e => setRegistroCosto(e.target.value)}
+                  placeholder="0.00"
+                  className="h-10 rounded-xl text-sm font-black bg-slate-50 border-slate-300"
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs font-bold text-slate-700 block mb-1.5">
+                  ¿Quién asumió el pago?
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPagadorRegistroRapido('AYUDANTE')}
+                    className={`py-2 px-2.5 rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                      pagadorRegistroRapido === 'AYUDANTE'
+                        ? 'bg-emerald-800 text-white border-emerald-900 shadow-xs ring-1 ring-emerald-400'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>💵 Ayudante (Ruta)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPagadorRegistroRapido('SOCIO')}
+                    className={`py-2 px-2.5 rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                      pagadorRegistroRapido === 'SOCIO'
+                        ? 'bg-blue-800 text-white border-blue-900 shadow-xs ring-1 ring-blue-400'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>👤 Socio (Dueño)</span>
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  {pagadorRegistroRapido === 'AYUDANTE'
+                    ? '✓ Se descuenta de la producción del día en el arqueo.'
+                    : '✓ Lo pagó el dueño con su propio dinero (no afecta caja del día).'}
+                </p>
               </div>
             </div>
 

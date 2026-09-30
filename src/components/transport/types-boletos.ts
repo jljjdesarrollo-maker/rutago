@@ -40,6 +40,7 @@ export interface VTSession {
   odometroInicial?: number;
   esReemplazo?: boolean;
   nombreReemplazo?: string;
+  esReemplazoSecretaria?: boolean;
 }
 
 // ─── Viaje Gratis Promotion ───

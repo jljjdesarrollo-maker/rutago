@@ -8,6 +8,8 @@ import { Bus, User, UserCheck, UserPlus, ArrowRight, ArrowLeft, Loader2, CheckCi
 import { BusSelector } from './BusSelector';
 import { getActiveBus } from '@/lib/fleet-storage';
 import { getEcuadorDateString, getEcuadorYesterdayDateString } from '@/lib/date-helpers';
+import { getConfiguracionFlotaLocal, subscribeToVTConfig, verificarActualizacionFingerprint } from '@/lib/vt-ventanas-storage';
+import { ShieldCheck } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
 const APP_VERSION = 'v3.60.30';
@@ -88,10 +90,26 @@ interface AyudanteActivo {
 }
 
 export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
-  const [vts, setVts] = useState<VTOption[]>([]);
+  const [vts, setVts] = useState<VTOption[]>(() => {
+    const cfg = getConfiguracionFlotaLocal();
+    return cfg.vts.map(v => ({
+      id: v.codigo,
+      codigo: v.codigo,
+      nombre: v.nombre,
+      frecuencias: v.frecuencias.map(f => ({
+        routeFrom: f.routeFrom,
+        routeTo: f.routeTo,
+        time: f.time,
+      })),
+    }));
+  });
   const [ayudante, setAyudante] = useState<AyudanteActivo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedVT, setSelectedVT] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [selectedVT, setSelectedVT] = useState<string>(() => {
+    const cfg = getConfiguracionFlotaLocal();
+    return cfg.vts.length > 0 ? cfg.vts[0].codigo : 'VT01';
+  });
+  const [esReemplazoSecretaria, setEsReemplazoSecretaria] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'todos' | 'vilcabamba' | 'el_tambo' | 'yangana' | 'la_elvira' | 'zahuayco'>('todos');
   const [existingSession, setExistingSession] = useState<VTSession & { timestamp: number } | null>(null);
   const [existingUnfinished, setExistingUnfinished] = useState(false);
@@ -191,6 +209,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
         }
       }
     } catch { /* ignore */ }
+    return () => unsub();
   }, []);
 
   useEffect(() => {
@@ -313,6 +332,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
       placaBus: currentActiveBus.placa,
       esReemplazo: esReemplazo && Boolean(cleanReemplazo),
       nombreReemplazo: esReemplazo && cleanReemplazo ? cleanReemplazo : undefined,
+      esReemplazoSecretaria: Boolean(esReemplazoSecretaria),
     };
 
     // ─── Limpieza completa al forzar nuevo VT ───
@@ -767,6 +787,33 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
                 {selectedVT} ACTIVO
               </span>
             )}
+          </div>
+
+          {/* Card Especial de Secretaría / Reemplazo */}
+          <div className={`mb-3 p-3.5 rounded-2xl border transition-all ${
+            esReemplazoSecretaria
+              ? 'bg-amber-500/10 border-amber-400 text-amber-950 shadow-xs'
+              : 'bg-slate-50 border-slate-200 text-slate-700'
+          }`}>
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={esReemplazoSecretaria}
+                onChange={(e) => setEsReemplazoSecretaria(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+              />
+              <div className="flex-1 text-xs">
+                <span className="font-black flex items-center gap-1.5 text-slate-900">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                  ¿Cubriendo turno asignado por Secretaría?
+                </span>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                  {esReemplazoSecretaria
+                    ? '✓ Modo Reemplazo Activo: Puedes seleccionar libremente cualquiera de los 15 VTs para cubrir a la unidad en taller.'
+                    : 'Activa esta opción si secretaría dispuso que tu unidad cubra a otro bus hoy por daño o mantenimiento.'}
+                </p>
+              </div>
+            </label>
           </div>
 
           {/* Filtro Rápido por Pestañas de Destino */}
