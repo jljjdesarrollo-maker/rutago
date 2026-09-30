@@ -1340,3 +1340,36 @@ En caso de migrar a otra cuenta:
 En caso de migrar a otra cuenta:
 1. **Repositorio:** \`https://github.com/jljjdesarrollo-maker/rutago\` (rama \`main\`).
 2. **Punto Exacto:** Versión \`3.60.46\` activa en Vercel. El modal ejecutivo de mantenimiento del socio abre de forma instantánea al tocar tanto la tarjeta general como cada pastilla específica.
+
+---
+
+# 🚀 VERSIÓN 3.60.47: COMPONENTE DE ALERTAS 1x2 Y PANTALLA DEDICADA DE 2 BLOQUES (DISPONIBILIDAD Y MANTENIMIENTOS) (2026-09-30)
+
+## 📌 1. MOTIVACIÓN Y REQUERIMIENTO DEL USUARIO
+* **Ubicación & Formato en Dashboard:** Diseñar una alerta llamativa tipo "card" con layout **1x2** (2 cuadrantes de alto impacto visual) justo debajo de la cuadrícula 2x2 en la vista del Socio Propietario.
+* **Simplificación Radical al Ingresar:** Al hacer clic en la alerta, presentar una pantalla dedicada y limpia que contiene **EXCLUSIVAMENTE 2 cosas**:
+  1. **¿Cuándo tiene tiempo para hacer mantenimiento?:**
+     - Horario exacto con inicio y fin: *"Tiene 3h 10m disponible desde 10:30 a 13:40 en Loja"*.
+     - Lista cronológica de los **próximos 5 tiempos disponibles**, con **HOY resaltado al frente**.
+     - Tarjeta destacada de **Parada Mayor (Día de Retén)**: *"Tiene 24h disponibles el [Día Fecha] (en [N] días)"* con 0 carreras perdidas.
+  2. **¿Qué mantenimientos debe o puede realizar?:**
+     - Lista **únicamente** los componentes que están vencidos (🔴) o próximos a vencer (🟡).
+     - Cada componente con su kilometraje restante/excedido y una recomendación táctica cruzada con el tiempo disponible (ej: si es aceite/filtros -> *"Hacer HOY en la ventana de Loja"*; si es caja/embrague -> *"Programar para el Día de Retén (24h)"*).
+
+## 🛠️ 2. SOLUCIÓN TÉCNICA IMPLEMENTADA
+1. **Layout 1x2 en `SocioMantenimientoWidget.tsx`:**
+   - **Card 1 (Disponibilidad y Tiempos):** Fondo degradado Slate/Zafiro, icono de reloj pulsante, frase de disponibilidad exacta hoy (*"Tiene 3h 10m disponible desde 10:30 a 13:40 en Loja"*) y aviso inferior de retén.
+   - **Card 2 (Mantenimientos y Semáforo):** Borde y brillo reactivo de alto contraste (Rojo carmesí para vencidos, Ámbar para próximos, Esmeralda para al día), contadores claros `🔴 2 Vencidos • 🟡 1 Próximo` y CTA `[ Ver Detalle → ]`.
+2. **Pantalla Dedicada Ejecutiva (Al pulsar cualquier card):**
+   - Barra superior con botón `[ ← Volver al Panel ]`, título formal, odómetro auditado en tiempo real y bus activo.
+   - **Bloque 1:** Tarjeta Hero de Parada Mayor (Retén - 24h libres) + Agenda de los próximos 5 tiempos disponibles en ruta con HOY resaltado con badge azul y animación sutil.
+   - **Bloque 2:** Lista filtrada exclusivamente a componentes en alerta (🔴 y 🟡) con barra de desgaste, impacto operativo y recomendación táctica directa. Si no hay ítems en alerta, muestra aviso limpio de "100% al Día".
+   - Botonera al pie para volver o saltar a la Gestión Integral de Taller.
+3. **Verificación y Calidad:**
+   - Compilación con TypeScript (`npx tsc --noEmit` con 0 errores).
+   - Verificación de todos los tags JSX (100% resueltos).
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA)
+En caso de migrar a otra cuenta:
+1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago` (rama `main`).
+2. **Punto Exacto:** Versión `3.60.47` activa. El socio ve la alerta 1x2 debajo de la cuadrícula 2x2 y al ingresar tiene la pantalla limpia con los 5 tiempos disponibles (HOY resaltado) y solo los mantenimientos vencidos/próximos.
