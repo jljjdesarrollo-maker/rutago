@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Ticket, ArrowRight, Play, CheckCircle2, Clock } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Ticket, ArrowRight, Play, Users, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 import type { UserSession } from './types';
 import type { VTSession, FrecuenciaEstado } from './types-boletos';
 
@@ -49,6 +48,7 @@ export function AyudanteJornadaCard({ user, busNumero, onGoToBoletos }: Ayudante
               }
               return acc + (curr.totalRecaudado || 0);
             }, 0);
+
             const totalCajaComun = estados.reduce((acc, curr) => acc + ((curr as any).cajaComunMonto || 0), 0);
             const totalProduccionDeterminado = totalEfectivoContado + totalCajaComun;
             const totalBoletos = estados.reduce((acc, curr) => acc + (curr.ventasCount || 0), 0);
@@ -75,109 +75,95 @@ export function AyudanteJornadaCard({ user, busNumero, onGoToBoletos }: Ayudante
   const tieneTurnoActivo = !!activeSession && !!resumenTurno;
 
   return (
-    <Card
+    <div
       onClick={onGoToBoletos}
-      className={`cursor-pointer transition-all rounded-3xl border-2 hover:shadow-lg active:scale-[0.99] ${
-        user.esActual !== false
-          ? 'border-[#912D26] bg-gradient-to-br from-[#912D26] via-[#85251f] to-[#6d1b16] text-white shadow-md shadow-[#912D26]/20'
-          : 'border-amber-300 bg-amber-50/70 text-amber-950'
-      }`}
+      className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.99] text-white rounded-3xl p-5 sm:p-6 shadow-xl border border-emerald-900/60 transition relative overflow-hidden"
     >
-      <CardContent className="p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                user.esActual !== false
-                  ? 'bg-white text-[#912D26] shadow-sm'
-                  : 'bg-amber-500 text-white'
-              }`}
-            >
-              <Ticket className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-black text-sm uppercase tracking-wide">
-                  {tieneTurnoActivo ? 'Jornada en Curso' : 'Venta de Boletos en Ruta'}
-                </span>
-                <span
-                  className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
-                    user.esActual !== false
-                      ? 'bg-emerald-400 text-emerald-950'
-                      : 'bg-amber-200 text-amber-900'
-                  }`}
-                >
-                  {user.esActual !== false ? 'TURNO ACTIVO' : 'INACTIVO'}
-                </span>
-              </div>
-              <p
-                className={`text-xs mt-0.5 leading-tight ${
-                  user.esActual !== false ? 'text-white/80' : 'text-amber-800'
-                }`}
-              >
-                {tieneTurnoActivo
-                  ? `Grupo ${activeSession?.vtCode} • Fecha: ${activeSession?.fecha}`
-                  : 'Seleccionar fecha, grupo VT y emitir boletos por frecuencia'}
-              </p>
-            </div>
-          </div>
+      {/* Glow de fondo institucional */}
+      <div className="absolute top-0 right-0 w-44 h-44 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div
-            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-              user.esActual !== false ? 'bg-white/10 text-white' : 'bg-amber-200/50 text-amber-800'
+      {/* Cabecera de la Tarjeta Hero */}
+      <div className="flex items-center justify-between mb-3 relative z-10">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-emerald-300">
+            <Ticket className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-emerald-300/90 block">
+              {tieneTurnoActivo ? `Turno Activo • ${activeSession?.vtCode}` : 'Jornada Laboral'}
+            </span>
+            <span className="text-[11px] text-emerald-100/70 font-medium">
+              {tieneTurnoActivo ? `Fecha: ${activeSession?.fecha}` : `Bus ${busNumero} • Coo. Vilcabambaturis`}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${
+              user.esActual !== false
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
             }`}
           >
-            <ArrowRight className="w-5 h-5" />
-          </div>
+            {user.esActual !== false ? (tieneTurnoActivo ? 'En Ruta' : 'Autorizado') : 'Inactivo'}
+          </span>
         </div>
+      </div>
 
-        {/* Resumen dinámico si hay turno en curso */}
-        {tieneTurnoActivo && resumenTurno && (
-          <div className="grid grid-cols-3 gap-2 bg-black/20 rounded-2xl p-2.5 border border-white/10 text-center mb-3">
-            <div>
-              <span className="text-[9px] text-white/70 uppercase font-bold block">Recaudado</span>
-              <span className="text-base font-black text-emerald-300">
-                ${resumenTurno.totalRecaudado.toFixed(2)}
-              </span>
+      {/* Número Rey: Dinero en Caja de Ruta o Iniciar Turno */}
+      <div className="text-center py-2 sm:py-3 relative z-10">
+        {tieneTurnoActivo ? (
+          <>
+            <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight drop-shadow-sm">
+              ${resumenTurno.totalRecaudado.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <div>
-              <span className="text-[9px] text-white/70 uppercase font-bold block">Pasajeros</span>
-              <span className="text-base font-black text-white">
-                {resumenTurno.totalBoletos}
-              </span>
+            <div className="text-xs sm:text-sm font-black uppercase tracking-widest text-emerald-200/90 mt-1">
+              EN CAJA DE RUTA
             </div>
-            <div>
-              <span className="text-[9px] text-white/70 uppercase font-bold block">Vueltas</span>
-              <span className="text-base font-black text-amber-200">
-                {resumenTurno.frecuenciasCerradas}/{resumenTurno.frecuenciasTotal}
-              </span>
+          </>
+        ) : (
+          <>
+            <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight drop-shadow-sm flex items-center justify-center gap-2">
+              <Play className="w-6 h-6 fill-emerald-300 text-emerald-300" />
+              <span>INICIAR JORNADA</span>
             </div>
-          </div>
+            <div className="text-xs sm:text-sm font-black uppercase tracking-widest text-emerald-200/90 mt-1">
+              SELECCIONAR DÍA Y GRUPO VT
+            </div>
+          </>
         )}
+      </div>
 
-        {/* Botón de acción destacado */}
-        <div
-          className={`w-full py-3 px-4 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm ${
-            user.esActual !== false
-              ? 'bg-white text-[#912D26] hover:bg-slate-50'
-              : 'bg-amber-600 text-white'
-          }`}
-        >
-          {tieneTurnoActivo ? (
-            <>
-              <Play className="w-4 h-4 fill-current" />
-              <span>
-                Continuar Jornada {resumenTurno?.proximaFrecuencia ? `• ${resumenTurno.proximaFrecuencia}` : ''}
-              </span>
-            </>
-          ) : (
-            <>
-              <Play className="w-4 h-4 fill-current" />
-              <span>Iniciar Jornada Laboral (Seleccionar VT)</span>
-            </>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      {/* Línea divisoria y Métricas Tácticas Inferiores */}
+      <div className="mt-4 pt-3.5 border-t border-emerald-800/60 flex items-center justify-between text-xs text-emerald-200/90 px-1 relative z-10">
+        {tieneTurnoActivo ? (
+          <>
+            <div className="flex items-center gap-1.5 truncate">
+              <Users className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+              <span><strong>{resumenTurno.totalBoletos}</strong> pasajeros</span>
+            </div>
+            <div className="flex items-center gap-1.5 truncate">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+              <span><strong>{resumenTurno.frecuenciasCerradas}/{resumenTurno.frecuenciasTotal}</strong> vueltas</span>
+            </div>
+            <div className="hidden sm:flex items-center gap-1.5 truncate text-[11px]">
+              <Clock className="w-3 h-3 text-emerald-300 shrink-0" />
+              <span className="truncate">{resumenTurno.proximaFrecuencia || 'Completado'}</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-1.5">
+              <span>Unidad {busNumero} asignada</span>
+            </div>
+            <div className="flex items-center gap-1 text-emerald-300 font-bold">
+              <span>Configurar turno</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

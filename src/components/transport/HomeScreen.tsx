@@ -552,33 +552,38 @@ export function HomeScreen({
           </div>
         </header>
       ) : (
-        /* Header Institucional para Ayudante */
-        <header className="pt-6 pb-3 px-5 bg-gradient-to-b from-[#912D26]/10 via-transparent to-transparent">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-[#912D26] text-white shadow-md shadow-[#912D26]/20">
-                <Truck className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-black text-[#3A3A3A] tracking-tight">RutaGo</span>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#912D26] text-white">
-                    UNIDAD {busNumero}
-                  </span>
-                </div>
-                <p className="text-xs text-[#3A3A3A]/70 font-medium">Coo. Vilcabambaturis</p>
-              </div>
+        /* Header Minimalista para Ayudante (Coherente con Conductor y Socio) */
+        <header className="pt-6 pb-2 px-5 bg-white">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <span className="text-sm font-medium text-slate-500 block leading-tight">Hola,</span>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
+                {user.nombre || "Ayudante"}
+              </h1>
             </div>
 
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-2xl border border-gray-200 shadow-xs">
-              <div className="w-8 h-8 rounded-full bg-[#912D26]/10 flex items-center justify-center">
-                <User className="w-4 h-4 text-[#912D26]" />
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-bold text-[#3A3A3A] leading-tight">{user.nombre}</p>
-                <p className="text-[10px] text-[#912D26] uppercase font-extrabold">{user.rol}</p>
-              </div>
+            {/* Pastilla del Autobús */}
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-full px-3.5 py-1.5 shadow-2xs">
+              <Bus className="w-4 h-4 text-emerald-800" />
+              <span className="text-xs font-bold text-slate-800">
+                Bus {busNumero} • {activeBus?.placa || "HAA-1234"}
+              </span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500" title="En Turno" />
             </div>
+          </div>
+
+          {/* Compañero de Ruta (Chofer) Compacto */}
+          <div className="mt-1 bg-slate-50 border border-slate-200/80 rounded-2xl px-3.5 py-2 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 truncate">
+              <Users className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+              <span className="font-semibold text-slate-700">Tripulación:</span>
+              <span className="text-slate-600 truncate">
+                {crewInfo.conductorNombre || "Sin asignar"} (Chofer al Volante)
+              </span>
+            </div>
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+              En Ruta
+            </span>
           </div>
         </header>
       )}
@@ -870,77 +875,100 @@ export function HomeScreen({
           </div>
         )}
 
-        {/* ─── VISTA PARA CONDUCTOR Y AYUDANTE (!isSocioOwner) ─── */}
-        {!isSocioOwner && (
+        {/* ─── VISTA PARA AYUDANTE (#053225, HERO CARD Y CUADRÍCULA 2x2) ─── */}
+        {!isSocioOwner && user.rol === "AYUDANTE" && (
           <div className="flex flex-col gap-4">
-            {/* Widget de Mantenimiento para Chofer / Ayudante */}
-            {onGoToMantenimiento && (() => {
-              if (moduloMantenimientoActivo) {
-                if (user.rol === "AYUDANTE") {
-                  return (
-                    <AyudanteMantenimientoBar
-                      busId={activeBusId}
-                      busNumero={busNumero}
-                    />
-                  );
-                }
-                return (
-                  <div id="chofer-mantenimiento-section" className="scroll-mt-4">
-                    <ChoferMantenimientoWidget
-                      onVerMas={onGoToHistory}
-                      onGoToHistory={onGoToHistory}
-                      recordCount={recordCount}
-                    />
-                  </div>
-                );
-              }
-              return null;
-            })()}
+            {/* 1. Hero Card del Ayudante (Número Rey de Caja de Ruta o Iniciar Turno) */}
+            {onGoToBoletos && (
+              <AyudanteJornadaCard
+                user={user}
+                busNumero={busNumero}
+                onGoToBoletos={handleAyudanteBoletosClick}
+              />
+            )}
 
+            {/* 2. Barra de Supervisión de Odómetro y Novedad Mecánica */}
+            <AyudanteMantenimientoBar
+              busId={activeBusId}
+              busNumero={busNumero}
+            />
+
+            {/* 3. Cuadrícula Táctica 2x2 para Ayudante (#053225) */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[11px] font-black text-[#3A3A3A]/50 uppercase tracking-wider flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-[#912D26]" />
-                  <span>Día a Día • Ruta de Hoy</span>
+                <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-emerald-800" />
+                  <span>Acciones Tácticas de Ruta</span>
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-2.5">
-                {user.rol === "AYUDANTE" && onGoToBoletos && (
-                  <AyudanteJornadaCard
-                    user={user}
-                    busNumero={busNumero}
-                    onGoToBoletos={handleAyudanteBoletosClick}
-                  />
-                )}
-
-                {/* Acceso para Ayudante a turnos guardados (para el conductor ya está en su cuadrícula 2x2) */}
-                {user.rol !== "CONDUCTOR" && (
-                <Card
-                  onClick={onGoToHistory}
-                  className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-gray-200 bg-white"
+              <div className="grid grid-cols-2 gap-3.5">
+                {/* 1. Emitir Boletos */}
+                <button
+                  type="button"
+                  onClick={handleAyudanteBoletosClick}
+                  className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60"
                 >
-                  <CardContent className="flex items-center justify-between p-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-                        <History className="w-5 h-5 text-[#3A3A3A]" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm text-[#3A3A3A]">Mis Registros de Vuelta</p>
-                        <p className="text-xs text-gray-500">Consultar mis liquidaciones de ruta archivadas</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-black text-[#912D26]">{recordCount}</span>
-                      <ArrowRight className="w-4 h-4 text-gray-400" />
-                    </div>
-                  </CardContent>
-                </Card>
-                )}
+                  <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
+                    <Ticket className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-sm sm:text-base font-bold block leading-snug">Emitir Boletos</span>
+                    <span className="text-[11px] text-emerald-200/70 font-medium">Cobro en ruta</span>
+                  </div>
+                </button>
+
+                {/* 2. Arqueo y Gastos */}
+                <button
+                  type="button"
+                  onClick={handleAyudanteBoletosClick}
+                  className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60"
+                >
+                  <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
+                    <Receipt className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-sm sm:text-base font-bold block leading-snug">Arqueo y Gastos</span>
+                    <span className="text-[11px] text-emerald-200/70 font-medium">Cuadre y diésel</span>
+                  </div>
+                </button>
+
+                {/* 3. Vueltas del Día */}
+                <button
+                  type="button"
+                  onClick={handleAyudanteBoletosClick}
+                  className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60"
+                >
+                  <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="text-sm sm:text-base font-bold block leading-snug">Vueltas del Día</span>
+                    <span className="text-[11px] text-emerald-200/70 font-medium">Frecuencias VT</span>
+                  </div>
+                </button>
+
+                {/* 4. Mis Registros */}
+                <button
+                  type="button"
+                  onClick={onGoToHistory}
+                  className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60 relative"
+                >
+                  <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
+                    <History className="w-5 h-5" />
+                  </div>
+                  <span className="absolute top-4 right-4 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-black px-2 py-0.5 rounded-full">
+                    {recordCount}
+                  </span>
+                  <div>
+                    <span className="text-sm sm:text-base font-bold block leading-snug">Mis Registros</span>
+                    <span className="text-[11px] text-emerald-200/70 font-medium">Historial archivado</span>
+                  </div>
+                </button>
               </div>
             </div>
 
-            {/* Configuración y Salida para Chofer / Ayudante */}
+            {/* Configuración y Salida */}
             <div className="mt-2">
               <Card
                 onClick={onLogout}
@@ -962,7 +990,42 @@ export function HomeScreen({
             </div>
           </div>
         )}
-      </main>
+
+        {/* ─── VISTA PARA CONDUCTOR ─── */}
+        {!isSocioOwner && user.rol === "CONDUCTOR" && (
+          <div className="flex flex-col gap-4">
+            {onGoToMantenimiento && moduloMantenimientoActivo && (
+              <div id="chofer-mantenimiento-section" className="scroll-mt-4">
+                <ChoferMantenimientoWidget
+                  onVerMas={onGoToHistory}
+                  onGoToHistory={onGoToHistory}
+                  recordCount={recordCount}
+                />
+              </div>
+            )}
+            {/* Configuración y Salida */}
+            <div className="mt-2">
+              <Card
+                onClick={onLogout}
+                className="cursor-pointer hover:bg-rose-50/50 transition rounded-2xl border border-gray-200 bg-white"
+              >
+                <CardContent className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600">
+                      <LogOut className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-xs sm:text-sm text-[#3A3A3A]">Cerrar Sesión</p>
+                      <p className="text-[11px] text-gray-500">Salir de la cuenta de {user.nombre}</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-gray-400" />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+        </main>
 
       <aside aria-label="Acciones Rápidas" className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-200/90 px-4 py-2.5 shadow-[0_-4px_25px_rgba(0,0,0,0.08)]">
         <div className="max-w-md mx-auto flex items-center gap-2">
@@ -970,9 +1033,9 @@ export function HomeScreen({
           {user.rol === 'AYUDANTE' && onGoToBoletos && (
             <Button
               onClick={handleAyudanteBoletosClick}
-              className="flex-1 h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 active:scale-95 transition cursor-pointer"
+              className="flex-1 h-12 rounded-2xl bg-[#053225] hover:bg-[#073b2d] text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/20 active:scale-95 transition cursor-pointer border border-emerald-800/60"
             >
-              <Ticket className="w-5 h-5" />
+              <Ticket className="w-5 h-5 text-emerald-300" />
               <span>Emitir Boletos (Jornada)</span>
             </Button>
           )}

@@ -37,6 +37,7 @@ export interface VTSession {
   busId?: string; // Disco o ID del autobús físico de la jornada (Fase 3 Multi-bus)
   numeroDisco?: string;
   placaBus?: string;
+  odometroInicial?: number;
 }
 
 // ─── Viaje Gratis Promotion ───

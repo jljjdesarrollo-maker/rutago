@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { type VTSession } from './types-boletos';
 import type { UserSession } from './types';
 import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVentasPendientesByVT } from '@/lib/indexeddb';
-import { Bus, User, ArrowRight, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays } from 'lucide-react';
+import { Bus, User, ArrowRight, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays, Clock, Gauge, Moon } from 'lucide-react';
 import { BusSelector } from './BusSelector';
-import { getActiveBus } from '@/lib/fleet-storage';
+import { getActiveBus, getLatestBusOdometer, saveBusOdometer } from '@/lib/fleet-storage';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.52.1-bus-selector-activo';
+const APP_VERSION = 'v3.60.30';
 
 interface Props {
   currentUser?: UserSession;
@@ -32,29 +32,29 @@ const ROUTE_STYLES: Record<VTRouteType, {
   label: string; badgeBg: string; badgeText: string;
 }> = {
   vilcabamba: {
-    bg: 'bg-gray-100', border: 'border-gray-200', text: 'text-[#3A3A3A]', subtext: 'text-gray-400',
-    selectedBg: 'bg-[#912D26]', selectedRing: 'ring-red-400',
+    bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-800', subtext: 'text-slate-500',
+    selectedBg: 'bg-[#053225]', selectedRing: 'ring-emerald-400',
     label: '', badgeBg: '', badgeText: '',
   },
   el_tambo: {
-    bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-900', subtext: 'text-amber-500',
-    selectedBg: 'bg-amber-700', selectedRing: 'ring-amber-400',
-    label: 'El Tambo', badgeBg: 'bg-amber-100', badgeText: 'text-amber-700',
+    bg: 'bg-amber-50/70', border: 'border-amber-300', text: 'text-amber-950', subtext: 'text-amber-600',
+    selectedBg: 'bg-[#053225]', selectedRing: 'ring-amber-400',
+    label: 'El Tambo', badgeBg: 'bg-amber-100 text-amber-900 border border-amber-300', badgeText: 'text-amber-900',
   },
   la_elvira: {
-    bg: 'bg-violet-50', border: 'border-violet-300', text: 'text-violet-900', subtext: 'text-violet-400',
-    selectedBg: 'bg-violet-700', selectedRing: 'ring-violet-400',
-    label: 'La Elvira', badgeBg: 'bg-violet-100', badgeText: 'text-violet-700',
+    bg: 'bg-violet-50/70', border: 'border-violet-300', text: 'text-violet-950', subtext: 'text-violet-600',
+    selectedBg: 'bg-[#053225]', selectedRing: 'ring-violet-400',
+    label: 'La Elvira', badgeBg: 'bg-violet-100 text-violet-900 border border-violet-300', badgeText: 'text-violet-900',
   },
   yangana: {
-    bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-900', subtext: 'text-emerald-400',
-    selectedBg: 'bg-emerald-700', selectedRing: 'ring-emerald-400',
-    label: 'Yangana', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700',
+    bg: 'bg-emerald-50/70', border: 'border-emerald-300', text: 'text-emerald-950', subtext: 'text-emerald-600',
+    selectedBg: 'bg-[#053225]', selectedRing: 'ring-emerald-400',
+    label: 'Yangana', badgeBg: 'bg-emerald-100 text-emerald-900 border border-emerald-300', badgeText: 'text-emerald-900',
   },
   zahuayco: {
-    bg: 'bg-sky-50', border: 'border-sky-300', text: 'text-sky-900', subtext: 'text-sky-400',
-    selectedBg: 'bg-sky-700', selectedRing: 'ring-sky-400',
-    label: 'Zahuayco', badgeBg: 'bg-sky-100', badgeText: 'text-sky-700',
+    bg: 'bg-sky-50/70', border: 'border-sky-300', text: 'text-sky-950', subtext: 'text-sky-600',
+    selectedBg: 'bg-[#053225]', selectedRing: 'ring-sky-400',
+    label: 'Zahuayco', badgeBg: 'bg-sky-100 text-sky-900 border border-sky-300', badgeText: 'text-sky-900',
   },
 };
 
@@ -91,14 +91,21 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
   const [ayudante, setAyudante] = useState<AyudanteActivo | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedVT, setSelectedVT] = useState<string>('');
+  const [selectedFilter, setSelectedFilter] = useState<'todos' | 'vilcabamba' | 'el_tambo' | 'yangana' | 'la_elvira' | 'zahuayco'>('todos');
   const [existingSession, setExistingSession] = useState<VTSession & { timestamp: number } | null>(null);
   const [existingUnfinished, setExistingUnfinished] = useState(false);
   const [confirmNewSession, setConfirmNewSession] = useState(false);
+
+  // Odómetro inicial de la jornada
+  const [odometroInicial, setOdometroInicial] = useState<string>('');
+  const [odometroSistema, setOdometroSistema] = useState<number>(0);
+
   // Printer state
   const [printerStatus, setPrinterStatus] = useState<'unknown' | 'connecting' | 'connected' | 'error' | 'unavailable'>('unknown');
   const [printerName, setPrinterName] = useState<string>('');
   const [printing, setPrinting] = useState(false);
   const [printerLog, setPrinterLog] = useState<string[]>([]);
+  const [showLog, setShowLog] = useState(false);
   const printerDeviceRef = useRef<BluetoothDevice | null>(null);
 
   const pLog = (msg: string) => {
@@ -106,6 +113,27 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
     setPrinterLog(prev => [...prev, `${t} ${msg}`]);
     console.log('[Printer]', msg);
   };
+
+  // ─── Fechas de la Jornada Laboral ───
+  const todayStr = new Date().toISOString().split('T')[0];
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterdayStr = yesterdayDate.toISOString().split('T')[0];
+
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [dateWarning, setDateWarning] = useState('');
+  const [checkingDate, setCheckingDate] = useState(false);
+  const [showCustomDate, setShowCustomDate] = useState(false);
+
+  // ─── Bloqueo por ventas pendientes de VTs anteriores ───
+  const [pendingVentasCount, setPendingVentasCount] = useState(0);
+  const [syncingPending, setSyncingPending] = useState(false);
+  const [pendingCheckDone, setPendingCheckDone] = useState(false);
+
+  // ─── Control de Autorización y Concurrencia de Ayudante ───
+  const isAuthorized = currentUser
+    ? (currentUser.rol === 'AYUDANTE' && !!ayudante && currentUser.id === ayudante.id)
+    : !!ayudante;
 
   useEffect(() => {
     Promise.all([
@@ -121,15 +149,26 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
             frecuencias: vt.frecuencias || [],
           }));
           setVts(mapped);
-          if (mapped.length === 1) {
+          if (mapped.length > 0) {
             setSelectedVT(mapped[0].codigo);
           }
         }
+
         const activeAyud = Array.isArray(personasData)
           ? personasData.find((p: any) => p.rol === 'AYUDANTE' && p.esActual)
           : null;
         if (activeAyud) {
           setAyudante({ id: activeAyud.id, nombre: activeAyud.nombre, pin: activeAyud.pin });
+        }
+
+        // Cargar odómetro actual del bus activo
+        try {
+          const bus = getActiveBus();
+          const km = getLatestBusOdometer(bus.id);
+          setOdometroSistema(km);
+          setOdometroInicial(km > 0 ? km.toString() : '');
+        } catch {
+          // ignore
         }
       })
       .catch(err => console.error('Error cargando datos:', err))
@@ -155,22 +194,6 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
     } catch { /* ignore */ }
   }, []);
 
-  // ─── Bloqueo por ventas pendientes de VTs anteriores ───
-  const [pendingVentasCount, setPendingVentasCount] = useState(0);
-  const [syncingPending, setSyncingPending] = useState(false);
-  const [pendingCheckDone, setPendingCheckDone] = useState(false);
-
-  // ─── Control de Autorización y Concurrencia de Ayudante ───
-  const isAuthorized = currentUser
-    ? (currentUser.rol === 'AYUDANTE' && !!ayudante && currentUser.id === ayudante.id)
-    : !!ayudante;
-
-  // ─── Date picker ───
-  const todayStr = new Date().toISOString().split('T')[0];
-  const [selectedDate, setSelectedDate] = useState(todayStr);
-  const [dateWarning, setDateWarning] = useState('');
-  const [checkingDate, setCheckingDate] = useState(false);
-
   useEffect(() => {
     (async () => {
       try {
@@ -185,20 +208,47 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
     if (!navigator.onLine) return;
     setSyncingPending(true);
     try {
-      const result = await syncVentasSilencioso();
+      await syncVentasSilencioso();
       const remaining = await countVentasPendientes();
       setPendingVentasCount(remaining);
     } catch { /* ignore */ }
     setSyncingPending(false);
   };
 
+  const handleSelectDate = (dateVal: string) => {
+    setSelectedDate(dateVal);
+    setDateWarning('');
+
+    if (dateVal && selectedVT) {
+      setCheckingDate(true);
+      const estadosKey = `rg_estados_${selectedVT}_${dateVal}`;
+      const raw = localStorage.getItem(estadosKey);
+      if (raw) {
+        try {
+          const estados: { estado: string; ventasCount?: number }[] = JSON.parse(raw);
+          const hasData = estados.some(e => e.estado !== 'pendiente' || (e.ventasCount || 0) > 0);
+          if (hasData) {
+            setDateWarning(`Ya existen datos para ${selectedVT} en esta fecha. Se reiniciarán al iniciar turno.`);
+          }
+        } catch { /* ignore */ }
+      }
+      countVentasPendientesByVT(selectedVT, dateVal).then(count => {
+        if (count > 0) {
+          setDateWarning(prev => prev
+            ? `${prev} (${count} ventas pendientes)`
+            : `Hay ${count} ventas sin sincronizar para esta fecha.`
+          );
+        }
+        setCheckingDate(false);
+      }).catch(() => setCheckingDate(false));
+    }
+  };
+
   const startSession = (vtCode: string, forceNew = false) => {
     if (!ayudante || !isAuthorized) return;
-
     const sessionDate = selectedDate;
 
     // ─── REGLA: Solo 1 VT activa por fecha ───
-    // Detectar si ya existe una session para la MISMA FECHA (con cualquier VT)
     const stored = localStorage.getItem('rg_vt_session');
     if (stored && !forceNew) {
       try {
@@ -212,7 +262,6 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
       } catch { /* ignore */ }
     }
 
-    // If there's an existing unfinished session and starting a different/new VT, warn first
     if (existingUnfinished && !forceNew && existingSession) {
       setConfirmNewSession(true);
       return;
@@ -223,6 +272,12 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
     const effectiveAyudanteNombre = currentUser?.nombre || ayudante.nombre;
     const currentActiveBus = getActiveBus();
 
+    // Guardar odómetro inicial si fue ingresado
+    const kmNum = parseInt(odometroInicial, 10);
+    if (!isNaN(kmNum) && kmNum > 0) {
+      saveBusOdometer(currentActiveBus.numeroDisco, kmNum.toString(), sessionDate);
+    }
+
     const newSession: VTSession = {
       vtCode: vt.codigo,
       nombre: vt.nombre,
@@ -232,24 +287,22 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
       busId: currentActiveBus.id,
       numeroDisco: currentActiveBus.numeroDisco,
       placaBus: currentActiveBus.placa,
+      odometroInicial: !isNaN(kmNum) && kmNum > 0 ? kmNum : undefined,
     };
 
     // ─── Limpieza completa al forzar nuevo VT ───
     if (forceNew && existingSession) {
       const oldFecha = existingSession.fecha;
       const oldVtCode = existingSession.vtCode;
-      // Limpiar TODOS los datos del VT anterior (localStorage + IndexedDB)
       localStorage.removeItem(`rg_estados_${oldVtCode}_${oldFecha}`);
       localStorage.removeItem(`arqueo_general_${oldVtCode}_${oldFecha}`);
       localStorage.removeItem('rg_vt_session');
       localStorage.removeItem('rg_active_view');
       localStorage.removeItem('rg_active_estado_id');
       localStorage.removeItem('rg_active_es_ultima');
-      // Eliminar ventas del VT anterior de IndexedDB
       deleteVentasByVT(oldVtCode, oldFecha).catch(() => {});
     }
 
-    // Limpiar estados del mismo VT/fecha por si quedaron huérfanos
     localStorage.removeItem(`rg_estados_${vtCode}_${sessionDate}`);
     localStorage.removeItem(`arqueo_general_${vtCode}_${sessionDate}`);
     localStorage.setItem('rg_vt_session', JSON.stringify({
@@ -259,6 +312,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
     localStorage.setItem('rg_active_view', 'boletos_frecuencias');
     localStorage.removeItem('rg_active_estado_id');
     localStorage.removeItem('rg_active_es_ultima');
+
     setConfirmNewSession(false);
     setExistingUnfinished(false);
     setExistingSession(null);
@@ -287,7 +341,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
   // ─── Printer connection ───
   const checkPrinterStatus = useCallback(async () => {
     try {
-      const { isBluetoothAvailable, autoConnectPrinter, clearLastPrinter } = await import('@/lib/printer');
+      const { isBluetoothAvailable, autoConnectPrinter } = await import('@/lib/printer');
       if (!isBluetoothAvailable()) {
         setPrinterStatus('unavailable');
         return;
@@ -307,7 +361,6 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
   useEffect(() => { checkPrinterStatus(); }, [checkPrinterStatus]);
 
   const [printerError, setPrinterError] = useState('');
-
   const handleConnectPrinter = async () => {
     setPrinterStatus('connecting');
     setPrinterError('');
@@ -327,7 +380,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
         pLog(`Guardada referencia directa: ${device.name}`);
       } else {
         setPrinterStatus('error');
-        setPrinterError('No se selecciono ninguna impresora');
+        setPrinterError('No se seleccionó ninguna impresora');
       }
     } catch (e) {
       setPrinterStatus('error');
@@ -335,11 +388,10 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
     }
   };
 
-  // ─── Test print (with detailed logging) ───
   const handleTestPrint = async () => {
     setPrinting(true);
     setPrinterLog([]);
-    pLog('Iniciando prueba de impresion...');
+    pLog('Iniciando prueba de impresión...');
     try {
       const { isBluetoothAvailable, getPrinterDevice } = await import('@/lib/printer');
       const { generateTicketBytes } = await import('@/lib/ticket-escpos');
@@ -347,26 +399,16 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
         pLog('ERROR: Web Bluetooth no disponible');
         setPrinterStatus('unavailable'); setPrinting(false); return;
       }
-
-      // Use cached device (fast, no getDevices lookup needed)
       const device = printerDeviceRef.current || await getPrinterDevice();
       if (!device) {
-        pLog('ERROR: No hay impresora guardada. Conectala primero.');
+        pLog('ERROR: No hay impresora guardada.');
         setPrinterStatus('error'); setPrinting(false); return;
       }
       pLog(`Device: ${device.name || 'sin nombre'}`);
-
-      // GATT connect
-      pLog('Conectando GATT...');
       if (!device.gatt) {
-        pLog('ERROR: device.gatt es null');
         setPrinterStatus('error'); setPrinting(false); return;
       }
       const gatt = device.gatt.connected ? device.gatt : await device.gatt.connect();
-      pLog('GATT conectado!');
-
-      // Find writable characteristic
-      pLog('Buscando servicio de impresion...');
       const uuids = ['0000ff00-0000-1000-8000-00805f9b34fb','0000ff01-0000-1000-8000-00805f9b34fb','e7810a71-73ae-499d-8c15-faa9aef0c3f2','00001101-0000-1000-8000-00805f9b34fb'];
       let writableChar: BluetoothRemoteGATTCharacteristic | null = null;
       for (const uuid of uuids) {
@@ -376,55 +418,25 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
           for (const c of chars) {
             if (c.properties.write || c.properties.writeWithoutResponse) {
               writableChar = c;
-              pLog(`Char OK en servicio ${uuid.slice(4,8)}`);
               break;
             }
           }
           if (writableChar) break;
-        } catch { pLog(`Servicio ${uuid.slice(4,8)}: NO`); }
+        } catch { /* next */ }
       }
       if (!writableChar) {
-        pLog('Fallo UUIDs. Enumerando todos los servicios...');
-        const svcs = await gatt.getPrimaryServices();
-        pLog(`${svcs.length} servicios encontrados`);
-        for (const s of svcs) {
-          try {
-            const cs = await s.getCharacteristics();
-            for (const c of cs) {
-              if ((c.properties.write || c.properties.writeWithoutResponse) && !writableChar) {
-                writableChar = c;
-                pLog(`Char encontrado en ${s.uuid.slice(4,8)}`);
-              }
-            }
-          } catch { /* skip */ }
-        }
-      }
-      if (!writableChar) {
-        pLog('ERROR: No se encontro char escribible');
-        await gatt.disconnect();
         setPrinterStatus('error'); setPrinting(false); return;
       }
-      pLog(`Char: writeNR=${writableChar.properties.writeWithoutResponse} write=${writableChar.properties.write}`);
-
-      // Send ticket
       const bytes = generateTicketBytes({
         ruta: 'Test Loja-Vilcabamba', horaFrecuencia: '12:00', fecha: '14/08/26',
         hora: new Date().toTimeString().slice(0, 5), ayudanteNombre: 'Test',
         destino: 'Prueba OK', tipoPasajero: 'Entero', tarifa: 0.00, boletoNum: 1,
-        esViajeGratis: false, textoPublicidad: 'Quieres RutaGo? 0997149000',
+        esViajeGratis: false, textoPublicidad: 'RutaGo Oficial',
       });
-      pLog(`Enviando ${bytes.length} bytes...`);
-      try {
-        if (writableChar.properties.writeWithoutResponse) {
-          await writableChar.writeValueWithoutResponse(bytes.buffer);
-        } else {
-          await writableChar.writeValue(bytes.buffer);
-        }
-        pLog('Datos enviados OK!');
-      } catch (sendErr) {
-        pLog(`ERROR al enviar: ${(sendErr as Error).message}`);
-        await gatt.disconnect();
-        setPrinterStatus('error'); setPrinting(false); return;
+      if (writableChar.properties.writeWithoutResponse) {
+        await writableChar.writeValueWithoutResponse(bytes.buffer);
+      } else {
+        await writableChar.writeValue(bytes.buffer);
       }
       await gatt.disconnect();
       pLog('Prueba completada!');
@@ -438,28 +450,49 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-[100dvh] bg-gray-50 items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#912D26] animate-spin" />
-        <p className="mt-3 text-[#3A3A3A] text-sm">Cargando...</p>
+      <div className="flex flex-col min-h-[100dvh] bg-slate-50 items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#053225] animate-spin" />
+        <p className="mt-3 text-slate-700 text-sm font-semibold">Cargando grupos de turno...</p>
       </div>
     );
   }
 
+  // Filtrado de VTs por pestaña de destino
+  const filteredVts = vts.filter(vt => {
+    if (selectedFilter === 'todos') return true;
+    const rType = getVTRouteType(vt.frecuencias);
+    return rType === selectedFilter;
+  });
+
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-gray-50">
-      {/* Header compacto */}
-      <div className="bg-[#912D26] text-white px-5 py-5 rounded-b-2xl shadow-lg">
-        <div className="flex items-center justify-between mb-1">
+    <div className="flex flex-col min-h-[100dvh] bg-slate-100">
+      {/* ─── Cabecera Institucional Verde Bosque (#053225) ─── */}
+      <div className="bg-[#053225] text-white px-5 py-5 rounded-b-3xl shadow-xl border-b border-emerald-900/60 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-44 h-44 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex items-center justify-between mb-2 relative z-10">
           <div className="flex items-center gap-3">
-            <Bus className="w-7 h-7" />
-            <h1 className="text-xl font-bold">RutaGo</h1>
+            <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
+              <Bus className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-black tracking-tight leading-tight">RutaGo</h1>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  {APP_VERSION}
+                </span>
+              </div>
+              <p className="text-emerald-200/70 text-xs font-medium">Configuración de Jornada Laboral</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-2 relative z-10">
             <BusSelector compact />
             {onBack && (
               <button
+                type="button"
                 onClick={onBack}
-                className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-semibold flex items-center gap-1 active:scale-95 transition-all"
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-1 active:scale-95 transition"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Inicio</span>
@@ -467,381 +500,443 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
             )}
           </div>
         </div>
-        <p className="text-red-100 text-xs">TRANSPORTES VILCABAMBA</p>
-        <p className="text-red-200/60 text-[9px] mt-0.5">{APP_VERSION}</p>
       </div>
 
-      {/* ─── Printer status bar ─── */}
-      <div className="mx-5 mt-3">
-        {printerStatus === 'connected' ? (
-          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
-            <Printer className="w-4 h-4 text-green-600 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-green-700 text-xs font-semibold truncate">{printerName}</p>
-              <p className="text-green-500 text-[9px]">Lista para imprimir</p>
-            </div>
-            <button onClick={handleTestPrint} disabled={printing}
-              className="px-3 py-1.5 rounded-lg bg-green-600 text-white text-[10px] font-bold active:scale-95 transition-all disabled:opacity-50">
-              {printing ? 'Imprim...' : 'Probar'}
-            </button>
-          </div>
-        ) : printerStatus === 'connecting' ? (
-          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5">
-            <Loader2 className="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" />
-            <p className="text-blue-600 text-xs font-medium">Buscando impresora...</p>
-          </div>
-        ) : printerStatus === 'error' ? (
-          <button onClick={handleConnectPrinter}
-            className="w-full flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 active:scale-[0.98] transition-all">
-            <Printer className="w-4 h-4 text-red-500 flex-shrink-0" />
-            <div className="flex-1 text-left">
-              <p className="text-red-600 text-xs font-semibold">Reconectar impresora</p>
-              {printerError ? (
-                <p className="text-red-500 text-[9px] break-all mt-0.5">{printerError}</p>
-              ) : (
-                <p className="text-red-400 text-[9px]">Toca para seleccionar la impresora Bluetooth</p>
-              )}
-            </div>
-          </button>
-        ) : printerStatus === 'unavailable' ? (
-          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
-            <Printer className="w-4 h-4 text-gray-400 flex-shrink-0" />
-            <p className="text-gray-500 text-[10px]">Bluetooth no disponible en este navegador</p>
-          </div>
-        ) : (
-          <button onClick={handleConnectPrinter}
-            className="w-full flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 active:scale-[0.98] transition-all">
-            <Printer className="w-4 h-4 text-blue-500 flex-shrink-0" />
-            <div className="flex-1 text-left">
-              <p className="text-blue-600 text-xs font-semibold">Conectar impresora</p>
-              <p className="text-blue-400 text-[9px]">Toca para vincular la 3NStar PPT205BT</p>
-            </div>
-          </button>
-        )}
-
-        {/* ─── Printer debug log ─── */}
-        {printerLog.length > 0 && (
-          <div className="mt-2">
-            <button onClick={() => setPrinterLog([])} className="text-[9px] text-gray-400 mb-1">Limpiar log</button>
-            <div className="bg-gray-900 rounded-xl p-2.5 max-h-[140px] overflow-y-auto">
-              {printerLog.map((l, i) => (
-                <p key={i} className={`text-[9px] font-mono leading-relaxed ${
-                  l.includes('ERROR') ? 'text-red-400' :
-                  l.includes('OK') || l.includes('completada') ? 'text-green-400' :
-                  'text-gray-400'
-                }`}>{l}</p>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 px-5 py-5 space-y-4">
-        {/* Ayudante activo — compacto con indicador de autorización */}
+      <div className="flex-1 px-4 sm:px-5 py-4 space-y-4 max-w-lg mx-auto w-full pb-32">
+        {/* ─── 1. Estado de Tripulación y Autorización ─── */}
         {ayudante ? (
-          <div className={`flex items-center justify-between rounded-xl px-4 py-3 border ${
-            isAuthorized ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+          <div className={`flex items-center justify-between rounded-2xl px-4 py-3 border shadow-xs ${
+            isAuthorized ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' : 'bg-rose-50 border-rose-200 text-rose-950'
           }`}>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 truncate">
               {isAuthorized ? (
-                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <CheckCircle className="w-5 h-5 text-emerald-700 shrink-0" />
               ) : (
-                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
               )}
-              <div>
-                <p className={`font-semibold text-sm ${isAuthorized ? 'text-green-800' : 'text-red-800'}`}>
+              <div className="truncate">
+                <p className="font-bold text-xs sm:text-sm truncate">
                   {ayudante.nombre}
                 </p>
-                <p className={`text-[10px] ${isAuthorized ? 'text-green-600' : 'text-red-600'}`}>
-                  {isAuthorized ? 'Turno activo autorizado' : 'Turno activo no corresponde a tu usuario'}
+                <p className="text-[10px] text-slate-500">
+                  {isAuthorized ? 'Ayudante oficial en caja autorizado para hoy' : 'Turno activo no corresponde a tu usuario'}
                 </p>
               </div>
             </div>
-            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-              isAuthorized ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
+            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0 ${
+              isAuthorized ? 'bg-emerald-200 text-emerald-900' : 'bg-rose-200 text-rose-900'
             }`}>
-              {isAuthorized ? 'AUTORIZADO' : 'BLOQUEADO'}
+              {isAuthorized ? 'Autorizado' : 'Bloqueado'}
             </span>
           </div>
         ) : (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3">
-            <p className="text-yellow-700 text-sm font-semibold">No hay ayudante activo asignado</p>
-            <p className="text-yellow-600 text-xs mt-1">El Administrador debe asignar un ayudante activo en Gestión de Personal.</p>
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-amber-950">
+            <p className="text-sm font-bold">Sin ayudante asignado para hoy</p>
+            <p className="text-xs text-amber-800 mt-0.5">El Administrador debe asignar un ayudante activo en Personal.</p>
           </div>
         )}
 
-        {/* Bloque de advertencia si no está autorizado */}
-        {!isAuthorized && (
-          <div className="bg-red-50 border-2 border-red-300 rounded-2xl p-4 text-center">
-            <AlertTriangle className="w-8 h-8 text-red-600 mx-auto mb-1.5" />
-            <h3 className="font-bold text-red-900 text-sm">Acceso No Autorizado</h3>
-            <p className="text-xs text-red-700 mt-1 leading-relaxed">
-              {currentUser?.rol !== 'AYUDANTE'
-                ? `Tu usuario tiene rol ${currentUser?.rol || 'DESCONOCIDO'}. La emisión de boletos en ruta está reservada exclusivamente para el Ayudante.`
-                : `Tu usuario (${currentUser?.nombre}) no está activo. El turno oficial del día le corresponde a ${ayudante?.nombre || 'otro ayudante'}.`}
-            </p>
-            <p className="text-[11px] text-red-600/90 mt-2">
-              Para evitar duplicidad o conflictos contables, solo puede haber un ayudante activo operando en carretera.
-            </p>
+        {/* ─── 2. Selector del Día de la Jornada Laboral (Ergonomía de 3 Chips) ─── */}
+        <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200/90">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-2 uppercase tracking-wide">
+                <CalendarDays className="w-4 h-4 text-emerald-800" />
+                <span>Día de la Jornada Laboral</span>
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Define la fecha contable del cuaderno de turno
+              </p>
+            </div>
+            {selectedDate !== todayStr && (
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                Regularización
+              </span>
+            )}
           </div>
-        )}
 
-        {/* Selector de Autobús de la Jornada (Fase 3 Multi-Bus) */}
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between px-1">
-            <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-              <Bus className="w-3.5 h-3.5 text-[#912D26]" /> Autobús de la Jornada
-            </label>
-            <span className="text-[10px] font-medium text-gray-400">
-              Máquina física asignada
-            </span>
+          {/* Botonera de Selección Rápida en 1 Toque */}
+          <div className="grid grid-cols-3 gap-2">
+            {/* HOY */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowCustomDate(false);
+                handleSelectDate(todayStr);
+              }}
+              className={`py-2.5 px-2 rounded-2xl text-center font-black text-xs transition border flex flex-col items-center justify-center gap-0.5 ${
+                selectedDate === todayStr && !showCustomDate
+                  ? 'bg-[#053225] text-white border-emerald-900 shadow-md ring-2 ring-emerald-400'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <span>HOY</span>
+              <span className={`text-[9px] font-medium ${selectedDate === todayStr && !showCustomDate ? 'text-emerald-200' : 'text-slate-400'}`}>
+                {todayStr}
+              </span>
+            </button>
+
+            {/* AYER */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowCustomDate(false);
+                handleSelectDate(yesterdayStr);
+              }}
+              className={`py-2.5 px-2 rounded-2xl text-center font-black text-xs transition border flex flex-col items-center justify-center gap-0.5 ${
+                selectedDate === yesterdayStr && !showCustomDate
+                  ? 'bg-[#053225] text-white border-emerald-900 shadow-md ring-2 ring-emerald-400'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <span>AYER</span>
+              <span className={`text-[9px] font-medium ${selectedDate === yesterdayStr && !showCustomDate ? 'text-emerald-200' : 'text-slate-400'}`}>
+                {yesterdayStr}
+              </span>
+            </button>
+
+            {/* OTRA FECHA */}
+            <button
+              type="button"
+              onClick={() => setShowCustomDate(prev => !prev)}
+              className={`py-2.5 px-2 rounded-2xl text-center font-black text-xs transition border flex flex-col items-center justify-center gap-0.5 ${
+                showCustomDate || (selectedDate !== todayStr && selectedDate !== yesterdayStr)
+                  ? 'bg-[#053225] text-white border-emerald-900 shadow-md ring-2 ring-emerald-400'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <span>OTRA FECHA</span>
+              <span className={`text-[9px] font-medium ${showCustomDate || (selectedDate !== todayStr && selectedDate !== yesterdayStr) ? 'text-emerald-200' : 'text-slate-400'}`}>
+                Calendario
+              </span>
+            </button>
           </div>
-          <BusSelector />
+
+          {/* Input de Fecha Nativo si eligió Otra Fecha */}
+          {(showCustomDate || (selectedDate !== todayStr && selectedDate !== yesterdayStr)) && (
+            <div className="mt-3 pt-3 border-t border-slate-100">
+              <label className="text-[11px] font-bold text-slate-600 block mb-1">
+                Selecciona fecha personalizada:
+              </label>
+              <input
+                type="date"
+                value={selectedDate}
+                max={todayStr}
+                onChange={(e) => handleSelectDate(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-200 text-slate-800 font-bold text-sm focus:border-emerald-600 focus:outline-none"
+              />
+            </div>
+          )}
+
+          {/* Advertencias Dinámicas de Integridad */}
+          {dateWarning && (
+            <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-amber-800 text-xs font-semibold">{dateWarning}</p>
+            </div>
+          )}
+
+          {checkingDate && (
+            <div className="mt-2 flex items-center gap-1.5 text-slate-400 text-xs font-medium">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-700" /> Verificando datos contables...
+            </div>
+          )}
         </div>
 
-        {/* Selector de fecha de la jornada */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        {/* ─── 3. Odómetro Inicial del Autobús ─── */}
+        <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200/90">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h2 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-2 uppercase tracking-wide">
+                <Gauge className="w-4 h-4 text-emerald-800" />
+                <span>Odómetro Inicial del Bus</span>
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Alimenta el tacómetro del conductor y las alertas de mantenimiento
+              </p>
+            </div>
+            {odometroSistema > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                Sistema: {odometroSistema.toLocaleString()} KM
+              </span>
+            )}
+          </div>
+
+          <div className="relative mt-2">
+            <input
+              type="number"
+              value={odometroInicial}
+              onChange={e => setOdometroInicial(e.target.value)}
+              placeholder={odometroSistema > 0 ? odometroSistema.toString() : 'Ej: 187420'}
+              className="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 text-slate-900 font-black text-lg focus:border-emerald-600 focus:outline-none transition-colors"
+            />
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">
+              KM TABLERO
+            </span>
+          </div>
+        </div>
+
+        {/* ─── 4. Selector de Grupo de Turno (VT) ─── */}
+        <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200/90">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-black text-[#3A3A3A] flex items-center gap-2 uppercase tracking-wide">
-              <CalendarDays className="w-4 h-4 text-[#912D26]" /> Fecha de la Jornada
-            </h2>
-            {selectedDate !== todayStr && (
+            <div>
+              <h2 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-2 uppercase tracking-wide">
+                <Clock className="w-4 h-4 text-emerald-800" />
+                <span>Grupo de Vuelta de Turno (VT)</span>
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Selecciona el rol asignado a la unidad para hoy
+              </p>
+            </div>
+            {selectedVT && (
+              <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-[#053225] text-white">
+                {selectedVT} ACTIVO
+              </span>
+            )}
+          </div>
+
+          {/* Filtro Rápido por Pestañas de Destino */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-none">
+            {[
+              { id: 'todos', label: 'Todos' },
+              { id: 'vilcabamba', label: 'Vilcabamba' },
+              { id: 'el_tambo', label: 'El Tambo' },
+              { id: 'yangana', label: 'Yangana' },
+              { id: 'la_elvira', label: 'La Elvira' },
+              { id: 'zahuayco', label: 'Zahuayco' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedFilter(tab.id as any)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
+                  selectedFilter === tab.id
+                    ? 'bg-[#053225] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Grid de Tarjetas Tácticas de 3 Niveles */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {filteredVts.map(vt => {
+              const routeType = getVTRouteType(vt.frecuencias);
+              const style = ROUTE_STYLES[routeType];
+              const isSelected = selectedVT === vt.codigo;
+              const overnight = isOvernightVT(vt.frecuencias);
+              const firstTime = vt.frecuencias && vt.frecuencias.length > 0 ? vt.frecuencias[0].time : '--:--';
+
+              return (
+                <button
+                  key={vt.codigo}
+                  type="button"
+                  onClick={() => setSelectedVT(vt.codigo)}
+                  className={`p-3 rounded-2xl text-left transition-all active:scale-[0.98] border flex flex-col justify-between min-h-[110px] ${
+                    isSelected
+                      ? 'bg-[#053225] text-white shadow-lg ring-2 ring-emerald-400 border-emerald-900'
+                      : `${style.bg} ${style.border} hover:bg-slate-100/90`
+                  }`}
+                >
+                  {/* Nivel 1: Código + Badge de Destino */}
+                  <div className="flex items-start justify-between gap-1">
+                    <span className={`text-base font-black tracking-tight ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                      {vt.codigo}
+                    </span>
+                    {style.label ? (
+                      <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${
+                        isSelected ? 'bg-white/20 text-emerald-200' : `${style.badgeBg} ${style.badgeText}`
+                      }`}>
+                        {style.label}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Nivel 2 (PROTAGONISTA): Hora de la Primera Salida */}
+                  <div className="my-1">
+                    <div className="flex items-center gap-1">
+                      <Clock className={`w-3.5 h-3.5 ${isSelected ? 'text-emerald-300' : 'text-slate-500'}`} />
+                      <span className={`text-base font-black tracking-tight ${isSelected ? 'text-emerald-300' : 'text-slate-900'}`}>
+                        {firstTime}
+                      </span>
+                    </div>
+                    <span className={`text-[9px] font-medium block leading-tight ${isSelected ? 'text-white/70' : 'text-slate-500'}`}>
+                      Primera salida
+                    </span>
+                  </div>
+
+                  {/* Nivel 3: Total Vueltas + Excepción Pernocta */}
+                  <div className="flex items-center justify-between pt-1 border-t border-black/5 text-[10px]">
+                    <span className={isSelected ? 'text-white/80' : 'text-slate-500 font-semibold'}>
+                      {vt.frecuencias?.length || 0} vueltas
+                    </span>
+                    {overnight && (
+                      <span className={`text-[8px] font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5 ${
+                        isSelected ? 'bg-amber-400 text-amber-950' : 'bg-amber-100 text-amber-900'
+                      }`}>
+                        <Moon className="w-2.5 h-2.5" />
+                        Pernocta
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ─── 5. Estado de Impresora Bluetooth ─── */}
+        <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-200/90">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 truncate">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                printerStatus === 'connected' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'
+              }`}>
+                <Printer className="w-4 h-4" />
+              </div>
+              <div className="truncate">
+                <p className="text-xs font-bold text-slate-800 truncate">
+                  {printerStatus === 'connected' ? (printerName || 'Impresora Bluetooth') : 'Impresora Térmica'}
+                </p>
+                <p className="text-[10px] text-slate-500">
+                  {printerStatus === 'connected' ? 'Lista para emitir tickets' : 'Requerida para comprobantes físicos'}
+                </p>
+              </div>
+            </div>
+
+            {printerStatus === 'connected' ? (
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedDate(todayStr);
-                  setDateWarning('');
-                }}
-                className="text-[10px] font-black uppercase px-2 py-1 rounded-lg bg-[#912D26]/10 text-[#912D26] hover:bg-[#912D26]/20 transition active:scale-95"
+                onClick={handleTestPrint}
+                disabled={printing}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs active:scale-95 transition disabled:opacity-50"
               >
-                Volver a Hoy
+                {printing ? 'Imprimiendo...' : 'Probar'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleConnectPrinter}
+                className="px-3 py-1.5 rounded-xl bg-[#053225] text-white font-bold text-xs active:scale-95 transition"
+              >
+                Conectar
               </button>
             )}
           </div>
-          <input
-            type="date"
-            value={selectedDate}
-            max={todayStr}
-            onChange={(e) => {
-              const newDate = e.target.value;
-              setSelectedDate(newDate);
-              setDateWarning('');
-
-              // Validar si hay datos existentes para esa fecha + VT seleccionado
-              if (newDate && selectedVT) {
-                setCheckingDate(true);
-                const estadosKey = `rg_estados_${selectedVT}_${newDate}`;
-                const raw = localStorage.getItem(estadosKey);
-                if (raw) {
-                  try {
-                    const estados: { estado: string }[] = JSON.parse(raw);
-                    const hasData = estados.some(e => e.estado !== 'pendiente' || e.ventasCount > 0);
-                    if (hasData) {
-                      setDateWarning(`Ya existen datos para ${selectedVT} en esta fecha. Se eliminaran al iniciar.`);
-                    }
-                  } catch { /* ignore */ }
-                }
-                // Also check for ventas in IndexedDB
-                countVentasPendientesByVT(selectedVT, newDate).then(count => {
-                  if (count > 0) {
-                    setDateWarning(prev => prev
-                      ? `${prev} (${count} ventas pendientes)`
-                      : `Hay ${count} ventas sin sincronizar para esta fecha.`
-                    );
-                  }
-                  setCheckingDate(false);
-                }).catch(() => setCheckingDate(false));
-              }
-            }}
-            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-[#3A3A3A] font-semibold text-base focus:border-[#912D26] focus:outline-none transition-colors [color-scheme:light]"
-          />
-          {dateWarning && (
-            <div className="mt-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-              <p className="text-amber-700 text-xs">{dateWarning}</p>
-            </div>
-          )}
-          {selectedDate !== todayStr && (
-            <p className="mt-2 text-xs text-blue-500 flex items-center gap-1">
-              <CalendarDays className="w-3 h-3" />
-              Fecha seleccionada: {selectedDate} (no es hoy)
-            </p>
-          )}
-          {checkingDate && (
-            <div className="mt-2 flex items-center gap-1.5 text-gray-400 text-xs">
-              <Loader2 className="w-3 h-3 animate-spin" /> Verificando datos...
-            </div>
-          )}
         </div>
 
-        {/* Selector de VT — grid grande */}
-        {vts.length === 0 ? (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 text-center">
-            <p className="text-yellow-700 font-medium">No hay unidades activas</p>
-            <p className="text-yellow-600 text-sm mt-1">Ejecuta el seed: POST /api/seed-vts</p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h2 className="text-sm font-black text-[#3A3A3A] flex items-center gap-2 uppercase tracking-wide">
-                  <Bus className="w-4 h-4 text-[#912D26]" /> Grupo de Turno (VT)
-                </h2>
-                <p className="text-[11px] text-gray-500 mt-0.5">
-                  Define el paquete de 6 u 8 frecuencias asignadas al bus para el día
-                </p>
-              </div>
-              {selectedVT && (
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#912D26] text-white">
-                  {selectedVT} SELECCIONADO
-                </span>
-              )}
-            </div>
-            <div className={`grid gap-3 ${vts.length <= 2 ? 'grid-cols-2' : vts.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
-              {vts.map(vt => {
-                const routeType = getVTRouteType(vt.frecuencias);
-                const style = ROUTE_STYLES[routeType];
-                const isSelected = selectedVT === vt.codigo;
-                const overnight = isOvernightVT(vt.frecuencias);
-                return (
-                  <button key={vt.codigo}
-                    onClick={() => vts.length === 1 ? startSession(vt.codigo) : setSelectedVT(vt.codigo)}
-                    className={`relative py-4 px-3 rounded-xl text-center transition-all active:scale-95 border flex flex-col justify-between items-center min-h-[98px] ${
-                      isSelected
-                        ? `${style.selectedBg} text-white shadow-md ring-2 ${style.selectedRing}`
-                        : `${style.bg} ${style.border} ${style.text} hover:opacity-80 active:opacity-70`
-                    }`}
-                  >
-                    <div>
-                      <div className="text-lg font-black tracking-tight">{vt.codigo}</div>
-                      <div className={`text-[10px] font-semibold mt-0.5 ${isSelected ? 'text-white/85' : style.subtext}`}>
-                        {vt.frecuencias?.length || 0} Vueltas
-                      </div>
-                    </div>
-
-                    <div className="mt-1 flex flex-wrap items-center justify-center gap-1">
-                      {overnight ? (
-                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
-                          isSelected ? 'bg-amber-400 text-amber-950' : 'bg-amber-100 text-amber-800'
-                        }`}>
-                          Día 1 → 2
-                        </span>
-                      ) : (
-                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          Mismo día
-                        </span>
-                      )}
-                      {style.label && (
-                        <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full ${
-                          isSelected ? 'bg-white/30 text-white' : `${style.badgeBg} ${style.badgeText}`
-                        }`}>
-                          {style.label}
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Boton Iniciar — grande y prominente */}
-        <button onClick={handleStart} disabled={!selectedVT || !ayudante || !isAuthorized || pendingVentasCount > 0}
-          className={`w-full py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 transition-all ${
+        {/* ─── 6. Botón Primario de Arranque ─── */}
+        <button
+          type="button"
+          onClick={handleStart}
+          disabled={!selectedVT || !ayudante || !isAuthorized || pendingVentasCount > 0}
+          className={`w-full py-4 sm:py-5 rounded-2xl font-black text-base sm:text-lg flex items-center justify-center gap-2 transition-all shadow-xl ${
             selectedVT && ayudante && isAuthorized && pendingVentasCount === 0
-              ? 'bg-[#912D26] text-white shadow-xl shadow-red-300 active:scale-[0.97]'
-              : 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed'
+              ? 'bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white border border-emerald-800/60 cursor-pointer'
+              : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
           }`}
         >
-          {pendingVentasCount > 0
-            ? `ESPERANDO SYNC — ${pendingVentasCount} VENTAS`
-            : !isAuthorized
-            ? 'TURNO NO AUTORIZADO'
-            : 'Iniciar Turno'
-          } <ArrowRight className="w-6 h-6" />
+          {pendingVentasCount > 0 ? (
+            `SINCRONIZAR ${pendingVentasCount} VENTAS PENDIENTES`
+          ) : !isAuthorized ? (
+            'TURNO NO AUTORIZADO'
+          ) : (
+            <>
+              <span>INICIAR JORNADA • {selectedVT} ({selectedDate === todayStr ? 'HOY' : selectedDate})</span>
+              <ArrowRight className="w-5 h-5 text-emerald-300" />
+            </>
+          )}
         </button>
       </div>
 
-      {/* Ventas pendientes — bloquear inicio de nuevo VT */}
+      {/* Alerta de Ventas Pendientes que Bloquean el Arranque */}
       {pendingVentasCount > 0 && pendingCheckDone && (
-        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-[#912D26] to-[#b33d34] p-4 shadow-2xl z-40">
+        <div className="fixed bottom-0 left-0 right-0 bg-[#053225] text-white p-4 shadow-2xl z-40 border-t border-emerald-800/60">
           <div className="max-w-lg mx-auto">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="w-5 h-5 text-white" />
-              <p className="text-white font-bold text-sm">Ventas sin sincronizar</p>
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="w-5 h-5 text-amber-300" />
+              <p className="font-bold text-sm">Ventas sin sincronizar de la jornada anterior</p>
             </div>
-            <p className="text-white/90 text-xs mb-3">
-              Tienes <strong>{pendingVentasCount} venta{pendingVentasCount !== 1 ? 's' : ''}</strong> pendiente{pendingVentasCount !== 1 ? 's' : ''} de un turno anterior. Debes sincronizar antes de iniciar uno nuevo.
+            <p className="text-white/80 text-xs mb-3">
+              Tienes <strong>{pendingVentasCount} boletos</strong> guardados localmente. Sube las ventas a la nube para proteger la recaudación.
             </p>
             {navigator.onLine ? (
-              <button onClick={handleForceSync} disabled={syncingPending}
-                className="w-full py-3 rounded-xl bg-white text-[#912D26] font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60">
+              <button
+                type="button"
+                onClick={handleForceSync}
+                disabled={syncingPending}
+                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60"
+              >
                 {syncingPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
-                {syncingPending ? 'SINCRONIZANDO...' : `SINCRONIZAR ${pendingVentasCount} VENTAS`}
+                {syncingPending ? 'SINCRONIZANDO...' : `SUBIR ${pendingVentasCount} VENTAS A LA NUBE`}
               </button>
             ) : (
-              <div className="w-full py-3 rounded-xl bg-white/20 text-white/80 text-sm flex items-center justify-center gap-2">
-                <WifiOff className="w-4 h-4" /> SIN INTERNET — CONECTA PARA SINCRONIZAR
+              <div className="w-full py-2 rounded-xl bg-white/10 text-white/70 text-xs flex items-center justify-center gap-2">
+                <WifiOff className="w-4 h-4" /> SIN INTERNET — CONECTA A WIFI/DATOS
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Existing unfinished session banner */}
+      {/* Banner de Turno sin Terminar */}
       {existingUnfinished && existingSession && (
-        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-orange-500 to-red-500 p-4 shadow-2xl z-40">
+        <div className="fixed bottom-0 left-0 right-0 bg-[#053225] text-white p-4 shadow-2xl z-40 border-t border-emerald-800/60">
           <div className="max-w-lg mx-auto">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="w-5 h-5 text-white" />
-              <p className="text-white font-bold text-sm">Turno sin terminar</p>
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="w-5 h-5 text-amber-300" />
+              <p className="font-bold text-sm">Turno en curso: {existingSession.vtCode} ({existingSession.fecha})</p>
             </div>
-            <p className="text-white/90 text-xs mb-3">
-              Tienes un turno pendiente en <strong>{existingSession.nombre}</strong> ({existingSession.vtCode}) con frecuencias abiertas.
+            <p className="text-white/80 text-xs mb-3">
+              Tienes frecuencias pendientes de liquidar en este turno.
             </p>
             <div className="flex gap-2">
-              <button onClick={handleResumeOld}
-                className="flex-1 py-2.5 rounded-xl bg-white text-orange-600 font-bold text-sm active:scale-[0.98]">
+              <button
+                type="button"
+                onClick={handleResumeOld}
+                className="flex-1 py-2.5 rounded-xl bg-white text-[#053225] font-black text-xs active:scale-[0.98]"
+              >
                 Continuar VT {existingSession.vtCode}
               </button>
-              <button onClick={() => setConfirmNewSession(true)}
-                className="flex-1 py-2.5 rounded-xl bg-white/20 text-white font-semibold text-sm active:scale-[0.98]">
-                Iniciar nuevo
+              <button
+                type="button"
+                onClick={() => setConfirmNewSession(true)}
+                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs active:scale-[0.98]"
+              >
+                Iniciar Nuevo VT
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Confirm new session modal */}
+      {/* Modal de Confirmación para Abandonar Turno */}
       {confirmNewSession && existingSession && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="w-8 h-8 text-[#912D26]" />
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-sm p-6 text-center shadow-2xl">
+            <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-amber-700">
+              <AlertTriangle className="w-7 h-7" />
             </div>
-            <h3 className="text-lg font-bold text-[#3A3A3A] mb-2">Abandonar turno anterior?</h3>
-            <div className="bg-red-50 rounded-xl p-3 mb-3">
-              <p className="text-sm text-[#912D26] font-semibold">
-                {existingSession.nombre} ({existingSession.vtCode}) — frecuencias sin completar.
-              </p>
-            </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-4">
-              <p className="text-xs text-yellow-800 font-bold">
-                Se ELIMINARAN todos los datos del turno anterior. Solo puede haber un turno activo por dia.
-              </p>
-            </div>
+            <h3 className="text-base font-black text-slate-900 mb-1">¿Iniciar Nuevo Turno?</h3>
+            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+              Existe una sesión para <strong>{existingSession.vtCode}</strong> en la fecha <strong>{existingSession.fecha}</strong>. Solo puede haber un turno oficial activo por fecha.
+            </p>
             <div className="flex gap-2">
-              <button onClick={() => setConfirmNewSession(false)}
-                className="flex-1 py-3 rounded-xl bg-[#912D26] text-white font-bold text-sm active:scale-[0.98] shadow-lg shadow-red-200">
+              <button
+                type="button"
+                onClick={() => setConfirmNewSession(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs"
+              >
                 Cancelar
               </button>
-              <button onClick={handleForceNew}
-                className="flex-1 py-3 rounded-xl border-2 border-red-200 text-[#912D26] font-bold text-sm active:scale-[0.98]">
-                Nuevo Turno
+              <button
+                type="button"
+                onClick={handleForceNew}
+                className="flex-1 py-2.5 rounded-xl bg-[#053225] text-white font-black text-xs shadow-md"
+              >
+                Confirmar Nuevo
               </button>
             </div>
           </div>

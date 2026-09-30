@@ -748,3 +748,63 @@ Para salvaguardar la cuota de Google AI Studio y asegurar continuidad ininterrum
 
 
 
+
+------
+
+## 🎟️ v3.60.30: ARMONIZACIÓN INTEGRAL DE LA INTERFAZ DEL AYUDANTE (DÍA DE JORNADA, VT CON HORA INICIAL Y PALETA #053225) (2026-09-29)
+
+- **Objetivo:** Cerrar la armonización visual y ergonómica de los 3 roles operativos (Socio listo en v3.60.26, Conductor listo en v3.60.29, y ahora Ayudante en v3.60.30), erradicando el viejo rojo granate `#912D26` y sustituyéndolo por la identidad institucional Verde Bosque `#053225` con acabados de alta ergonomía para el cobro y control de caja en carretera.
+
+- **1. Selección de Fecha de la Jornada Laboral (`HomeScreenVT.tsx`):**
+  - **Ergonomía de 3 Chips Táctiles para Movimiento:**
+    - `[ 🟢 HOY (Fecha actual) ]`: Selección por defecto en 1 toque.
+    - `[ 🟡 AYER (Fecha anterior) ]`: Para liquidación extemporánea o cierre de turnos sin fricción.
+    - `[ 📅 OTRA FECHA ]`: Para regularizaciones o auditorías pasadas.
+  - **Micro-Auditoría de Integridad Contable:**
+    - Verificación reactiva si ya existen datos o ventas pendientes en `localStorage` o `IndexedDB` para la fecha elegida.
+
+- **2. Selección de Grupo de Vuelta de Turno (VT) con Hora de Inicio (`HomeScreenVT.tsx`):**
+  - **Filtro Rápido por Pestañas de Destino:**
+    - `[ Todos ]` `[ Vilcabamba ]` `[ El Tambo ]` `[ Yangana ]` `[ La Elvira ]` `[ Zahuayco ]` para encontrar el turno en menos de 2 segundos.
+  - **Tarjeta Táctica Optimizada de 3 Niveles:**
+    - **Nivel 1 (Identidad):** Código del turno (`VT10`, `VT03`) + Pastilla de destino con color de ruta (`El Tambo`, `Yangana`, `La Elvira`, `Zahuayco`).
+    - **Nivel 2 (PROTAGONISTA - Ancla Mental del Personal):** **Hora de la Primera Frecuencia (`🕒 06:40`)** con subtítulo *"Primera salida"*, permitiendo al ayudante validar su turno en 0.3 segundos.
+    - **Nivel 3 (Detalle Operativo):** Cantidad de vueltas programadas (`4 vueltas`, `6 vueltas`) + indicador ámbar `🌙 Pernocta (Día 1 → 2)` únicamente cuando el turno duerme fuera de Loja.
+    - **Depuración Anti-Ruido:** Se eliminó el badge repetitivo e innecesario `"Mismo día"` que saturaba el 90% de las tarjetas.
+
+- **3. Odómetro Inicial Integrado:**
+  - Entrada de odómetro con formato numérico grande y comparativa contra el último registro de `fleet-storage`, alimentando directamente el tacómetro del Conductor y el radar preventivo.
+
+- **4. Dashboard Principal del Ayudante (`HomeScreen.tsx` y `AyudanteJornadaCard.tsx`):**
+  - **Cabecera Institucional:** Saludo *"Hola, [Nombre Ayudante]"*, pastilla del bus `[ 🚌 Bus 01 • HAA-1234 ● En Turno ]` y compañero de tripulación `Tripulación: [Nombre Conductor] (Conductor al Volante) • En Ruta`.
+  - **Tarjeta Hero del Ayudante (`#053225` - Bordes `rounded-3xl`):**
+    - **Sin turno activo:** Botón táctil prominente `[ ▶ CONFIGURAR DÍA Y GRUPO VT ]`.
+    - **Con turno activo:** Gran **Número Rey** de producción en tiempo real (`$184.50 EN CAJA DE RUTA`), subtítulo con `VT`, fecha y odómetro, y línea divisoria horizontal con Pasajeros, Vueltas cerradas y Próxima salida programada.
+  - **Cuadrícula Táctica 2x2 (`#053225`):**
+    - 🎫 **Emitir Boletos:** Salto inmediato a la frecuencia abierta.
+    - 💵 **Arqueo y Gastos:** Cuadre de caja y registro de gastos de ruta (diésel/peajes) con fotos de comprobantes.
+    - ⏱️ **Vueltas del Día:** Visualización del progreso de frecuencias programadas.
+    - 📑 **Mis Registros:** Historial de liquidaciones archivadas con badge de `recordCount`.
+  - **Barra de Supervisión y Novedad Mecánica (`AyudanteMantenimientoBar.tsx`):**
+    - Enlace a supervisión técnica con botón rápido para reportar novedades mecánicas.
+
+- **5. Archivos Actualizados:**
+  - `src/components/transport/HomeScreen.tsx`
+  - `src/components/transport/HomeScreenVT.tsx`
+  - `src/components/transport/AyudanteJornadaCard.tsx`
+  - `src/components/transport/AyudanteMantenimientoBar.tsx`
+  - `src/components/transport/types-boletos.ts`
+  - `package.json`
+  - `REGISTRO_MAESTRO.md`
+
+---
+
+## 🔑 GUÍA RÁPIDA DE CONTINUIDAD PARA EL PRÓXIMO CHAT / CUENTA
+1. Conectar la nueva cuenta al repositorio: `https://github.com/jljjdesarrollo-maker/rutago`.
+2. Leer este archivo maestro (`REGISTRO_MAESTRO.md`).
+3. Estado Actual:
+   - **v3.60.30:** Armonización integral de la interfaz del Ayudante (Día de jornada con chips rápidos, tarjetas de VT con hora de primera salida, tarjeta Hero `#053225` con Número Rey de caja de ruta y cuadrícula 2x2).
+   - **v3.60.29:** Copiloto de ruta del chofer con proyección temporal auditada (~280 km/día).
+   - **v3.60.28:** Claridad semántica en panel de conductor y blindaje de roles.
+4. Próxima Etapa Operativa:
+   - Armonización de acentos finales en pantallas de ruta (`TicketScreen.tsx`, `ArqueoScreen.tsx`, `ArqueoGeneralScreen.tsx`) o extracción modular de `MantenimientoHistorialModal.tsx`.
