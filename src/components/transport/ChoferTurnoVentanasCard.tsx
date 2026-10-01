@@ -29,6 +29,124 @@ import {
   calcularProyeccionSecuencia,
 } from '@/lib/turno-secuencia-tracker';
 
+interface EvaluacionMantenimientoVentana {
+  esLoja: boolean;
+  tieneTareaAsignable: boolean;
+  estacionDestino?: string;
+  textoBoton?: string;
+  tituloBadge?: string;
+  detalleTarea?: string;
+  esUrgente: boolean;
+  motivoNoTaller?: string;
+}
+
+function evaluarVentanaParaMantenimiento(
+  v: VTIntervaloVentana,
+  items: MantenimientoBusItem[],
+  kmActual: number
+): EvaluacionMantenimientoVentana {
+  const ciudad = (v.ciudad || '').trim();
+  const esLoja = ciudad.toLowerCase().includes('loja');
+
+  // Si NO es Loja: Siempre es espera / descanso de terminal (talleres autorizados en Loja)
+  if (!esLoja) {
+    return {
+      esLoja: false,
+      tieneTareaAsignable: false,
+      esUrgente: false,
+      motivoNoTaller: `Terminal ${ciudad || 'de paso'} • Espera de salida y descanso`,
+    };
+  }
+
+  // Si ES Loja, evaluamos el estado mecánico real del autobús
+  const tareasEvaluadas = (items || []).map((it) => {
+    const kmTranscurridos = Math.max(0, kmActual - (it.ultimoKm || 0));
+    const intervalo = it.intervaloKm || 5000;
+    const kmRestantes = intervalo - kmTranscurridos;
+    const esVencido = kmRestantes <= 0;
+    const esProximo = !esVencido && kmRestantes <= 500;
+
+    const cod = (it.codigo || '').toUpperCase();
+    const nom = (it.nombre || '').toLowerCase();
+
+    let tiempoRequeridoMinutos = 45;
+    let estacionId = 'LUBRICADORA';
+    let labelBoton = 'Ir a Fosa →';
+
+    if (cod.includes('ACEITE') || nom.includes('aceite') || cod.includes('FILT') || nom.includes('filtro')) {
+      tiempoRequeridoMinutos = 45;
+      estacionId = 'LUBRICADORA';
+      labelBoton = 'Ir a Fosa →';
+    } else if (nom.includes('freno') || nom.includes('zapata') || nom.includes('pulmon') || cod.includes('FREN')) {
+      tiempoRequeridoMinutos = 75;
+      estacionId = 'FRENOS_RUEDAS';
+      labelBoton = 'Ir a Frenos →';
+    } else if (nom.includes('llanta') || nom.includes('alinea') || cod.includes('LLAN')) {
+      tiempoRequeridoMinutos = 45;
+      estacionId = 'ALINEACION';
+      labelBoton = 'Ir a Llantera →';
+    } else if (nom.includes('embrague') || nom.includes('muelle') || nom.includes('caja') || nom.includes('corona')) {
+      tiempoRequeridoMinutos = 90;
+      estacionId = 'MNT_MAYOR';
+      labelBoton = 'Ir a Taller →';
+    }
+
+    return {
+      item: it,
+      kmRestantes,
+      esVencido,
+      esProximo,
+      tiempoRequeridoMinutos,
+      estacionId,
+      labelBoton,
+      prioridad: esVencido ? 2 : esProximo ? 1 : 0,
+    };
+  });
+
+  const pendientes = tareasEvaluadas
+    .filter((t) => t.prioridad > 0)
+    .sort((a, b) => b.prioridad - a.prioridad || a.kmRestantes - b.kmRestantes);
+
+  // Si no hay tareas vencidas ni próximas: Unidad al día
+  if (pendientes.length === 0) {
+    return {
+      esLoja: true,
+      tieneTareaAsignable: false,
+      esUrgente: false,
+      motivoNoTaller: 'Terminal Loja • Unidad al día (sin mantenimientos pendientes)',
+    };
+  }
+
+  // Buscar la tarea prioritaria que quepa en la ventana disponible
+  const tareaQueCabe = pendientes.find((t) => v.duracionMinutos >= t.tiempoRequeridoMinutos);
+
+  if (tareaQueCabe) {
+    const it = tareaQueCabe.item;
+    const descUrgencia = tareaQueCabe.esVencido
+      ? `Vencido hace ${Math.abs(tareaQueCabe.kmRestantes).toLocaleString()} km`
+      : `Por vencer en ${tareaQueCabe.kmRestantes.toLocaleString()} km`;
+
+    return {
+      esLoja: true,
+      tieneTareaAsignable: true,
+      estacionDestino: tareaQueCabe.estacionId,
+      textoBoton: tareaQueCabe.labelBoton,
+      tituloBadge: tareaQueCabe.esVencido ? '🚨 Atención en Loja' : '💡 Ventana en Loja',
+      detalleTarea: `${it.nombre} (${descUrgencia} • ~${tareaQueCabe.tiempoRequeridoMinutos}m)`,
+      esUrgente: tareaQueCabe.esVencido,
+    };
+  }
+
+  // Si tiene pendientes pero no caben en los minutos disponibles
+  const tareaMayor = pendientes[0];
+  return {
+    esLoja: true,
+    tieneTareaAsignable: false,
+    esUrgente: false,
+    motivoNoTaller: `Terminal Loja • Tiempo corto (${v.duracionMinutos}m) para ${tareaMayor.item.nombre} (requiere ~${tareaMayor.tiempoRequeridoMinutos}m)`,
+  };
+}
+
 function formatearTiempoCompacto(minutos: number): string {
   const h = Math.floor(minutos / 60);
   const m = minutos % 60;
@@ -208,42 +326,50 @@ export function ChoferTurnoVentanasCard({
         )}
       </div>
 
-      {/* ─── Ventana Técnica Mayor (Recomendada para taller) ─── */}
-      {ventanaMayor && (
-        <div className="border-b border-slate-100 bg-emerald-50/70 p-3.5">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-xs">
-                <Clock className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
-                    Ventana Técnica Mayor ({ventanaMayor.ciudad})
-                  </span>
-                  <span className="rounded-full bg-emerald-200 px-1.5 py-0.2 text-[9px] font-bold text-emerald-900">
-                    Recomendada
-                  </span>
+      {/* ─── Ventana Técnica Mayor (Solo si es en Loja y hay mantenimientos pendientes) ─── */}
+      {(() => {
+        if (!ventanaMayor) return null;
+        const evalMayor = evaluarVentanaParaMantenimiento(ventanaMayor, itemsMantenimiento, kmActual);
+        if (!evalMayor.esLoja || !evalMayor.tieneTareaAsignable) return null;
+
+        return (
+          <div className="border-b border-emerald-200/80 bg-emerald-50/90 p-3.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-xs">
+                  <Wrench className="h-4.5 w-4.5" />
                 </div>
-                <p className="text-sm font-black text-slate-900">
-                  {formatearTiempoCompacto(ventanaMayor.duracionMinutos)} libres ({ventanaMayor.horaInicio} a {ventanaMayor.horaFin})
-                </p>
+                <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-900">
+                      Ventana en Loja: {evalMayor.tituloBadge}
+                    </span>
+                    <span className="rounded-full bg-emerald-200 px-2 py-0.2 text-[9px] font-black text-emerald-950">
+                      {formatearTiempoCompacto(ventanaMayor.duracionMinutos)} libres
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-800 mt-0.5">
+                    {evalMayor.detalleTarea}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-mono">
+                    Horario de fosa: {ventanaMayor.horaInicio} a {ventanaMayor.horaFin} en Terminal Loja
+                  </p>
+                </div>
               </div>
+              {onAbrirEstacion && evalMayor.estacionDestino && (
+                <button
+                  type="button"
+                  onClick={() => onAbrirEstacion(evalMayor.estacionDestino!)}
+                  className="flex items-center gap-1 rounded-xl bg-[#053225] hover:bg-[#073b2d] px-3 py-1.5 text-xs font-black text-emerald-300 hover:text-white shadow-xs active:scale-95 transition-all cursor-pointer shrink-0"
+                >
+                  <Wrench className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>{evalMayor.textoBoton || 'Ir a Fosa →'}</span>
+                </button>
+              )}
             </div>
-
-            {onAbrirEstacion && (
-              <button
-                onClick={() => onAbrirEstacion('LUBRICADORA')}
-                className="flex items-center gap-1 rounded-xl bg-emerald-700 px-2.5 py-1.5 text-[11px] font-bold text-white shadow-xs hover:bg-emerald-800 active:scale-95 transition-all cursor-pointer shrink-0"
-              >
-                <Wrench className="h-3 w-3" />
-                <span>Usar Ventana</span>
-              </button>
-            )}
           </div>
-        </div>
-      )}
-
+        );
+      })()}
       {/* ─── Lista de Ventanas Operativas del Turno ─── */}
       <div className="p-3.5">
         <div className="flex items-center justify-between mb-2">
@@ -263,21 +389,17 @@ export function ChoferTurnoVentanasCard({
         ) : (
           <div className="space-y-2">
             {ventanas.map((v, idx) => {
-              const esLarga = v.duracionMinutos >= 45;
               const tiempoFormateado = formatearTiempoCompacto(v.duracionMinutos);
-              const estacionDestino = (v.duracionMinutos >= 75 || v.aptoParaTallerMayor)
-                ? 'FRENOS_RUEDAS'
-                : 'LUBRICADORA';
-              const textoBoton = (v.duracionMinutos >= 75 || v.aptoParaTallerMayor)
-                ? 'Ir a Taller →'
-                : 'Ir a Fosa →';
+              const evaluacion = evaluarVentanaParaMantenimiento(v, itemsMantenimiento, kmActual);
 
               return (
                 <div
                   key={idx}
                   className={`rounded-2xl border p-2.5 sm:p-3 transition-all ${
-                    esLarga
-                      ? 'border-emerald-300 bg-emerald-50/80 shadow-xs'
+                    evaluacion.tieneTareaAsignable
+                      ? evaluacion.esUrgente
+                        ? 'border-rose-300 bg-rose-50/80 shadow-xs'
+                        : 'border-emerald-300 bg-emerald-50/80 shadow-xs'
                       : 'border-slate-100 bg-slate-50/70 hover:bg-slate-100/80'
                   }`}
                 >
@@ -285,25 +407,53 @@ export function ChoferTurnoVentanasCard({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div
                         className={`h-7 w-7 rounded-xl flex items-center justify-center shrink-0 ${
-                          esLarga
-                            ? 'bg-emerald-600 text-white shadow-2xs'
+                          evaluacion.tieneTareaAsignable
+                            ? evaluacion.esUrgente
+                              ? 'bg-rose-600 text-white shadow-2xs'
+                              : 'bg-emerald-600 text-white shadow-2xs'
                             : 'bg-slate-200 text-slate-500'
                         }`}
                       >
-                        {esLarga ? <Clock className="h-3.5 w-3.5" /> : <MapPin className="h-3.5 w-3.5" />}
+                        {evaluacion.tieneTareaAsignable ? (
+                          <Wrench className="h-3.5 w-3.5" />
+                        ) : (
+                          <MapPin className="h-3.5 w-3.5" />
+                        )}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-bold text-xs text-slate-900">
                             {v.ciudad}
                           </span>
-                          {esLarga && (
-                            <span className="rounded-full bg-emerald-200 text-emerald-950 font-black text-[9px] px-1.5 py-0.2 tracking-wide uppercase">
-                              {v.duracionMinutos >= 75 ? '⚡ Taller y Fosa' : '🛢️ Fosa Libre'}
+                          {evaluacion.tieneTareaAsignable ? (
+                            <span
+                              className={`rounded-full font-black text-[9px] px-2 py-0.2 tracking-wide uppercase ${
+                                evaluacion.esUrgente
+                                  ? 'bg-rose-200 text-rose-950'
+                                  : 'bg-emerald-200 text-emerald-950'
+                              }`}
+                            >
+                              {evaluacion.tituloBadge}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {evaluacion.esLoja ? '• Loja' : '• Espera en ruta'}
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+
+                        {/* Descripción técnica inteligente */}
+                        {evaluacion.tieneTareaAsignable ? (
+                          <p className="text-[11px] font-bold text-slate-800 mt-0.5">
+                            {evaluacion.detalleTarea}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                            {evaluacion.motivoNoTaller}
+                          </p>
+                        )}
+
+                        <p className="text-[10px] text-slate-500 font-mono mt-0.5">
                           {v.horaInicio} – {v.horaFin}
                         </p>
                       </div>
@@ -313,23 +463,29 @@ export function ChoferTurnoVentanasCard({
                       {/* Pastilla llamativa del tiempo en formato 1h35 */}
                       <span
                         className={`font-mono font-black text-xs px-2.5 py-1 rounded-xl shadow-2xs ${
-                          esLarga
-                            ? 'bg-emerald-700 text-white ring-2 ring-emerald-400/40'
+                          evaluacion.tieneTareaAsignable
+                            ? evaluacion.esUrgente
+                              ? 'bg-rose-700 text-white ring-2 ring-rose-400/40'
+                              : 'bg-emerald-700 text-white ring-2 ring-emerald-400/40'
                             : 'bg-slate-200 text-slate-700'
                         }`}
                       >
                         {tiempoFormateado}
                       </span>
 
-                      {/* Botón táctico directo para ir a fosa o taller */}
-                      {esLarga && onAbrirEstacion && (
+                      {/* Botón táctico directo SOLO si es en Loja y hay tarea viable */}
+                      {evaluacion.tieneTareaAsignable && onAbrirEstacion && evaluacion.estacionDestino && (
                         <button
                           type="button"
-                          onClick={() => onAbrirEstacion(estacionDestino as any)}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[#053225] hover:bg-[#073b2d] active:scale-95 text-[11px] font-black text-emerald-300 hover:text-white transition-all shadow-xs cursor-pointer"
+                          onClick={() => onAbrirEstacion(evaluacion.estacionDestino!)}
+                          className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-black transition-all shadow-xs cursor-pointer active:scale-95 ${
+                            evaluacion.esUrgente
+                              ? 'bg-rose-800 hover:bg-rose-900 text-white'
+                              : 'bg-[#053225] hover:bg-[#073b2d] text-emerald-300 hover:text-white'
+                          }`}
                         >
-                          <Wrench className="w-3 h-3 text-emerald-400" />
-                          <span>{textoBoton}</span>
+                          <Wrench className="w-3 h-3" />
+                          <span>{evaluacion.textoBoton}</span>
                         </button>
                       )}
                     </div>

@@ -1696,3 +1696,28 @@ En caso de migrar a otra cuenta:
 * **Validación:** Empaquetado y verificación con esbuild completados con 0 errores.
 
 ---
+
+# 🚀 VERSIÓN 3.60.59: ASIGNACIÓN INTELIGENTE DE TALLERES EXCLUSIVAMENTE EN LOJA SEGÚN ESTADO MECÁNICO Y TIEMPO (2026-09-30)
+
+## 📌 1. FILTRADO GEOGRÁFICO DE TALLERES (LOJA VS TERMINALES DE PASO)
+* **Separación de Realidades Operativas:**
+  - En **Vilcabamba, Yangana, Malacatos, etc.**, las ventanas libres son estrictamente de **Espera en Terminal / Descanso de Ruta**. No existen talleres ni fosas autorizadas de la cooperativa en esas cabeceras parroquiales, por lo que nunca se muestran botones de taller en esas ciudades.
+  - La asistencia a talleres y fosa se restringe de forma estricta a cuando el autobús tiene tiempo libre en **Loja**, donde se ubican las lubricadoras y mecánicas oficiales.
+
+## 📌 2. CRUCE INTELIGENTE ENTRE NECESIDADES REALES DEL BUS Y VENTANAS DISPONIBLES
+* **Evaluación del Estado Mecánico Real (`itemsMantenimiento` + `kmActual`):**
+  - **Unidad al Día:** Si el autobús no tiene ningún mantenimiento vencido ni próximo, la ventana en Loja se exhibe limpiamente como `✅ Terminal Loja • Unidad al día (sin mantenimientos pendientes)`, sin alarmas ni botones forzados de taller.
+  - **Mantenimiento Vencido o Próximo:** Si la unidad tiene tareas pendientes (ej. Cambio de aceite vencido o zapatas próximas), el sistema evalúa el tiempo técnico requerido:
+    * Fosa / Lubricadora (Aceite y filtros): Requiere ~45 min (`minimoVentanaMinutos: 45`).
+    * Frenos / Ruedas / Neumática: Requiere ~75 min (`minimoVentanaMinutos: 75`).
+    * Llantera / Alineación: Requiere ~45 min (`minimoVentanaMinutos: 45`).
+    * Mantenimiento Mayor / Muelles / Embrague: Requiere ~90 min (`minimoVentanaMinutos: 90`).
+* **Match Preciso y Protección de Itinerario:**
+  - Solo si la ventana en **Loja** es **≥ al tiempo requerido**, se activa el badge contextual y el botón táctico directo (`Ir a Fosa →`, `Ir a Frenos →`, etc.) con la indicación exacta del trabajo.
+  - Si el tiempo en Loja es insuficiente (ej. Zapatas requieren 1h15 y la ventana es de 35 min), el sistema avisa `⏱️ Tiempo corto para [Tarea]`, protegiendo al chofer de quedar varado o perder su siguiente carrera.
+
+## 🛠️ 3. ARCHIVOS MODIFICADOS Y VALIDACIONES
+* `src/components/transport/ChoferTurnoVentanasCard.tsx`: Motor de evaluación `evaluarVentanaParaMantenimiento` y renderizado geográfico y mecánico contextual.
+* **Validación:** Empaquetado y verificación con esbuild completados con 0 errores.
+
+---
