@@ -1932,3 +1932,19 @@ En caso de migrar a otra cuenta:
 3. **Validación y Despliegue:**
    - Compilación con 0 errores de TypeScript (`compile_applet`).
    - Sincronización continua de cambios en GitHub y actualización del archivo maestro.
+
+## 🏁 3. EJECUCIÓN Y RESULTADOS VERIFICADOS (2026-10-01): ✅ COMPLETADO
+* **Archivos Modificados:**
+  1. `src/lib/turno-secuencia-tracker.ts`:
+     - Implementada la interfaz `FichaCalibracionBus`.
+     - Implementadas funciones `obtenerCalibracionLocalBus`, `guardarCalibracionLocalBus` y `sincronizarArqueosYCalibracion`.
+     - Registrado el historial auditado semilla para la Unidad 01 (`2026-09-25: VT05`, `2026-09-26: VT06`, `2026-09-27: VT07`).
+     - Al 01 de Octubre de 2026, la rotación calcula matemáticamente:
+       `diasTranscurridos = 4 (27/09 a 01/10)` -> `(7 - 1 + 4) % 15 + 1 = 11` ➔ **VT11**.
+     - Consulta tolerante a fallos: timeout de 2.5s en `/api/records` para fallback transparente en modo offline.
+  2. `src/components/transport/ChoferDisponibilidadCard.tsx`:
+     - Proyección instantánea en el estado inicial: si no hay selección manual en `localStorage`, consulta la calibración local del bus y arranca proyectando de inmediato **VT11** (sin parpadeo a VT01).
+     - Incorporado botón táctico en cabecera: `[ 🔄 Sincronizar ]` con animación de giro y notificación no invasiva.
+     - Indicador visual de estado de rotación: `🟢 +4d rotación` cuando está confirmado y calibrado.
+* **Continuidad del Proyecto:**
+  - Cambios integrados en el repositorio oficial de GitHub `jljjdesarrollo-maker/rutago` en rama `main`.

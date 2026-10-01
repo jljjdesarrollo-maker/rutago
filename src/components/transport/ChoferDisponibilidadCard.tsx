@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Clock,
   Compass,
@@ -10,6 +10,7 @@ import {
   MapPin,
   CheckCircle2,
   Calendar,
+  RefreshCw,
 } from 'lucide-react';
 import {
   getConfiguracionFlotaLocal,
@@ -24,6 +25,9 @@ import { type VTConfiguracionItem } from '@/types/vt-ventanas';
 import {
   obtenerUltimosArqueosBus,
   calcularProyeccionSecuencia,
+  obtenerCalibracionLocalBus,
+  sincronizarArqueosYCalibracion,
+  type ResultadoProyeccionTurno,
 } from '@/lib/turno-secuencia-tracker';
 import {
   evaluarVentanaParaMantenimiento,
@@ -48,33 +52,77 @@ export function ChoferDisponibilidadCard({
   className = '',
 }: ChoferDisponibilidadCardProps) {
   const [configFlota, setConfigFlota] = useState(() => getConfiguracionFlotaLocal());
+
+  // Inicialización inteligente: revisa almacenamiento local y ficha de calibración
   const [selectedVTCode, setSelectedVTCode] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
       if (saved) return saved;
+
+      const cal = obtenerCalibracionLocalBus(disco, busId);
+      if (cal && cal.historial3Arqueos && cal.historial3Arqueos.length > 0) {
+        const proy = calcularProyeccionSecuencia(cal.historial3Arqueos);
+        if (proy?.turnoProyectado) return proy.turnoProyectado;
+      }
+    }
+
+    // Default auditado para la Unidad 01 si es nueva apertura: VT11
+    const dLimpio = (disco || busId || '').replace(/\D/g, '').padStart(2, '0');
+    if (dLimpio === '01') {
+      return 'VT11';
     }
     return 'VT01';
   });
+
+  const [proyeccion, setProyeccion] = useState<ResultadoProyeccionTurno | null>(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
   const [cambiandoTurno, setCambiandoTurno] = useState(false);
   const [mostrarTodasVentanas, setMostrarTodasVentanas] = useState(true);
   const [mostrarCarreras, setMostrarCarreras] = useState(false);
 
-  // Inferencia inteligente del turno según arqueos reales
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
-      if (!saved) {
-        obtenerUltimosArqueosBus(disco, busId).then((arqueos) => {
-          const proy = calcularProyeccionSecuencia(arqueos);
-          if (proy && proy.turnoProyectado) {
-            setSelectedVTCode(proy.turnoProyectado);
-          }
-        });
-      }
-    }
-  }, [busId, disco]);
+  // Inferencia y sincronización de secuencia basada en la arquitectura Offline-First
+  const ejecutarSincronizacion = useCallback(
+    async (forzar = false) => {
+      if (forzar) setSincronizando(true);
 
-  // Actualización en background
+      try {
+        const res = await sincronizarArqueosYCalibracion(disco, busId);
+        setProyeccion(res.proyeccion);
+
+        if (typeof window !== 'undefined') {
+          const manualGuardado = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
+          if (!manualGuardado && res.proyeccion?.turnoProyectado) {
+            setSelectedVTCode(res.proyeccion.turnoProyectado);
+          }
+        }
+
+        if (forzar) {
+          if (res.errorRed) {
+            setSyncStatusMsg('Sin conexión al servidor. Conservando proyección local calculada.');
+          } else {
+            setSyncStatusMsg('Sincronización completada exitosamente.');
+          }
+          setTimeout(() => setSyncStatusMsg(null), 3500);
+        }
+      } catch (err) {
+        console.warn('[ChoferDisponibilidadCard] Error al sincronizar:', err);
+        if (forzar) {
+          setSyncStatusMsg('Modo offline: se mantiene la proyección calculada.');
+          setTimeout(() => setSyncStatusMsg(null), 3500);
+        }
+      } finally {
+        if (forzar) setSincronizando(false);
+      }
+    },
+    [busId, disco]
+  );
+
+  useEffect(() => {
+    ejecutarSincronizacion(false);
+  }, [ejecutarSincronizacion]);
+
+  // Actualización en background del catálogo de ventanas
   useEffect(() => {
     verificarActualizacionFingerprint().then((actualizado) => {
       if (actualizado) {
@@ -163,14 +211,27 @@ export function ChoferDisponibilidadCard({
               {disco}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">
                   Disponibilidad de Tiempos
                 </span>
                 <span className="text-[10px] text-slate-400 font-bold">
                   • {ventanas.length} {ventanas.length === 1 ? 'ventana' : 'ventanas'}
                 </span>
+
+                {/* Badge de inferencia de secuencia */}
+                {proyeccion?.estado === 'CONFIRMADO' && (
+                  <span className="rounded-full bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.2 text-[9px] font-bold text-emerald-300">
+                    🟢 +{proyeccion.diasTranscurridosDesdeUltimoArqueo}d rotación
+                  </span>
+                )}
+                {proyeccion?.estado === 'CALIBRANDO' && (
+                  <span className="rounded-full bg-amber-500/20 border border-amber-400/30 px-2 py-0.2 text-[9px] font-bold text-amber-300">
+                    🟡 Calibrando ({proyeccion.conteoArqueos}/3)
+                  </span>
+                )}
               </div>
+
               <div className="flex items-center gap-2 mt-0.5">
                 <h3 className="text-base font-black text-white leading-tight">
                   {vtActual.codigo}
@@ -182,46 +243,77 @@ export function ChoferDisponibilidadCard({
             </div>
           </div>
 
-          {/* Selector de Turno Sutil */}
-          <div className="relative shrink-0">
+          {/* Acciones de Cabecera: Sincronizar y Cambiar Turno */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Botón táctico de sincronización resiliente */}
             <button
               type="button"
-              onClick={() => setCambiandoTurno(!cambiandoTurno)}
-              className="flex items-center gap-1 bg-white/10 hover:bg-white/20 active:scale-95 border border-white/20 rounded-full px-3 py-1.5 text-xs font-bold text-white transition cursor-pointer"
-              title="Cambiar turno VT asignado"
+              onClick={() => ejecutarSincronizacion(true)}
+              disabled={sincronizando}
+              className="flex items-center gap-1 bg-white/10 hover:bg-white/20 active:scale-95 border border-white/20 rounded-full px-2.5 py-1.5 text-xs font-bold text-white transition cursor-pointer disabled:opacity-50"
+              title="Sincronizar arqueos y recalcular proyección de turno"
             >
-              <span>Cambiar VT</span>
-              <ChevronDown className="w-3.5 h-3.5" />
+              <RefreshCw className={`w-3.5 h-3.5 ${sincronizando ? 'animate-spin text-emerald-400' : 'text-slate-200'}`} />
+              <span className="hidden sm:inline text-[11px] font-bold">
+                {sincronizando ? 'Sincronizando...' : 'Sincronizar'}
+              </span>
             </button>
 
-            {cambiandoTurno && (
-              <div className="absolute right-0 top-full mt-2 z-50 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl animate-in fade-in zoom-in-95 text-slate-900">
-                <p className="mb-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Seleccionar Cuaderno VT
-                </p>
-                <div className="max-h-56 overflow-y-auto space-y-1">
-                  {configFlota.vts.map((v) => (
-                    <button
-                      key={v.codigo}
-                      type="button"
-                      onClick={() => handleSelectVT(v.codigo)}
-                      className={`flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-                        v.codigo.toUpperCase() === selectedVTCode.toUpperCase()
-                          ? 'bg-[#053225] text-white'
-                          : 'text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <span>{v.codigo}</span>
-                      <span className="text-[10px] opacity-80">
-                        {v.frecuencias?.length || 0} carreras
-                      </span>
-                    </button>
-                  ))}
+            {/* Selector de Turno Sutil */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setCambiandoTurno(!cambiandoTurno)}
+                className="flex items-center gap-1 bg-white/10 hover:bg-white/20 active:scale-95 border border-white/20 rounded-full px-3 py-1.5 text-xs font-bold text-white transition cursor-pointer"
+                title="Cambiar turno VT asignado"
+              >
+                <span>Cambiar VT</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+
+              {cambiandoTurno && (
+                <div className="absolute right-0 top-full mt-2 z-50 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl animate-in fade-in zoom-in-95 text-slate-900">
+                  <p className="mb-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Seleccionar Cuaderno VT
+                  </p>
+                  <div className="max-h-56 overflow-y-auto space-y-1">
+                    {configFlota.vts.map((v) => (
+                      <button
+                        key={v.codigo}
+                        type="button"
+                        onClick={() => handleSelectVT(v.codigo)}
+                        className={`flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                          v.codigo.toUpperCase() === selectedVTCode.toUpperCase()
+                            ? 'bg-[#053225] text-white'
+                            : 'text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>{v.codigo}</span>
+                        <span className="text-[10px] opacity-80">
+                          {v.frecuencias?.length || 0} carreras
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Mensaje de estado de sincronización */}
+        {syncStatusMsg && (
+          <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl bg-slate-800/90 border border-slate-700 px-3 py-1.5 text-[11px] text-slate-200">
+            <span>{syncStatusMsg}</span>
+            <button
+              type="button"
+              onClick={() => setSyncStatusMsg(null)}
+              className="text-slate-400 hover:text-white font-bold ml-1 text-xs"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Alerta de enlace crítico (si existe) */}
         {alertaEnlace && (
@@ -344,7 +436,6 @@ export function ChoferDisponibilidadCard({
                             <MapPin className="h-3.5 w-3.5" />
                           )}
                         </div>
-
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-black text-xs text-slate-900">

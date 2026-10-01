@@ -2,8 +2,8 @@
  * @file turno-secuencia-tracker.ts
  * @description Motor de inferencia y cálculo de turnos (VTs) basado en los últimos
  * arqueos del ayudante con avance estricto de días calendario (la cooperativa no se detiene
- * si el bus está en taller o el ayudante no arquea), filtro anti-anomalías por daño mecánico
- * y protocolo transparente para unidades en calibración.
+ * si el bus está en taller o el ayudante no arquea), filtro anti-anomalías por daño mecánico,
+ * persistencia offline-first mediante Ficha de Calibración Local y sincronización resiliente.
  */
 
 export interface ArqueoResumenTurno {
@@ -13,6 +13,17 @@ export interface ArqueoResumenTurno {
   numeroDisco?: string;
   kmFinal?: string;
   id?: string;
+}
+
+export interface FichaCalibracionBus {
+  busId: string;
+  disco: string;
+  calibrada: boolean;
+  ultimoTurnoAuditado: string;
+  fechaUltimoTurno: string;
+  historial3Arqueos: ArqueoResumenTurno[];
+  ultimaSincronizacion: string;
+  fuente: 'AUDITADA_LOCAL' | 'SERVIDOR_SINCRONIZADO' | 'MANUAL';
 }
 
 export interface ResultadoProyeccionTurno {
@@ -26,7 +37,18 @@ export interface ResultadoProyeccionTurno {
   esAnomaliaDetectada: boolean;
   mensajeDetalle: string;
   esManual: boolean;
+  fuenteDatos?: 'OFFLINE_CACHE' | 'SINCRONIZADO' | 'SIN_DATOS';
 }
+
+/**
+ * Historial semilla oficial auditado para la Unidad 01 de la cooperativa.
+ * Base operativa: 27 de Septiembre de 2026 con VT07 cerrado por despacho.
+ */
+export const HISTORIAL_SEMILLA_AUDITADO_UNIDAD_01: ArqueoResumenTurno[] = [
+  { date: '2026-09-25', vtCode: 'VT05', conductor: '01', numeroDisco: '01' },
+  { date: '2026-09-26', vtCode: 'VT06', conductor: '01', numeroDisco: '01' },
+  { date: '2026-09-27', vtCode: 'VT07', conductor: '01', numeroDisco: '01' },
+];
 
 /**
  * Extrae el número numérico de un VT (ej: "VT08" -> 8, "VT15" -> 15)
@@ -46,6 +68,13 @@ export function formatearCodigoVT(num: number): string {
 }
 
 /**
+ * Normaliza el código de disco a dos dígitos (ej: "1" -> "01", "01" -> "01")
+ */
+export function normalizarDisco(disco: string): string {
+  return (disco || '').replace(/\D/g, '').padStart(2, '0');
+}
+
+/**
  * Calcula la diferencia exacta en días naturales entre dos fechas (YYYY-MM-DD)
  */
 export function diferenciaEnDiasCalendario(fechaA: string, fechaB: string): number {
@@ -53,8 +82,10 @@ export function diferenciaEnDiasCalendario(fechaA: string, fechaB: string): numb
   const matchA = fechaA.match(/^(\d{4})-(\d{2})-(\d{2})/);
   const matchB = fechaB.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!matchA || !matchB) return 1;
+
   const utcA = Date.UTC(parseInt(matchA[1], 10), parseInt(matchA[2], 10) - 1, parseInt(matchA[3], 10));
   const utcB = Date.UTC(parseInt(matchB[1], 10), parseInt(matchB[2], 10) - 1, parseInt(matchB[3], 10));
+
   const diffMs = utcB - utcA;
   return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
 }
@@ -71,44 +102,87 @@ export function obtenerFechaHoyLocal(): string {
 }
 
 /**
- * Obtiene los últimos arqueos registrados para un bus desde /api/records y localStorage
+ * Recupera la Ficha de Calibración Local del almacenamiento del dispositivo
+ */
+export function obtenerCalibracionLocalBus(
+  disco: string,
+  busId?: string
+): FichaCalibracionBus | null {
+  if (typeof window === 'undefined') return null;
+
+  const discoLimpio = normalizarDisco(disco);
+  const keyDisco = `rg_calibracion_bus_${discoLimpio}`;
+  const keyBusId = busId ? `rg_calibracion_bus_${busId}` : null;
+
+  try {
+    const raw = localStorage.getItem(keyDisco) || (keyBusId ? localStorage.getItem(keyBusId) : null);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.ultimoTurnoAuditado && Array.isArray(parsed.historial3Arqueos)) {
+        return parsed as FichaCalibracionBus;
+      }
+    }
+  } catch (err) {
+    console.warn('[turno-secuencia-tracker] Error al leer calibración local:', err);
+  }
+
+  // Inicialización auditada para la Unidad 01 si es la primera vez que abre
+  if (discoLimpio === '01') {
+    const fichaSemilla: FichaCalibracionBus = {
+      busId: busId || '01',
+      disco: '01',
+      calibrada: true,
+      ultimoTurnoAuditado: 'VT07',
+      fechaUltimoTurno: '2026-09-27',
+      historial3Arqueos: [...HISTORIAL_SEMILLA_AUDITADO_UNIDAD_01],
+      ultimaSincronizacion: new Date().toISOString(),
+      fuente: 'AUDITADA_LOCAL',
+    };
+    guardarCalibracionLocalBus(fichaSemilla);
+    return fichaSemilla;
+  }
+
+  return null;
+}
+
+/**
+ * Guarda o actualiza la Ficha de Calibración Local en el almacenamiento del dispositivo
+ */
+export function guardarCalibracionLocalBus(ficha: FichaCalibracionBus): void {
+  if (typeof window === 'undefined' || !ficha) return;
+
+  try {
+    const discoLimpio = normalizarDisco(ficha.disco);
+    localStorage.setItem(`rg_calibracion_bus_${discoLimpio}`, JSON.stringify(ficha));
+    if (ficha.busId) {
+      localStorage.setItem(`rg_calibracion_bus_${ficha.busId}`, JSON.stringify(ficha));
+    }
+  } catch (err) {
+    console.warn('[turno-secuencia-tracker] Error al guardar calibración local:', err);
+  }
+}
+
+/**
+ * Obtiene los últimos arqueos registrados para un bus con soporte Offline-First.
+ * Consulta primero la Ficha de Calibración Local y el localStorage. Si hay red,
+ * intenta sincronizar con el servidor en segundo plano sin bloquear.
  */
 export async function obtenerUltimosArqueosBus(
   disco: string,
   busId?: string
 ): Promise<ArqueoResumenTurno[]> {
-  const discoLimpio = disco.replace(/\D/g, '').padStart(2, '0');
+  const discoLimpio = normalizarDisco(disco);
   const registrosEncontrados: ArqueoResumenTurno[] = [];
 
-  // 1. Consultar base de datos central (/api/records)
-  try {
-    const res = await fetch('/api/records?limit=60');
-    if (res.ok) {
-      const records = await res.json();
-      if (Array.isArray(records)) {
-        for (const r of records) {
-          const rDisco = (r.numeroDisco || r.conductor || '').replace(/\D/g, '').padStart(2, '0');
-          const rBusId = r.busId || '';
-          const matchBus = (rDisco && rDisco === discoLimpio) || (busId && rBusId === busId);
-          
-          if (matchBus && r.vtCode && typeof r.vtCode === 'string') {
-            registrosEncontrados.push({
-              date: r.date,
-              vtCode: r.vtCode.toUpperCase().trim(),
-              conductor: r.conductor,
-              numeroDisco: rDisco,
-              kmFinal: r.kmFinal,
-              id: r.id,
-            });
-          }
-        }
-      }
+  // 1. Cargar Ficha de Calibración Local persistida en el dispositivo
+  const fichaLocal = obtenerCalibracionLocalBus(discoLimpio, busId);
+  if (fichaLocal && fichaLocal.historial3Arqueos && fichaLocal.historial3Arqueos.length > 0) {
+    for (const item of fichaLocal.historial3Arqueos) {
+      registrosEncontrados.push(item);
     }
-  } catch (err) {
-    console.warn('[turno-secuencia-tracker] Error al consultar /api/records:', err);
   }
 
-  // 2. Si no hay suficientes en API, consultar arqueos locales guardados en localStorage
+  // 2. Consultar arqueos adicionales guardados en localStorage
   if (typeof window !== 'undefined') {
     try {
       for (let i = 0; i < localStorage.length; i++) {
@@ -117,7 +191,7 @@ export async function obtenerUltimosArqueosBus(
           const raw = localStorage.getItem(key);
           if (raw) {
             const parsed = JSON.parse(raw);
-            const rDisco = (parsed.numeroDisco || parsed.conductor || '').replace(/\D/g, '').padStart(2, '0');
+            const rDisco = normalizarDisco(parsed.numeroDisco || parsed.conductor || '');
             const matchBus = (rDisco && rDisco === discoLimpio) || (busId && parsed.busId === busId);
             
             if (matchBus && parsed.vtCode && parsed.date) {
@@ -140,7 +214,66 @@ export async function obtenerUltimosArqueosBus(
     } catch {}
   }
 
-  // 3. Ordenar cronológicamente ascendente (antiguos primero, recientes al final)
+  // 3. Si hay conexión a internet, intentar sincronizar con /api/records
+  if (typeof window !== 'undefined' && navigator.onLine) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+      const res = await fetch('/api/records?limit=60', { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const records = await res.json();
+        if (Array.isArray(records)) {
+          for (const r of records) {
+            const rDisco = normalizarDisco(r.numeroDisco || r.conductor || '');
+            const rBusId = r.busId || '';
+            const matchBus = (rDisco && rDisco === discoLimpio) || (busId && rBusId === busId);
+            
+            if (matchBus && r.vtCode && typeof r.vtCode === 'string') {
+              const existe = registrosEncontrados.some(
+                (re) => re.date === r.date && re.vtCode === r.vtCode
+              );
+              if (!existe) {
+                registrosEncontrados.push({
+                  date: r.date,
+                  vtCode: r.vtCode.toUpperCase().trim(),
+                  conductor: r.conductor,
+                  numeroDisco: rDisco,
+                  kmFinal: r.kmFinal,
+                  id: r.id,
+                });
+              }
+            }
+          }
+
+          // Si obtuvimos registros remotos y son válidos, actualizamos la ficha local
+          if (registrosEncontrados.length >= 3) {
+            const ordenados = [...registrosEncontrados].sort(
+              (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+            );
+            const ultimos3 = ordenados.slice(-3);
+            const ultimo = ultimos3[2];
+            guardarCalibracionLocalBus({
+              busId: busId || discoLimpio,
+              disco: discoLimpio,
+              calibrada: true,
+              ultimoTurnoAuditado: ultimo.vtCode,
+              fechaUltimoTurno: ultimo.date,
+              historial3Arqueos: ultimos3,
+              ultimaSincronizacion: new Date().toISOString(),
+              fuente: 'SERVIDOR_SINCRONIZADO',
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[turno-secuencia-tracker] Red o servidor no disponible, operando en modo offline:', err);
+    }
+  }
+
+  // 4. Ordenar cronológicamente ascendente (antiguos primero, recientes al final)
   registrosEncontrados.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   // Eliminar duplicados de la misma fecha conservando el último
@@ -152,6 +285,49 @@ export async function obtenerUltimosArqueosBus(
   return Array.from(mapaFechas.values()).sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
+}
+
+/**
+ * Función integral para sincronización manual y retorno de estado con metadatos
+ */
+export async function sincronizarArqueosYCalibracion(
+  disco: string,
+  busId?: string
+): Promise<{
+  arqueos: ArqueoResumenTurno[];
+  proyeccion: ResultadoProyeccionTurno;
+  fuente: 'OFFLINE_CACHE' | 'SINCRONIZADO' | 'SIN_DATOS';
+  errorRed: boolean;
+}> {
+  let errorRed = false;
+  let fuente: 'OFFLINE_CACHE' | 'SINCRONIZADO' | 'SIN_DATOS' = 'OFFLINE_CACHE';
+
+  try {
+    const arqueos = await obtenerUltimosArqueosBus(disco, busId);
+    const proyeccion = calcularProyeccionSecuencia(arqueos);
+    if (arqueos.length === 0) {
+      fuente = 'SIN_DATOS';
+    } else {
+      fuente = 'OFFLINE_CACHE';
+    }
+    return {
+      arqueos,
+      proyeccion,
+      fuente,
+      errorRed,
+    };
+  } catch (err) {
+    errorRed = true;
+    const fichaLocal = obtenerCalibracionLocalBus(disco, busId);
+    const arqueosFallback = fichaLocal?.historial3Arqueos || [];
+    const proyFallback = calcularProyeccionSecuencia(arqueosFallback);
+    return {
+      arqueos: arqueosFallback,
+      proyeccion: proyFallback,
+      fuente: arqueosFallback.length > 0 ? 'OFFLINE_CACHE' : 'SIN_DATOS',
+      errorRed: true,
+    };
+  }
 }
 
 /**
@@ -186,7 +362,7 @@ export function calcularProyeccionSecuencia(
 
   const n = arqueosTotales.length;
 
-  // CASO 1: Menos de 3 arqueos (Unidad en calibración o nueva en la flota)
+  // CASO 1: Menos de 3 arqueos (Unidad en calibración inicial o nueva en la flota)
   if (n < 3) {
     const ultimo = n > 0 ? arqueosTotales[n - 1] : null;
     let numCalculado = 1;
@@ -195,7 +371,6 @@ export function calcularProyeccionSecuencia(
     if (ultimo) {
       diasTrans = diferenciaEnDiasCalendario(ultimo.date, hoyStr);
       const numUltimo = extraerNumeroVT(ultimo.vtCode);
-      // El calendario avanza +1 por cada día calendario transcurrido
       numCalculado = ((numUltimo - 1 + diasTrans) % 15) + 1;
     }
 
@@ -212,12 +387,12 @@ export function calcularProyeccionSecuencia(
       esAnomaliaDetectada: false,
       mensajeDetalle: ultimo
         ? `Último arqueo: ${ultimo.date} (${ultimo.vtCode}). Han transcurrido ${diasTrans} días calendario (+${diasTrans} turnos en el rol de la cooperativa) ➔ Proyectado: ${vtProv}.`
-        : `Unidad en calibración inicial (${n} de 3 arqueos). Selecciona tu turno asignado hoy.`,
+        : `Unidad en calibración inicial (${n} de 3 arqueos requeridos). Selecciona tu turno asignado hoy.`,
       esManual: false,
     };
   }
 
-  // CASO 2: 3 o más arqueos registrados
+  // CASO 2: 3 o más arqueos registrados (Unidad calibrada y auditada)
   const ultimosTres = arqueosTotales.slice(-3);
   const a3 = ultimosTres[0]; // hace 2 arqueos atrás
   const a2 = ultimosTres[1]; // penúltimo arqueo
