@@ -124,33 +124,65 @@ function estimarTareaMantenimiento(it: MantenimientoBusItem) {
 }
 
 function evaluarVentanaParaMantenimiento(
-  v: VTIntervaloVentana,
+  v: any,
   items: MantenimientoBusItem[],
   kmActual: number
 ): EvaluacionMantenimientoVentana {
-  const ciudad = (v.ciudad || '').trim();
-  const esLoja = ciudad.toLowerCase().includes('loja');
+  const ubicacionRaw = ((v?.ubicacion || v?.ciudad || '') as string).trim();
+  const ubLower = ubicacionRaw.toLowerCase();
+  const esLoja = ubLower.includes('loja');
 
   // Detección de pernocta nocturna
   const esPernocta =
-    v.tipo === 'PERNOCTA_EXTERNA' ||
-    (v.duracionMinutos >= 360 && (v.horaInicio >= '20:00' || v.horaInicio <= '04:00'));
+    v?.tipo === 'PERNOCTA_EXTERNA' ||
+    (v?.duracionMinutos >= 360 && (v?.horaInicio >= '20:00' || v?.horaInicio <= '04:00'));
+
+  let ciudadNombre = 'BASE LOJA';
+  let subtituloCiudad = 'Sede Talleres y Fosas';
+  let tipoBadgeCiudad: 'loja' | 'ruta' | 'pernocta' = 'loja';
+
+  if (esLoja) {
+    ciudadNombre = 'BASE LOJA';
+    subtituloCiudad = 'Sede Talleres y Fosas';
+    tipoBadgeCiudad = 'loja';
+  } else if (ubLower.includes('tambo')) {
+    ciudadNombre = 'EL TAMBO';
+    subtituloCiudad = 'Terminal de Cabecera';
+    tipoBadgeCiudad = 'ruta';
+  } else if (ubLower.includes('vilcabamba')) {
+    ciudadNombre = 'VILCABAMBA';
+    subtituloCiudad = esPernocta ? 'Pernocta Externa' : 'Terminal de Cabecera';
+    tipoBadgeCiudad = esPernocta ? 'pernocta' : 'ruta';
+  } else if (ubLower.includes('yangana')) {
+    ciudadNombre = 'YANGANA';
+    subtituloCiudad = 'Terminal de Cabecera';
+    tipoBadgeCiudad = 'ruta';
+  } else if (ubLower.includes('malacatos')) {
+    ciudadNombre = 'MALACATOS';
+    subtituloCiudad = 'Terminal de Paso';
+    tipoBadgeCiudad = 'ruta';
+  } else if (esPernocta) {
+    ciudadNombre = ubicacionRaw ? ubicacionRaw.toUpperCase() : 'PERNOCTA';
+    subtituloCiudad = 'Pernocta Externa';
+    tipoBadgeCiudad = 'pernocta';
+  } else {
+    ciudadNombre = ubicacionRaw ? ubicacionRaw.toUpperCase() : 'TERMINAL EN RUTA';
+    subtituloCiudad = 'Terminal de Ruta';
+    tipoBadgeCiudad = 'ruta';
+  }
 
   if (esPernocta) {
     return {
       esLoja,
       esPernocta: true,
-      ciudadNombre: ciudad ? ciudad.toUpperCase() : 'PERNOCTA',
-      subtituloCiudad: 'Pernocta Externa',
+      ciudadNombre,
+      subtituloCiudad,
       tipoBadgeCiudad: 'pernocta',
       tieneTareaAsignable: false,
       esUrgente: false,
       motivoNoTaller: 'Fin de jornada • Pernocta y descanso nocturno obligatorio',
     };
   }
-
-  const subtituloCiudad = esLoja ? 'Sede Talleres y Fosas' : 'Terminal de Cabecera';
-  const tipoBadgeCiudad = esLoja ? 'loja' : 'ruta';
 
   // Evaluar estado mecánico de todos los ítems
   const itemsEvaluados = (items || []).map((it) => {
@@ -180,14 +212,14 @@ function evaluarVentanaParaMantenimiento(
     return {
       esLoja,
       esPernocta: false,
-      ciudadNombre: ciudad ? ciudad.toUpperCase() : 'TERMINAL',
+      ciudadNombre,
       subtituloCiudad,
       tipoBadgeCiudad,
       tieneTareaAsignable: false,
       esUrgente: false,
       motivoNoTaller: esLoja
         ? 'Base Loja • Unidad al día (sin mantenimientos pendientes)'
-        : `Terminal ${ciudad || 'de paso'} • Espera de salida y descanso`,
+        : `Terminal ${ciudadNombre} • Espera de salida y descanso`,
     };
   }
 
@@ -219,7 +251,7 @@ function evaluarVentanaParaMantenimiento(
     return {
       esLoja,
       esPernocta: false,
-      ciudadNombre: ciudad ? ciudad.toUpperCase() : 'TERMINAL',
+      ciudadNombre,
       subtituloCiudad,
       tipoBadgeCiudad,
       tieneTareaAsignable: true,
@@ -239,7 +271,7 @@ function evaluarVentanaParaMantenimiento(
     return {
       esLoja,
       esPernocta: false,
-      ciudadNombre: ciudad ? ciudad.toUpperCase() : 'TERMINAL',
+      ciudadNombre,
       subtituloCiudad,
       tipoBadgeCiudad,
       tieneTareaAsignable: false,
@@ -252,12 +284,12 @@ function evaluarVentanaParaMantenimiento(
   return {
     esLoja,
     esPernocta: false,
-    ciudadNombre: ciudad ? ciudad.toUpperCase() : 'TERMINAL',
+    ciudadNombre,
     subtituloCiudad,
     tipoBadgeCiudad,
     tieneTareaAsignable: false,
     esUrgente: false,
-    motivoNoTaller: `Terminal ${ciudad || 'de paso'} • Espera de salida y descanso (talleres oficiales en Loja)`,
+    motivoNoTaller: `Terminal ${ciudadNombre} • Espera de salida y descanso (talleres oficiales en Loja)`,
   };
 }
 
@@ -348,6 +380,20 @@ export function ChoferTurnoVentanasCard({
       ) || configFlota.vts[0]
     );
   }, [configFlota, selectedVTCode]);
+
+  // Respaldo de items de mantenimiento en caso de retardo de props
+  const itemsEfectivos = useMemo(() => {
+    if (itemsMantenimiento && itemsMantenimiento.length > 0) {
+      return itemsMantenimiento;
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem(`rg_mantenimientos_v2_${busId}`);
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return [];
+  }, [itemsMantenimiento, busId]);
 
   const ventanas = useMemo(() => {
     if (!vtActual) return [];
@@ -443,7 +489,7 @@ export function ChoferTurnoVentanasCard({
       {/* ─── Ventana Técnica Mayor (Recomendada con Match Inteligente) ─── */}
       {(() => {
         if (!ventanaMayor) return null;
-        const evalMayor = evaluarVentanaParaMantenimiento(ventanaMayor, itemsMantenimiento, kmActual);
+        const evalMayor = evaluarVentanaParaMantenimiento(ventanaMayor, itemsEfectivos, kmActual);
         if (!evalMayor.tieneTareaAsignable) return null;
 
         return (
@@ -519,7 +565,7 @@ export function ChoferTurnoVentanasCard({
           <div className="space-y-2">
             {ventanas.map((v, idx) => {
               const tiempoFormateado = formatearTiempoCompacto(v.duracionMinutos);
-              const evaluacion = evaluarVentanaParaMantenimiento(v, itemsMantenimiento, kmActual);
+              const evaluacion = evaluarVentanaParaMantenimiento(v, itemsEfectivos, kmActual);
 
               return (
                 <div

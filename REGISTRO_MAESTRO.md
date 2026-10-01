@@ -1748,3 +1748,25 @@ En caso de migrar a otra cuenta:
 * **Validación:** Empaquetado y verificación con esbuild completados con 0 errores.
 
 ---
+
+# 🚀 VERSIÓN 3.60.61: RESOLUCIÓN DE UBICACIÓN REAL DE VENTANAS Y MATCH DIRECTO CON ENGRASE DE CHASIS EN LOJA (2026-09-30)
+
+## 📌 1. CORRECCIÓN CRÍTICA DE PROPIEDAD DE UBICACIÓN
+* **Causa raíz identificada:** La interfaz `VentanaOperativa` almacena la cabecera en el campo `v.ubicacion` (ej: `'El Tambo'`, `'Base Loja'`, `'Vilcabamba'`), mientras que el evaluador consultaba `v.ciudad`. Al estar indefinida, todas las tarjetas se rotulaban como `'TERMINAL'` genérico y Base Loja no era detectada como sede de talleres.
+* **Solución aplicada:** Extracción robusta `v.ubicacion || v.ciudad`.
+  - Primera ventana (08:40 - 09:15): `📍 EL TAMBO • Terminal de Cabecera` (35m).
+  - Segunda ventana (11:15 - 12:10): `🏢 BASE LOJA • Sede Talleres y Fosas` (55m).
+  - Tercera ventana (14:10 - 16:15): `📍 EL TAMBO • Terminal de Cabecera` (2h05).
+  - Cuarta ventana (18:15 - 19:30): `🏢 BASE LOJA • Sede Talleres y Fosas` (1h15).
+  - Quinta ventana (21:00 - 05:40): `🌙 VILCABAMBA • Pernocta Externa` (8h40).
+
+## 📌 2. MATCH DIRECTO CON ENGRASE DE CHASIS EN BASE LOJA (55 MIN)
+* **Activación de Fosa:** Al reconocer `BASE LOJA` a las 11:15 con 55 minutos libres, el sistema evalúa los 20 minutos requeridos para `MNT-ENGRASE-CHASIS`.
+* **Presentación:** Muestra el badge `🚨 Fosa Oficial`, el detalle `Engrase de Chasis (Vencido hace X km • ~20m)` y el botón directo `[ 🔧 Ir a Engrase (Fosa) → ]`.
+* **Pre-marcado automático:** Abre la estación con el casillero pre-marcado para asentar en un solo toque.
+
+## 🛠️ 3. ARCHIVOS MODIFICADOS Y VALIDACIONES
+* `src/components/transport/ChoferTurnoVentanasCard.tsx`: Extracción correcta de `ubicacion`, detección de ciudades y match de fosa en Loja.
+* **Validación:** Empaquetado y verificación con esbuild completados con 0 errores.
+
+---
