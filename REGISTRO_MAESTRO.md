@@ -1948,3 +1948,34 @@ En caso de migrar a otra cuenta:
      - Indicador visual de estado de rotación: `🟢 +4d rotación` cuando está confirmado y calibrado.
 * **Continuidad del Proyecto:**
   - Cambios integrados en el repositorio oficial de GitHub `jljjdesarrollo-maker/rutago` en rama `main`.
+
+---
+
+## 🏛️ v3.60.63 - AUDITORÍA FORENSE: RESOLUCIÓN DE BLOQUEO VT10 Y SINCRONIZACIÓN REACTIVA DE ODÓMETRO (2026-10-01)
+> **ESTADO:** 🟢 COMPLETADO Y VALIDADO | **FECHA:** 2026-10-01  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 1. Diagnóstico Forense de los 4 Puntos de Falla:
+1. **Bloqueo por Override Manual Huérfano en `localStorage` (`rg_chofer_selected_vt_${busId}`):**
+   - Al seleccionar o abrir VT10 en jornadas anteriores, la clave almacenaba un string estático sin fecha de expiración.
+   - En `ejecutarSincronizacion`, la condición `if (!manualGuardado && res.proyeccion?.turnoProyectado)` bloqueaba deliberadamente cualquier actualización a la proyección de hoy (VT11), dejando la pantalla congelada en VT10 incluso al presionar "Sincronizar".
+2. **Descarte Silencioso del Odómetro (`kmFinal`) en Sincronización Remota:**
+   - La consulta a `/api/records?limit=60` recuperaba los registros con `r.kmFinal` ingresados por el ayudante, pero `obtenerUltimosArqueosBus` no persistía esa lectura en `saveBusOdometer` ni notificaba al estado `kmActual` del Chofer.
+3. **Falsa Detección de Anomalía en el Tracker (`deltaReal !== 1`):**
+   - El evaluador de anomalías comparaba saltos fijos de 1 turno (`delta21 !== 1`), considerando falsamente como auxilio mecánico atípico cualquier desfase de días sin operar (ej. del 27/09 VT07 al 30/09 VT10 pasaron 3 días naturales, rotación 100% natural).
+4. **Falta de Odómetro Visible y Botón de Retorno a Sugerido:**
+   - La tarjeta de Disponibilidad no contaba con un badge visible del odómetro sincronizado ni un mecanismo ágil para revertir una selección manual hacia el turno proyectado.
+
+### 2. Soluciones Implementadas y Verificadas:
+* **Caducidad Diaria de Overrides Manuales:**
+  - `localStorage.setItem('rg_chofer_selected_vt_${busId}', JSON.stringify({ codigo, fecha: obtenerFechaHoyLocal() }))`.
+  - Si la fecha no coincide con hoy, se descarta automáticamente al iniciar o sincronizar.
+* **Sincronización Atómica de Odómetro Servidor ➔ Cliente:**
+  - `obtenerUltimosArqueosBus` extrae el `kmFinal` más reciente de los arqueos y ejecuta `saveBusOdometer(discoLimpio, kmNum, date)`.
+  - Disparo de `rutago:bus_odometer_updated` que actualiza en tiempo real `kmActual` en `ChoferMantenimientoWidget`, `ChoferJornadaCard` y `ChoferDisponibilidadCard`.
+* **Cálculo de Progresión Calendario Flexible:**
+  - `deltaEsperado = diasEntreA2yA1 % 15`. Si el avance coincide con los días naturales transcurridos, se valida como secuencia armónica natural sin anomalías.
+* **Ergonomía de Sincronización y Badge Odómetro:**
+  - El botón `[ 🔄 Sincronizar ]` limpia cualquier bloqueo manual viejo y adopta la proyección calculada oficial para hoy (**VT11**).
+  - Chip digital en la cabecera: `Odómetro Oficial: X.XXX KM`.
+  - Enlace táctico `↺ Usar Turno Sugerido (VT11)` si el conductor visualiza un VT manual.

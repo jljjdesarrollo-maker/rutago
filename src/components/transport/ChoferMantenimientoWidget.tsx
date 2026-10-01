@@ -65,6 +65,7 @@ import { ChoferTurnoVentanasCard } from './ChoferTurnoVentanasCard';
 import { ChoferJornadaCard } from './ChoferJornadaCard';
 import { ChoferDisponibilidadCard } from './ChoferDisponibilidadCard';
 import { getConfiguracionFlotaLocal } from '@/lib/vt-ventanas-storage';
+import { sincronizarArqueosYCalibracion } from '@/lib/turno-secuencia-tracker';
 
 function determinarTipoMantenimientoExperto(p: ParadaPagoRegistro): {
   tipo: string;
@@ -354,6 +355,10 @@ export function ChoferMantenimientoWidget({
         setHistorialParadas(getParadasPagoByBus(activeBusId));
         setOutboxCount(getMantenimientoOutbox().length);
       }).catch(() => {});
+      const busesList = getAllBuses();
+      const current = busesList.find(b => b.id === activeBusId);
+      const curDisco = current?.numeroDisco || '01';
+      sincronizarArqueosYCalibracion(curDisco, activeBusId).catch(() => {});
     };
     window.addEventListener('online', handleOnline);
 
@@ -362,6 +367,10 @@ export function ChoferMantenimientoWidget({
     if (typeof navigator !== 'undefined' && navigator.onLine) {
       initTimer = setTimeout(() => {
         syncMantenimientoBidireccional(activeBusId).catch(() => {});
+        const busesList = getAllBuses();
+        const current = busesList.find(b => b.id === activeBusId);
+        const curDisco = current?.numeroDisco || '01';
+        sincronizarArqueosYCalibracion(curDisco, activeBusId).catch(() => {});
       }, 2000);
     }
 

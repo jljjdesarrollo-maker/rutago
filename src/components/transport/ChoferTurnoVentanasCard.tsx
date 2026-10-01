@@ -27,6 +27,7 @@ import { type VTConfiguracionItem } from '@/types/vt-ventanas';
 import {
   obtenerUltimosArqueosBus,
   calcularProyeccionSecuencia,
+  obtenerFechaHoyLocal,
 } from '@/lib/turno-secuencia-tracker';
 
 export interface EvaluacionMantenimientoVentana {
@@ -325,8 +326,16 @@ export function ChoferTurnoVentanasCard({
   const [configFlota, setConfigFlota] = useState(() => getConfiguracionFlotaLocal());
   const [selectedVTCode, setSelectedVTCode] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
-      if (saved) return saved;
+      const hoyStr = obtenerFechaHoyLocal();
+      const savedRaw = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
+      if (savedRaw) {
+        try {
+          const parsed = JSON.parse(savedRaw);
+          if (parsed && parsed.codigo && parsed.fecha === hoyStr) {
+            return parsed.codigo;
+          }
+        } catch {}
+      }
     }
     return 'VT01';
   });
@@ -336,10 +345,20 @@ export function ChoferTurnoVentanasCard({
   // Inferencia inteligente del turno según arqueos reales y días transcurridos
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
-      if (!saved) {
+      const hoyStr = obtenerFechaHoyLocal();
+      const savedRaw = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
+      let manualValidoDeHoy = false;
+      if (savedRaw) {
+        try {
+          const parsed = JSON.parse(savedRaw);
+          if (parsed && parsed.codigo && parsed.fecha === hoyStr) {
+            manualValidoDeHoy = true;
+          }
+        } catch {}
+      }
+      if (!manualValidoDeHoy) {
         obtenerUltimosArqueosBus(disco, busId).then((arqueos) => {
-          const proy = calcularProyeccionSecuencia(arqueos);
+          const proy = calcularProyeccionSecuencia(arqueos, null, hoyStr);
           if (proy && proy.turnoProyectado) {
             setSelectedVTCode(proy.turnoProyectado);
           }
@@ -369,7 +388,10 @@ export function ChoferTurnoVentanasCard({
     setCambiandoTurno(false);
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(`rg_chofer_selected_vt_${busId}`, codigo);
+        localStorage.setItem(
+          `rg_chofer_selected_vt_${busId}`,
+          JSON.stringify({ codigo, fecha: obtenerFechaHoyLocal() })
+        );
       } catch {}
     }
   };

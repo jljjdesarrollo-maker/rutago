@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   Calendar,
   RefreshCw,
+  Gauge,
+  RotateCcw,
 } from 'lucide-react';
 import {
   getConfiguracionFlotaLocal,
@@ -27,8 +29,15 @@ import {
   calcularProyeccionSecuencia,
   obtenerCalibracionLocalBus,
   sincronizarArqueosYCalibracion,
+  normalizarDisco,
+  obtenerFechaHoyLocal,
   type ResultadoProyeccionTurno,
 } from '@/lib/turno-secuencia-tracker';
+import {
+  getLatestBusOdometer,
+  saveBusOdometer,
+  subscribeToBusOdometer,
+} from '@/lib/fleet-storage';
 import {
   evaluarVentanaParaMantenimiento,
   formatearTiempoCompacto,
@@ -53,15 +62,58 @@ export function ChoferDisponibilidadCard({
 }: ChoferDisponibilidadCardProps) {
   const [configFlota, setConfigFlota] = useState(() => getConfiguracionFlotaLocal());
 
-  // Inicialización inteligente: revisa almacenamiento local y ficha de calibración
-  const [selectedVTCode, setSelectedVTCode] = useState<string>(() => {
+  // 1. Odómetro local reactivo y sincronizado
+  const [kmActualLocal, setKmActualLocal] = useState<number>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
-      if (saved) return saved;
+      const dLimpio = normalizarDisco(disco);
+      const odo = getLatestBusOdometer(dLimpio);
+      if (odo && odo.kmFinal) {
+        const num = parseInt(odo.kmFinal, 10);
+        if (!isNaN(num) && num > 0) return num;
+      }
+    }
+    return kmActual || 893485;
+  });
 
+  useEffect(() => {
+    if (kmActual && kmActual > 0) {
+      setKmActualLocal(kmActual);
+    }
+  }, [kmActual]);
+
+  // Suscripción reactiva en tiempo real al odómetro
+  useEffect(() => {
+    const unsubOdo = subscribeToBusOdometer((data) => {
+      const dLimpio = normalizarDisco(disco);
+      if (data.numeroDisco === dLimpio || data.busId === busId) {
+        const num = parseInt(data.kmFinal, 10);
+        if (!isNaN(num) && num > 0) {
+          setKmActualLocal(num);
+        }
+      }
+    });
+    return () => unsubOdo();
+  }, [disco, busId]);
+
+  // 2. Inicialización inteligente de turno con caducidad diaria de overrides
+  const [selectedVTCode, setSelectedVTCode] = useState<string>(() => {
+    const hoyStr = obtenerFechaHoyLocal();
+    if (typeof window !== 'undefined') {
+      const savedRaw = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
+      if (savedRaw) {
+        try {
+          const parsed = JSON.parse(savedRaw);
+          // Si el override manual pertenece al día de hoy, respetarlo
+          if (parsed && parsed.codigo && parsed.fecha === hoyStr) {
+            return parsed.codigo;
+          }
+        } catch {
+          // Si era formato antiguo string simple sin fecha, se descartará al sincronizar
+        }
+      }
       const cal = obtenerCalibracionLocalBus(disco, busId);
       if (cal && cal.historial3Arqueos && cal.historial3Arqueos.length > 0) {
-        const proy = calcularProyeccionSecuencia(cal.historial3Arqueos);
+        const proy = calcularProyeccionSecuencia(cal.historial3Arqueos, null, hoyStr);
         if (proy?.turnoProyectado) return proy.turnoProyectado;
       }
     }
@@ -85,25 +137,56 @@ export function ChoferDisponibilidadCard({
   const ejecutarSincronizacion = useCallback(
     async (forzar = false) => {
       if (forzar) setSincronizando(true);
+      const hoyStr = obtenerFechaHoyLocal();
 
       try {
+        // Al forzar sincronización manual, limpiar override para adoptar la realidad calculada
+        if (forzar && typeof window !== 'undefined') {
+          localStorage.removeItem(`rg_chofer_selected_vt_${busId}`);
+        }
+
         const res = await sincronizarArqueosYCalibracion(disco, busId);
         setProyeccion(res.proyeccion);
 
-        if (typeof window !== 'undefined') {
-          const manualGuardado = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
-          if (!manualGuardado && res.proyeccion?.turnoProyectado) {
+        // Actualizar turno proyectado
+        if (res.proyeccion?.turnoProyectado) {
+          if (forzar) {
             setSelectedVTCode(res.proyeccion.turnoProyectado);
+          } else if (typeof window !== 'undefined') {
+            const manualRaw = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
+            let manualValidoDeHoy = false;
+            if (manualRaw) {
+              try {
+                const parsed = JSON.parse(manualRaw);
+                if (parsed.codigo && parsed.fecha === hoyStr) {
+                  manualValidoDeHoy = true;
+                }
+              } catch {}
+            }
+            if (!manualValidoDeHoy) {
+              setSelectedVTCode(res.proyeccion.turnoProyectado);
+            }
           }
         }
 
+        // Actualizar odómetro si el servidor devolvió una lectura verificada
+        if (res.ultimoKmRegistrado && res.ultimoKmRegistrado > 0) {
+          setKmActualLocal(res.ultimoKmRegistrado);
+          saveBusOdometer(
+            disco,
+            res.ultimoKmRegistrado.toString(),
+            res.fechaUltimoKm || hoyStr
+          );
+        }
+
         if (forzar) {
+          const kmTexto = res.ultimoKmRegistrado ? ` • Odómetro: ${res.ultimoKmRegistrado.toLocaleString()} KM` : '';
           if (res.errorRed) {
-            setSyncStatusMsg('Sin conexión al servidor. Conservando proyección local calculada.');
+            setSyncStatusMsg(`Modo local: proy. ${res.proyeccion.turnoProyectado}${kmTexto}`);
           } else {
-            setSyncStatusMsg('Sincronización completada exitosamente.');
+            setSyncStatusMsg(`Sincronizado: ${res.proyeccion.turnoProyectado}${kmTexto}`);
           }
-          setTimeout(() => setSyncStatusMsg(null), 3500);
+          setTimeout(() => setSyncStatusMsg(null), 4000);
         }
       } catch (err) {
         console.warn('[ChoferDisponibilidadCard] Error al sincronizar:', err);
@@ -142,8 +225,20 @@ export function ChoferDisponibilidadCard({
     setCambiandoTurno(false);
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(`rg_chofer_selected_vt_${busId}`, codigo);
+        localStorage.setItem(
+          `rg_chofer_selected_vt_${busId}`,
+          JSON.stringify({ codigo, fecha: obtenerFechaHoyLocal() })
+        );
       } catch {}
+    }
+  };
+
+  const handleResetToProyectado = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(`rg_chofer_selected_vt_${busId}`);
+    }
+    if (proyeccion?.turnoProyectado) {
+      setSelectedVTCode(proyeccion.turnoProyectado);
     }
   };
 
@@ -199,6 +294,11 @@ export function ChoferDisponibilidadCard({
     return ventanas.reduce((acc, v) => acc + (v.duracionMinutos || 0), 0);
   }, [ventanas]);
 
+  const esTurnoManual = Boolean(
+    proyeccion?.turnoProyectado &&
+    normalizarCodigo(selectedVTCode) !== normalizarCodigo(proyeccion.turnoProyectado)
+  );
+
   return (
     <div
       className={`bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden transition-all ${className}`}
@@ -218,7 +318,6 @@ export function ChoferDisponibilidadCard({
                 <span className="text-[10px] text-slate-400 font-bold">
                   • {ventanas.length} {ventanas.length === 1 ? 'ventana' : 'ventanas'}
                 </span>
-
                 {/* Badge de inferencia de secuencia */}
                 {proyeccion?.estado === 'CONFIRMADO' && (
                   <span className="rounded-full bg-emerald-500/20 border border-emerald-400/30 px-2 py-0.2 text-[9px] font-bold text-emerald-300">
@@ -231,13 +330,22 @@ export function ChoferDisponibilidadCard({
                   </span>
                 )}
               </div>
-
               <div className="flex items-center gap-2 mt-0.5">
                 <h3 className="text-base font-black text-white leading-tight">
                   {vtActual.codigo}
                 </h3>
                 <span className="text-xs text-slate-300 font-medium truncate">
                   ({formatearTiempoCompacto(tiempoTotalLibreMinutos)} libres hoy)
+                </span>
+              </div>
+              {/* Odómetro del Conductor en Cabecera */}
+              <div className="flex items-center gap-1.5 mt-1">
+                <Gauge className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="text-[11px] font-bold text-amber-300 font-mono">
+                  {(kmActualLocal || 893485).toLocaleString()} KM
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  • Odómetro de ruta
                 </span>
               </div>
             </div>
@@ -251,7 +359,7 @@ export function ChoferDisponibilidadCard({
               onClick={() => ejecutarSincronizacion(true)}
               disabled={sincronizando}
               className="flex items-center gap-1 bg-white/10 hover:bg-white/20 active:scale-95 border border-white/20 rounded-full px-2.5 py-1.5 text-xs font-bold text-white transition cursor-pointer disabled:opacity-50"
-              title="Sincronizar arqueos y recalcular proyección de turno"
+              title="Sincronizar arqueos y odómetro desde el servidor"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${sincronizando ? 'animate-spin text-emerald-400' : 'text-slate-200'}`} />
               <span className="hidden sm:inline text-[11px] font-bold">
@@ -301,6 +409,26 @@ export function ChoferDisponibilidadCard({
           </div>
         </div>
 
+        {/* Banner de Turno Manual Override (con opción a restablecer al proyectado) */}
+        {esTurnoManual && proyeccion?.turnoProyectado && (
+          <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl bg-amber-500/20 border border-amber-400/30 px-3 py-1.5 text-xs text-amber-200">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+              <span className="truncate">
+                Viendo <strong>{selectedVTCode}</strong> (manual). Sugerido hoy: <strong>{proyeccion.turnoProyectado}</strong>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleResetToProyectado}
+              className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-400 text-slate-950 font-black text-[10px] hover:bg-amber-300 transition cursor-pointer active:scale-95"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Usar {proyeccion.turnoProyectado}</span>
+            </button>
+          </div>
+        )}
+
         {/* Mensaje de estado de sincronización */}
         {syncStatusMsg && (
           <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl bg-slate-800/90 border border-slate-700 px-3 py-1.5 text-[11px] text-slate-200">
@@ -326,30 +454,28 @@ export function ChoferDisponibilidadCard({
 
       {/* ─── Ventana Táctica Mayor con Tarea Asignable (Match Inteligente) ─── */}
       {ventanaMayor && (() => {
-        const evalMayor = evaluarVentanaParaMantenimiento(ventanaMayor, itemsEfectivos, kmActual);
+        const evalMayor = evaluarVentanaParaMantenimiento(ventanaMayor, itemsEfectivos, kmActualLocal);
         if (!evalMayor.tieneTareaAsignable) return null;
 
         return (
           <div className="border-b border-emerald-200/80 bg-emerald-50/90 p-4">
             <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-start gap-2.5 min-w-0">
                 <div
-                  className={`flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-xs shrink-0 ${
-                    evalMayor.tipoMatch === 'CHOFER' ? 'bg-amber-600' : 'bg-emerald-700'
+                  className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
+                    evalMayor.tipoMatch === 'CHOFER'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-emerald-600 text-white'
                   }`}
                 >
-                  {evalMayor.tipoMatch === 'CHOFER' ? (
-                    <span className="text-base">🚌</span>
-                  ) : (
-                    <Wrench className="h-4.5 w-4.5" />
-                  )}
+                  <Wrench className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-900">
-                      {evalMayor.ciudadNombre}: {evalMayor.tituloBadge}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
+                      Oportunidad en {evalMayor.ciudadNombre}
                     </span>
-                    <span className="rounded-full bg-emerald-200 px-2 py-0.2 text-[9px] font-black text-emerald-950">
+                    <span className="rounded-full bg-emerald-200/80 px-2 py-0.5 text-[10px] font-black text-emerald-950">
                       {formatearTiempoCompacto(ventanaMayor.duracionMinutos)} libres
                     </span>
                   </div>
@@ -401,7 +527,7 @@ export function ChoferDisponibilidadCard({
               </p>
             ) : (
               ventanas.map((v, idx) => {
-                const evalV = evaluarVentanaParaMantenimiento(v, itemsEfectivos, kmActual);
+                const evalV = evaluarVentanaParaMantenimiento(v, itemsEfectivos, kmActualLocal);
                 return (
                   <div
                     key={idx}

@@ -6,6 +6,8 @@
  * persistencia offline-first mediante Ficha de Calibración Local y sincronización resiliente.
  */
 
+import { saveBusOdometer } from '@/lib/fleet-storage';
+
 export interface ArqueoResumenTurno {
   date: string;
   vtCode: string;
@@ -47,7 +49,7 @@ export interface ResultadoProyeccionTurno {
 export const HISTORIAL_SEMILLA_AUDITADO_UNIDAD_01: ArqueoResumenTurno[] = [
   { date: '2026-09-25', vtCode: 'VT05', conductor: '01', numeroDisco: '01' },
   { date: '2026-09-26', vtCode: 'VT06', conductor: '01', numeroDisco: '01' },
-  { date: '2026-09-27', vtCode: 'VT07', conductor: '01', numeroDisco: '01' },
+  { date: '2026-09-27', vtCode: 'VT07', conductor: '01', numeroDisco: '01', kmFinal: '893485' },
 ];
 
 /**
@@ -82,23 +84,30 @@ export function diferenciaEnDiasCalendario(fechaA: string, fechaB: string): numb
   const matchA = fechaA.match(/^(\d{4})-(\d{2})-(\d{2})/);
   const matchB = fechaB.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (!matchA || !matchB) return 1;
-
   const utcA = Date.UTC(parseInt(matchA[1], 10), parseInt(matchA[2], 10) - 1, parseInt(matchA[3], 10));
   const utcB = Date.UTC(parseInt(matchB[1], 10), parseInt(matchB[2], 10) - 1, parseInt(matchB[3], 10));
-
   const diffMs = utcB - utcA;
   return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
 }
 
 /**
- * Obtiene la fecha local actual en formato YYYY-MM-DD
+ * Obtiene la fecha local actual en formato YYYY-MM-DD (Zona Horaria Ecuador UTC-5)
  */
 export function obtenerFechaHoyLocal(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dia = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dia}`;
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Guayaquil',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  } catch {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dia}`;
+  }
 }
 
 /**
@@ -109,7 +118,6 @@ export function obtenerCalibracionLocalBus(
   busId?: string
 ): FichaCalibracionBus | null {
   if (typeof window === 'undefined') return null;
-
   const discoLimpio = normalizarDisco(disco);
   const keyDisco = `rg_calibracion_bus_${discoLimpio}`;
   const keyBusId = busId ? `rg_calibracion_bus_${busId}` : null;
@@ -150,7 +158,6 @@ export function obtenerCalibracionLocalBus(
  */
 export function guardarCalibracionLocalBus(ficha: FichaCalibracionBus): void {
   if (typeof window === 'undefined' || !ficha) return;
-
   try {
     const discoLimpio = normalizarDisco(ficha.disco);
     localStorage.setItem(`rg_calibracion_bus_${discoLimpio}`, JSON.stringify(ficha));
@@ -165,7 +172,7 @@ export function guardarCalibracionLocalBus(ficha: FichaCalibracionBus): void {
 /**
  * Obtiene los últimos arqueos registrados para un bus con soporte Offline-First.
  * Consulta primero la Ficha de Calibración Local y el localStorage. Si hay red,
- * intenta sincronizar con el servidor en segundo plano sin bloquear.
+ * sincroniza con /api/records y actualiza automáticamente el odómetro del bus.
  */
 export async function obtenerUltimosArqueosBus(
   disco: string,
@@ -219,7 +226,6 @@ export async function obtenerUltimosArqueosBus(
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2500);
-
       const res = await fetch('/api/records?limit=60', { signal: controller.signal });
       clearTimeout(timeoutId);
 
@@ -281,14 +287,29 @@ export async function obtenerUltimosArqueosBus(
   for (const item of registrosEncontrados) {
     mapaFechas.set(item.date, item);
   }
-
-  return Array.from(mapaFechas.values()).sort(
+  const listaFinal = Array.from(mapaFechas.values()).sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
+
+  // 5. BLINDAJE DE ODÓMETRO: Si el último registro tiene kmFinal, persistir en saveBusOdometer
+  if (listaFinal.length > 0) {
+    for (let i = listaFinal.length - 1; i >= 0; i--) {
+      const rec = listaFinal[i];
+      if (rec.kmFinal) {
+        const kmNum = parseInt(String(rec.kmFinal).replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(kmNum) && kmNum > 0) {
+          saveBusOdometer(discoLimpio, kmNum.toString(), rec.date);
+          break;
+        }
+      }
+    }
+  }
+
+  return listaFinal;
 }
 
 /**
- * Función integral para sincronización manual y retorno de estado con metadatos
+ * Función integral para sincronización manual y retorno de estado con metadatos y odómetro
  */
 export async function sincronizarArqueosYCalibracion(
   disco: string,
@@ -298,6 +319,8 @@ export async function sincronizarArqueosYCalibracion(
   proyeccion: ResultadoProyeccionTurno;
   fuente: 'OFFLINE_CACHE' | 'SINCRONIZADO' | 'SIN_DATOS';
   errorRed: boolean;
+  ultimoKmRegistrado?: number | null;
+  fechaUltimoKm?: string | null;
 }> {
   let errorRed = false;
   let fuente: 'OFFLINE_CACHE' | 'SINCRONIZADO' | 'SIN_DATOS' = 'OFFLINE_CACHE';
@@ -310,11 +333,27 @@ export async function sincronizarArqueosYCalibracion(
     } else {
       fuente = 'OFFLINE_CACHE';
     }
+
+    let ultimoKm: number | null = null;
+    let fechaKm: string | null = null;
+    for (let i = arqueos.length - 1; i >= 0; i--) {
+      if (arqueos[i].kmFinal) {
+        const num = parseInt(String(arqueos[i].kmFinal).replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(num) && num > 0) {
+          ultimoKm = num;
+          fechaKm = arqueos[i].date;
+          break;
+        }
+      }
+    }
+
     return {
       arqueos,
       proyeccion,
       fuente,
       errorRed,
+      ultimoKmRegistrado: ultimoKm,
+      fechaUltimoKm: fechaKm,
     };
   } catch (err) {
     errorRed = true;
@@ -334,8 +373,8 @@ export async function sincronizarArqueosYCalibracion(
  * Calcula la proyección del turno para hoy considerando:
  * 1. La fecha del último arqueo y los días calendario transcurridos hasta HOY.
  *    (El rol de la cooperativa avanza +1 diario inexorablemente, aunque el bus haya estado en mecánica o sin arqueo).
- * 2. Los 3 últimos arqueos para validar consistencia o detectar si el último fue un auxilio mecánico anómalo.
- * 3. Selección manual como override si el socio o chofer lo indica.
+ * 2. Los 3 últimos arqueos para validar consistencia y progresión armónica del calendario.
+ * 3. Selección manual como override si el socio o chofer lo indica para la fecha activa.
  */
 export function calcularProyeccionSecuencia(
   arqueosTotales: ArqueoResumenTurno[],
@@ -367,15 +406,12 @@ export function calcularProyeccionSecuencia(
     const ultimo = n > 0 ? arqueosTotales[n - 1] : null;
     let numCalculado = 1;
     let diasTrans = 0;
-
     if (ultimo) {
       diasTrans = diferenciaEnDiasCalendario(ultimo.date, hoyStr);
       const numUltimo = extraerNumeroVT(ultimo.vtCode);
       numCalculado = ((numUltimo - 1 + diasTrans) % 15) + 1;
     }
-
     const vtProv = formatearCodigoVT(numCalculado);
-
     return {
       estado: 'CALIBRANDO',
       conteoArqueos: n,
@@ -405,10 +441,21 @@ export function calcularProyeccionSecuencia(
   // Días calendario transcurridos desde el último arqueo (a1.date) hasta hoy
   const diasTranscurridos = diferenciaEnDiasCalendario(a1.date, hoyStr);
 
-  // Analizar si a1 fue una anomalía (reemplazo o auxilio mecánico imprevisto)
-  const delta32 = (num2 - num3 + 15) % 15;
-  const delta21 = (num1 - num2 + 15) % 15;
-  const esSaltoAnomaloEnA1 = delta32 === 1 && delta21 !== 1 && delta21 !== 0;
+  // Progresión calendario esperada entre penúltimo (a2) y último (a1)
+  const diasEntreA2yA1 = diferenciaEnDiasCalendario(a2.date, a1.date);
+  const deltaEsperadoA2A1 = diasEntreA2yA1 % 15;
+  const deltaRealA2A1 = (num1 - num2 + 15) % 15;
+
+  // Progresión calendario esperada entre antepenúltimo (a3) y penúltimo (a2)
+  const diasEntreA3yA2 = diferenciaEnDiasCalendario(a3.date, a2.date);
+  const deltaEsperadoA3A2 = diasEntreA3yA2 % 15;
+  const deltaRealA3A2 = (num2 - num3 + 15) % 15;
+
+  // Es anomalía genuina si el salto no coincide con el avance del calendario ni con 0 (mismo turno repetido)
+  const esSaltoAnomaloEnA1 =
+    deltaRealA3A2 === deltaEsperadoA3A2 &&
+    deltaRealA2A1 !== deltaEsperadoA2A1 &&
+    deltaRealA2A1 !== 0;
 
   let esAnomalia = false;
   let mensaje = '';
@@ -424,11 +471,10 @@ export function calcularProyeccionSecuencia(
     // Cálculo oficial por rotación de calendario de la compañía:
     // Cada día transcurrido desde el último arqueo avanza +1 turno en la rotación de 15 VTs
     siguienteNumero = ((num1 - 1 + diasTranscurridos) % 15) + 1;
-
     if (diasTranscurridos > 1) {
-      mensaje = `Último arqueo auditado: ${a1.date} (${a1.vtCode}). Transcurrieron ${diasTranscurridos} días de calendario (taller/sin arqueo). Como el calendario de la compañía avanza continuamente, hoy le corresponde ${formatearCodigoVT(siguienteNumero)}.`;
+      mensaje = `Último arqueo auditado: ${a1.date} (${a1.vtCode}). Transcurrieron ${diasTranscurridos} días de calendario (+${diasTranscurridos} en el rol). Hoy le corresponde ${formatearCodigoVT(siguienteNumero)}.`;
     } else {
-      mensaje = `Secuencia confirmada (+1) por los últimos 3 arqueos (${a3.vtCode} → ${a2.vtCode} → ${a1.vtCode}). Hoy le corresponde ${formatearCodigoVT(siguienteNumero)}.`;
+      mensaje = `Secuencia confirmada (+1) por los últimos arqueos (${a2.vtCode} → ${a1.vtCode}). Hoy le corresponde ${formatearCodigoVT(siguienteNumero)}.`;
     }
   }
 
