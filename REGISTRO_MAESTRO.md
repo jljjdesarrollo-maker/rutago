@@ -1786,3 +1786,84 @@ En caso de migrar a otra cuenta:
 * **Validación:** Empaquetado y verificación con esbuild completados con 0 errores.
 
 ---
+
+# 🎨 ANÁLISIS EXPERTO UX/UI Y PROPUESTA DE HOMOLOGACIÓN ERGONÓMICA DE INTERFAZ DEL CHOFER (2026-09-30)
+
+## 📌 1. ANÁLISIS DE LA INTERFAZ DEL AYUDANTE (BENCHMARK INTERNO)
+* **Jerarquía Visual y Regla del "Número Rey":**
+  - La tarjeta hero (`AyudanteJornadaCard`) domina la pantalla centrando la atención visual en el número rey de recaudación en caja (`text-4xl font-extrabold`) o botón de inicio de jornada.
+  - Métricas subordinadas de balance en franja inferior (`text-xs text-emerald-200/90`): pasajeros, vueltas y próxima salida.
+* **Supervisión Mecánica Pasiva:**
+  - `AyudanteMantenimientoBar` aísla al ayudante de catálogos densos de repuestos, reduciéndose a un semáforo de estado de unidad y un botón para reportar anomalías en ruta.
+* **Cuadrícula Táctica 2x2 (#053225):**
+  - Botones táctiles generosos (`min-h-[115px]`, `rounded-3xl`) con micro-interacciones suaves e iconos en cajas translúcidas (`bg-white/10 text-emerald-300`).
+* **Puntos de Mejora Detectados en Accesibilidad (WCAG 2.1 AA):**
+  - Ajuste de contraste para textos con opacidades reducidas sobre `#053225` a fin de garantizar visibilidad con luz solar directa en carretera.
+  - Corrección de redundancia en eventos de navegación de las tarjetas secundarias.
+
+## 📌 2. DIAGNÓSTICO DE LA INTERFAZ DEL CONDUCTOR
+* **Sobrecarga Cognitiva e Inconsistencias:**
+  - El conductor presenta un scroll denso de más de 4.000 líneas que compite visualmente con el tacómetro: múltiples chips de semáforo, lista de ventanas operativas, acordeón blanco de talleres, selector de alcance y un radar con decenas de componentes mecánicos.
+  - Presencia de emojis sueltos (`🛢️`, `🔧`) en vez de iconos SVG enmarcados en la cuadrícula.
+  - Tipografías diminutas (`text-[9px]`, `text-[9.5px]`) que comprometen la legibilidad bajo vibraciones y movimiento vehicular.
+
+## 📌 3. PROPUESTA DE HOMOLOGACIÓN ERGONÓMICA APROBADA
+1. **Hero Card del Conductor (`ChoferHeroCard`):** Tacómetro auditado como Número Rey (`187,420 KM`) con estado semafórico ejecutivo en 3 segundos y franja inferior integrada (próximo cambio de aceite, frenos y ubicación).
+2. **Tarjeta Táctica de Próxima Parada:** Reemplazo de la lista de ventanas por una sola tarjeta de acción directa: *"¿Qué hago en mi próxima parada?"* vinculada al match de talleres y rutinas autónomas.
+3. **Cuadrícula Táctica 2x2 Homologada (#053225):** Cuatro accesos limpios con iconos SVG: Fosa/Lubricadora, Mi Rutina Chofer ($0), Talleres Especializados y Mis Vueltas/Historial.
+4. **Ergonomía de Accesibilidad:** Target táctil mínimo de 48px y tipografía base de al menos 11px con alto contraste AAA.
+
+---
+
+# 📱 CONFIRMACIÓN DE DISEÑO MINIMALISTA, MOBILE-FIRST Y PLAN DETALLADO DE EJECUCIÓN (2026-09-30)
+
+## 📌 1. CONFIRMACIÓN: ¿ES MINIMALISTA Y OPTIMIZADO PARA MÓVILES?
+* **SÍ, 100% MINIMALISTA Y MOBILE-FIRST (Regla 3 de Oro de RutaGo):**
+  1. **Cero Ruido Visual en Pantalla Principal:** 
+     - Se erradica por completo el desplazamiento infinito ("scroll infernal" de 4.000 líneas con 27 componentes mecánicos compitiendo a la vez).
+     - La pantalla del Chofer se reduce a **exactamente 3 bloques limpios** que caben en el viewport de cualquier smartphone moderno de 5.5" a 6.7" sin necesidad de scroll excesivo.
+  2. **Diseñado para Operar con el Pulgar (Thumb Zone):**
+     - Todos los botones interactivos principales tienen una altura táctil de **mínimo 48px a 56px**, con radio generoso (`rounded-3xl` y `rounded-2xl`) y micro-interacciones suaves (`active:scale-[0.98]`).
+  3. **Tipografía y Alto Contraste para Cabina de Conducción:**
+     - Eliminación radical de textos de 9px y 9.5px; tamaño mínimo de texto: **12px**.
+     - Paleta institucional idéntica a la del Ayudante y Socio: verde bosque profundo `#053225`, verde esmeralda `text-emerald-300`, acentos ámbar y blanco puro para visibilidad óptima bajo el sol o en la noche.
+
+## 📌 2. DESGLOSE EXACTO DE LO QUE SE VA A HACER PRIMERO:
+
+### 🔹 PASO 1 (LO PRIMERO QUE SE HARÁ):
+* **Creación del componente modular `ChoferJornadaCard.tsx` (Hero Card del Conductor):**
+  - Ubicación: `src/components/transport/ChoferJornadaCard.tsx`.
+  - Qué hace: Replica exactamente el contenedor `#053225` con bordes redondeados (`rounded-3xl`) de la tarjeta del ayudante (`AyudanteJornadaCard`).
+  - Elemento central (Número Rey): El tacómetro oficial del bus (`187,420 KM`) en tamaño prominente (`text-3xl sm:text-4xl font-extrabold text-white`).
+  - Indicador ejecutivo de 3 segundos: Pastilla semafórica central (`🟢 Unidad al día en ruta` o `🟡 Próximo a fosa en 120 km`).
+  - Franja inferior con 3 métricas tácticas clave para el conductor:
+    1. Kilometraje restante para el próximo cambio de aceite.
+    2. Estado de frenos y zapatas.
+    3. Próxima parada/terminal asignada.
+
+### 🔹 PASO 2:
+* **Creación de la Tarjeta Táctica Contextual `ChoferProximaParadaCard.tsx`:**
+  - Ubicación: `src/components/transport/ChoferProximaParadaCard.tsx`.
+  - Qué hace: Toma la lógica de ventanas operativas ya calibrada y la comprime en una única tarjeta visual minimalista que responde: *"¿Qué me toca hacer en mi próxima parada?"*.
+  - Si está en Loja y tiene tiempo: muestra botón destacado verde `[ 🛢️ Ir a Lubricadora / Fosa (45 min) → ]`.
+  - Si está en ruta y tiene tarea autónoma: `[ 🚌 Asentar Engrase de Chasis ($0) → ]`.
+  - Si no tiene tareas pendientes: muestra de forma limpia `[ ✅ Unidad al día • Descanso en Terminal ]`.
+
+### 🔹 PASO 3:
+* **Homologación de la Cuadrícula 2x2 en `HomeScreen.tsx` (#053225):**
+  - Mismo diseño, altura, esquinas y tipografía que la cuadrícula del Ayudante.
+  - Los 4 botones tácticos serán:
+    1. `[ 🛢️ ] Fosa / Lubricadora` (Aceite y filtros - ciclo 5k).
+    2. `[ 👤 ] Mi Rutina Chofer ($0)` (Baterías, aire, engrase).
+    3. `[ 🛠️ ] Talleres de Flota` (Frenos, suspensión, caja).
+    4. `[ 📑 ] Mis Vueltas` (Historial archivado de hojas de ruta).
+  - Cada botón abre su respectivo Bottom Sheet / Modal emergente sin ensuciar la pantalla principal.
+
+### 🔹 PASO 4:
+* **Integración limpia en `HomeScreen.tsx` y Verificación:**
+  - Sustituir la carga densa en `HomeScreen.tsx` por los nuevos componentes modulares ligeros.
+  - Validación de compilación Next.js (`compile_applet` / `npx tsc --noEmit`).
+
+---
+
+
