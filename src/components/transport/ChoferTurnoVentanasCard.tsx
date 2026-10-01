@@ -53,10 +53,10 @@ function esTareaDeChofer(codigo: string = '', nombre: string = ''): boolean {
     c.includes('BATERIA') || n.includes('bater') ||
     c.includes('SOPLADO') || n.includes('soplado') || n.includes('filtro aire') ||
     c.includes('RACHES') || n.includes('rach') || n.includes('matraca') ||
+    c.includes('ENGRASE') || n.includes('engrase') ||
     n.includes('malla') ||
     n.includes('presion') || n.includes('calibrar neum') ||
-    n.includes('inspeccion') || n.includes('niveles') ||
-    (n.includes('engrase') && (n.includes('manual') || n.includes('rutina')))
+    n.includes('inspeccion') || n.includes('niveles')
   );
 }
 
@@ -82,6 +82,10 @@ function estimarTareaMantenimiento(it: MantenimientoBusItem) {
     } else if (n.includes('rach') || n.includes('matraca')) {
       tiempoRequeridoMinutos = 15;
       labelBoton = 'Calibrar Raches →';
+    } else if (c.includes('ENGRASE') || n.includes('engrase')) {
+      tiempoRequeridoMinutos = 20;
+      estacionId = 'CHOFER_RUTINA';
+      labelBoton = 'Asentar Engrase →';
     } else if (n.includes('llanta') || n.includes('presion')) {
       tiempoRequeridoMinutos = 15;
       estacionId = 'ALINEACION';

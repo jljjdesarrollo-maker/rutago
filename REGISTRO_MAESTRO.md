@@ -1770,3 +1770,19 @@ En caso de migrar a otra cuenta:
 * **Validación:** Empaquetado y verificación con esbuild completados con 0 errores.
 
 ---
+
+# 🚀 VERSIÓN 3.60.62: ENGRASE DE CHASIS HABILITADO COMO RUTINA AUTÓNOMA EN RUTA (EL TAMBO, LA ELVIRA, VILCABAMBA Y LOJA) (2026-09-30)
+
+## 📌 1. REGLA IDENTIFICADA Y CORREGIDA
+* **Causa de bloqueo previo en El Tambo:** El filtro `esTareaDeChofer` exigía que el nombre contuviera las palabras explícitas `"manual"` o `"rutina"`. Al venir como `"Engrase de Chasis"`, el sistema lo clasificaba por defecto como tarea pesada de Fosa industrial, restringiéndola exclusivamente a Base Loja.
+* **Ajuste operativo real:** El engrase de chasis, crucetas y terminales forma parte de la estación `CHOFER_RUTINA` ($0 de mano de obra propia con grasera del bus). Por ende, es ejecutable en **CUALQUIER TERMINAL** donde la unidad tenga ≥ 20 minutos libres.
+* **Resultado en VT10:**
+  - **Tarjeta 1 (08:40 - 09:15 en El Tambo, 35 min):** Como 35 min ≥ 20 min y el engrase está vencido, **se asigna de inmediato en El Tambo**.
+  - **Presentación:** Badge `🚨 Rutina Chofer ($0)` • Detalle `Engrase de Chasis (Vencido • ~20m)` • Botón `[ 🚌 Asentar Engrase → ]`.
+  - El chofer puede resolverlo directamente en cabecera sin esperar a llegar a Loja.
+
+## 🛠️ 2. ARCHIVOS MODIFICADOS Y VALIDACIONES
+* `src/components/transport/ChoferTurnoVentanasCard.tsx`: Inclusión universal de `ENGRASE` en `esTareaDeChofer` y asignación a `CHOFER_RUTINA`.
+* **Validación:** Empaquetado y verificación con esbuild completados con 0 errores.
+
+---
