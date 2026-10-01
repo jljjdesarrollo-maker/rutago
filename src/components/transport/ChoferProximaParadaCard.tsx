@@ -46,6 +46,7 @@ export function ChoferProximaParadaCard({
     return 'VT01';
   });
   const [cambiandoTurno, setCambiandoTurno] = useState(false);
+  const [mostrarDisponibilidadCompleta, setMostrarDisponibilidadCompleta] = useState(false);
 
   // Inferencia inteligente del turno según arqueos reales
   useEffect(() => {
@@ -114,6 +115,11 @@ export function ChoferProximaParadaCard({
   const ventanaMayor = useMemo(() => {
     return getVentanaMayorParaVT(selectedVTCode);
   }, [selectedVTCode]);
+
+  const ventanas = useMemo(() => {
+    if (!vtActual) return [];
+    return vtActual.ventanas || [];
+  }, [vtActual]);
 
   if (!vtActual || !ventanaMayor) return null;
 
@@ -231,6 +237,74 @@ export function ChoferProximaParadaCard({
                 No se requieren mantenimientos mecánicos en esta parada.
               </p>
             </div>
+          </div>
+        )}
+
+        {/* BOTÓN COLAPSABLE: DISPONIBILIDAD DE TIEMPOS Y VENTANAS DEL TURNO */}
+        {ventanas.length > 0 && (
+          <div className="pt-2 mt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setMostrarDisponibilidadCompleta(!mostrarDisponibilidadCompleta)}
+              className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-[11px] font-bold text-slate-700 flex items-center justify-between transition cursor-pointer active:scale-[0.99]"
+            >
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Disponibilidad de Tiempos ({ventanas.length} intervalos)</span>
+              </div>
+              <span className="text-emerald-800 font-extrabold text-[10px]">
+                {mostrarDisponibilidadCompleta ? '▲ Ocultar' : '▼ Ver Disponibilidad'}
+              </span>
+            </button>
+
+            {mostrarDisponibilidadCompleta && (
+              <div className="mt-2 space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                {ventanas.map((v, idx) => {
+                  const ev = evaluarVentanaParaMantenimiento(v, itemsEfectivos, kmActual);
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2 ${
+                        ev.tieneTareaAsignable
+                          ? 'bg-emerald-50/90 border-emerald-300'
+                          : ev.esPernocta
+                          ? 'bg-indigo-50/70 border-indigo-200'
+                          : 'bg-white border-slate-200'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-extrabold text-slate-900">
+                            {ev.ciudadNombre}
+                          </span>
+                          <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded-full">
+                            {formatearTiempoCompacto(v.duracionMinutos)} libres
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            ({v.horaInicio} - {v.horaFin})
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-600 truncate mt-0.5">
+                          {ev.tieneTareaAsignable
+                            ? `💡 ${ev.detalleTarea}`
+                            : ev.motivoNoTaller || 'Tiempo libre / descanso'}
+                        </p>
+                      </div>
+
+                      {ev.tieneTareaAsignable && onAbrirEstacion && ev.estacionDestino && (
+                        <button
+                          type="button"
+                          onClick={() => onAbrirEstacion(ev.estacionDestino!, ev.itemCodigo)}
+                          className="shrink-0 px-2 py-1 rounded-lg bg-[#053225] hover:bg-[#073b2d] text-white text-[10px] font-extrabold cursor-pointer active:scale-95 transition"
+                        >
+                          Ir →
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
