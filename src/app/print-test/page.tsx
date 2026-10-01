@@ -33,6 +33,7 @@ export default function PrintTestPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [logs, setLogs] = useState<string[]>([]);
   const [btEnabled, setBtEnabled] = useState<boolean | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
 
   const log = (msg: string) => {
     const time = new Date().toLocaleTimeString();
@@ -82,6 +83,10 @@ export default function PrintTestPage() {
       });
 
       setDeviceName(device.name || 'Desconocido');
+      device.addEventListener('gattserverdisconnected', () => {
+        setIsConnected(false);
+        log('Dispositivo desconectado.');
+      });
       setStep('found');
       log(`Dispositivo seleccionado: ${device.name || '(sin nombre)'}`);
       log(`ID: ${device.id.slice(0, 12)}...`);
@@ -91,6 +96,7 @@ export default function PrintTestPage() {
       log('Conectando GATT...');
 
       const gatt = await device.gatt!.connect();
+      setIsConnected(true);
       log('GATT conectado!');
 
       // Find writable characteristic — try known UUIDs first
@@ -179,10 +185,12 @@ export default function PrintTestPage() {
       log('Datos enviados OK!');
 
       await gatt.disconnect();
+      setIsConnected(false);
       setStep('done');
       log('Impresion completada!');
 
     } catch (e) {
+      setIsConnected(false);
       const err = e as DOMException;
       if (err.name === 'NotFoundError') {
         setStep('idle');
@@ -198,10 +206,36 @@ export default function PrintTestPage() {
   return (
     <div className="min-h-[100dvh] bg-gray-50 flex flex-col">
       {/* Header */}
-      <div className="bg-[#912D26] text-white px-4 py-4">
-        <h1 className="text-lg font-bold">Prueba Impresora - GANADOR</h1>
-        <p className="text-red-100 text-xs mt-0.5">3NStar PPT205BT - Boleto ganador + audio</p>
+      <div className="bg-[#912D26] text-white px-4 py-4 flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-bold">Prueba Impresora - GANADOR</h1>
+          <p className="text-red-100 text-xs mt-0.5">3NStar PPT205BT - Boleto ganador + audio</p>
+        </div>
 
+        {/* Indicador Visual de Estado de Conexión en Tiempo Real */}
+        <div
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/25 border border-white/15 shrink-0 select-none shadow-xs"
+          title={
+            isConnected
+              ? 'Dispositivo conectado'
+              : step === 'connecting'
+              ? 'Conectando...'
+              : 'Dispositivo desconectado'
+          }
+        >
+          <span
+            className={`w-2.5 h-2.5 rounded-full transition-colors duration-300 ${
+              isConnected
+                ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)] animate-pulse'
+                : step === 'connecting'
+                ? 'bg-amber-400 animate-ping'
+                : 'bg-gray-400'
+            }`}
+          />
+          <span className="text-[11px] font-bold text-white tracking-wide">
+            {isConnected ? 'Conectado' : step === 'connecting' ? 'Conectando' : 'Desconectado'}
+          </span>
+        </div>
       </div>
 
       {/* Checklist antes de probar */}

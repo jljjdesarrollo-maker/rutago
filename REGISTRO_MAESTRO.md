@@ -1888,6 +1888,16 @@ En caso de migrar a otra cuenta:
   3. **Catálogo de 27 Componentes:** Preservado con semáforos, proyección en días (`¡Fosa hoy!`, `~1 día`) y consejos proactivos bajo el acordeón `[ 🔍 Inspección Técnica de Componentes (27) ▼ ]`.
 * **Validación:** 0 errores de compilación (`compile_applet`), servidor dev respondiendo con `HTTP 200 OK`.
 
+### 🔹 INDICADOR EN TIEMPO REAL DE CONEXIÓN EN PRINT-TEST (2026-10-01): ✅ COMPLETADO
+* **Archivo:** `src/app/print-test/page.tsx`.
+* **Implementación:**
+  - Componente visual interactivo en la cabecera roja (`#912D26`): círculo con halo y texto descriptivo del estado de conexión Bluetooth.
+  - 🟢 **Verde (`bg-emerald-400` con `animate-pulse` y halo brillante):** Dispositivo conectado vía GATT.
+  - 🟡 **Ámbar (`bg-amber-400` con `animate-ping`):** Escaneando o conectando GATT.
+  - ⚪ **Gris (`bg-gray-400`):** Dispositivo desconectado (idle / error / disconnect).
+  - Escucha de evento nativo `gattserverdisconnected` para actualización en tiempo real ante desconexión física o apagado del dispositivo.
+* **Validación:** 0 errores de compilación (`compile_applet`), servidor dev respondiendo con `HTTP 200 OK` en `/print-test`.
+
 ---
 
 
