@@ -292,12 +292,23 @@ export async function obtenerUltimosArqueosBus(
   );
 
   // 5. BLINDAJE DE ODÓMETRO: Si el último registro tiene kmFinal, persistir en saveBusOdometer
+  // PRESERVACIÓN: Respetar si el socio realizó una calibración manual más reciente o con kilometraje superior
   if (listaFinal.length > 0) {
     for (let i = listaFinal.length - 1; i >= 0; i--) {
       const rec = listaFinal[i];
       if (rec.kmFinal) {
         const kmNum = parseInt(String(rec.kmFinal).replace(/[^0-9]/g, ''), 10);
         if (!isNaN(kmNum) && kmNum > 0) {
+          if (typeof window !== 'undefined') {
+            const calibTs = localStorage.getItem(`rg_odometro_calibrado_timestamp_${discoLimpio}`);
+            const calibKm = localStorage.getItem(`rg_odometro_calibrado_km_${discoLimpio}`);
+            const recDateTs = new Date(rec.date).getTime();
+
+            // Si hay calibración explícita con timestamp reciente o km superior, priorizar la calibración auditada
+            if (calibTs && (Number(calibTs) >= recDateTs || (calibKm && Number(calibKm) >= kmNum))) {
+              break;
+            }
+          }
           saveBusOdometer(discoLimpio, kmNum.toString(), rec.date);
           break;
         }

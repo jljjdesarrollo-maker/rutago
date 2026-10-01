@@ -1426,14 +1426,72 @@ export function MantenimientoScreen({
     setIsComboRuedasModalOpen(false);
   };
 
-  const handleUpdateKmActual = (nuevoKm: number, motivo: string) => {
-    if (nuevoKm > 0) {
-      setKmActual(nuevoKm);
-      localStorage.setItem(`rg_last_km_${activeBusId}`, nuevoKm.toString());
-      saveBusOdometer(activeBusDisco, nuevoKm.toString(), motivo);
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('rg_bus_odometer_updated'));
+  const handleUpdateKmActual = async (nuevoKm: number, motivo: string): Promise<void> => {
+    if (nuevoKm <= 0) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const timestamp = Date.now();
+
+    // 1. Invocar al backend para persistencia central y auditoría
+    let guardadoEnServidor = false;
+    let mensajeErrorServidor = '';
+
+    try {
+      const res = await fetch('/api/buses/odometro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          busId: activeBusId,
+          numeroDisco: activeBusDisco,
+          nuevoKm,
+          motivo,
+          actualizadoPor: isSocio
+            ? `Socio (${currentUser?.nombre || 'Propietario'})`
+            : 'Administrador',
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message || `Error del servidor (${res.status})`);
       }
+      guardadoEnServidor = true;
+    } catch (err: any) {
+      console.warn('Advertencia al sincronizar odómetro con backend:', err);
+      mensajeErrorServidor = err?.message || 'Error de conexión con el servidor';
+    }
+
+    // 2. Persistir localmente en todas las claves con marcas de tiempo auditadas
+    setKmActual(nuevoKm);
+    localStorage.setItem(`rg_last_km_${activeBusId}`, nuevoKm.toString());
+    localStorage.setItem(`rg_last_km_${activeBusDisco}`, nuevoKm.toString());
+    localStorage.setItem(`rg_odometro_calibrado_timestamp_${activeBusDisco}`, timestamp.toString());
+    localStorage.setItem(`rg_odometro_calibrado_fecha_${activeBusDisco}`, today);
+    localStorage.setItem(`rg_odometro_calibrado_km_${activeBusDisco}`, nuevoKm.toString());
+
+    saveBusOdometer(activeBusDisco, nuevoKm.toString(), today);
+
+    // 3. Notificar reactivamente a toda la aplicación
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('rutago:bus_odometer_updated', {
+          detail: {
+            busId: activeBusId,
+            numeroDisco: activeBusDisco,
+            kmFinal: nuevoKm.toString(),
+            date: today,
+            motivo,
+            calibrado: true,
+            timestamp,
+          },
+        })
+      );
+      window.dispatchEvent(new Event('rg_bus_odometer_updated'));
+      window.dispatchEvent(new Event('rg_mantenimientos_auto_reconciliados'));
+    }
+
+    if (!guardadoEnServidor && mensajeErrorServidor) {
+      console.info('Odómetro guardado en modo local (offline):', mensajeErrorServidor);
     }
   };
 

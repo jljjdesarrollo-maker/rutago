@@ -1979,3 +1979,38 @@ En caso de migrar a otra cuenta:
   - El botón `[ 🔄 Sincronizar ]` limpia cualquier bloqueo manual viejo y adopta la proyección calculada oficial para hoy (**VT11**).
   - Chip digital en la cabecera: `Odómetro Oficial: X.XXX KM`.
   - Enlace táctico `↺ Usar Turno Sugerido (VT11)` si el conductor visualiza un VT manual.
+
+---
+
+## 🏛️ v3.60.64 - BLINDAJE INTEGRAL DE CALIBRACIÓN DE ODÓMETRO (SOCIO / CHOFER) Y RESOLUCIÓN DE BUILD NEXT.JS (2026-10-01)
+> **ESTADO:** 🟢 COMPLETADO Y VALIDADO | **FECHA:** 2026-10-01  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 1. Diagnóstico de la Problemática Resuelta:
+1. **Fallo en la calibración del odómetro en la interfaz del Socio:**
+   - Al pulsar "Guardar Ajuste de Tacómetro" en `MantenimientoOdometroCard`, la operación era síncrona sin endpoint de persistencia centralizada en el backend.
+   - Las notificaciones usaban `useToast` antiguo en lugar de `sonner`, resultando en notificaciones silenciosas o no visibles.
+   - Si existían arqueos antiguos registrados por ayudantes, la función de reconciliación en `turno-secuencia-tracker.ts` (`obtenerUltimosArqueosBus`) sobrescribía la calibración manual del socio con el kilometraje viejo del último arqueo.
+2. **Fallo de compilación y prerender en Next.js (`exit status 254` / `/_global-error`):**
+   - El archivo `src/app/global-error.tsx` utilizaba `export const dynamic = 'force-dynamic'`, incompatible con componentes cliente de error en Next.js 16 / React 19 durante el prerenderizado estático de fallback.
+   - Ausencia de módulo API dedicado `/api/buses/odometro` con validación estricta de tipos de entrada.
+
+### 2. Soluciones Implementadas:
+* **Endpoint Centralizado `/api/buses/odometro` (`GET` y `POST`):**
+  - Validación numérica estricta: rechazo inmediato con HTTP `400 Bad Request` si el odómetro es `<= 0` o no numérico.
+  - Formateo y redondeo con `Math.floor`.
+  - Normalización de disco: `BUS-01` o `01` unificado a `01`.
+  - Persistencia resiliente con upsert en modelo `Bus` de Prisma y registro de auditoría (`[Odómetro Calibrado]: ... por ...`).
+  - Fallback offline-first transparente en caso de desconexión de base de datos.
+* **Componente `MantenimientoOdometroCard.tsx`:**
+  - Migración completa a `sonner` (`toast.success` y `toast.error`).
+  - Soporte de ejecución asíncrona (`onUpdateKm` retorna `Promise<void>`) con feedback visual durante el guardado ("Guardando Ajuste...").
+* **Pantalla `MantenimientoScreen.tsx`:**
+  - `handleUpdateKmActual` transformado a función `async` que invoca `POST /api/buses/odometro`.
+  - Almacenamiento local atómico de marcas de tiempo auditadas: `rg_last_km_*`, `rg_odometro_calibrado_timestamp_*`, `rg_odometro_calibrado_km_*` y `rg_odometro_calibrado_fecha_*`.
+  - Disparo de eventos reactivos del sistema: `rutago:bus_odometer_updated`, `rg_bus_odometer_updated` y `rg_mantenimientos_auto_reconciliados`.
+* **Blindaje en `turno-secuencia-tracker.ts`:**
+  - En la regla #5 de `obtenerUltimosArqueosBus`, se verifica si existe una calibración explícita con timestamp posterior o kilometraje superior, impidiendo que arqueos viejos degraden o sobrescriban la lectura calibrada por el socio.
+* **Corrección de Build Next.js (`src/app/error.tsx`):**
+  - Reemplazo del defectuoso `global-error.tsx` por el estándar `error.tsx` compatible con React 19 y Turbopack, permitiendo compilación exitosa con código de salida 0.
+

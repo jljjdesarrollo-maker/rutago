@@ -13,7 +13,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 export interface MantenimientoOdometroCardProps {
   activeBusDisco: string;
@@ -22,7 +22,7 @@ export interface MantenimientoOdometroCardProps {
   kmActual: number;
   totalVencidos: number;
   totalProximos: number;
-  onUpdateKm: (nuevoKm: number, motivo: string) => void;
+  onUpdateKm: (nuevoKm: number, motivo: string) => Promise<void> | void;
 }
 
 const MOTIVOS_CALIBRACION = [
@@ -43,7 +43,6 @@ export function MantenimientoOdometroCard({
   totalProximos,
   onUpdateKm,
 }: MantenimientoOdometroCardProps) {
-  const { toast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [nuevoKmInput, setNuevoKmInput] = useState<string>('');
   const [motivoSeleccionado, setMotivoSeleccionado] = useState<string>(MOTIVOS_CALIBRACION[0]);
@@ -60,10 +59,8 @@ export function MantenimientoOdometroCard({
   const handleConfirmarAjuste = async () => {
     const num = parseInt(nuevoKmInput, 10);
     if (isNaN(num) || num <= 0) {
-      toast({
-        title: 'Kilometraje Inválido',
+      toast.error('Kilometraje Inválido', {
         description: 'Ingresa un valor de kilometraje positivo para el tacómetro.',
-        variant: 'destructive',
       });
       return;
     }
@@ -74,20 +71,17 @@ export function MantenimientoOdometroCard({
         ? `${motivoSeleccionado} • ${observacion.trim()}`
         : motivoSeleccionado;
 
-      onUpdateKm(num, motivoFinal);
+      await onUpdateKm(num, motivoFinal);
 
-      toast({
-        title: 'Tacómetro Calibrado Exitosamente',
+      toast.success('Tacómetro Calibrado Exitosamente', {
         description: `Unidad ${activeBusDisco}: Tacómetro ajustado a ${num.toLocaleString()} km.`,
       });
 
       setIsModalOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error calibrando odómetro:', err);
-      toast({
-        title: 'Error de Guardado',
-        description: 'No se pudo guardar la calibración del tacómetro.',
-        variant: 'destructive',
+      toast.error('Error al Calibrar Tacómetro', {
+        description: err?.message || 'No se pudo guardar la calibración del tacómetro.',
       });
     } finally {
       setIsSubmitting(false);
