@@ -1523,3 +1523,67 @@ En caso de migrar a otra cuenta:
   - Incremento de versión a `version: 2` en `CONFIGURACION_FLOTA_DEFAULT`.
 * `src/lib/vt-ventanas-storage.ts`: Autoinvalidación de caché cuando `version < 2`.
 * **TypeScript:** `npx tsc --noEmit` completado con 0 errores.
+
+# 🚀 VERSIÓN 3.60.54: CALIBRACIÓN OFICIAL DE TIEMPOS DE VIAJE PARA EXTENSIONES PARROQUIALES (LA ELVIRA, ZAHUAYCO Y YANGANA) (2026-09-30)
+
+## 📌 1. REGLA OPERATIVA Y TIEMPOS OFICIALES CONFIRMADOS POR EL USUARIO
+* **Tiempos de recorrido hacia el punto de control en VILCABAMBA:**
+  - **Desde La Elvira a Vilcabamba:** **60 minutos** (1h 00m).
+  - **Desde Zahuayco a Vilcabamba:** **60 minutos** (1h 00m).
+  - **Desde Yangana a Vilcabamba:** **30 minutos**.
+* **Retornos Parroquiales hacia Loja:**
+  - La hora señalada en el rol corresponde a la salida y sello por **VILCABAMBA**.
+  - La unidad parte de la cabecera correspondiente con su tiempo oficial de anticipación:
+    * La Elvira: Sale **60 minutos antes** (`Rol - 60 min`).
+    * Zahuayco: Sale **60 minutos antes** (`Rol - 60 min`).
+    * Yangana: Sale **30 minutos antes** (`Rol - 30 min`).
+  - El tiempo de espera libre en cada cabecera se calcula contra la salida real del bus:
+    $$\text{Tiempo Disponible en Cabecera} = \text{Hora Salida Real} - \text{Hora Llegada}$$
+  - El arribo a Loja se produce **90 minutos** después de Vilcabamba (`Rol + 90 min`).
+
+## 📊 2. AUDITORÍA OFICIAL DE LAS FRECUENCIAS PARROQUIALES
+
+### Caso VT3 (Turno 3 - La Elvira diurno):
+* **Carrera 3 (12:30 Loja ➔ La Elvira):** Llegada a La Elvira a las **14:30** (120 min de viaje).
+* **Carrera 4 (17:40 La Elvira ➔ Loja):**
+  - Sello en Vilcabamba: `17:40`.
+  - Salida real de cabecera La Elvira: **`16:40`** (`17:40 - 60 min`).
+  - **Tiempo libre en La Elvira:** De 14:30 a 16:40 = **2 horas 10 minutos**.
+  - Llegada a Base Loja: `19:10` (`17:40 + 90 min`).
+* **Carrera 5 (20:15 Loja ➔ Vilcabamba):**
+  - **Tiempo libre en Base Loja:** De 19:10 a 20:15 = **1 hora 05 minutos libres**.
+
+### Caso VT4 (Turno 4 - La Elvira vespertino con Pernocta):
+* **Carrera 5 (16:25 Loja ➔ La Elvira):** Arribo a La Elvira a las **18:25** (120 min de viaje).
+* **Carrera 6 (08:00 La Elvira ➔ Loja):**
+  - Sello en Vilcabamba: `08:00`.
+  - Salida real de cabecera La Elvira: **`07:00`** (`08:00 - 60 min`).
+  - **Pernocta libre en La Elvira:** De 18:25 a 07:00 = **12 horas 35 minutos**.
+  - Llegada a Base Loja: `09:30` (`08:00 + 90 min`).
+
+### Caso VT1 (Turno 1 - Yangana):
+* **Carrera 5 (20:45 Loja ➔ Yangana):** Arribo a Yangana a las `22:45` (120 min de viaje).
+* **Carrera 6 (07:00 Yangana ➔ Loja):**
+  - Sello en Vilcabamba: `07:00`.
+  - Salida real de cabecera Yangana: **`06:30`** (`07:00 - 30 min`).
+  - **Pernocta libre en Yangana:** De 22:45 a 06:30 = **7 horas 45 minutos**.
+  - Llegada a Base Loja: `08:30` (`07:00 + 90 min`).
+
+### Casos P1 y P2 (Zahuayco):
+* Salida real de Zahuayco **60 minutos antes** de la hora de control en Vilcabamba.
+* Arribo a Base Loja 90 minutos después de Vilcabamba.
+
+## 🛠️ 3. ARCHIVOS MODIFICADOS Y VALIDACIONES
+* `src/lib/vt-ventanas-catalogo.ts`:
+  - Actualización de constantes oficiales: `LA_ELVIRA_A_VILCABAMBA: 60`, `ZAHUAYCO_A_VILCABAMBA: 60`, `YANGANA_A_VILCABAMBA: 30`.
+  - Lógica dinámica por parroquia en `resolverParametrosRuta` (tramo específico y etiqueta descriptiva de salida).
+  - Elevación de versión de catálogo a `version: 3` (`vt-cfg-v3-extensiones-parroquiales-20260930`).
+* `src/lib/vt-ventanas-storage.ts`: Autoinvalidación de caché cuando `version < 3`.
+* **TypeScript:** `bun x tsc --noEmit` completado con 0 errores.
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA)
+En caso de migrar a otra cuenta:
+1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago` (rama `main`).
+2. **Punto Exacto:** Versión `3.60.54`. Calibración oficial de tiempos y ventanas para La Elvira (60m a Vilca), Zahuayco (60m a Vilca) y Yangana (30m a Vilca). Catálogo en `version: 3`.
+
+---

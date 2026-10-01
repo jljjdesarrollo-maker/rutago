@@ -35,11 +35,11 @@ export const TIEMPOS_VIAJE_OFICIALES = {
   EL_TAMBO_A_MALACATOS: 60,     // 1h 00m (tramo previo hacia Malacatos)
   MALACATOS_A_LOJA: 60,         // 1h 00m (tiempo desde control Malacatos a Loja)
   LOJA_A_LA_ELVIRA: 120,        // 2h 00m
-  LA_ELVIRA_A_VILCABAMBA: 30,   // 30 min (tramo previo hacia Vilcabamba)
+  LA_ELVIRA_A_VILCABAMBA: 60,   // 1h 00m (tramo oficial hacia Vilcabamba)
   LOJA_A_YANGANA: 120,          // 2h 00m
-  YANGANA_A_VILCABAMBA: 30,     // 30 min
+  YANGANA_A_VILCABAMBA: 30,     // 30 min (tramo oficial hacia Vilcabamba)
   LOJA_A_ZAHUAYCO: 120,         // 2h 00m
-  ZAHUAYCO_A_VILCABAMBA: 30,    // 30 min
+  ZAHUAYCO_A_VILCABAMBA: 60,    // 1h 00m (tramo oficial hacia Vilcabamba)
 };
 
 // ─── HELPERS DE TIEMPO ───
@@ -148,15 +148,30 @@ export function resolverParametrosRuta(
 
   // 3. Retorno La Elvira / Yangana / Zahuayco -> Loja
   // REGLA OFICIAL: La hora señalada en el rol es desde VILCABAMBA.
-  // La unidad salió de la parroquia 30 min antes y llega a Loja 90 min después de Vilcabamba.
+  // La unidad sale de la cabecera correspondiente con su tiempo oficial de anticipación:
+  // - La Elvira: 60 min antes (Rol - 60m)
+  // - Zahuayco: 60 min antes (Rol - 60m)
+  // - Yangana: 30 min antes (Rol - 30m)
+  // Y arriba a Loja 90 min después del sello en Vilcabamba.
   if ((from.includes('elvira') || from.includes('yangana') || from.includes('zahu')) && to === 'loja') {
-    const salidaRealCabecera = sumarMinutosAHora(horaFijada, -TIEMPOS_VIAJE_OFICIALES.LA_ELVIRA_A_VILCABAMBA);
+    let tiempoTramoVilcabamba = TIEMPOS_VIAJE_OFICIALES.YANGANA_A_VILCABAMBA; // 30 min
+    let nombreCabecera = 'Yangana';
+
+    if (from.includes('elvira')) {
+      tiempoTramoVilcabamba = TIEMPOS_VIAJE_OFICIALES.LA_ELVIRA_A_VILCABAMBA; // 60 min
+      nombreCabecera = 'La Elvira';
+    } else if (from.includes('zahu')) {
+      tiempoTramoVilcabamba = TIEMPOS_VIAJE_OFICIALES.ZAHUAYCO_A_VILCABAMBA; // 60 min
+      nombreCabecera = 'Zahuayco';
+    }
+
+    const salidaRealCabecera = sumarMinutosAHora(horaFijada, -tiempoTramoVilcabamba);
     const llegadaLoja = sumarMinutosAHora(horaFijada, TIEMPOS_VIAJE_OFICIALES.VILCABAMBA_A_LOJA);
     return {
-      tiempoViajeMinutos: TIEMPOS_VIAJE_OFICIALES.LA_ELVIRA_A_VILCABAMBA + TIEMPOS_VIAJE_OFICIALES.VILCABAMBA_A_LOJA,
+      tiempoViajeMinutos: tiempoTramoVilcabamba + TIEMPOS_VIAJE_OFICIALES.VILCABAMBA_A_LOJA,
       horaLlegada: llegadaLoja,
       horaSalidaRealEfectiva: salidaRealCabecera,
-      cabeceraSalidaReal: `Salida de Cabecera: ${salidaRealCabecera} (Paso por Vilcabamba: ${horaFijada})`,
+      cabeceraSalidaReal: `Salida de ${nombreCabecera}: ${salidaRealCabecera} (Paso por Vilcabamba: ${horaFijada})`,
     };
   }
 
@@ -330,11 +345,11 @@ export function generarCatalogoOficialVTs(): VTConfiguracionItem[] {
 
 // ─── CONFIGURACIÓN MAESTRA POR DEFECTO ───
 export const CONFIGURACION_FLOTA_DEFAULT: FlotaConfiguracionCompleta = {
-  version: 2,
-  updatedAt: '2026-09-30T16:50:00.000Z',
+  version: 3,
+  updatedAt: '2026-09-30T19:05:00.000Z',
   modoRetenActivo: false, // Actualmente desactivado (15 días continuos)
   fechaInicioReten: undefined,
   busAnclaReten: '01',
-  hash: 'vt-cfg-v2-escenario-b-20260930',
+  hash: 'vt-cfg-v3-extensiones-parroquiales-20260930',
   vts: generarCatalogoOficialVTs(),
 };
