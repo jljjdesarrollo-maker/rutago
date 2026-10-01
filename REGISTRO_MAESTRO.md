@@ -1622,3 +1622,24 @@ En caso de migrar a otra cuenta:
 2. **Punto Exacto:** Versión `3.60.55` con rediseño táctico de ventanas y cruce de tareas según tiempo disponible.
 
 ---
+
+# 🚀 VERSIÓN 3.60.56: UNIFICACIÓN MAESTRA ZERO-CLICK DE DISPONIBILIDAD Y MANTENIMIENTO (2026-09-30)
+
+## 📌 1. CAMBIOS DE ARQUITECTURA Y EXPERIENCIA DE USUARIO (UX)
+* **Eliminación de la Tarjeta Duplicada y Unificación en 1 Sola Tarjeta Maestra:**
+  - Se eliminó la redundancia donde dos tarjetas separadas abrían el mismo modal.
+  - Se unificó en una **Única Tarjeta Maestra** en el panel principal del socio:
+    * **Disponibilidad:** Períodos con tiempo libre hoy ({vtCodigo}) y ventana mayor en Loja.
+    * **Estado Mecánico Zero-Click (Información a golpe de vista):**
+      - 🟢 **Verde (100% al Día):** Si no hay tareas vencidas ni próximas, el socio no necesita hacer clic para investigar.
+      - 🟡 **Amarillo (Próximo a Vencer):** Informa la pauta más próxima, kilómetros restantes y en cuál ventana de hoy cabe anticiparla.
+      - 🔴 **Rojo (Pauta Vencida):** Informa la pauta vencida, kilómetros de exceso y la ventana exacta recomendada hoy.
+* **Beneficios Operativos:**
+  - Cero clics innecesarios para consultar el estado del bus.
+  - Máxima claridad ejecutiva sin sobrecargar el panel del socio.
+
+## 🛠️ 2. ARCHIVOS MODIFICADOS Y VALIDACIONES
+* `src/components/transport/SocioMantenimientoWidget.tsx`: Sustitución de la cuadrícula 1x2 por la Tarjeta Maestra Unificada.
+* **TypeScript:** `bun x tsc --noEmit` completado con 0 errores.
+
+---

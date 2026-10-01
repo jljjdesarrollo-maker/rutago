@@ -605,89 +605,23 @@ export function SocioMantenimientoWidget({
 
   return (
     <>
-      {/* ─── ALERTA EJECUTIVA 1x2 (EN EL DASHBOARD) ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3">
-        {/* Card 1: Disponibilidad y Tiempo Disponible Hoy */}
+      {/* ─── TARJETA MAESTRA UNIFICADA: DISPONIBILIDAD Y ESTADO MECÁNICO ZERO-CLICK ─── */}
+      <div className="mt-3">
         <div
           onClick={() => setIsViewOpen(true)}
-          className="group cursor-pointer rounded-3xl p-4 sm:p-5 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 text-white border border-blue-500/40 hover:border-blue-400 shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between"
-          role="button"
-          tabIndex={0}
-          aria-label="Ver Cronología Táctica de Tiempos Disponibles"
-        >
-          {/* Cabecera Card 1 */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300">
-                <Clock className="w-4 h-4 text-cyan-400" />
-              </div>
-              <span className="text-[11px] font-black uppercase tracking-wider text-cyan-300">
-                Disponibilidad Operativa
-              </span>
-            </div>
-
-            {/* Luz Intermitente / Régimen Operativo Compacto */}
-            {modoRetenActivo ? (
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                Retén en {diaRetenInfo.diasFaltantes}d
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                Sin retén
-              </span>
-            )}
-          </div>
-
-          {/* Mensaje Principal: Cronología Táctica del Día */}
-          <div className="my-1.5 space-y-1">
-            <p className="text-xs text-slate-300 font-semibold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-cyan-400" />
-              Hoy en ruta ({vtInspeccionCodigo}):
-              {manualVT && (
-                <span className="text-[10px] text-indigo-300 font-bold ml-1 bg-indigo-950/70 px-1.5 py-0.2 rounded border border-indigo-400/30">
-                  Manual
-                </span>
-              )}
-            </p>
-            <h4 className="text-sm sm:text-base font-black text-white leading-tight">
-              {periodosDiurnos.length > 0
-                ? `${periodosDiurnos.length} ${periodosDiurnos.length === 1 ? 'período disponible' : 'períodos disponibles'} (${tiempoTotalDiurnoTexto} en total)`
-                : `Sin períodos diurnos mayores a 45 min`}
-            </h4>
-            {ventanaMayorLoja && (
-              <p className="text-[11px] text-cyan-200/90 font-medium">
-                Ventana mayor en Loja: <strong>{ventanaMayorLoja.horaInicio} a {ventanaMayorLoja.horaFin}</strong> ({ventanaMayorLoja.duracionTexto})
-              </p>
-            )}
-          </div>
-
-          {/* Footer Card 1 */}
-          <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-            <span className="text-slate-300 font-medium flex items-center gap-1">
-              <span>Toca para ver cronología táctica</span>
-            </span>
-            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-          </div>
-        </div>
-
-        {/* Card 2: Mantenimientos y Estados Semafóricos */}
-        <div
-          onClick={() => setIsViewOpen(true)}
-          className={`group cursor-pointer rounded-3xl p-4 sm:p-5 text-left border shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between ${
+          className={`group cursor-pointer rounded-3xl p-4 sm:p-5 text-left border shadow-md transition-all hover:scale-[1.008] active:scale-[0.99] flex flex-col justify-between ${
             criticosCount > 0
-              ? 'bg-gradient-to-br from-rose-950/90 via-slate-900 to-slate-900 text-white border-rose-500/80 ring-1 ring-rose-500/30 shadow-rose-950/20'
+              ? 'bg-gradient-to-br from-slate-900 via-slate-900 to-rose-950/80 text-white border-rose-500/70 ring-1 ring-rose-500/30 shadow-rose-950/20'
               : proximosCount > 0
-              ? 'bg-gradient-to-br from-amber-950/90 via-slate-900 to-slate-900 text-white border-amber-500/80 ring-1 ring-amber-500/30 shadow-amber-950/20'
-              : 'bg-gradient-to-br from-emerald-950/90 via-slate-900 to-slate-900 text-white border-emerald-500/80 ring-1 ring-emerald-500/30 shadow-emerald-950/20'
+              ? 'bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/80 text-white border-amber-500/70 ring-1 ring-amber-500/30 shadow-amber-950/20'
+              : 'bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/80 text-white border-emerald-500/70 ring-1 ring-emerald-500/30 shadow-emerald-950/20'
           }`}
           role="button"
           tabIndex={0}
-          aria-label="Ver Diagnóstico de Mantenimientos Pendientes"
+          aria-label="Ver Disponibilidad y Cronología Táctica de Mantenimiento"
         >
-          {/* Cabecera Card 2 */}
-          <div className="flex items-center justify-between mb-2">
+          {/* Cabecera Unificada */}
+          <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
               <div
                 className={`w-8 h-8 rounded-xl flex items-center justify-center ${
@@ -706,71 +640,151 @@ export function SocioMantenimientoWidget({
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 )}
               </div>
-              <span
-                className={`text-[11px] font-black uppercase tracking-wider ${
-                  criticosCount > 0
-                    ? 'text-rose-300'
-                    : proximosCount > 0
-                    ? 'text-amber-300'
-                    : 'text-emerald-300'
-                }`}
-              >
-                {criticosCount > 0
-                  ? 'Atención Mecánica Requerida'
-                  : proximosCount > 0
-                  ? 'Planificación de Taller'
-                  : 'Unidad 100% al Día'}
-              </span>
+              <div>
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-300">
+                  Disponibilidad y Mantenimiento
+                </span>
+              </div>
             </div>
-            <Badge className="bg-white/10 text-white text-[10px] font-black border-white/20">
-              Bus {disco}
-            </Badge>
+
+            {/* Badges ejecutivos: Semáforo + Régimen + Disco */}
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              {/* Etiqueta Semafórica Principal (Cero Clics) */}
+              {criticosCount > 0 ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black shadow-xs">
+                  🔴 {criticosCount} {criticosCount === 1 ? 'Vencido' : 'Vencidos'}
+                </span>
+              ) : proximosCount > 0 ? (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black shadow-xs">
+                  🟡 {proximosCount} {proximosCount === 1 ? 'Próximo' : 'Próximos'}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black shadow-xs">
+                  🟢 100% al Día
+                </span>
+              )}
+
+              {/* Beacon de Régimen Operativo */}
+              {modoRetenActivo ? (
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  Retén en {diaRetenInfo.diasFaltantes}d
+                </span>
+              ) : (
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Sin retén
+                </span>
+              )}
+
+              <Badge className="bg-white/10 text-white text-[10px] font-black border-white/20">
+                Bus {disco}
+              </Badge>
+            </div>
           </div>
 
-          {/* Pastillas de Alto Contraste */}
-          <div className="my-1.5 flex items-center gap-2">
-            <span
-              className={`text-xs font-black px-2.5 py-1 rounded-xl flex items-center gap-1.5 ${
-                criticosCount > 0
-                  ? 'bg-rose-600 text-white shadow-xs'
-                  : 'bg-white/10 text-slate-400'
-              }`}
-            >
-              🔴 {criticosCount} {criticosCount === 1 ? 'Vencido' : 'Vencidos'}
-            </span>
-            <span
-              className={`text-xs font-black px-2.5 py-1 rounded-xl flex items-center gap-1.5 ${
-                proximosCount > 0
-                  ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
-                  : 'bg-white/10 text-slate-400'
-              }`}
-            >
-              🟡 {proximosCount} {proximosCount === 1 ? 'Próximo' : 'Próximos'}
-            </span>
-            {criticosCount === 0 && proximosCount === 0 && (
-              <span className="text-xs font-black px-2.5 py-1 rounded-xl bg-emerald-600 text-white">
-                🟢 Al Día ({alDiaCount})
-              </span>
-            )}
+          {/* Cuerpo Dividido en 2 Filas Claras: 1. Tiempo Hoy, 2. Estado Técnico */}
+          <div className="space-y-2.5 my-1">
+            {/* Fila 1: Disponibilidad de Tiempos Hoy */}
+            <div className="space-y-0.5">
+              <p className="text-xs text-slate-300 font-semibold flex items-center gap-1.5 flex-wrap">
+                <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                Hoy en ruta ({vtInspeccionCodigo}):
+                <span className="text-white font-bold ml-1">
+                  {periodosDiurnos.length > 0
+                    ? `${periodosDiurnos.length} ${periodosDiurnos.length === 1 ? 'período disponible' : 'períodos disponibles'} (${tiempoTotalDiurnoTexto} en total)`
+                    : `Sin períodos diurnos mayores a 45 min`}
+                </span>
+                {manualVT && (
+                  <span className="text-[10px] text-indigo-300 font-bold ml-1 bg-indigo-950/70 px-1.5 py-0.2 rounded border border-indigo-400/30">
+                    Manual
+                  </span>
+                )}
+              </p>
+              {ventanaMayorLoja && (
+                <p className="text-[11px] text-cyan-200/90 font-medium pl-3.5">
+                  Ventana mayor en Loja: <strong>{ventanaMayorLoja.horaInicio} a {ventanaMayorLoja.horaFin}</strong> ({ventanaMayorLoja.duracionTexto})
+                </p>
+              )}
+            </div>
+
+            {/* Fila 2: Estado Mecánico Directo (Zero-Click) */}
+            <div className={`p-2.5 sm:p-3 rounded-2xl border text-xs ${
+              criticosCount > 0
+                ? 'bg-rose-950/50 border-rose-500/40 text-rose-100'
+                : proximosCount > 0
+                ? 'bg-amber-950/50 border-amber-500/40 text-amber-100'
+                : 'bg-emerald-950/50 border-emerald-500/40 text-emerald-100'
+            }`}>
+              {criticosCount > 0 ? (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-black text-rose-300 text-xs flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      Pauta Vencida: {vencidos[0]?.nombre}
+                    </span>
+                    <span className="text-[10px] font-mono bg-rose-600 text-white px-2 py-0.2 rounded font-bold shrink-0">
+                      Excedido por {Math.abs(vencidos[0]?.kmRestantes || 0).toLocaleString()} km
+                    </span>
+                  </div>
+                  {tareasViablesHoy.length > 0 && tareasViablesHoy[0].ventanaSugerida ? (
+                    <p className="text-[11px] text-rose-200 font-medium">
+                      👉 <strong>Acción hoy:</strong> Cabe perfecto de <strong>{tareasViablesHoy[0].ventanaSugerida.horaInicio} a {tareasViablesHoy[0].ventanaSugerida.horaFin}</strong> ({tareasViablesHoy[0].ventanaSugerida.duracionTexto} en {tareasViablesHoy[0].ventanaSugerida.ubicacion || tareasViablesHoy[0].ventanaSugerida.ciudad}).
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-rose-200 font-medium">
+                      💡 <strong>Acción recomendada:</strong> Requiere fosa profunda. Programar para el próximo turno con ventana mayor.
+                    </p>
+                  )}
+                </div>
+              ) : proximosCount > 0 ? (
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-black text-amber-300 text-xs flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      Próximo a Vencer: {proximos[0]?.nombre}
+                    </span>
+                    <span className="text-[10px] font-mono bg-amber-500 text-slate-950 px-2 py-0.2 rounded font-black shrink-0">
+                      Restan {proximos[0]?.kmRestantes.toLocaleString()} km
+                    </span>
+                  </div>
+                  {tareasViablesHoy.length > 0 && tareasViablesHoy[0].ventanaSugerida ? (
+                    <p className="text-[11px] text-amber-200 font-medium">
+                      👉 <strong>Ventana disponible:</strong> Puedes anticiparlo hoy de <strong>{tareasViablesHoy[0].ventanaSugerida.horaInicio} a {tareasViablesHoy[0].ventanaSugerida.horaFin}</strong> ({tareasViablesHoy[0].ventanaSugerida.duracionTexto} en Loja).
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-amber-200 font-medium">
+                      💡 Mantener monitoreo durante la semana. No hay riesgo operativo inmediato.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <p className="text-xs text-emerald-200 font-semibold">
+                    <strong>100% al Día:</strong> Todos los componentes monitoreados están en rango óptimo. Tu unidad no requiere fosa hoy.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Footer Card 2: Viabilidad Cruzada */}
+          {/* Footer Card Unificada */}
           <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-[11px]">
-            <span className="text-slate-300 font-medium">
-              {tareasViablesHoy.length > 0
-                ? `${tareasViablesHoy.length} ${tareasViablesHoy.length === 1 ? 'tarea viable' : 'tareas viables'} en tus ventanas de hoy`
-                : criticosCount > 0
-                ? `${criticosCount} componentes requieren fosa mayor`
-                : 'Pautas al día'}
+            <span className="text-slate-300 font-medium flex items-center gap-1">
+              {criticosCount === 0 && proximosCount === 0 ? (
+                <span>💡 Toca solo si deseas consultar la Cronología Táctica de frecuencias</span>
+              ) : (
+                <span>Toca para ver cronología táctica y detalles de fosa</span>
+              )}
             </span>
-            <span className="font-black text-white flex items-center gap-1 group-hover:text-amber-300 transition-colors">
-              Ver Detalle
+            <span className="font-black text-white flex items-center gap-1 group-hover:text-cyan-300 transition-colors">
+              Ver Cronología
               <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </span>
           </div>
         </div>
       </div>
-
       {/* ─── PANTALLA DEDICADA REDISEÑADA (h-[100dvh] en móvil / sm:h-[88vh]) ─── */}
       {isViewOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-0 sm:p-4 overflow-hidden animate-in fade-in duration-150">
