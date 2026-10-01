@@ -1844,28 +1844,33 @@ En caso de migrar a otra cuenta:
   - Validación: `compile_applet` exitoso sin errores.
   - Commit local: `3aa6f50: feat(chofer): paso 1 - hero card del conductor con tacometro auditado y numero rey`.
 
-### 🔹 PASO 2:
+### 🔹 PASO 2 (EJECUTADO Y VERIFICADO): ✅ COMPLETADO
 * **Creación de la Tarjeta Táctica Contextual `ChoferProximaParadaCard.tsx`:**
   - Ubicación: `src/components/transport/ChoferProximaParadaCard.tsx`.
-  - Qué hace: Toma la lógica de ventanas operativas ya calibrada y la comprime en una única tarjeta visual minimalista que responde: *"¿Qué me toca hacer en mi próxima parada?"*.
-  - Si está en Loja y tiene tiempo: muestra botón destacado verde `[ 🛢️ Ir a Lubricadora / Fosa (45 min) → ]`.
-  - Si está en ruta y tiene tarea autónoma: `[ 🚌 Asentar Engrase de Chasis ($0) → ]`.
-  - Si no tiene tareas pendientes: muestra de forma limpia `[ ✅ Unidad al día • Descanso en Terminal ]`.
+  - Qué hace: Evalúa la ventana operativa más favorable del día y responde con una sola tarjeta táctica minimalista: *"¿Qué me toca hacer en mi próxima parada?"*.
+  - Enlace no invasivo con selector sutil de Cuaderno VT asignado (`VT10`, `VT01`, etc.).
+  - Botón primario de acción directa: `[ Asentar Engrase de Chasis ($0) → ]` o `[ Ir a Lubricadora / Fosa (45 min) → ]`.
+  - Si la unidad está al día, muestra tarjeta limpia con check verde: `[ ✅ Unidad al día • No se requieren servicios mecánicos en esta parada ]`.
+  - Commit remoto: `8e1cad1: feat(chofer): paso 2 - tarjeta tactica contextual de proxima parada`.
 
-### 🔹 PASO 3:
-* **Homologación de la Cuadrícula 2x2 en `HomeScreen.tsx` (#053225):**
-  - Mismo diseño, altura, esquinas y tipografía que la cuadrícula del Ayudante.
-  - Los 4 botones tácticos serán:
-    1. `[ 🛢️ ] Fosa / Lubricadora` (Aceite y filtros - ciclo 5k).
-    2. `[ 👤 ] Mi Rutina Chofer ($0)` (Baterías, aire, engrase).
-    3. `[ 🛠️ ] Talleres de Flota` (Frenos, suspensión, caja).
-    4. `[ 📑 ] Mis Vueltas` (Historial archivado de hojas de ruta).
-  - Cada botón abre su respectivo Bottom Sheet / Modal emergente sin ensuciar la pantalla principal.
+### 🔹 PASO 3 (EJECUTADO Y VERIFICADO): ✅ COMPLETADO
+* **Homologación de la Cuadrícula 2x2 (#053225):**
+  - Ubicación: `src/components/transport/ChoferMantenimientoWidget.tsx`.
+  - Erradicación total de emojis sueltos (`🛢️`, `🔧`) sustituidos por iconos SVG oficiales de Lucide en cajas translúcidas `w-9 h-9 rounded-2xl bg-white/10 text-emerald-300`.
+  - Los 4 botones tácticos homologados:
+    1. `[ Droplets ] Fosa / Lubricadora`: Cambio de aceite y filtros (ciclo 5.000 KM).
+    2. `[ UserCheck ] Mi Rutina Chofer`: Baterías, aire y engrase de chasis ($0 mano de obra).
+    3. `[ Wrench ] Talleres de Flota`: Selector asistido de talleres (caja, corona, frenos, serviteca).
+    4. `[ History ] Mis Vueltas`: Acceso directo al historial archivado con badge de `recordCount`.
 
-### 🔹 PASO 4:
-* **Integración limpia en `HomeScreen.tsx` y Verificación:**
-  - Sustituir la carga densa en `HomeScreen.tsx` por los nuevos componentes modulares ligeros.
-  - Validación de compilación Next.js (`compile_applet` / `npx tsc --noEmit`).
+### 🔹 PASO 4 (EJECUTADO Y VERIFICADO): ✅ COMPLETADO
+* **Integración Limpia en `HomeScreen.tsx` y Erradicación del Scroll Infinito:**
+  - La pantalla del conductor se reduce a exactamente 3 bloques minimalistas de escaneo en 3 segundos:
+    1. `ChoferJornadaCard`: Tacómetro como Número Rey con semáforo ejecutivo y métricas de aceite/frenos.
+    2. `ChoferProximaParadaCard`: Próxima parada y acción recomendada.
+    3. Cuadrícula 2x2 `#053225`: Botonera táctica de accesos rápidos.
+  - El catálogo detallado de 27 componentes queda resguardado bajo un botón colapsable minimalista: `[ 🔍 Inspección Técnica de Componentes (27) ▼ ]`.
+  - Validación: `compile_applet` completado con 0 errores y servidor dev respondiendo con `HTTP 200 OK` en el puerto 3000.
 
 ---
 

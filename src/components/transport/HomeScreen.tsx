@@ -1007,6 +1007,7 @@ export function HomeScreen({
                   onGoHome={() => {}}
                 >
                   <ChoferMantenimientoWidget
+                    user={user}
                     onVerMas={onGoToHistory}
                     onGoToHistory={onGoToHistory}
                     recordCount={recordCount}
