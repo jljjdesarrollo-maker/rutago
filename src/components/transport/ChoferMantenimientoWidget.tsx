@@ -25,6 +25,7 @@ import {
   Search,
   Filter,
   Droplets,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -62,7 +63,7 @@ import { syncMantenimientoBidireccional, flushMantenimientoOutbox, getMantenimie
 import { MantenimientoSyncChip } from './MantenimientoSyncDiagnostic';
 import { ChoferTurnoVentanasCard } from './ChoferTurnoVentanasCard';
 import { ChoferJornadaCard } from './ChoferJornadaCard';
-import { ChoferProximaParadaCard } from './ChoferProximaParadaCard';
+import { ChoferDisponibilidadCard } from './ChoferDisponibilidadCard';
 import { getConfiguracionFlotaLocal } from '@/lib/vt-ventanas-storage';
 
 function determinarTipoMantenimientoExperto(p: ParadaPagoRegistro): {
@@ -1803,8 +1804,8 @@ export function ChoferMantenimientoWidget({
           onGoToHistory={onGoToHistory || onVerMas}
         />
 
-        {/* ZONA 1.5: TARJETA TÁCTICA CONTEXTUAL DE PRÓXIMA PARADA */}
-        <ChoferProximaParadaCard
+        {/* ZONA 1.5: DISPONIBILIDAD DE TIEMPOS Y VENTANAS DEL TURNO */}
+        <ChoferDisponibilidadCard
           busId={activeBusId}
           disco={disco}
           kmActual={kmActual}
@@ -1814,7 +1815,7 @@ export function ChoferMantenimientoWidget({
           }}
         />
 
-        {/* ZONA 2: CUADRÍCULA EJECUTIVA 2x2 PARA EL CONDUCTOR (#053225) */}
+        {/* ZONA 2: CUADRÍCULA TÁCTICA DEL CONDUCTOR (#053225 - 6 HERRAMIENTAS CLAVE) */}
         <div className="grid grid-cols-2 gap-3.5">
           {/* 1. 🛢️ Fosa / Lubricadora */}
           <button
@@ -1831,7 +1832,7 @@ export function ChoferMantenimientoWidget({
             </div>
           </button>
 
-          {/* 2. 👤 Mi Rutina Chofer ($0) */}
+          {/* 2. 🚌 Mi Rutina Chofer ($0) */}
           <button
             type="button"
             onClick={() => handleAbrirEstacionChofer('CHOFER_RUTINA')}
@@ -1846,14 +1847,40 @@ export function ChoferMantenimientoWidget({
             </div>
           </button>
 
-          {/* 3. 🛠️ Talleres de Flota */}
+          {/* 3. 🔧 Arreglo en Ruta */}
+          <button
+            type="button"
+            onClick={() => {
+              setArregloDescripcion('');
+              setArregloKm(kmActual.toString());
+              setArregloTaller('');
+              setArregloFactura('');
+              setArregloCosto('');
+              setArregloPagador('AYUDANTE');
+              setArregloSocioModalidad('TRANSFERENCIA_TOTAL');
+              setArregloSocioAbono('');
+              setArregloFecha(new Date().toISOString().split('T')[0]);
+              setIsArregloModalOpen(true);
+            }}
+            className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60 select-none"
+          >
+            <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
+              <Wrench className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-sm sm:text-base font-bold block leading-snug">Arreglo en Ruta</span>
+              <span className="text-[11px] text-emerald-200/90 font-medium">Soldadura, mangueras...</span>
+            </div>
+          </button>
+
+          {/* 4. 🛠️ Talleres de Flota */}
           <button
             type="button"
             onClick={() => setMostrarTalleresEspecializados(prev => !prev)}
             className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60 select-none"
           >
             <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
-              <Wrench className="w-5 h-5" />
+              <Building2 className="w-5 h-5" />
             </div>
             <div>
               <span className="text-sm sm:text-base font-bold block leading-snug">
@@ -1863,7 +1890,25 @@ export function ChoferMantenimientoWidget({
             </div>
           </button>
 
-          {/* 4. 📑 Mis Vueltas */}
+          {/* 5. 📋 Historial de Mantenimientos */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsHistorialModalOpen(true);
+              ejecutarSincronizacionManual();
+            }}
+            className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60 select-none"
+          >
+            <div className="w-9 h-9 rounded-2xl bg-white/10 flex items-center justify-center text-emerald-300">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-sm sm:text-base font-bold block leading-snug">Historial de Taller</span>
+              <span className="text-[11px] text-emerald-200/90 font-medium">Todas las paradas del bus</span>
+            </div>
+          </button>
+
+          {/* 6. 📑 Mis Vueltas */}
           <button
             type="button"
             onClick={onGoToHistory || onVerMas}

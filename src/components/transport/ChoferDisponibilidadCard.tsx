@@ -1,0 +1,434 @@
+'use client';
+
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Clock,
+  Compass,
+  ChevronDown,
+  Wrench,
+  AlertTriangle,
+  MapPin,
+  CheckCircle2,
+  Calendar,
+} from 'lucide-react';
+import {
+  getConfiguracionFlotaLocal,
+  getVentanaMayorParaVT,
+  getAlertaEnlaceCritico,
+  subscribeToVTConfig,
+  verificarActualizacionFingerprint,
+} from '@/lib/vt-ventanas-storage';
+import { type MantenimientoBusItem } from '@/lib/mantenimiento-catalogo';
+import { type EstacionServicioId } from '@/lib/mantenimiento-estaciones';
+import { type VTConfiguracionItem } from '@/types/vt-ventanas';
+import {
+  obtenerUltimosArqueosBus,
+  calcularProyeccionSecuencia,
+} from '@/lib/turno-secuencia-tracker';
+import {
+  evaluarVentanaParaMantenimiento,
+  formatearTiempoCompacto,
+} from './ChoferTurnoVentanasCard';
+
+interface ChoferDisponibilidadCardProps {
+  busId: string;
+  disco: string;
+  kmActual: number;
+  itemsMantenimiento?: MantenimientoBusItem[];
+  onAbrirEstacion?: (estacionId: EstacionServicioId, itemCodigo?: string) => void;
+  className?: string;
+}
+
+export function ChoferDisponibilidadCard({
+  busId,
+  disco,
+  kmActual,
+  itemsMantenimiento = [],
+  onAbrirEstacion,
+  className = '',
+}: ChoferDisponibilidadCardProps) {
+  const [configFlota, setConfigFlota] = useState(() => getConfiguracionFlotaLocal());
+  const [selectedVTCode, setSelectedVTCode] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
+      if (saved) return saved;
+    }
+    return 'VT01';
+  });
+  const [cambiandoTurno, setCambiandoTurno] = useState(false);
+  const [mostrarTodasVentanas, setMostrarTodasVentanas] = useState(true);
+  const [mostrarCarreras, setMostrarCarreras] = useState(false);
+
+  // Inferencia inteligente del turno según arqueos reales
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
+      if (!saved) {
+        obtenerUltimosArqueosBus(disco, busId).then((arqueos) => {
+          const proy = calcularProyeccionSecuencia(arqueos);
+          if (proy && proy.turnoProyectado) {
+            setSelectedVTCode(proy.turnoProyectado);
+          }
+        });
+      }
+    }
+  }, [busId, disco]);
+
+  // Actualización en background
+  useEffect(() => {
+    verificarActualizacionFingerprint().then((actualizado) => {
+      if (actualizado) {
+        setConfigFlota(getConfiguracionFlotaLocal());
+      }
+    });
+
+    const unsubscribe = subscribeToVTConfig((nuevaConfig) => {
+      setConfigFlota(nuevaConfig);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleSelectVT = (codigo: string) => {
+    setSelectedVTCode(codigo);
+    setCambiandoTurno(false);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`rg_chofer_selected_vt_${busId}`, codigo);
+      } catch {}
+    }
+  };
+
+  const normalizarCodigo = (c: string) => (c || '').toUpperCase().replace(/^VT0+/, 'VT');
+
+  const vtActual: VTConfiguracionItem = useMemo(() => {
+    const target = normalizarCodigo(selectedVTCode);
+    return (
+      configFlota.vts.find(
+        (v) => normalizarCodigo(v.codigo) === target
+      ) || configFlota.vts[0] || {
+        codigo: 'VT01',
+        nombre: 'Turno Estándar',
+        frecuencias: [],
+        ventanas: [],
+      }
+    );
+  }, [configFlota, selectedVTCode]);
+
+  const itemsEfectivos = useMemo(() => {
+    if (itemsMantenimiento && itemsMantenimiento.length > 0) {
+      return itemsMantenimiento;
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem(`rg_mantenimientos_v2_${busId}`);
+        if (raw) return JSON.parse(raw);
+      } catch {}
+    }
+    return [];
+  }, [itemsMantenimiento, busId]);
+
+  const ventanas = useMemo(() => {
+    return vtActual.ventanas || [];
+  }, [vtActual]);
+
+  const ventanaMayor = useMemo(() => {
+    const mayor = getVentanaMayorParaVT(selectedVTCode);
+    if (mayor) return mayor;
+    if (ventanas.length > 0) {
+      const ordenadas = [...ventanas].sort((a, b) => b.duracionMinutos - a.duracionMinutos);
+      return ordenadas[0];
+    }
+    return null;
+  }, [selectedVTCode, ventanas]);
+
+  const alertaEnlace = useMemo(() => {
+    return getAlertaEnlaceCritico(selectedVTCode);
+  }, [selectedVTCode]);
+
+  // Cálculo del tiempo total disponible hoy
+  const tiempoTotalLibreMinutos = useMemo(() => {
+    return ventanas.reduce((acc, v) => acc + (v.duracionMinutos || 0), 0);
+  }, [ventanas]);
+
+  return (
+    <div
+      className={`bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden transition-all ${className}`}
+    >
+      {/* ─── Cabecera Principal: Título Explícito de Disponibilidad y Turno ─── */}
+      <div className="bg-slate-900 p-4 text-white">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-2xl bg-blue-600 flex items-center justify-center font-black text-xs text-white shrink-0 shadow-sm">
+              {disco}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">
+                  Disponibilidad de Tiempos
+                </span>
+                <span className="text-[10px] text-slate-400 font-bold">
+                  • {ventanas.length} {ventanas.length === 1 ? 'ventana' : 'ventanas'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <h3 className="text-base font-black text-white leading-tight">
+                  {vtActual.codigo}
+                </h3>
+                <span className="text-xs text-slate-300 font-medium truncate">
+                  ({formatearTiempoCompacto(tiempoTotalLibreMinutos)} libres hoy)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Selector de Turno Sutil */}
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setCambiandoTurno(!cambiandoTurno)}
+              className="flex items-center gap-1 bg-white/10 hover:bg-white/20 active:scale-95 border border-white/20 rounded-full px-3 py-1.5 text-xs font-bold text-white transition cursor-pointer"
+              title="Cambiar turno VT asignado"
+            >
+              <span>Cambiar VT</span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+
+            {cambiandoTurno && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl animate-in fade-in zoom-in-95 text-slate-900">
+                <p className="mb-1.5 px-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Seleccionar Cuaderno VT
+                </p>
+                <div className="max-h-56 overflow-y-auto space-y-1">
+                  {configFlota.vts.map((v) => (
+                    <button
+                      key={v.codigo}
+                      type="button"
+                      onClick={() => handleSelectVT(v.codigo)}
+                      className={`flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                        v.codigo.toUpperCase() === selectedVTCode.toUpperCase()
+                          ? 'bg-[#053225] text-white'
+                          : 'text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <span>{v.codigo}</span>
+                      <span className="text-[10px] opacity-80">
+                        {v.frecuencias?.length || 0} carreras
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Alerta de enlace crítico (si existe) */}
+        {alertaEnlace && (
+          <div className="mt-3 flex items-center gap-2 rounded-xl bg-amber-500/20 border border-amber-400/30 px-3 py-1.5 text-xs text-amber-200">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+            <span className="font-medium">{alertaEnlace.descripcion}</span>
+          </div>
+        )}
+      </div>
+
+      {/* ─── Ventana Táctica Mayor con Tarea Asignable (Match Inteligente) ─── */}
+      {ventanaMayor && (() => {
+        const evalMayor = evaluarVentanaParaMantenimiento(ventanaMayor, itemsEfectivos, kmActual);
+        if (!evalMayor.tieneTareaAsignable) return null;
+
+        return (
+          <div className="border-b border-emerald-200/80 bg-emerald-50/90 p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-xs shrink-0 ${
+                    evalMayor.tipoMatch === 'CHOFER' ? 'bg-amber-600' : 'bg-emerald-700'
+                  }`}
+                >
+                  {evalMayor.tipoMatch === 'CHOFER' ? (
+                    <span className="text-base">🚌</span>
+                  ) : (
+                    <Wrench className="h-4.5 w-4.5" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-900">
+                      {evalMayor.ciudadNombre}: {evalMayor.tituloBadge}
+                    </span>
+                    <span className="rounded-full bg-emerald-200 px-2 py-0.2 text-[9px] font-black text-emerald-950">
+                      {formatearTiempoCompacto(ventanaMayor.duracionMinutos)} libres
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-800 mt-0.5 truncate">
+                    {evalMayor.detalleTarea}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-mono">
+                    Horario: {ventanaMayor.horaInicio} a {ventanaMayor.horaFin} en {evalMayor.ciudadNombre}
+                  </p>
+                </div>
+              </div>
+
+              {onAbrirEstacion && evalMayor.estacionDestino && (
+                <button
+                  type="button"
+                  onClick={() => onAbrirEstacion(evalMayor.estacionDestino!, evalMayor.itemCodigo)}
+                  className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-black shadow-xs active:scale-95 transition-all cursor-pointer shrink-0 bg-[#053225] hover:bg-[#073b2d] text-emerald-300 hover:text-white"
+                >
+                  <Wrench className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>{evalMayor.textoBoton || 'Realizar Tarea →'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ─── Cronología de Tiempos Disponibles en Terminales ─── */}
+      <div className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+            <Clock className="w-4 h-4 text-emerald-700" />
+            <span>Ventanas de Espera en Terminal</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setMostrarTodasVentanas(!mostrarTodasVentanas)}
+            className="text-[11px] font-black text-emerald-800 hover:text-emerald-950 cursor-pointer"
+          >
+            {mostrarTodasVentanas ? '▲ Colapsar' : `▼ Ver ${ventanas.length} Ventanas`}
+          </button>
+        </div>
+
+        {mostrarTodasVentanas && (
+          <div className="space-y-2">
+            {ventanas.length === 0 ? (
+              <p className="text-xs text-slate-400 italic py-2 text-center">
+                No hay ventanas operativas registradas para este turno.
+              </p>
+            ) : (
+              ventanas.map((v, idx) => {
+                const evalV = evaluarVentanaParaMantenimiento(v, itemsEfectivos, kmActual);
+                return (
+                  <div
+                    key={idx}
+                    className={`rounded-2xl border p-2.5 sm:p-3 transition-all ${
+                      evalV.tieneTareaAsignable
+                        ? evalV.tipoMatch === 'CHOFER'
+                          ? 'border-amber-300 bg-amber-50/80'
+                          : 'border-emerald-300 bg-emerald-50/80'
+                        : evalV.esPernocta
+                        ? 'border-indigo-200 bg-indigo-50/50'
+                        : 'border-slate-200/90 bg-slate-50/70 hover:bg-slate-100/80'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className={`h-7 w-7 rounded-xl flex items-center justify-center shrink-0 ${
+                            evalV.tieneTareaAsignable
+                              ? evalV.tipoMatch === 'CHOFER'
+                                ? 'bg-amber-600 text-white'
+                                : 'bg-emerald-600 text-white'
+                              : evalV.esPernocta
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {evalV.tieneTareaAsignable ? (
+                            <Wrench className="h-3.5 w-3.5" />
+                          ) : evalV.esPernocta ? (
+                            <span className="text-xs">🌙</span>
+                          ) : (
+                            <MapPin className="h-3.5 w-3.5" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-black text-xs text-slate-900">
+                              {evalV.ciudadNombre}
+                            </span>
+                            <span className="rounded-full bg-emerald-100 px-2 py-0.2 text-[9px] font-black text-emerald-900">
+                              {formatearTiempoCompacto(v.duracionMinutos)} libres
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              ({v.horaInicio} - {v.horaFin})
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 mt-0.5 truncate">
+                            {evalV.tieneTareaAsignable
+                              ? `💡 ${evalV.detalleTarea}`
+                              : evalV.motivoNoTaller || 'Tiempo libre / espera de salida'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {evalV.tieneTareaAsignable && onAbrirEstacion && evalV.estacionDestino && (
+                        <button
+                          type="button"
+                          onClick={() => onAbrirEstacion(evalV.estacionDestino!, evalV.itemCodigo)}
+                          className="shrink-0 px-2.5 py-1 rounded-xl bg-[#053225] hover:bg-[#073b2d] text-white text-[10px] font-black cursor-pointer active:scale-95 transition"
+                        >
+                          {evalV.textoBoton || 'Ir →'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* ─── Botón Desplegable de Frecuencias / Carreras del Turno ─── */}
+        {vtActual.frecuencias && vtActual.frecuencias.length > 0 && (
+          <div className="pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setMostrarCarreras(!mostrarCarreras)}
+              className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 flex items-center justify-between transition cursor-pointer active:scale-[0.99]"
+            >
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                <span>Salidas Programadas ({vtActual.frecuencias.length} carreras)</span>
+              </div>
+              <span className="text-slate-500 font-bold text-[10px]">
+                {mostrarCarreras ? '▲ Ocultar' : '▼ Ver Itinerario'}
+              </span>
+            </button>
+
+            {mostrarCarreras && (
+              <div className="mt-2 space-y-1.5 max-h-52 overflow-y-auto pr-1">
+                {vtActual.frecuencias.map((f, idx) => (
+                  <div
+                    key={idx}
+                    className="p-2 rounded-xl bg-white border border-slate-200 text-xs flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-md bg-blue-50 text-blue-700 flex items-center justify-center text-[10px] font-black">
+                        {idx + 1}
+                      </span>
+                      <div>
+                        <p className="font-extrabold text-slate-800">
+                          {f.origen} → {f.destino}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          Salida: {f.horaSalida} • Retorno: {f.horaLlegada || 'En ruta'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
+                      {f.horaSalida}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

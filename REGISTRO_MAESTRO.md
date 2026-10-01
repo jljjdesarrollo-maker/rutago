@@ -1872,12 +1872,21 @@ En caso de migrar a otra cuenta:
   - El catálogo detallado de 27 componentes queda resguardado bajo un botón colapsable minimalista: `[ 🔍 Inspección Técnica de Componentes (27) ▼ ]`.
   - Validación: `compile_applet` completado con 0 errores y servidor dev respondiendo con `HTTP 200 OK` en el puerto 3000.
 
-### 🔹 OPTIMIZACIÓN ERGONÓMICA: DISPONIBILIDAD DE TIEMPOS Y VENTANAS DEL TURNO: ✅ COMPLETADO
-* **Restauración de Visibilidad de Disponibilidad en `ChoferProximaParadaCard.tsx`:**
-  - Se integró el botón táctil colapsable: `[ 🕒 Disponibilidad de Tiempos (X intervalos) ▼ ]`.
-  - Al pulsar, despliega la lista completa de todas las ventanas operativas y horas libres del bus en cada ciudad/terminal (Loja, Vilcabamba, Yangana, Malacatos, Pernocta).
-  - Incluye horarios exactos (`09:10 - 10:05`), minutos libres calculados y botón directo `[ Ir → ]` a fosa o taller si coincide con una tarea mecánica requerida.
-  - Commit remoto: `5086b90: feat(chofer): agregar desplegable de disponibilidad de tiempos y ventanas del turno`.
+### 🔹 AUDITORÍA Y RESOLUCIÓN DEFINITIVA DE DISPONIBILIDAD Y CONSOLA DE CHOFER (2026-10-01): ✅ COMPLETADO
+* **Diagnóstico de Causa Raíz:**
+  1. En la versión previa, `ChoferProximaParadaCard` evaluaba `if (!vtActual || !ventanaMayor) return null;`. Dado que `getVentanaMayorParaVT` únicamente filtraba `VENTANA_DIURNA_LOJA`, cualquier turno sin esa ventana específica (ej. VT01 u otros turnos) retornaba `null`, haciendo que la tarjeta de Disponibilidad desapareciera por completo de la pantalla.
+  2. Al reorganizar la botonera a 4 botones, `Arreglo en Ruta` (mangueras, soldaduras, ponchadas) y `Historial de Taller` habían quedado relegados.
+* **Solución Implementada:**
+  1. **Creación de `ChoferDisponibilidadCard.tsx`:** Tarjeta autónoma que NUNCA retorna null. Muestra el título explícito **`⏱️ Disponibilidad de Tiempos • Turno {vtActual.codigo}`**, el total de tiempo libre hoy (`3h 25m libres hoy`), selector de Cuaderno VT, alerta preventiva de enlace si aplica (VT10, VT14), ventana mayor recomendada y la lista completa de todas las ventanas de espera en terminales (Loja, Vilcabamba, Malacatos, El Tambo, Pernocta) con horarios e itinerario de salidas.
+  2. **Consola Táctica Homologada de 6 Herramientas (#053225):**
+     - Botón 1: `[ 💧 Droplets ] Fosa / Lubricadora` (Aceite y 5 filtros).
+     - Botón 2: `[ 🚌 UserCheck ] Mi Rutina Chofer ($0)` (Baterías, aire, raches, engrase).
+     - Botón 3: `[ 🔧 Wrench ] Arreglo en Ruta` (Soldaduras, ponchadas, mangueras - pagador Ayudante vs Socio).
+     - Botón 4: `[ ⚙️ Building2 ] Talleres de Flota` (Caja, frenos, serviteca, motor).
+     - Botón 5: `[ 📋 FileText ] Historial de Taller` (Consulta de paradas con buscador y filtros).
+     - Botón 6: `[ 📑 History ] Mis Vueltas` (Liquidaciones archivadas con badge `recordCount`).
+  3. **Catálogo de 27 Componentes:** Preservado con semáforos, proyección en días (`¡Fosa hoy!`, `~1 día`) y consejos proactivos bajo el acordeón `[ 🔍 Inspección Técnica de Componentes (27) ▼ ]`.
+* **Validación:** 0 errores de compilación (`compile_applet`), servidor dev respondiendo con `HTTP 200 OK`.
 
 ---
 
