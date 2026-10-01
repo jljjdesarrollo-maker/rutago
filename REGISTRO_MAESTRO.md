@@ -1872,6 +1872,13 @@ En caso de migrar a otra cuenta:
   - El catálogo detallado de 27 componentes queda resguardado bajo un botón colapsable minimalista: `[ 🔍 Inspección Técnica de Componentes (27) ▼ ]`.
   - Validación: `compile_applet` completado con 0 errores y servidor dev respondiendo con `HTTP 200 OK` en el puerto 3000.
 
+### 🔹 OPTIMIZACIÓN ERGONÓMICA: DISPONIBILIDAD DE TIEMPOS Y VENTANAS DEL TURNO: ✅ COMPLETADO
+* **Restauración de Visibilidad de Disponibilidad en `ChoferProximaParadaCard.tsx`:**
+  - Se integró el botón táctil colapsable: `[ 🕒 Disponibilidad de Tiempos (X intervalos) ▼ ]`.
+  - Al pulsar, despliega la lista completa de todas las ventanas operativas y horas libres del bus en cada ciudad/terminal (Loja, Vilcabamba, Yangana, Malacatos, Pernocta).
+  - Incluye horarios exactos (`09:10 - 10:05`), minutos libres calculados y botón directo `[ Ir → ]` a fosa o taller si coincide con una tarea mecánica requerida.
+  - Commit remoto: `5086b90: feat(chofer): agregar desplegable de disponibilidad de tiempos y ventanas del turno`.
+
 ---
 
 
