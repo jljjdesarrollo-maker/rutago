@@ -1587,3 +1587,38 @@ En caso de migrar a otra cuenta:
 2. **Punto Exacto:** Versión `3.60.54`. Calibración oficial de tiempos y ventanas para La Elvira (60m a Vilca), Zahuayco (60m a Vilca) y Yangana (30m a Vilca). Catálogo en `version: 3`.
 
 ---
+
+# 🚀 VERSIÓN 3.60.55: REDISEÑO INTEGRAL DE CRONOLOGÍA TÁCTICA Y CRUCE INTELIGENTE DE MANTENIMIENTO (2026-09-30)
+
+## 📌 1. CAMBIOS DE ARQUITECTURA Y EXPERIENCIA DE USUARIO (UX)
+* **Cronología Táctica Completa:**
+  - En lugar de mostrar un único horario estático, se despliega la **Cronología Táctica del Día**: todos los períodos con tiempo disponible (≥ 45 min y pernoctas) ordenados cronológicamente.
+  - Clasificación técnica operativa:
+    * **Taller Mayor (≥ 90 min en Loja):** Fosa para cambio de aceite de motor, filtros de combustible diésel (purgado) y zapatas de freno.
+    * **Mantenimiento Exprés (45 a 89 min en Loja):** Engrase de cardán, regulación de matracas/frenos de aire, sopleteo de filtros y calibración de llantas.
+    * **Pausa en Cabecera (≥ 45 min en El Tambo, La Elvira, Yangana, Zahuayco, Vilcabamba):** Inspección visual, aseo y descanso.
+    * **Pernoctas Externas:** Parada nocturna para enfriamiento de motor.
+* **Consulta Manual de Turnos:**
+  - Selector táctico de pestañas/píldoras (`VT01` al `VT15`, `P1`, `P2`, `P3`) para explorar manualmente los horarios y tiempos disponibles de cualquier grupo de frecuencias con 1 clic.
+* **Sección 2: Cruce Inteligente de Tareas vs Ventanas Disponibles:**
+  - Las tareas vencidas (rojo) y próximas (amarillo) se cruzan directamente con los bloques de tiempo del turno seleccionado:
+    1. **Viables en tus ventanas de hoy:** Tareas cuyo tiempo técnico de taller cabe en los horarios disponibles hoy (indicando la ventana exacta sugerida).
+    2. **Requieren ventana mayor (> 90m):** Tareas que exceden el tiempo disponible de hoy, con recomendación exacta del próximo turno en la rotación que dispone de ventana mayor.
+* **Limpieza Visual y Ergonomía:**
+  - **Eliminado:** El bloque y texto "Origen del Turno (Auditoría de Arqueos del Ayudante)".
+  - **Régimen de Operación:** Reemplazado por un beacon luminoso intermitente ("🟢 Sin retén" / "🟡 Retén en X días").
+* **Corrección de Normalización de Turnos:**
+  - En `vt-ventanas-storage.ts`, normalización de códigos con cero (`VT01` ➔ `VT1`) para garantizar consulta instantánea en toda la app.
+
+## 🛠️ 2. ARCHIVOS MODIFICADOS Y VALIDACIONES
+* `src/lib/vt-ventanas-storage.ts`: Normalización en `getVTConfiguracion`.
+* `src/components/transport/SocioMantenimientoWidget.tsx`: Rediseño completo de la alerta ejecutiva y modal táctico.
+* `src/components/transport/ChoferTurnoVentanasCard.tsx`: Integración del umbral de 45 min para alertas a choferes.
+* **TypeScript:** `bun x tsc --noEmit` completado con 0 errores.
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA)
+En caso de migrar a otra cuenta:
+1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago` (rama `main`).
+2. **Punto Exacto:** Versión `3.60.55` con rediseño táctico de ventanas y cruce de tareas según tiempo disponible.
+
+---

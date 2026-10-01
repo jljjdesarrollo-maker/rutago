@@ -270,9 +270,11 @@ export function ChoferTurnoVentanasCard({
                   <span
                     className={`font-mono font-bold text-[11px] px-2 py-0.5 rounded-full ${
                       v.esMayor
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : v.duracionMinutos >= 60
-                        ? 'bg-blue-100 text-blue-800'
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : v.duracionMinutos >= 90
+                        ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                        : v.duracionMinutos >= 45
+                        ? 'bg-cyan-100 text-cyan-800 border border-cyan-300'
                         : 'bg-slate-200 text-slate-700'
                     }`}
                   >

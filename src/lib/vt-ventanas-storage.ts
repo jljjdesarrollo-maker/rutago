@@ -56,9 +56,11 @@ export function getConfiguracionFlotaLocal(): FlotaConfiguracionCompleta {
 export function getVTConfiguracion(codigoVT: string): VTConfiguracionItem | null {
   const config = getConfiguracionFlotaLocal();
   const code = (codigoVT || '').trim().toUpperCase();
-  // Normalizar "VT08" a "VT8" si es necesario
+  const normInput = code.replace(/^VT0+/, 'VT');
   const match = config.vts.find(
-    (v) => v.codigo.toUpperCase() === code || v.codigo.replace('VT0', 'VT').toUpperCase() === code
+    (v) =>
+      v.codigo.toUpperCase() === code ||
+      v.codigo.toUpperCase().replace(/^VT0+/, 'VT') === normInput
   );
   return match || null;
 }
