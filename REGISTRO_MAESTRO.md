@@ -1901,3 +1901,34 @@ En caso de migrar a otra cuenta:
 ---
 
 
+
+# 🚀 VERSIÓN 3.60.55: ARQUITECTURA OFFLINE-FIRST DE DISPONIBILIDAD DE TIEMPOS, FICHA DE CALIBRACIÓN LOCAL Y SINCRONIZACIÓN RESILIENTE (2026-10-01)
+
+## 📌 1. DIAGNÓSTICO DE CAUSA RAÍZ Y MOTIVACIÓN OPERATIVA
+* **Problema Detectado:**
+  - Al abrir la consola del Chofer en un navegador nuevo, en modo incógnito o en ruta sin conexión a internet, la Disponibilidad de Tiempos forzaba erróneamente `VT01` en lugar de proyectar el turno matemático correcto (`VT11` para la Unidad 01 al 01/10/2026).
+  - En `src/lib/turno-secuencia-tracker.ts`, la función `obtenerUltimosArqueosBus()` intentaba consultar `/api/records` (que retornaba error al no haber conexión a base de datos central) y `localStorage` (vacío en nuevos dispositivos). Al recibir un arreglo vacío `[]`, la lógica caía en `n < 3` con `ultimo = null`, forzando `numCalculado = 1` (`VT01`).
+* **Decisión Estratégica con el Usuario (Arquitectura de Raíz vs Parche Temporal):**
+  - Se descartó rotundamente cablear o quemar semillas fijas en el código por ser un parche artificial que no resuelve el problema de fondo.
+  - Se acordó una arquitectura **Offline-First** adaptada a la realidad operativa del chofer en carretera:
+    1. El chofer no debe depender de conexiones constantes a la base de datos central para ver su disponibilidad de tiempos.
+    2. El dispositivo debe almacenar una **Ficha de Calibración Local** con los arqueos auditados y el ancla base de la unidad.
+    3. Si la unidad tiene calibración guardada, la app abre en 0 ms y proyecta fielmente el turno (ej. Base 27/09 VT07 + 4 días = VT11) incluso en modo avión.
+    4. Se diferencian rigurosamente los estados:
+       - **Calibrado / Proyección Offline:** Muestra el turno calculado y fecha base sin bloquear al usuario.
+       - **Falla de Conexión / Sin Internet:** Botón `[ 🔄 Sincronizar ]` que no borra la información local existente.
+       - **Unidad Sin Calibrar (< 3 arqueos en BD):** Mensaje explícito solicitando selección manual, sin inventar `VT01` silenciosamente.
+
+## 🛠️ 2. PLAN DE ACCIÓN Y ESPECIFICACIÓN TÉCNICA
+1. **Ficha de Calibración Local Persistente (`src/lib/turno-secuencia-tracker.ts`):**
+   - Estructura `FichaCalibracionBus`: `{ busId, disco, calibrada, ultimoTurnoAuditado, fechaUltimoTurno, historial3Arqueos, ultimaSincronizacion }`.
+   - Soporte para inicialización auditada de flota (Unidad 01: Base 27 Sep 2026, VT07, historial [VT05, VT06, VT07]).
+   - Funciones `guardarCalibracionLocalBus` y `obtenerCalibracionLocalBus`.
+   - Consulta resiliente: Si `/api/records` falla o no hay red, utiliza la Ficha de Calibración Local garantizando cálculo instantáneo sin inventar valores.
+2. **Interfaz de Chofer Resiliente (`src/components/transport/ChoferDisponibilidadCard.tsx`):**
+   - Estado de carga/sincronización transparente (`sincronizando`, `modo_offline`, `error_red`, `sin_calibrar`).
+   - Botón táctico `[ 🔄 Sincronizar ]` en la cabecera de la tarjeta para reintentar la conexión sin fricción.
+   - Proyección inmediata de `VT11` para la fecha actual (01 de Octubre de 2026).
+3. **Validación y Despliegue:**
+   - Compilación con 0 errores de TypeScript (`compile_applet`).
+   - Sincronización continua de cambios en GitHub y actualización del archivo maestro.
