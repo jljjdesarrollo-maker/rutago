@@ -1665,3 +1665,34 @@ En caso de migrar a otra cuenta:
 * **Validación:** Empaquetado y verificación de sintaxis y tipado completados exitosamente.
 
 ---
+
+# 🚀 VERSIÓN 3.60.58: VENTANAS OPERATIVAS "1H35", ACCESO DIRECTO A FOSA/TALLER Y CLASIFICACIÓN EXPERTA DE HISTORIAL (2026-09-30)
+
+## 📌 1. VENTANAS DE ESPERA EN TERMINAL (FORMATO "1h35" Y ACCIÓN DIRECTA)
+* **Formato Compacto Universal de Tiempo:**
+  - Se sustituyó la visualización antigua por el formato compacto solicitado: `1h35`, `1h15`, `45m`, `2h00`.
+  - Se preservó el intervalo horario de la terminal (`08:40 – 09:15`, `11:45 – 13:20`) en tipografía monoespaciada legible.
+* **Resaltado de Alta Visibilidad para Tiempos ≥ 45 Minutos:**
+  - Las ventanas con 45 minutos o más se iluminan con borde esmeralda (`border-emerald-300`), fondo suave (`bg-emerald-50/80`) y pastilla de tiempo destacada (`bg-emerald-700 text-white`).
+  - Distintivo según duración: `🛢️ Fosa Libre` (45-74 min) o `⚡ Taller y Fosa` (≥ 75 min).
+* **Botón de Acción Directa en 1 Toque:**
+  - Si la ventana es ≥ 75 minutos o apta para taller mayor: botón **"Ir a Taller →"** que abre directamente la estación de Frenos y Ruedas / Taller Mayor.
+  - Si la ventana es ≥ 45 minutos: botón **"Ir a Fosa →"** que abre directamente la Lubricadora para cambio de aceite y filtros.
+
+## 📌 2. ANÁLISIS Y CLASIFICACIÓN EXPERTA DEL HISTORIAL DE MANTENIMIENTO
+* **Inclusión de Badge Experto en Cada Tarjeta del Historial:**
+  - El sistema ahora determina y clasifica con precisión milimétrica cada registro histórico:
+    * 🛢️ **Preventivo Mayor de Fosa (Fluidos y Filtración):** Aceite 15W40, filtros de combustible y trampa de agua.
+    * 🛑 **Seguridad Activa Crítica (Frenos y Neumática):** Zapatas, pulmones, tambores y calibración de aire.
+    * 🛞 **Tren Rodante (Neumáticos y Reencauche):** Reencauche de tracción, rotación y neumáticos.
+    * ⚡ **Sistema Eléctrico y Carga (24V):** Alternador, cambio de carbones, baterías y alumbrado.
+    * 🧭 **Geometría y Dirección (Alineación / Balanceo):** Barras de dirección, convergencia y balanceo.
+    * 🛠️ **Mantenimiento Mayor / Tren Motriz y Suspensión:** Embrague, paquete de muelles, caja y corona.
+    * 🔧 **Mantenimiento Correctivo / Novedad en Ruta:** Reparaciones de auxilio inmediato fuera de pauta.
+
+## 🛠️ 3. ARCHIVOS MODIFICADOS Y VALIDACIONES
+* `src/components/transport/ChoferTurnoVentanasCard.tsx`: Formato `1h35`, resaltado ≥ 45 min y botones de acción directa.
+* `src/components/transport/ChoferMantenimientoWidget.tsx`: Función `determinarTipoMantenimientoExperto` e incorporación de badge en tarjetas del historial.
+* **Validación:** Empaquetado y verificación con esbuild completados con 0 errores.
+
+---

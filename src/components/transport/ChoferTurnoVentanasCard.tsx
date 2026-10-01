@@ -29,6 +29,14 @@ import {
   calcularProyeccionSecuencia,
 } from '@/lib/turno-secuencia-tracker';
 
+function formatearTiempoCompacto(minutos: number): string {
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h00`;
+  return `${h}h${String(m).padStart(2, '0')}`;
+}
+
 interface ChoferTurnoVentanasCardProps {
   busId: string;
   disco: string;
@@ -218,7 +226,7 @@ export function ChoferTurnoVentanasCard({
                   </span>
                 </div>
                 <p className="text-sm font-black text-slate-900">
-                  {ventanaMayor.duracionTexto} libres ({ventanaMayor.horaInicio} a {ventanaMayor.horaFin})
+                  {formatearTiempoCompacto(ventanaMayor.duracionMinutos)} libres ({ventanaMayor.horaInicio} a {ventanaMayor.horaFin})
                 </p>
               </div>
             </div>
@@ -253,44 +261,84 @@ export function ChoferTurnoVentanasCard({
             No hay ventanas operativas registradas para este turno.
           </p>
         ) : (
-          <div className="space-y-1.5">
-            {ventanas.map((v, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 p-2.5 text-xs transition-colors hover:bg-slate-100"
-              >
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <div>
-                    <span className="font-bold text-slate-800">
-                      {v.ciudad}
-                    </span>
-                    <span className="ml-1 text-[11px] text-slate-500">
-                      ({v.horaInicio} – {v.horaFin})
-                    </span>
+          <div className="space-y-2">
+            {ventanas.map((v, idx) => {
+              const esLarga = v.duracionMinutos >= 45;
+              const tiempoFormateado = formatearTiempoCompacto(v.duracionMinutos);
+              const estacionDestino = (v.duracionMinutos >= 75 || v.aptoParaTallerMayor)
+                ? 'FRENOS_RUEDAS'
+                : 'LUBRICADORA';
+              const textoBoton = (v.duracionMinutos >= 75 || v.aptoParaTallerMayor)
+                ? 'Ir a Taller →'
+                : 'Ir a Fosa →';
+
+              return (
+                <div
+                  key={idx}
+                  className={`rounded-2xl border p-2.5 sm:p-3 transition-all ${
+                    esLarga
+                      ? 'border-emerald-300 bg-emerald-50/80 shadow-xs'
+                      : 'border-slate-100 bg-slate-50/70 hover:bg-slate-100/80'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`h-7 w-7 rounded-xl flex items-center justify-center shrink-0 ${
+                          esLarga
+                            ? 'bg-emerald-600 text-white shadow-2xs'
+                            : 'bg-slate-200 text-slate-500'
+                        }`}
+                      >
+                        {esLarga ? <Clock className="h-3.5 w-3.5" /> : <MapPin className="h-3.5 w-3.5" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-xs text-slate-900">
+                            {v.ciudad}
+                          </span>
+                          {esLarga && (
+                            <span className="rounded-full bg-emerald-200 text-emerald-950 font-black text-[9px] px-1.5 py-0.2 tracking-wide uppercase">
+                              {v.duracionMinutos >= 75 ? '⚡ Taller y Fosa' : '🛢️ Fosa Libre'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                          {v.horaInicio} – {v.horaFin}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                      {/* Pastilla llamativa del tiempo en formato 1h35 */}
+                      <span
+                        className={`font-mono font-black text-xs px-2.5 py-1 rounded-xl shadow-2xs ${
+                          esLarga
+                            ? 'bg-emerald-700 text-white ring-2 ring-emerald-400/40'
+                            : 'bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {tiempoFormateado}
+                      </span>
+
+                      {/* Botón táctico directo para ir a fosa o taller */}
+                      {esLarga && onAbrirEstacion && (
+                        <button
+                          type="button"
+                          onClick={() => onAbrirEstacion(estacionDestino as any)}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[#053225] hover:bg-[#073b2d] active:scale-95 text-[11px] font-black text-emerald-300 hover:text-white transition-all shadow-xs cursor-pointer"
+                        >
+                          <Wrench className="w-3 h-3 text-emerald-400" />
+                          <span>{textoBoton}</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`font-mono font-bold text-[11px] px-2 py-0.5 rounded-full ${
-                      v.esMayor
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        : v.duracionMinutos >= 90
-                        ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                        : v.duracionMinutos >= 45
-                        ? 'bg-cyan-100 text-cyan-800 border border-cyan-300'
-                        : 'bg-slate-200 text-slate-700'
-                    }`}
-                  >
-                    {v.duracionTexto}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
-
         {/* ─── Desglose de Frecuencias Oficiales ─── */}
         <div className="mt-3 pt-2.5 border-t border-slate-100">
           <button

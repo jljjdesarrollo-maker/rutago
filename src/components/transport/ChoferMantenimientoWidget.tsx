@@ -62,6 +62,70 @@ import { MantenimientoSyncChip } from './MantenimientoSyncDiagnostic';
 import { ChoferTurnoVentanasCard } from './ChoferTurnoVentanasCard';
 import { getConfiguracionFlotaLocal } from '@/lib/vt-ventanas-storage';
 
+function determinarTipoMantenimientoExperto(p: ParadaPagoRegistro): {
+  tipo: string;
+  badgeClass: string;
+  icono: string;
+} {
+  const est = (p.estacionId || '').toUpperCase();
+  const desc = ((p.detalleTrabajo || '') + ' ' + (p.notas || '') + ' ' + (p.taller || '')).toLowerCase();
+
+  if (est === 'LUBRICADORA' || desc.includes('aceite') || desc.includes('lubric') || desc.includes('filtro')) {
+    return {
+      tipo: 'Preventivo Mayor de Fosa (Fluidos y Filtración)',
+      badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold',
+      icono: '🛢️',
+    };
+  }
+  if (est === 'FRENOS_RUEDAS' || desc.includes('freno') || desc.includes('zapata') || desc.includes('pulm') || desc.includes('aire')) {
+    return {
+      tipo: 'Seguridad Activa Crítica (Frenos y Neumática)',
+      badgeClass: 'bg-rose-100 text-rose-800 border-rose-300 font-extrabold',
+      icono: '🛑',
+    };
+  }
+  if (est === 'LLANTAS' || desc.includes('llanta') || desc.includes('reencauche') || desc.includes('neumatic')) {
+    return {
+      tipo: 'Tren Rodante (Neumáticos y Reencauche)',
+      badgeClass: 'bg-amber-100 text-amber-900 border-amber-300 font-extrabold',
+      icono: '🛞',
+    };
+  }
+  if (est === 'ELECTROAUTO' || desc.includes('alternador') || desc.includes('bater') || desc.includes('carbon') || desc.includes('electr')) {
+    return {
+      tipo: 'Sistema Eléctrico y Carga (24V)',
+      badgeClass: 'bg-blue-100 text-blue-800 border-blue-300 font-extrabold',
+      icono: '⚡',
+    };
+  }
+  if (est === 'ALINEACION' || desc.includes('alinea') || desc.includes('balanceo') || desc.includes('direccion')) {
+    return {
+      tipo: 'Geometría y Dirección (Alineación / Balanceo)',
+      badgeClass: 'bg-cyan-100 text-cyan-800 border-cyan-300 font-extrabold',
+      icono: '🧭',
+    };
+  }
+  if (est === 'MNT_MAYOR' || est === 'MOTOR_MECANICO' || desc.includes('caja') || desc.includes('corona') || desc.includes('embrague') || desc.includes('muelle')) {
+    return {
+      tipo: 'Mantenimiento Mayor / Tren Motriz y Suspensión',
+      badgeClass: 'bg-purple-100 text-purple-800 border-purple-300 font-extrabold',
+      icono: '🛠️',
+    };
+  }
+  if (p.detalleTrabajo || p.esRetroactivo) {
+    return {
+      tipo: 'Mantenimiento Correctivo / Novedad en Ruta',
+      badgeClass: 'bg-orange-100 text-orange-900 border-orange-300 font-extrabold',
+      icono: '🔧',
+    };
+  }
+  return {
+    tipo: 'Mantenimiento General de Flota',
+    badgeClass: 'bg-slate-100 text-slate-800 border-slate-300 font-bold',
+    icono: '⚙️',
+  };
+}
+
 function getKmPromedioDiarioFlota(): number {
   try {
     const cfg = getConfiguracionFlotaLocal();
@@ -3822,6 +3886,15 @@ export function ChoferMantenimientoWidget({
                             <span className="font-black text-xs text-slate-900 truncate">
                               {p.estacionNombre}
                             </span>
+                            {(() => {
+                              const clasif = determinarTipoMantenimientoExperto(p);
+                              return (
+                                <span className={`text-[9px] px-1.5 py-0.2 rounded-md border flex items-center gap-1 ${clasif.badgeClass}`}>
+                                  <span>{clasif.icono}</span>
+                                  <span>{clasif.tipo}</span>
+                                </span>
+                              );
+                            })()}
                             <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-mono border border-slate-200">
                               {odometroBase.toLocaleString()} km
                             </span>
