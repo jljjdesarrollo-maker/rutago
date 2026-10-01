@@ -29,7 +29,7 @@ import {
   calcularProyeccionSecuencia,
 } from '@/lib/turno-secuencia-tracker';
 
-interface EvaluacionMantenimientoVentana {
+export interface EvaluacionMantenimientoVentana {
   esLoja: boolean;
   esPernocta: boolean;
   ciudadNombre: string;
@@ -127,7 +127,7 @@ function estimarTareaMantenimiento(it: MantenimientoBusItem) {
   return { esChofer, tiempoRequeridoMinutos, estacionId, labelBoton, tipo };
 }
 
-function evaluarVentanaParaMantenimiento(
+export function evaluarVentanaParaMantenimiento(
   v: any,
   items: MantenimientoBusItem[],
   kmActual: number
@@ -297,7 +297,7 @@ function evaluarVentanaParaMantenimiento(
   };
 }
 
-function formatearTiempoCompacto(minutos: number): string {
+export function formatearTiempoCompacto(minutos: number): string {
   const h = Math.floor(minutos / 60);
   const m = minutos % 60;
   if (h === 0) return `${m}m`;
