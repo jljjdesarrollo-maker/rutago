@@ -1926,8 +1926,8 @@ export function ChoferMantenimientoWidget({
           disco={disco}
           kmActual={kmActual}
           itemsMantenimiento={items}
-          onAbrirEstacion={(estacionId) => {
-            handleAbrirEstacionChofer(estacionId);
+          onAbrirEstacion={(estacionId, itemCodigo) => {
+            handleAbrirEstacionChofer(estacionId, itemCodigo);
           }}
         />
 

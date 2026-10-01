@@ -31,13 +31,96 @@ import {
 
 interface EvaluacionMantenimientoVentana {
   esLoja: boolean;
+  esPernocta: boolean;
+  ciudadNombre: string;
+  subtituloCiudad: string;
+  tipoBadgeCiudad: 'loja' | 'ruta' | 'pernocta';
   tieneTareaAsignable: boolean;
-  estacionDestino?: string;
+  tipoMatch?: 'CHOFER' | 'FOSA' | 'TALLER';
+  estacionDestino?: EstacionServicioId;
+  itemCodigo?: string;
   textoBoton?: string;
   tituloBadge?: string;
   detalleTarea?: string;
   esUrgente: boolean;
   motivoNoTaller?: string;
+}
+
+function esTareaDeChofer(codigo: string = '', nombre: string = ''): boolean {
+  const c = codigo.toUpperCase();
+  const n = nombre.toLowerCase();
+  return (
+    c.includes('BATERIA') || n.includes('bater') ||
+    c.includes('SOPLADO') || n.includes('soplado') || n.includes('filtro aire') ||
+    c.includes('RACHES') || n.includes('rach') || n.includes('matraca') ||
+    n.includes('malla') ||
+    n.includes('presion') || n.includes('calibrar neum') ||
+    n.includes('inspeccion') || n.includes('niveles') ||
+    (n.includes('engrase') && (n.includes('manual') || n.includes('rutina')))
+  );
+}
+
+function estimarTareaMantenimiento(it: MantenimientoBusItem) {
+  const c = (it.codigo || '').toUpperCase();
+  const n = (it.nombre || '').toLowerCase();
+  const esChofer = Boolean(it.esRutinaChoferCeroCosto) || esTareaDeChofer(c, n);
+
+  let tiempoRequeridoMinutos = 20;
+  let estacionId: EstacionServicioId = 'CHOFER_RUTINA';
+  let labelBoton = 'Asentar Tarea →';
+  let tipo: 'CHOFER' | 'FOSA' | 'TALLER' = 'CHOFER';
+
+  if (esChofer) {
+    tipo = 'CHOFER';
+    estacionId = 'CHOFER_RUTINA';
+    if (n.includes('bater')) {
+      tiempoRequeridoMinutos = 20;
+      labelBoton = 'Rotar Baterías →';
+    } else if (n.includes('sopl') || n.includes('aire')) {
+      tiempoRequeridoMinutos = 15;
+      labelBoton = 'Soplar Filtro →';
+    } else if (n.includes('rach') || n.includes('matraca')) {
+      tiempoRequeridoMinutos = 15;
+      labelBoton = 'Calibrar Raches →';
+    } else if (n.includes('llanta') || n.includes('presion')) {
+      tiempoRequeridoMinutos = 15;
+      estacionId = 'ALINEACION';
+      labelBoton = 'Calibrar Llantas →';
+    } else {
+      tiempoRequeridoMinutos = 15;
+      labelBoton = 'Asentar Rutina →';
+    }
+  } else {
+    // Tareas exclusivas de Fosa y Taller Oficial (Solo Loja)
+    if (c.includes('ACEITE') || n.includes('aceite') || c.includes('FILT') || n.includes('filtro')) {
+      tipo = 'FOSA';
+      tiempoRequeridoMinutos = 45;
+      estacionId = 'LUBRICADORA';
+      labelBoton = 'Ir a Fosa →';
+    } else if (n.includes('freno') || n.includes('zapata') || n.includes('pulmon') || c.includes('FREN')) {
+      tipo = 'TALLER';
+      tiempoRequeridoMinutos = 75;
+      estacionId = 'FRENOS_RUEDAS';
+      labelBoton = 'Ir a Frenos →';
+    } else if (n.includes('llanta') || n.includes('alinea') || c.includes('LLAN')) {
+      tipo = 'TALLER';
+      tiempoRequeridoMinutos = 45;
+      estacionId = 'ALINEACION';
+      labelBoton = 'Ir a Llantera →';
+    } else if (n.includes('engrase')) {
+      tipo = 'FOSA';
+      tiempoRequeridoMinutos = 25;
+      estacionId = 'LUBRICADORA';
+      labelBoton = 'Ir a Engrase (Fosa) →';
+    } else {
+      tipo = 'TALLER';
+      tiempoRequeridoMinutos = 90;
+      estacionId = 'MNT_MAYOR';
+      labelBoton = 'Ir a Taller Mayor →';
+    }
+  }
+
+  return { esChofer, tiempoRequeridoMinutos, estacionId, labelBoton, tipo };
 }
 
 function evaluarVentanaParaMantenimiento(
@@ -48,77 +131,75 @@ function evaluarVentanaParaMantenimiento(
   const ciudad = (v.ciudad || '').trim();
   const esLoja = ciudad.toLowerCase().includes('loja');
 
-  // Si NO es Loja: Siempre es espera / descanso de terminal (talleres autorizados en Loja)
-  if (!esLoja) {
+  // Detección de pernocta nocturna
+  const esPernocta =
+    v.tipo === 'PERNOCTA_EXTERNA' ||
+    (v.duracionMinutos >= 360 && (v.horaInicio >= '20:00' || v.horaInicio <= '04:00'));
+
+  if (esPernocta) {
     return {
-      esLoja: false,
+      esLoja,
+      esPernocta: true,
+      ciudadNombre: ciudad ? ciudad.toUpperCase() : 'PERNOCTA',
+      subtituloCiudad: 'Pernocta Externa',
+      tipoBadgeCiudad: 'pernocta',
       tieneTareaAsignable: false,
       esUrgente: false,
-      motivoNoTaller: `Terminal ${ciudad || 'de paso'} • Espera de salida y descanso`,
+      motivoNoTaller: 'Fin de jornada • Pernocta y descanso nocturno obligatorio',
     };
   }
 
-  // Si ES Loja, evaluamos el estado mecánico real del autobús
-  const tareasEvaluadas = (items || []).map((it) => {
+  const subtituloCiudad = esLoja ? 'Sede Talleres y Fosas' : 'Terminal de Cabecera';
+  const tipoBadgeCiudad = esLoja ? 'loja' : 'ruta';
+
+  // Evaluar estado mecánico de todos los ítems
+  const itemsEvaluados = (items || []).map((it) => {
     const kmTranscurridos = Math.max(0, kmActual - (it.ultimoKm || 0));
     const intervalo = it.intervaloKm || 5000;
     const kmRestantes = intervalo - kmTranscurridos;
     const esVencido = kmRestantes <= 0;
     const esProximo = !esVencido && kmRestantes <= 500;
-
-    const cod = (it.codigo || '').toUpperCase();
-    const nom = (it.nombre || '').toLowerCase();
-
-    let tiempoRequeridoMinutos = 45;
-    let estacionId = 'LUBRICADORA';
-    let labelBoton = 'Ir a Fosa →';
-
-    if (cod.includes('ACEITE') || nom.includes('aceite') || cod.includes('FILT') || nom.includes('filtro')) {
-      tiempoRequeridoMinutos = 45;
-      estacionId = 'LUBRICADORA';
-      labelBoton = 'Ir a Fosa →';
-    } else if (nom.includes('freno') || nom.includes('zapata') || nom.includes('pulmon') || cod.includes('FREN')) {
-      tiempoRequeridoMinutos = 75;
-      estacionId = 'FRENOS_RUEDAS';
-      labelBoton = 'Ir a Frenos →';
-    } else if (nom.includes('llanta') || nom.includes('alinea') || cod.includes('LLAN')) {
-      tiempoRequeridoMinutos = 45;
-      estacionId = 'ALINEACION';
-      labelBoton = 'Ir a Llantera →';
-    } else if (nom.includes('embrague') || nom.includes('muelle') || nom.includes('caja') || nom.includes('corona')) {
-      tiempoRequeridoMinutos = 90;
-      estacionId = 'MNT_MAYOR';
-      labelBoton = 'Ir a Taller →';
-    }
+    const est = estimarTareaMantenimiento(it);
 
     return {
       item: it,
       kmRestantes,
       esVencido,
       esProximo,
-      tiempoRequeridoMinutos,
-      estacionId,
-      labelBoton,
+      ...est,
       prioridad: esVencido ? 2 : esProximo ? 1 : 0,
     };
   });
 
-  const pendientes = tareasEvaluadas
+  const pendientes = itemsEvaluados
     .filter((t) => t.prioridad > 0)
     .sort((a, b) => b.prioridad - a.prioridad || a.kmRestantes - b.kmRestantes);
 
   // Si no hay tareas vencidas ni próximas: Unidad al día
   if (pendientes.length === 0) {
     return {
-      esLoja: true,
+      esLoja,
+      esPernocta: false,
+      ciudadNombre: ciudad ? ciudad.toUpperCase() : 'TERMINAL',
+      subtituloCiudad,
+      tipoBadgeCiudad,
       tieneTareaAsignable: false,
       esUrgente: false,
-      motivoNoTaller: 'Terminal Loja • Unidad al día (sin mantenimientos pendientes)',
+      motivoNoTaller: esLoja
+        ? 'Base Loja • Unidad al día (sin mantenimientos pendientes)'
+        : `Terminal ${ciudad || 'de paso'} • Espera de salida y descanso`,
     };
   }
 
-  // Buscar la tarea prioritaria que quepa en la ventana disponible
-  const tareaQueCabe = pendientes.find((t) => v.duracionMinutos >= t.tiempoRequeridoMinutos);
+  // Filtrado según ubicación geográfica:
+  // Si NO es Loja: Solo son elegibles las tareas del Chofer (Rutina $0)
+  // Si ES Loja: Son elegibles TODAS las tareas (tanto Fosa/Taller como Chofer)
+  const tareasElegiblesEnEstaCiudad = pendientes.filter((t) => esLoja || t.esChofer);
+
+  // Buscar la tarea prioritaria que quepa en el tiempo libre de la ventana
+  const tareaQueCabe = tareasElegiblesEnEstaCiudad.find(
+    (t) => v.duracionMinutos >= t.tiempoRequeridoMinutos
+  );
 
   if (tareaQueCabe) {
     const it = tareaQueCabe.item;
@@ -126,24 +207,57 @@ function evaluarVentanaParaMantenimiento(
       ? `Vencido hace ${Math.abs(tareaQueCabe.kmRestantes).toLocaleString()} km`
       : `Por vencer en ${tareaQueCabe.kmRestantes.toLocaleString()} km`;
 
+    let tituloBadge = '';
+    if (tareaQueCabe.tipo === 'CHOFER') {
+      tituloBadge = tareaQueCabe.esVencido ? '🚨 Rutina Chofer ($0)' : '💡 Rutina Chofer ($0)';
+    } else if (tareaQueCabe.tipo === 'FOSA') {
+      tituloBadge = tareaQueCabe.esVencido ? '🚨 Fosa Oficial' : '💡 Fosa Disponible';
+    } else {
+      tituloBadge = tareaQueCabe.esVencido ? '🚨 Taller Mecánico' : '💡 Taller Mecánico';
+    }
+
     return {
-      esLoja: true,
+      esLoja,
+      esPernocta: false,
+      ciudadNombre: ciudad ? ciudad.toUpperCase() : 'TERMINAL',
+      subtituloCiudad,
+      tipoBadgeCiudad,
       tieneTareaAsignable: true,
+      tipoMatch: tareaQueCabe.tipo,
       estacionDestino: tareaQueCabe.estacionId,
+      itemCodigo: it.codigo,
       textoBoton: tareaQueCabe.labelBoton,
-      tituloBadge: tareaQueCabe.esVencido ? '🚨 Atención en Loja' : '💡 Ventana en Loja',
+      tituloBadge,
       detalleTarea: `${it.nombre} (${descUrgencia} • ~${tareaQueCabe.tiempoRequeridoMinutos}m)`,
       esUrgente: tareaQueCabe.esVencido,
     };
   }
 
-  // Si tiene pendientes pero no caben en los minutos disponibles
-  const tareaMayor = pendientes[0];
+  // Si hay pendientes pero no caben en esta ventana
+  const proximaPendiente = tareasElegiblesEnEstaCiudad[0];
+  if (proximaPendiente) {
+    return {
+      esLoja,
+      esPernocta: false,
+      ciudadNombre: ciudad ? ciudad.toUpperCase() : 'TERMINAL',
+      subtituloCiudad,
+      tipoBadgeCiudad,
+      tieneTareaAsignable: false,
+      esUrgente: false,
+      motivoNoTaller: `Tiempo corto (${v.duracionMinutos}m) para ${proximaPendiente.item.nombre} (requiere ~${proximaPendiente.tiempoRequeridoMinutos}m)`,
+    };
+  }
+
+  // Si había pendientes pero eran de taller y estamos fuera de Loja
   return {
-    esLoja: true,
+    esLoja,
+    esPernocta: false,
+    ciudadNombre: ciudad ? ciudad.toUpperCase() : 'TERMINAL',
+    subtituloCiudad,
+    tipoBadgeCiudad,
     tieneTareaAsignable: false,
     esUrgente: false,
-    motivoNoTaller: `Terminal Loja • Tiempo corto (${v.duracionMinutos}m) para ${tareaMayor.item.nombre} (requiere ~${tareaMayor.tiempoRequeridoMinutos}m)`,
+    motivoNoTaller: `Terminal ${ciudad || 'de paso'} • Espera de salida y descanso (talleres oficiales en Loja)`,
   };
 }
 
@@ -160,7 +274,7 @@ interface ChoferTurnoVentanasCardProps {
   disco: string;
   kmActual: number;
   itemsMantenimiento?: MantenimientoBusItem[];
-  onAbrirEstacion?: (estacionId: EstacionServicioId) => void;
+  onAbrirEstacion?: (estacionId: EstacionServicioId, itemCodigo?: string) => void;
   className?: string;
 }
 
@@ -326,50 +440,65 @@ export function ChoferTurnoVentanasCard({
         )}
       </div>
 
-      {/* ─── Ventana Técnica Mayor (Solo si es en Loja y hay mantenimientos pendientes) ─── */}
+      {/* ─── Ventana Técnica Mayor (Recomendada con Match Inteligente) ─── */}
       {(() => {
         if (!ventanaMayor) return null;
         const evalMayor = evaluarVentanaParaMantenimiento(ventanaMayor, itemsMantenimiento, kmActual);
-        if (!evalMayor.esLoja || !evalMayor.tieneTareaAsignable) return null;
+        if (!evalMayor.tieneTareaAsignable) return null;
 
         return (
           <div className="border-b border-emerald-200/80 bg-emerald-50/90 p-3.5">
             <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-xs">
-                  <Wrench className="h-4.5 w-4.5" />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-xs shrink-0 ${
+                  evalMayor.tipoMatch === 'CHOFER' ? 'bg-amber-600' : 'bg-emerald-700'
+                }`}>
+                  {evalMayor.tipoMatch === 'CHOFER' ? (
+                    <span className="text-base">🚌</span>
+                  ) : (
+                    <Wrench className="h-4.5 w-4.5" />
+                  )}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[10px] font-black uppercase tracking-wider text-emerald-900">
-                      Ventana en Loja: {evalMayor.tituloBadge}
+                      {evalMayor.ciudadNombre}: {evalMayor.tituloBadge}
                     </span>
                     <span className="rounded-full bg-emerald-200 px-2 py-0.2 text-[9px] font-black text-emerald-950">
                       {formatearTiempoCompacto(ventanaMayor.duracionMinutos)} libres
                     </span>
                   </div>
-                  <p className="text-xs font-bold text-slate-800 mt-0.5">
+                  <p className="text-xs font-bold text-slate-800 mt-0.5 truncate">
                     {evalMayor.detalleTarea}
                   </p>
                   <p className="text-[10px] text-slate-500 font-mono">
-                    Horario de fosa: {ventanaMayor.horaInicio} a {ventanaMayor.horaFin} en Terminal Loja
+                    Horario: {ventanaMayor.horaInicio} a {ventanaMayor.horaFin} en {evalMayor.ciudadNombre}
                   </p>
                 </div>
               </div>
               {onAbrirEstacion && evalMayor.estacionDestino && (
                 <button
                   type="button"
-                  onClick={() => onAbrirEstacion(evalMayor.estacionDestino!)}
-                  className="flex items-center gap-1 rounded-xl bg-[#053225] hover:bg-[#073b2d] px-3 py-1.5 text-xs font-black text-emerald-300 hover:text-white shadow-xs active:scale-95 transition-all cursor-pointer shrink-0"
+                  onClick={() => onAbrirEstacion(evalMayor.estacionDestino!, evalMayor.itemCodigo)}
+                  className={`flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-black shadow-xs active:scale-95 transition-all cursor-pointer shrink-0 ${
+                    evalMayor.tipoMatch === 'CHOFER'
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                      : 'bg-[#053225] hover:bg-[#073b2d] text-emerald-300 hover:text-white'
+                  }`}
                 >
-                  <Wrench className="h-3.5 w-3.5 text-emerald-400" />
-                  <span>{evalMayor.textoBoton || 'Ir a Fosa →'}</span>
+                  {evalMayor.tipoMatch === 'CHOFER' ? (
+                    <span className="text-sm">🚌</span>
+                  ) : (
+                    <Wrench className="h-3.5 w-3.5 text-emerald-400" />
+                  )}
+                  <span>{evalMayor.textoBoton || 'Realizar Tarea →'}</span>
                 </button>
               )}
             </div>
           </div>
         );
       })()}
+
       {/* ─── Lista de Ventanas Operativas del Turno ─── */}
       <div className="p-3.5">
         <div className="flex items-center justify-between mb-2">
@@ -397,9 +526,13 @@ export function ChoferTurnoVentanasCard({
                   key={idx}
                   className={`rounded-2xl border p-2.5 sm:p-3 transition-all ${
                     evaluacion.tieneTareaAsignable
-                      ? evaluacion.esUrgente
+                      ? evaluacion.tipoMatch === 'CHOFER'
+                        ? 'border-amber-300 bg-amber-50/80 shadow-xs'
+                        : evaluacion.esUrgente
                         ? 'border-rose-300 bg-rose-50/80 shadow-xs'
                         : 'border-emerald-300 bg-emerald-50/80 shadow-xs'
+                      : evaluacion.esPernocta
+                      ? 'border-indigo-200 bg-indigo-50/50'
                       : 'border-slate-100 bg-slate-50/70 hover:bg-slate-100/80'
                   }`}
                 >
@@ -408,43 +541,73 @@ export function ChoferTurnoVentanasCard({
                       <div
                         className={`h-7 w-7 rounded-xl flex items-center justify-center shrink-0 ${
                           evaluacion.tieneTareaAsignable
-                            ? evaluacion.esUrgente
+                            ? evaluacion.tipoMatch === 'CHOFER'
+                              ? 'bg-amber-600 text-white shadow-2xs'
+                              : evaluacion.esUrgente
                               ? 'bg-rose-600 text-white shadow-2xs'
                               : 'bg-emerald-600 text-white shadow-2xs'
+                            : evaluacion.esPernocta
+                            ? 'bg-indigo-600 text-white'
                             : 'bg-slate-200 text-slate-500'
                         }`}
                       >
                         {evaluacion.tieneTareaAsignable ? (
-                          <Wrench className="h-3.5 w-3.5" />
+                          evaluacion.tipoMatch === 'CHOFER' ? (
+                            <span className="text-xs">🚌</span>
+                          ) : (
+                            <Wrench className="h-3.5 w-3.5" />
+                          )
+                        ) : evaluacion.esPernocta ? (
+                          <span className="text-xs">🌙</span>
                         ) : (
                           <MapPin className="h-3.5 w-3.5" />
                         )}
                       </div>
+
                       <div className="min-w-0">
+                        {/* Cabecera de Ciudad con Distintivo de Color */}
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-xs text-slate-900">
-                            {v.ciudad}
-                          </span>
-                          {evaluacion.tieneTareaAsignable ? (
+                          {evaluacion.tipoBadgeCiudad === 'loja' ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-600/15 border border-emerald-500/30 px-1.5 py-0.2 text-[10px] font-black uppercase tracking-wider text-emerald-900">
+                              🏢 {evaluacion.ciudadNombre}
+                              <span className="text-[9px] font-semibold text-emerald-700">
+                                • {evaluacion.subtituloCiudad}
+                              </span>
+                            </span>
+                          ) : evaluacion.tipoBadgeCiudad === 'pernocta' ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-indigo-600/15 border border-indigo-500/30 px-1.5 py-0.2 text-[10px] font-black uppercase tracking-wider text-indigo-900">
+                              🌙 {evaluacion.ciudadNombre}
+                              <span className="text-[9px] font-semibold text-indigo-700">
+                                • {evaluacion.subtituloCiudad}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-sky-600/15 border border-sky-500/30 px-1.5 py-0.2 text-[10px] font-black uppercase tracking-wider text-sky-900">
+                              📍 {evaluacion.ciudadNombre}
+                              <span className="text-[9px] font-semibold text-sky-700">
+                                • {evaluacion.subtituloCiudad}
+                              </span>
+                            </span>
+                          )}
+
+                          {evaluacion.tieneTareaAsignable && (
                             <span
-                              className={`rounded-full font-black text-[9px] px-2 py-0.2 tracking-wide uppercase ${
-                                evaluacion.esUrgente
+                              className={`rounded-full font-black text-[9px] px-1.5 py-0.2 tracking-wide uppercase ${
+                                evaluacion.tipoMatch === 'CHOFER'
+                                  ? 'bg-amber-200 text-amber-950 font-bold'
+                                  : evaluacion.esUrgente
                                   ? 'bg-rose-200 text-rose-950'
                                   : 'bg-emerald-200 text-emerald-950'
                               }`}
                             >
                               {evaluacion.tituloBadge}
                             </span>
-                          ) : (
-                            <span className="text-[10px] text-slate-400 font-medium">
-                              {evaluacion.esLoja ? '• Loja' : '• Espera en ruta'}
-                            </span>
                           )}
                         </div>
 
                         {/* Descripción técnica inteligente */}
                         {evaluacion.tieneTareaAsignable ? (
-                          <p className="text-[11px] font-bold text-slate-800 mt-0.5">
+                          <p className="text-[11px] font-bold text-slate-800 mt-0.5 truncate">
                             {evaluacion.detalleTarea}
                           </p>
                         ) : (
@@ -464,27 +627,37 @@ export function ChoferTurnoVentanasCard({
                       <span
                         className={`font-mono font-black text-xs px-2.5 py-1 rounded-xl shadow-2xs ${
                           evaluacion.tieneTareaAsignable
-                            ? evaluacion.esUrgente
+                            ? evaluacion.tipoMatch === 'CHOFER'
+                              ? 'bg-amber-600 text-white ring-2 ring-amber-400/40'
+                              : evaluacion.esUrgente
                               ? 'bg-rose-700 text-white ring-2 ring-rose-400/40'
                               : 'bg-emerald-700 text-white ring-2 ring-emerald-400/40'
+                            : evaluacion.esPernocta
+                            ? 'bg-indigo-700 text-white'
                             : 'bg-slate-200 text-slate-700'
                         }`}
                       >
                         {tiempoFormateado}
                       </span>
 
-                      {/* Botón táctico directo SOLO si es en Loja y hay tarea viable */}
+                      {/* Botón táctico directo para Chofer o Taller */}
                       {evaluacion.tieneTareaAsignable && onAbrirEstacion && evaluacion.estacionDestino && (
                         <button
                           type="button"
-                          onClick={() => onAbrirEstacion(evaluacion.estacionDestino!)}
+                          onClick={() => onAbrirEstacion(evaluacion.estacionDestino!, evaluacion.itemCodigo)}
                           className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-black transition-all shadow-xs cursor-pointer active:scale-95 ${
-                            evaluacion.esUrgente
+                            evaluacion.tipoMatch === 'CHOFER'
+                              ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                              : evaluacion.esUrgente
                               ? 'bg-rose-800 hover:bg-rose-900 text-white'
                               : 'bg-[#053225] hover:bg-[#073b2d] text-emerald-300 hover:text-white'
                           }`}
                         >
-                          <Wrench className="w-3 h-3" />
+                          {evaluacion.tipoMatch === 'CHOFER' ? (
+                            <span className="text-xs">🚌</span>
+                          ) : (
+                            <Wrench className="w-3 h-3" />
+                          )}
                           <span>{evaluacion.textoBoton}</span>
                         </button>
                       )}

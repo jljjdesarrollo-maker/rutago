@@ -1721,3 +1721,30 @@ En caso de migrar a otra cuenta:
 * **Validación:** Empaquetado y verificación con esbuild completados con 0 errores.
 
 ---
+
+# 🚀 VERSIÓN 3.60.60: CRITERIO UNIVERSAL DE MATCHING: TAREAS DE CHOFER EN CUALQUIER PARADA Y TALLERES OFICIALES EN LOJA (2026-09-30)
+
+## 📌 1. DISTINTIVOS VISUALES DE UBICACIÓN CLAROS POR COLOR
+* **Código de color instantáneo por parada:**
+  - 🏢 **BASE LOJA:** Badge verde esmeralda con `🏢 BASE LOJA • Sede Talleres y Fosas`.
+  - 📍 **TERMINAL DE RUTA / CABECERA (El Tambo, Vilcabamba, Malacatos, Yangana):** Badge azul celeste con `📍 CIUDAD • Terminal de Cabecera`.
+  - 🌙 **PERNOCTA EXTERNA:** Badge púrpura nocturno con `🌙 VILCABAMBA • Pernocta Externa`.
+
+## 📌 2. CRITERIO UNIVERSAL DE MATCH SEGÚN ENTORNO Y TIEMPO DISPONIBLE
+* **Tareas Autónomas del Chofer ($0 Mano de Obra Propia):**
+  - Se pueden ejecutar en **CUALQUIER DESTINO** (sea Loja, El Tambo, Vilcabamba o cualquier parada en ruta).
+  - Incluye: **Rotación de Baterías (Intercambio A ⇄ B)**, **Soplado de Filtro de Aire de Motor**, **Calibración de Raches de Freno**, **Calibración de Neumáticos**, **Lavado de Mallas de Pasillo** e **Inspección de Niveles**.
+  - Si el chofer tiene una ventana libre con tiempo suficiente (15-20 min), el sistema hace match directo con la tarea vencida o próxima, sin importar en qué ciudad se encuentre el bus.
+  - Al pulsar el botón `[ 🚌 Asentar ... → ]`, se abre la estación pre-marcando el código exacto de la tarea.
+* **Tareas de Fosa / Taller Oficial:**
+  - Requieren infraestructura externa fija y fosa, por lo que **SOLO se sugieren cuando el autobús está en BASE LOJA**.
+  - Si el bus está en Loja y tiene tiempo suficiente (45m para aceite, 75m para frenos), se activan los botones directos de taller oficial (`Ir a Fosa →`, `Ir a Frenos →`).
+  - Fuera de Loja, nunca se envían alertas de fosa o taller para no confundir ni generar falsas alarmas.
+
+## 🛠️ 3. ARCHIVOS MODIFICADOS Y VALIDACIONES
+* `src/components/transport/ChoferTurnoVentanasCard.tsx`: Motor `evaluarVentanaParaMantenimiento` con matching universal, discriminación de pernocta y pre-selección de `itemCodigo`.
+* `src/components/transport/ChoferMantenimientoWidget.tsx`: Conexión de `onAbrirEstacion(estacionId, itemCodigo)` para pre-marcar automáticamente el check al abrir la estación.
+* `REGISTRO_MAESTRO.md`: Registro de versión 3.60.60.
+* **Validación:** Empaquetado y verificación con esbuild completados con 0 errores.
+
+---
