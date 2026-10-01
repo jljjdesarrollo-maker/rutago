@@ -1643,3 +1643,25 @@ En caso de migrar a otra cuenta:
 * **TypeScript:** `bun x tsc --noEmit` completado con 0 errores.
 
 ---
+
+# 🚀 VERSIÓN 3.60.57: CORRECCIÓN CRÍTICA DE ACCESO DEL CHOFER Y BLINDAJE DE SEGURIDAD (2026-09-30)
+
+## 📌 1. DIAGNÓSTICO Y CORRECCIÓN DEL ERROR "¡ALGO SALIÓ MAL!" AL INICIAR SESIÓN COMO CHOFER
+* **Causa Raíz Identificada:**
+  - En `ChoferMantenimientoWidget.tsx`, la llamada al componente `ChoferTurnoVentanasCard` referenciaba la variable inexistente `itemsBus` (`itemsMantenimiento={itemsBus}`) en vez de la variable de estado `items`.
+  - En JavaScript en el navegador del chofer, esto provocaba de inmediato un `Uncaught ReferenceError: itemsBus is not defined`, el cual era capturado por el `global-error.tsx` de Next.js mostrando la pantalla de *"¡Algo salió mal!"*.
+* **Corrección y Blindaje Implementado:**
+  1. **Corrección de Identificador:** Se corrigió a `itemsMantenimiento={items}` en `ChoferMantenimientoWidget.tsx`.
+  2. **Normalización y Resiliencia de Turnos en ChoferTurnoVentanasCard:**
+     - En `ChoferTurnoVentanasCard.tsx`, se implementó normalización de código (`VT01` ➔ `VT1`) para garantizar coincidencia inmediata con la configuración de la flota (`configFlota.vts`).
+     - Se añadió fallback seguro (`|| configFlota.vts[0]`) y acceso opcional defensivo (`frecuencias?.length || 0`) para evitar cualquier error de renderizado.
+  3. **Blindaje con SafeErrorBoundary en HomeScreen:**
+     - En `HomeScreen.tsx`, se envolvió `<ChoferMantenimientoWidget />` dentro de `<SafeErrorBoundary fallbackTitle="Panel de Mantenimiento del Conductor">` para aislar cualquier eventualidad y garantizar que la pantalla del chofer nunca colapse.
+
+## 🛠️ 2. ARCHIVOS MODIFICADOS Y VALIDACIONES
+* `src/components/transport/ChoferMantenimientoWidget.tsx`: Corrección de `itemsBus` a `items`.
+* `src/components/transport/ChoferTurnoVentanasCard.tsx`: Normalización de VT y acceso defensivo.
+* `src/components/transport/HomeScreen.tsx`: Inclusión de `SafeErrorBoundary` para el chofer.
+* **Validación:** Empaquetado y verificación de sintaxis y tipado completados exitosamente.
+
+---

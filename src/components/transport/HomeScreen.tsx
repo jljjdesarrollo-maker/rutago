@@ -41,6 +41,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { ChoferMantenimientoWidget } from './ChoferMantenimientoWidget';
+import { SafeErrorBoundary } from './SafeErrorBoundary';
 import { SocioMantenimientoWidget } from './SocioMantenimientoWidget';
 import { AyudanteMantenimientoBar } from './AyudanteMantenimientoBar';
 import { AyudanteJornadaCard } from './AyudanteJornadaCard';
@@ -1001,11 +1002,16 @@ export function HomeScreen({
           <div className="flex flex-col gap-4">
             {onGoToMantenimiento && moduloMantenimientoActivo && (
               <div id="chofer-mantenimiento-section" className="scroll-mt-4">
-                <ChoferMantenimientoWidget
-                  onVerMas={onGoToHistory}
-                  onGoToHistory={onGoToHistory}
-                  recordCount={recordCount}
-                />
+                <SafeErrorBoundary
+                  fallbackTitle="Panel de Mantenimiento del Conductor"
+                  onGoHome={() => {}}
+                >
+                  <ChoferMantenimientoWidget
+                    onVerMas={onGoToHistory}
+                    onGoToHistory={onGoToHistory}
+                    recordCount={recordCount}
+                  />
+                </SafeErrorBoundary>
               </div>
             )}
             {/* Configuración y Salida */}

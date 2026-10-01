@@ -98,9 +98,14 @@ export function ChoferTurnoVentanasCard({
     }
   };
 
+  const normalizarCodigo = (c: string) => (c || '').toUpperCase().replace(/^VT0+/, 'VT');
+
   const vtActual: VTConfiguracionItem | undefined = useMemo(() => {
-    return configFlota.vts.find(
-      (v) => v.codigo.toUpperCase() === selectedVTCode.toUpperCase()
+    const target = normalizarCodigo(selectedVTCode);
+    return (
+      configFlota.vts.find(
+        (v) => normalizarCodigo(v.codigo) === target
+      ) || configFlota.vts[0]
     );
   }, [configFlota, selectedVTCode]);
 
@@ -142,7 +147,7 @@ export function ChoferTurnoVentanasCard({
                   {vtActual.codigo}
                 </h3>
                 <span className="text-xs text-slate-300 font-medium">
-                  ({vtActual.nombre || `${vtActual.frecuencias.length} Frecuencias`})
+                  ({vtActual.nombre || `${vtActual.frecuencias?.length || 0} Frecuencias`})
                 </span>
               </div>
             </div>
@@ -176,7 +181,7 @@ export function ChoferTurnoVentanasCard({
                     >
                       <span>{v.codigo}</span>
                       <span className="text-[10px] opacity-80">
-                        {v.frecuencias.length} carreras
+                        {v.frecuencias?.length || 0} carreras
                       </span>
                     </button>
                   ))}
@@ -292,7 +297,7 @@ export function ChoferTurnoVentanasCard({
             onClick={() => setMostrarTodasFrecuencias(!mostrarTodasFrecuencias)}
             className="flex w-full items-center justify-between text-[11px] font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
           >
-            <span>Ver {vtActual.frecuencias.length} carreras del itinerario</span>
+            <span>Ver {vtActual.frecuencias?.length || 0} carreras del itinerario</span>
             <ChevronDown
               className={`h-3.5 w-3.5 transition-transform ${
                 mostrarTodasFrecuencias ? 'rotate-180' : ''
@@ -300,7 +305,7 @@ export function ChoferTurnoVentanasCard({
             />
           </button>
 
-          {mostrarTodasFrecuencias && (
+          {mostrarTodasFrecuencias && vtActual.frecuencias && (
             <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
               {vtActual.frecuencias.map((f, i) => (
                 <div
