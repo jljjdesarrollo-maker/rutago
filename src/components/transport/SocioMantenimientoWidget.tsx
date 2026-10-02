@@ -69,6 +69,8 @@ import { formatearMinutosLegible } from '@/lib/vt-ventanas-catalogo';
 import {
   obtenerUltimosArqueosBus,
   calcularProyeccionSecuencia,
+  obtenerCalibracionLocalBus,
+  obtenerFechaHoyLocal,
   extraerNumeroVT,
   formatearCodigoVT,
   type ResultadoProyeccionTurno,
@@ -178,16 +180,42 @@ export function SocioMantenimientoWidget({
   const [modoRetenActivo, setModoRetenActivo] = useState<boolean>(() => isModoRetenActivo());
   const [mostrarProyeccion5Dias, setMostrarProyeccion5Dias] = useState(false);
 
-  // Turno seleccionado para visualización táctica
+  // Turno seleccionado para visualización táctica con caducidad diaria de overrides
   const [manualVT, setManualVT] = useState<string | null>(() => {
+    const hoyStr = obtenerFechaHoyLocal();
     if (typeof window !== 'undefined') {
-      return localStorage.getItem(`rg_socio_manual_vt_${activeBusId}`) || null;
+      const savedRaw = localStorage.getItem(`rg_socio_manual_vt_${activeBusId}`);
+      if (savedRaw) {
+        try {
+          const parsed = JSON.parse(savedRaw);
+          // Si el override manual pertenece al día de hoy, respetarlo
+          if (parsed && parsed.codigo && parsed.fecha === hoyStr) {
+            return parsed.codigo;
+          }
+          // Si es de un día anterior, limpiar de inmediato
+          localStorage.removeItem(`rg_socio_manual_vt_${activeBusId}`);
+        } catch {
+          // Si era formato antiguo (string plano como "VT10"), se descarta de inmediato para no congelar turnos pasados
+          localStorage.removeItem(`rg_socio_manual_vt_${activeBusId}`);
+        }
+      }
     }
     return null;
   });
 
-  // Historial de arqueos
-  const [arqueosHistorial, setArqueosHistorial] = useState<ArqueoResumenTurno[]>([]);
+  // Historial de arqueos con carga síncrona inmediata desde Ficha de Calibración Local (0ms)
+  const [arqueosHistorial, setArqueosHistorial] = useState<ArqueoResumenTurno[]>(() => {
+    if (typeof window !== 'undefined') {
+      const busesList = getAllBuses();
+      const current = busesList.find((b) => b.id === activeBusId);
+      const disco = current?.numeroDisco || '01';
+      const cal = obtenerCalibracionLocalBus(disco, activeBusId);
+      if (cal && cal.historial3Arqueos && cal.historial3Arqueos.length > 0) {
+        return cal.historial3Arqueos;
+      }
+    }
+    return [];
+  });
   const [cargandoArqueos, setCargandoArqueos] = useState<boolean>(true);
 
   // Tacómetro auditado
@@ -262,7 +290,22 @@ export function SocioMantenimientoWidget({
       setKmActual(resolverKmActual(propBusId));
       setItems(cargarItems(propBusId));
       if (typeof window !== 'undefined') {
-        setManualVT(localStorage.getItem(`rg_socio_manual_vt_${propBusId}`) || null);
+        const hoyStr = obtenerFechaHoyLocal();
+        const savedRaw = localStorage.getItem(`rg_socio_manual_vt_${propBusId}`);
+        let validManual: string | null = null;
+        if (savedRaw) {
+          try {
+            const parsed = JSON.parse(savedRaw);
+            if (parsed && parsed.codigo && parsed.fecha === hoyStr) {
+              validManual = parsed.codigo;
+            } else {
+              localStorage.removeItem(`rg_socio_manual_vt_${propBusId}`);
+            }
+          } catch {
+            localStorage.removeItem(`rg_socio_manual_vt_${propBusId}`);
+          }
+        }
+        setManualVT(validManual);
       }
       refrescarArqueos(propBusId);
     }
@@ -276,7 +319,22 @@ export function SocioMantenimientoWidget({
       setKmActual(resolverKmActual(bus.id));
       setItems(cargarItems(bus.id));
       if (typeof window !== 'undefined') {
-        setManualVT(localStorage.getItem(`rg_socio_manual_vt_${bus.id}`) || null);
+        const hoyStr = obtenerFechaHoyLocal();
+        const savedRaw = localStorage.getItem(`rg_socio_manual_vt_${bus.id}`);
+        let validManual: string | null = null;
+        if (savedRaw) {
+          try {
+            const parsed = JSON.parse(savedRaw);
+            if (parsed && parsed.codigo && parsed.fecha === hoyStr) {
+              validManual = parsed.codigo;
+            } else {
+              localStorage.removeItem(`rg_socio_manual_vt_${bus.id}`);
+            }
+          } catch {
+            localStorage.removeItem(`rg_socio_manual_vt_${bus.id}`);
+          }
+        }
+        setManualVT(validManual);
       }
       refrescarArqueos(bus.id);
     });
@@ -320,22 +378,25 @@ export function SocioMantenimientoWidget({
   const currentBus = buses.find((b) => b.id === activeBusId);
   const disco = currentBus?.numeroDisco || '01';
 
-  // Proyección de turno inferido
+  // Proyección de turno inferido oficial de la cooperativa (pura y sin contaminación manual)
   const proyeccionTurno: ResultadoProyeccionTurno = useMemo(() => {
-    return calcularProyeccionSecuencia(arqueosHistorial, manualVT);
-  }, [arqueosHistorial, manualVT]);
+    return calcularProyeccionSecuencia(arqueosHistorial, null, obtenerFechaHoyLocal());
+  }, [arqueosHistorial]);
 
   const turnoBaseCodigo = proyeccionTurno.turnoProyectado;
   const vtNumBase = proyeccionTurno.turnoBaseNumero;
 
-  // Turno actualmente bajo inspección (manual o inferido)
+  // Turno actualmente bajo inspección (manual o inferido oficial)
   const vtInspeccionCodigo = manualVT || turnoBaseCodigo;
 
   const handleSeleccionarManualVT = (codigo: string) => {
     setManualVT(codigo);
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(`rg_socio_manual_vt_${activeBusId}`, codigo);
+        localStorage.setItem(
+          `rg_socio_manual_vt_${activeBusId}`,
+          JSON.stringify({ codigo, fecha: obtenerFechaHoyLocal() })
+        );
       } catch {}
     }
   };
@@ -696,8 +757,22 @@ export function SocioMantenimientoWidget({
                     : `Sin períodos diurnos mayores a 45 min`}
                 </span>
                 {manualVT && (
-                  <span className="text-[10px] text-indigo-300 font-bold ml-1 bg-indigo-950/70 px-1.5 py-0.2 rounded border border-indigo-400/30">
-                    Manual
+                  <span className="inline-flex items-center gap-1.5 ml-1">
+                    <span className="text-[10px] text-amber-300 font-bold bg-amber-950/70 px-1.5 py-0.2 rounded border border-amber-400/30">
+                      Manual ({manualVT})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRestaurarAutomatico();
+                      }}
+                      className="px-1.5 py-0.5 rounded bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-400/40 text-[10px] font-bold text-emerald-300 transition cursor-pointer flex items-center gap-0.5 active:scale-95"
+                      title={`Restablecer al turno oficial proyectado ${turnoBaseCodigo}`}
+                    >
+                      <RotateCcw className="w-2.5 h-2.5" />
+                      Usar {turnoBaseCodigo}
+                    </button>
                   </span>
                 )}
               </p>

@@ -2047,4 +2047,32 @@ En caso de migrar a otra cuenta:
 6. **Arranque y Salud del Servidor Dev:**
    - Generación de cliente Prisma (`.prisma/client/default`) y verificación en puerto 3000 con respuesta `HTTP 200 OK`.
 
+---
+
+## 🏛️ v3.60.66 - RESOLUCIÓN DEFINITIVA DE CONSISTENCIA DE TURNO SOCIO / CHOFER (VT12 VS VT10) (2026-10-02)
+> **ESTADO:** 🟢 COMPLETADO Y VALIDADO | **FECHA:** 2026-10-02  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 1. Diagnóstico Forense de la Causa Raíz:
+- **Síntoma Reportado:** En la interfaz del Chofer se mostraba correctamente el turno del día (**VT12**), pero en la interfaz del Socio aparecía congelado el turno anterior (**VT10**).
+- **Causa Raíz Identificada:**
+  1. En la versión previa (`v3.60.63`), se introdujo un hotfix de caducidad diaria de overrides manuales únicamente en `ChoferDisponibilidadCard.tsx`, dejando a `SocioMantenimientoWidget.tsx` con la persistencia estática antigua sin sello de fecha (`localStorage.getItem('rg_socio_manual_vt_${activeBusId}')`).
+  2. Cuando el usuario o una prueba previa seleccionó `VT10` en el Socio, la clave quedó almacenada de forma indefinida como un string plano `"VT10"`.
+  3. Al montar el componente, `manualVT` leía `"VT10"` y se enviaba directamente como segundo argumento a `calcularProyeccionSecuencia(arqueosHistorial, manualVT)`. Esto obligaba al motor de proyección a retornar `turnoProyectado = 'VT10'` bajo la regla de precedencia manual, inhibiendo el avance del calendario (+5 días desde el 27 de septiembre con VT07 ➔ VT12).
+  4. En la tarjeta principal del Socio no existía un mecanismo para invalidar el override viejo ni un botón para restaurarlo al turno automático sin entrar al modal secundario.
+  5. `arqueosHistorial` en el Socio arrancaba con un arreglo vacío `[]`, produciendo un parpadeo inicial en `VT01` antes de resolver `refrescarArqueos`.
+
+### 2. Soluciones Implementadas:
+1. **Caducidad Diaria y Limpieza Automática de Overrides en `SocioMantenimientoWidget.tsx`:**
+   - La persistencia local ahora almacena un JSON tipado con fecha de emisión: `{ codigo, fecha: obtenerFechaHoyLocal() }`.
+   - Tanto en el constructor de `useState` como en los efectos de cambio de unidad activa (`propBusId`, `subscribeToActiveBus`), si la fecha almacenada no coincide con el día de hoy, el override huérfano (incluyendo strings antiguos como `"VT10"`) se elimina automáticamente de `localStorage` y `manualVT` queda en `null`.
+2. **Cálculo Puro de la Proyección Oficial del Bus:**
+   - `proyeccionTurno` invoca `calcularProyeccionSecuencia(arqueosHistorial, null, obtenerFechaHoyLocal())` sin contaminación de selecciones temporales, garantizando que el sistema siempre calcule con precisión el turno oficial del calendario (**VT12**).
+   - El turno mostrado en la vista adopta `vtInspeccionCodigo = manualVT || turnoBaseCodigo`.
+3. **Carga Síncrona Inmediata (0 ms) desde Ficha de Calibración Local:**
+   - `arqueosHistorial` se inicializa síncronamente leyendo `obtenerCalibracionLocalBus`, eliminando el parpadeo en `VT01` y asegurando que desde el render inicial el Socio y el Chofer vean el mismo turno proyectado.
+4. **Acción de Retorno Inmediato en la Cabecera de la Tarjeta:**
+   - Si el Socio explora manualmente un VT en la botonera de 15 turnos, la tarjeta principal muestra:
+     `Manual (VTXX)` acompañado del botón `[ ↺ Usar VT12 ]` para volver al turno proyectado con un solo toque y sin abrir el modal.
+
 
