@@ -2076,3 +2076,118 @@ En caso de migrar a otra cuenta:
      `Manual (VTXX)` acompañado del botón `[ ↺ Usar VT12 ]` para volver al turno proyectado con un solo toque y sin abrir el modal.
 
 
+
+---
+
+## 🏛️ v3.60.67 - INFORME OFICIAL AUDITORÍA QA: FASE 1 - ROL SUPERADMINISTRADOR (2026-10-02)
+> **ESTADO:** 🟢 AUDITORÍA COMPLETADA Y VALIDADA | **FECHA:** 2026-10-02  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **AUDITOR DE QA:** Full-Stack QA & Security Lead  
+
+### 1. Resumen Ejecutivo de la Fase 1
+Se auditó a profundidad la arquitectura, seguridad, lógica de negocio y pantallas exclusivas del rol **Superadministrador** (`SUPERADMIN_SAAS` / `ADMIN`), validando el aislamiento contra privilegios de otros roles (`SOCIO`, `CHOFER`, `AYUDANTE`).
+
+### 2. Matriz de Componentes y Funcionalidades Auditadas:
+1. **Acceso y Autenticación Cero-Hardcode (`/api/auth`, `LoginScreen.tsx`):**
+   - **Mecanismo:** Validación por PIN con salting criptográfico (`pinHash` y `pinSalt`) en PostgreSQL.
+   - **Blindaje Brute-Force:** Rate limiting activo en memoria (máximo 5 intentos por ventana de 5 minutos por IP).
+   - **Sesión SuperAdmin:** Retorna rol soberano `ADMIN` con `subRol: 'SUPERADMIN_SAAS'`, bandera `esFundadorSaaS: true`.
+   - **Resultado QA:** 🟢 APROBADO (Aislamiento total, sin bypass de credenciales).
+
+2. **Consola Vendor SaaS & Cobranzas (`SuperAdminHomeScreen.tsx`, `SaaSAdminScreen.tsx`):**
+   - **Métricas MRR:** Proyección de $20/mes por autobús para las 19 unidades ($380.00 MRR máximo).
+   - **Gestión de Suscripciones:** Estados auditados (`ACTIVA`, `POR_VENCER`, `VENCIDA`, `GRACIA`, `SUSPENDIDA`).
+   - **Automatización WhatsApp:** Generación de mensajes y comprobantes de cobranza directa al socio.
+   - **Resultado QA:** 🟢 APROBADO (Cálculos de amortización y cobranzas sincronizados).
+
+3. **Padrón y Soberanía de Flota (`FlotaScreen.tsx`):**
+   - **Privilegio Exclusivo SuperAdmin:** Crear, modificar y desincorporar autobuses de la flota (19 unidades).
+   - **Restricción a Socios:** Los socios quedan estrictamente limitados a su "Ficha de Mi Unidad", sin acceso a alterar el padrón general ni crear buses ficticios.
+   - **Resultado QA:** 🟢 APROBADO (RBAC estricto verificado).
+
+4. **Directorio de Personal y Control de Dispositivos (`PersonalScreen.tsx`):**
+   - **Soberanía Multicliente:** El SuperAdmin visualiza y filtra choferes y ayudantes de todos los socios.
+   - **Device Binding (IMEI/UUID):** Capacidad de desvincular dispositivos bloqueados para choferes o ayudantes que reemplazan terminal telefónico.
+   - **Gestión de PINs:** Capacidad de soporte L2 para reasignación segura de claves de acceso.
+   - **Resultado QA:** 🟢 APROBADO (Funcionalidad de desvinculación operativa).
+
+5. **Parámetros Técnicos y Tolerancias (`VTConfigScreen.tsx`):**
+   - **Mallas de Turnos:** Administración de frecuencias y horarios de los 15 grupos VT (`VT01` a `VT15`).
+   - **Pestaña Retén (`SuperAdminRetenTab`):** Rotación de unidades y asignación de buses de respaldo.
+   - **Tiempos de Venta y Tolerancias:** Ventana de bloqueo pre-salida para evitar venta extemporánea.
+   - **Calibración de Kilometraje de Rutas:** Parámetros de distancias oficiales para cálculo de desgaste.
+   - **Resultado QA:** 🟢 APROBADO (Consistencia de mallas garantizada).
+
+6. **Consola de Soporte L2 & Sanación de Datos (`VentasReviewScreen.tsx`):**
+   - **Detección de Boletos Huérfanos:** Filtros por fecha y turnos para reasociar boletos emitidos sin frecuencia asociada.
+   - **Reasignación Rápida:** Capacidad de transferir bloques de boletos a la frecuencia correcta sin alterar la numeración correlativa.
+   - **Resultado QA:** 🟢 APROBADO (Integridad contable preservada).
+
+7. **Copia de Seguridad Centralizada (`/api/backup`):**
+   - **Extracción Completa:** Volcado relacional en JSON de viajes (`dailyRecord`), personas, socios, flota, suscripciones, pagos, gastos y boletos.
+   - **Resultado QA:** 🟢 APROBADO (Exportación completa y no destructiva).
+
+---
+
+### 3. Estado de Ejecución y Próxima Fase:
+- **Salud del Servidor:** Next.js dev server operativo en puerto 3000 (`HTTP 200 OK`).
+- **Próximo Paso Inmediato:** **Fase 2: Auditoría QA del Rol Socio Propietario** (Ficha de Mi Unidad, odómetro, módulos contables de ingresos y gastos, liquidación de ruta vs gastos de socio, y semáforos de mantenimiento).
+
+---
+
+## 🏛️ v3.60.68 - INFORME OFICIAL AUDITORÍA QA: FASE 2 - ROL SOCIO PROPIETARIO (2026-10-02)
+> **ESTADO:** 🟢 AUDITORÍA COMPLETADA Y VALIDADA | **FECHA:** 2026-10-02  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **AUDITOR DE QA:** Full-Stack QA & Security Lead  
+
+### 1. Resumen Ejecutivo de la Fase 2
+Se auditó integralmente el rol del **Socio Propietario** (`SOCIO`), responsable de la gobernanza de su unidad física (`busId`), supervisión de tripulación, auditoría de odómetro y administración patrimonial (utilidad real neta, cartera de talleres y recetas de servicio).
+
+### 2. Matriz de Componentes y Funcionalidades Auditadas:
+
+1. **Panel Principal del Socio (`HomeScreen.tsx`):**
+   - **Balance Ejecutivo Mensual:** Cálculo en tiempo real de ingresos por entregas de ruta, "Gastos del bus que pagó el socio", Utilidad Neta Real y Saldos Pendientes en Cartera.
+   - **Principio Anti-Duplicidad Financiera:** Algoritmo que filtra y excluye estrictamente los egresos liquidados en ruta por el ayudante (`origenPago === 'AYUDANTE_RUTA'`, `descontadoEnRuta === true`). Evita descontar dos veces al socio por gastos ya deducidos en el arqueo diario.
+   - **Soberanía Multi-Unidad:** Carga reactiva de unidades autorizadas (`/api/buses?socioId=...`). Para socios con múltiples buses, permite alternar entre sus unidades sin visibilidad ni interferencia con vehículos de otros socios.
+   - **Resultado QA:** 🟢 APROBADO.
+
+2. **Widget Ejecutivo y Semáforo de Fosa (`SocioMantenimientoWidget.tsx`):**
+   - **Odómetro Auditado:** Sincronización en vivo con el odómetro final asentado por el personal de ruta.
+   - **Proyección Oficial de Turno (VT):** Cálculo del turno oficial de calendario (ej. **VT12**) con algoritmo de rotación de 15 VTs. Limpieza y caducidad diaria de overrides temporales manuales (`v3.60.66`), previniendo congelamientos en turnos obsoletos.
+   - **Semáforo Preventivo:** 🟢 En Regla (> 1.000 km), 🟡 Por Vencer (< 1.000 km), 🔴 Vencidos.
+   - **Asistente de 3 Niveles:** Básico (7 ítems), Medio (15 ítems) y Total (27 ítems oficiales Hino AK).
+   - **Cruce Táctico con Ventanas en Loja:** Clasificación de intervenciones viables hoy según tiempos de permanencia en cabecera (≥ 45 min) y pernoctas.
+   - **Resultado QA:** 🟢 APROBADO.
+
+3. **Odómetro y Blindaje Anti-Regresión (`fleet-storage.ts` - `saveBusOdometer`):**
+   - **Techo Auditado:** Comparación obligatoria `Math.max(actualEnCache, calibKm)`.
+   - **Parámetro `esCalibracionManual`:** Si un viaje o arqueo con odómetro menor intenta persistir, el sistema bloquea el retroceso. Únicamente una calibración explícita del socio puede fijar un nuevo kilometraje.
+   - **Sincronización Bidireccional Nube:** Endpoint `/api/buses/odometro` mantiene paridad entre el celular del socio y el del chofer.
+   - **Resultado QA:** 🟢 APROBADO.
+
+4. **Gestión de Gastos y Cartera de Talleres (`OwnerExpensesScreen.tsx`):**
+   - **Registro 1-2-3 de Egresos:** Asignación automática de `origenPago: 'SOCIO_DIRECTO'` y `descontadoEnRuta: false` para egresos patrimoniales directos.
+   - **Cartera de Talleres y Abonos Reactivos:** Abonos a saldos pendientes persisten a PostgreSQL vía `PUT /api/owner-expenses`. Actualización atómica en pantalla sin parpadeos y extinción inmediata de la deuda cuando `pendingBalance <= 0`.
+   - **Anulación Quirúrgica (Soft Delete):** Modal de anulación con motivo obligatorio para trazabilidad legal y eliminación de la deuda asociada sin corromper el libro de egresos.
+   - **Resultado QA:** 🟢 APROBADO.
+
+5. **Estado de Resultados y Utilidad Neta (`OwnerIncomeStatementModal.tsx`):**
+   - **Fórmula Contable:** `Utilidad Real Neta = Total Entregado en Ruta (Efectivo Ayudante + Caja Común) - Gastos Directos del Socio`.
+   - **Reporte PDF Oficial:** Generación de comprobante patrimonial imprimible con firmas de responsabilidad.
+   - **Resultado QA:** 🟢 APROBADO.
+
+6. **Gobernanza Técnica y Recetas de Estación (`MantenimientoScreen.tsx`):**
+   - **Desacoplamiento Total:** `BusRecetaCombo` y `BusItemOverride` aislados al 100% por `busId`. Las modificaciones de kilometraje de una unidad jamás afectan a otra.
+   - **No-Regresión Cronológica (v3.60.67):** El odómetro activo no se degrada ante la digitación de servicios pasados.
+   - **Anulación en Cascada (`anularParadaPagoCascada`):** Restaura el estado técnico anterior de los repuestos afectados al cancelar un comprobante.
+   - **Resultado QA:** 🟢 APROBADO.
+
+7. **Aislamiento de Personal y Tripulación (`PersonalScreen.tsx`):**
+   - El Socio Propietario gestiona exclusivamente los choferes y ayudantes vinculados a su cuenta (`socioId`), sin visibilidad de tripulaciones ajenas.
+   - **Resultado QA:** 🟢 APROBADO.
+
+---
+
+### 3. Veredicto Global y Próxima Fase:
+- **Estado Global:** 🟢 **FASE 2 COMPLETADA Y TOTALMENTE VERIFICADA**.
+- **Próximo Paso Inmediato:** **Fase 3: Auditoría QA del Rol Chofer / Conductor** (Rutina de fosa en ruta, registro rápido de lubricadora 4+2, raches de freno $0, copiloto de proyección en días y kilometraje restante, historial de paradas de solo lectura).
