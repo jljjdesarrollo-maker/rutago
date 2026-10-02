@@ -51,7 +51,7 @@ import { MantenimientoOdometroCard } from './mantenimiento/MantenimientoOdometro
 import { MantenimientoPoliticasModal } from './mantenimiento/MantenimientoPoliticasModal';
 import { MantenimientoAjusteRapidoModal } from './mantenimiento/MantenimientoAjusteRapidoModal';
 import { MantenimientoEstacionesModal } from './mantenimiento/MantenimientoEstacionesModal';
-import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, setActiveBus, subscribeToActiveBus, subscribeToBusOdometer, INITIAL_PILOT_BUS } from '@/lib/fleet-storage';
+import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, setActiveBus, subscribeToActiveBus, subscribeToBusOdometer, syncBusOdometerWithServer, INITIAL_PILOT_BUS } from '@/lib/fleet-storage';
 import {
   saveOwnerExpense,
   saveOwnerExpenseToApi,
@@ -526,6 +526,17 @@ export function MantenimientoScreen({
         }
       }
     });
+
+    // Sincronizar odómetro con la nube al montar
+    const busesList = getAllBuses();
+    const current = busesList.find(b => b.id === activeBusId);
+    const disco = current?.numeroDisco || '01';
+    syncBusOdometerWithServer(disco).then((serverKm) => {
+      if (serverKm && serverKm > 0) {
+        setKmActual(serverKm);
+        setItems(cargarItems(activeBusId));
+      }
+    }).catch(() => {});
 
     const handleReconciliacion = () => {
       setItems(cargarItems(activeBusId));
@@ -1469,7 +1480,7 @@ export function MantenimientoScreen({
     localStorage.setItem(`rg_odometro_calibrado_fecha_${activeBusDisco}`, today);
     localStorage.setItem(`rg_odometro_calibrado_km_${activeBusDisco}`, nuevoKm.toString());
 
-    saveBusOdometer(activeBusDisco, nuevoKm.toString(), today);
+    saveBusOdometer(activeBusDisco, nuevoKm.toString(), today, true);
 
     // 3. Notificar reactivamente a toda la aplicación
     if (typeof window !== 'undefined') {

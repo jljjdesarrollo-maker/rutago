@@ -45,10 +45,32 @@ export async function GET(req: NextRequest) {
       console.warn('Consulta de bus en BD con advertencia (fallback memoria):', dbErr);
     }
 
+    let kmCalibrado: number | null = null;
+    let fechaCalibrada: string | null = null;
+    let motivoCalibrado: string | null = null;
+
+    if (busData?.notas) {
+      const matchKm = busData.notas.match(/\[Odómetro Calibrado\]:\s*([0-9,.]+)\s*km/i);
+      if (matchKm) {
+        kmCalibrado = parseInt(matchKm[1].replace(/[^0-9]/g, ''), 10);
+      }
+      const matchFecha = busData.notas.match(/el\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/);
+      if (matchFecha) {
+        fechaCalibrada = matchFecha[1];
+      }
+      const matchMotivo = busData.notas.match(/\(([^()]+)\)$/);
+      if (matchMotivo) {
+        motivoCalibrado = matchMotivo[1];
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         disco: cleanDisco,
+        kmCalibrado,
+        fechaCalibrada,
+        motivoCalibrado,
         bus: busData,
       },
     });

@@ -37,6 +37,7 @@ import {
   getLatestBusOdometer,
   saveBusOdometer,
   subscribeToBusOdometer,
+  syncBusOdometerWithServer,
 } from '@/lib/fleet-storage';
 import {
   evaluarVentanaParaMantenimiento,
@@ -169,14 +170,27 @@ export function ChoferDisponibilidadCard({
           }
         }
 
+        // Sincronizar odómetro oficial con la nube si hay conexión
+        await syncBusOdometerWithServer(disco).catch(() => {});
+
+        // Obtener la lectura más alta verificada (auditada / calibrada)
+        const odoAuditado = getLatestBusOdometer(disco);
+        const kmAuditadoNum = odoAuditado?.kmFinal ? parseInt(odoAuditado.kmFinal, 10) : 0;
+
         // Actualizar odómetro si el servidor devolvió una lectura verificada
         if (res.ultimoKmRegistrado && res.ultimoKmRegistrado > 0) {
-          setKmActualLocal(res.ultimoKmRegistrado);
-          saveBusOdometer(
-            disco,
-            res.ultimoKmRegistrado.toString(),
-            res.fechaUltimoKm || hoyStr
-          );
+          if (res.ultimoKmRegistrado >= kmAuditadoNum) {
+            setKmActualLocal(res.ultimoKmRegistrado);
+            saveBusOdometer(
+              disco,
+              res.ultimoKmRegistrado.toString(),
+              res.fechaUltimoKm || hoyStr
+            );
+          } else {
+            setKmActualLocal(kmAuditadoNum);
+          }
+        } else if (kmAuditadoNum > 0) {
+          setKmActualLocal(kmAuditadoNum);
         }
 
         if (forzar) {

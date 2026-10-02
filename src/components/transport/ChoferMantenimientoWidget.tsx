@@ -33,7 +33,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, subscribeToActiveBus, subscribeToBusOdometer } from '@/lib/fleet-storage';
+import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, subscribeToActiveBus, subscribeToBusOdometer, syncBusOdometerWithServer } from '@/lib/fleet-storage';
 import { getCatalogoMaestroGlobal } from '@/lib/mantenimiento-catalogo';
 import { saveOwnerExpense, saveOwnerExpenseToApi } from '@/lib/owner-expenses-storage';
 import { type PaymentMethod, type PaymentAbono } from '@/types/expenses';
@@ -358,6 +358,12 @@ export function ChoferMantenimientoWidget({
       const busesList = getAllBuses();
       const current = busesList.find(b => b.id === activeBusId);
       const curDisco = current?.numeroDisco || '01';
+      syncBusOdometerWithServer(curDisco).then((serverKm) => {
+        if (serverKm && serverKm > 0) {
+          setKmActual(serverKm);
+          setItems(cargarItems(activeBusId));
+        }
+      }).catch(() => {});
       sincronizarArqueosYCalibracion(curDisco, activeBusId).catch(() => {});
     };
     window.addEventListener('online', handleOnline);
@@ -370,6 +376,12 @@ export function ChoferMantenimientoWidget({
         const busesList = getAllBuses();
         const current = busesList.find(b => b.id === activeBusId);
         const curDisco = current?.numeroDisco || '01';
+        syncBusOdometerWithServer(curDisco).then((serverKm) => {
+          if (serverKm && serverKm > 0) {
+            setKmActual(serverKm);
+            setItems(cargarItems(activeBusId));
+          }
+        }).catch(() => {});
         sincronizarArqueosYCalibracion(curDisco, activeBusId).catch(() => {});
       }, 2000);
     }

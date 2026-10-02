@@ -345,6 +345,7 @@ export async function sincronizarArqueosYCalibracion(
       fuente = 'OFFLINE_CACHE';
     }
 
+    const discoLimpio = normalizarDisco(disco);
     let ultimoKm: number | null = null;
     let fechaKm: string | null = null;
     for (let i = arqueos.length - 1; i >= 0; i--) {
@@ -354,6 +355,18 @@ export async function sincronizarArqueosYCalibracion(
           ultimoKm = num;
           fechaKm = arqueos[i].date;
           break;
+        }
+      }
+    }
+
+    // Si hay una calibración auditada explícita de kilometraje superior, adoptarla
+    if (typeof window !== 'undefined') {
+      const calibKmRaw = localStorage.getItem(`rg_odometro_calibrado_km_${discoLimpio}`);
+      if (calibKmRaw) {
+        const calibNum = parseInt(calibKmRaw.replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(calibNum) && calibNum > (ultimoKm || 0)) {
+          ultimoKm = calibNum;
+          fechaKm = localStorage.getItem(`rg_odometro_calibrado_fecha_${discoLimpio}`) || fechaKm;
         }
       }
     }

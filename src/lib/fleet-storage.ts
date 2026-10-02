@@ -430,24 +430,57 @@ export interface BusOdometerRecord {
 
 /**
  * Almacena de forma persistente y dedicada la última lectura del odómetro para un autobús específico.
+ * Incluye blindaje de no-regresión: nunca permite que un arqueo antiguo reduzca el kilometraje
+ * a menos que sea una calibración manual explícita (esCalibracionManual = true).
  */
-export function saveBusOdometer(busIdOrDisco: string, kmFinal: string, date: string): void {
+export function saveBusOdometer(
+  busIdOrDisco: string,
+  kmFinal: string,
+  date: string,
+  esCalibracionManual = false
+): void {
   if (typeof window === 'undefined' || !kmFinal || !kmFinal.trim()) return;
   try {
     const cleanDisco = busIdOrDisco.replace(/^BUS-/, '').padStart(2, '0');
+    const nuevoNum = parseInt(String(kmFinal).replace(/[^0-9]/g, ''), 10);
+    if (isNaN(nuevoNum) || nuevoNum <= 0) return;
+
     const key = `rutago_odometro_bus_${cleanDisco}`;
+
+    // BLINDAJE DE NO-REGRESIÓN:
+    // Si no es calibración manual explícita, no permitir sobrescribir con un valor menor
+    if (!esCalibracionManual) {
+      const raw = localStorage.getItem(key);
+      const calibKmRaw = localStorage.getItem(`rg_odometro_calibrado_km_${cleanDisco}`);
+      const calibKm = calibKmRaw ? parseInt(calibKmRaw.replace(/[^0-9]/g, ''), 10) : 0;
+      let actualEnCache = 0;
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.kmFinal) {
+            actualEnCache = parseInt(String(parsed.kmFinal).replace(/[^0-9]/g, ''), 10) || 0;
+          }
+        } catch {}
+      }
+      const techoAuditado = Math.max(actualEnCache, calibKm);
+      if (nuevoNum < techoAuditado) {
+        // Bloquear retroceso de odómetro
+        return;
+      }
+    }
+
     const payload: BusOdometerRecord = {
       busId: `BUS-${cleanDisco}`,
       numeroDisco: cleanDisco,
-      kmFinal: kmFinal.trim(),
+      kmFinal: nuevoNum.toString(),
       date,
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(key, JSON.stringify(payload));
 
     // Sincronizar también con claves directas de busId
-    localStorage.setItem(`rg_last_km_BUS-${cleanDisco}`, kmFinal.trim());
-    localStorage.setItem(`rg_last_km_${cleanDisco}`, kmFinal.trim());
+    localStorage.setItem(`rg_last_km_BUS-${cleanDisco}`, nuevoNum.toString());
+    localStorage.setItem(`rg_last_km_${cleanDisco}`, nuevoNum.toString());
 
     // Disparar evento reactivo para toda la aplicación
     window.dispatchEvent(
@@ -455,7 +488,7 @@ export function saveBusOdometer(busIdOrDisco: string, kmFinal: string, date: str
         detail: {
           busId: `BUS-${cleanDisco}`,
           numeroDisco: cleanDisco,
-          kmFinal: kmFinal.trim(),
+          kmFinal: nuevoNum.toString(),
           date,
         },
       })
@@ -486,6 +519,7 @@ export function subscribeToBusOdometer(
 
 /**
  * Obtiene la última lectura conocida del odómetro para un autobús físico específico.
+ * Prioriza calibraciones explícitas auditadas del socio para evitar regresiones.
  */
 export function getLatestBusOdometer(busIdOrDisco: string): { kmFinal: string; date: string } | null {
   if (typeof window === 'undefined') return null;
@@ -493,12 +527,33 @@ export function getLatestBusOdometer(busIdOrDisco: string): { kmFinal: string; d
     const cleanDisco = busIdOrDisco.replace(/^BUS-/, '').padStart(2, '0');
     const key = `rutago_odometro_bus_${cleanDisco}`;
     const raw = localStorage.getItem(key);
+    let cachedNum = 0;
+    let cachedDate = '';
+
     if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.kmFinal) {
-        return { kmFinal: parsed.kmFinal, date: parsed.date || '' };
-      }
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.kmFinal) {
+          cachedNum = parseInt(String(parsed.kmFinal).replace(/[^0-9]/g, ''), 10) || 0;
+          cachedDate = parsed.date || '';
+        }
+      } catch {}
     }
+
+    // Verificar si hay una calibración explícita con kilometraje superior
+    const calibKmRaw = localStorage.getItem(`rg_odometro_calibrado_km_${cleanDisco}`);
+    const calibDateRaw = localStorage.getItem(`rg_odometro_calibrado_fecha_${cleanDisco}`);
+    const calibKm = calibKmRaw ? parseInt(calibKmRaw.replace(/[^0-9]/g, ''), 10) : 0;
+
+    if (calibKm > cachedNum) {
+      cachedNum = calibKm;
+      cachedDate = calibDateRaw || cachedDate;
+    }
+
+    if (cachedNum > 0) {
+      return { kmFinal: cachedNum.toString(), date: cachedDate };
+    }
+
     // Fallback: Si no hay lectura en caché local, usar odometroInicial de ficha técnica
     const bus = getBusByDisco(cleanDisco);
     if (bus?.odometroInicial) {
@@ -512,6 +567,32 @@ export function getLatestBusOdometer(busIdOrDisco: string): { kmFinal: string; d
     console.error('Error leyendo odómetro de bus:', err);
     return null;
   }
+}
+
+/**
+ * Descarga y sincroniza la última calibración del odómetro desde la nube (/api/buses/odometro).
+ */
+export async function syncBusOdometerWithServer(busIdOrDisco: string): Promise<number | null> {
+  if (typeof window === 'undefined' || !navigator.onLine) return null;
+  try {
+    const cleanDisco = busIdOrDisco.replace(/^BUS-/, '').padStart(2, '0');
+    const res = await fetch(`/api/buses/odometro?disco=${cleanDisco}`, { cache: 'no-store' });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json.success && json.data?.kmCalibrado && json.data.kmCalibrado > 0) {
+      const serverKm = json.data.kmCalibrado;
+      const serverFecha = json.data.fechaCalibrada || new Date().toISOString().split('T')[0];
+
+      // Guardar con flag de calibración manual
+      localStorage.setItem(`rg_odometro_calibrado_km_${cleanDisco}`, serverKm.toString());
+      localStorage.setItem(`rg_odometro_calibrado_fecha_${cleanDisco}`, serverFecha);
+      saveBusOdometer(cleanDisco, serverKm.toString(), serverFecha, true);
+      return serverKm;
+    }
+  } catch (err) {
+    console.warn('[syncBusOdometerWithServer] Error descargando odómetro:', err);
+  }
+  return null;
 }
 
 
