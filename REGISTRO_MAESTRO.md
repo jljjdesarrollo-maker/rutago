@@ -2014,3 +2014,37 @@ En caso de migrar a otra cuenta:
 * **Corrección de Build Next.js (`src/app/error.tsx`):**
   - Reemplazo del defectuoso `global-error.tsx` por el estándar `error.tsx` compatible con React 19 y Turbopack, permitiendo compilación exitosa con código de salida 0.
 
+---
+
+## 🏛️ v3.60.65 - BLINDAJE ANTI-REGRESIÓN Y SINCRONIZACIÓN DE ODÓMETRO SOCIO / CHOFER (2026-10-01)
+> **ESTADO:** 🟢 COMPLETADO Y VALIDADO EN PRODUCCIÓN | **FECHA:** 2026-10-01  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **COMMIT:** `5b9b531`
+
+### 1. Diagnóstico Forense del Problema Reportado por el Usuario:
+- **Síntoma:** El socio actualizó el odómetro (ej. 894,500 km) y salió mensaje de éxito. Al salir e ingresar como Chofer en el mismo celular, el odómetro no estaba actualizado. Al volver a entrar como Socio, el odómetro se había revertido al valor anterior (ej. 893,485 km).
+- **Causa Raíz Descubierta:**
+  1. Cuando el Chofer inicia sesión, el componente `ChoferDisponibilidadCard.tsx` se monta y ejecuta automáticamente `sincronizarArqueosYCalibracion(disco, busId)`.
+  2. Dicha sincronización leía el último arqueo o viaje histórico de la base de datos local/remota, el cual tenía un `kmFinal` antiguo (menor).
+  3. En la línea 175 de `ChoferDisponibilidadCard.tsx`, el componente ejecutaba incondicionalmente `saveBusOdometer(disco, res.ultimoKmRegistrado.toString(), ...)` sin comprobar si el odómetro en caché era mayor o provenía de una calibración reciente.
+  4. `saveBusOdometer` en `fleet-storage.ts` sobrescribía a ciegas las claves `rutago_odometro_bus_01`, `rg_last_km_BUS-01` y `rg_last_km_01`, borrando la calibración del socio.
+  5. Al regresar como Socio, la interfaz leía `getLatestBusOdometer(01)`, que ya contenía el valor degradado por la sobrescritura.
+
+### 2. Soluciones Implementadas y Desplegadas:
+1. **Blindaje de No-Regresión en `src/lib/fleet-storage.ts` (`saveBusOdometer`):**
+   - Se añadió el parámetro `esCalibracionManual: boolean = false`.
+   - Si no es una calibración manual explícita, `saveBusOdometer` compara el nuevo valor con el techo auditado (`Math.max(actualEnCache, calibKm)`). Si el valor entrante es menor, se bloquea la sobrescritura. **Un odómetro nunca retrocede.**
+2. **Priorización en `getLatestBusOdometer` (`fleet-storage.ts`):**
+   - Compara y toma siempre el kilometraje auditado más alto entre el caché general y `rg_odometro_calibrado_km_${disco}`.
+3. **Sincronización Automática Nube-Cliente (`syncBusOdometerWithServer`):**
+   - Nueva función que consulta `GET /api/buses/odometro?disco=...`.
+   - Si el servidor tiene un odómetro calibrado más reciente, se asienta localmente como calibración manual (`esCalibracionManual = true`).
+   - Se invoca al montar `ChoferDisponibilidadCard`, `ChoferMantenimientoWidget` y `MantenimientoScreen`.
+4. **Protección en `ChoferDisponibilidadCard.tsx`:**
+   - Verifica `if (res.ultimoKmRegistrado >= kmAuditadoNum)` antes de registrar en `saveBusOdometer`. Si el viaje histórico es menor, conserva el odómetro calibrado por el socio.
+5. **Calibración Explícita en `MantenimientoScreen.tsx`:**
+   - `saveBusOdometer(activeBusDisco, nuevoKm.toString(), today, true)` invocada con flag de calibración manual.
+6. **Arranque y Salud del Servidor Dev:**
+   - Generación de cliente Prisma (`.prisma/client/default`) y verificación en puerto 3000 con respuesta `HTTP 200 OK`.
+
+
