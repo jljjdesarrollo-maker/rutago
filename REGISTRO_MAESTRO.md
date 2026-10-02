@@ -2316,3 +2316,37 @@ Se auditó en su totalidad el flujo operativo del **Ayudante / Boletero** (`AYUD
 | **Fase 4** | Ayudante / Boletero (`AYUDANTE`) | 🟢 Completado | **APROBADO** |
 
 **Conclusión General:** El sistema **RutaGo** se encuentra 100% blindado, auditado en todos sus roles operativos, libre de errores sintácticos y con paridad absoluta entre la base de datos PostgreSQL, IndexedDB y el almacenamiento local offline.
+
+---
+
+## 🏛️ v3.60.71 - PLAN DE IMPLEMENTACIÓN: ARQUEO CIEGO (BLIND COUNT) POR FRECUENCIA (2026-10-02)
+> **ESTADO:** 🟡 PLANIFICACIÓN APROBADA - LISTO PARA IMPLEMENTACIÓN  
+> **FECHA:** 2026-10-02 | **SISTEMA:** RutaGo - Módulo de Recaudación en Ruta  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 1. Diagnóstico y Justificación de Negocio:
+En la auditoría de caja de la versión actual de `ArqueoScreen.tsx`, se identificó que el ayudante visualiza el monto exacto emitido por el sistema (`totalSistema`) y un semáforo dinámico de diferencia en tiempo real mientras escribe el efectivo.  
+**Riesgos mitigados con esta implementación:**
+1. **Erradicación del jineteo de excedentes:** Si el ayudante recaudó más efectivo que lo registrado en boletos (vueltos no reclamados o pasajes directos), el arqueo abierto le permite recortar el excedente a su favor. El arqueo ciego captura el 100% del sobrante para la unidad.
+2. **Prevención de cuadres forzados:** El ayudante no podrá ajustar centavos hacia arriba o hacia abajo buscando el semáforo verde.
+3. **Auditoría real independiente:** Confrontación objetiva de dinero físico real vs. huella electrónica del sistema.
+
+### 2. Especificación Técnica de los Cambios a Aplicar en `ArqueoScreen.tsx`:
+1. **Ocultamiento Previo de Cifras del Sistema (Líneas 205-226):**
+   - Retiro de la tarjeta con el total recaudado del sistema y desglose de boletos antes del conteo.
+   - Reemplazo por un banner institucional neutral con instrucciones de conteo físico en mano.
+2. **Supresión del Semáforo en Tiempo Real (Líneas 278-317):**
+   - Eliminación del banner dinámico que alertaba sobre faltante, sobrante o caja cuadrada mientras se digitaba el efectivo.
+3. **Bloqueo del Detalle de Boletos (Líneas 320-340):**
+   - Ocultamiento de la lista desglosada de boletos durante la fase de conteo para evitar cálculos deductivos previos al cierre.
+4. **Desacoplamiento de la Validación del Botón (Línea 345):**
+   - Validación neutral: el botón de confirmación se habilita con cualquier cifra válida $\ge 0$, sin condicionar contra `totalSistema > 0`.
+5. **Revelación Post-Asentamiento (Líneas 115-181):**
+   - La pantalla de confirmación mantiene intacta la revelación del resultado una vez que el ayudante ha presionado **"Confirmar Arqueo"** y se han grabado los datos en almacenamiento local y PostgreSQL.
+
+### 3. Modelo de Persistencia (Sin Cambios en Base de Datos):
+- Mantiene compatibilidad total con el esquema de base de datos y memoria local:
+  - `arqueoEfectivo`: valor físico declarado por el ayudante.
+  - `arqueoSistema`: valor sumado por boletos electrónicos emitidos.
+  - `arqueoDiferencia`: `arqueoEfectivo - arqueoSistema`.
+  - `cajaComunMonto`: valores recaudados en boletería física de terminal Loja.
