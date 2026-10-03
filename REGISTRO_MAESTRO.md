@@ -2507,3 +2507,33 @@ Se auditó y completó el endpoint de respaldo para abarcar con precisión las *
 ### 📍 3. Siguiente Paso / Decisión Actual (Fase 1 - Paso 4):
 - El usuario descarga el archivo de prueba desde su panel SuperAdmin para verificar que contiene sus datos de Enero a la fecha.
 - Una vez confirmado, se procede a estructurar la **Capa B (Robot de GitHub Actions hacia `rutago.backups@gmail.com`)** con la rotación de las 3 versiones de código.
+
+---
+
+## 🏛️ v3.60.76 - FASE 1: SECRETO GITHUB DETECTADO Y DISEÑO DE ROBOT GITHUB ACTIONS (2026-10-03)
+> **ESTADO:** 🟢 SECRETO `RESPALDOS_RUTAGO` CONFIRMADO EN REPOSITORIO GITHUB  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Arquitectura Cloud y Respaldo  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Verificación del Secreto en GitHub:
+- Mediante la API de GitHub se verificó la existencia exitosa del secreto:
+  * **Nombre:** `RESPALDOS_RUTAGO`
+  * **Ubicación:** `jljjdesarrollo-maker/rutago/settings/secrets/actions`
+  * **Estado:** Creado y encriptado en el repositorio.
+
+---
+
+### 📍 2. Arquitectura del Robot GitHub Actions (Cero Dependencias Externas):
+- Se diseñará el script nativo `scripts/backup-to-gdrive.mjs` utilizando exclusivamente los módulos internos de Node.js (`crypto` y `fetch` nativo):
+  * **Autenticación JWT:** Firma automática RS256 con la llave privada del Service Account para obtener el `access_token` de Google Drive.
+  * **Empaquetado de Código:** Generación de `rutago_codigo_YYYY-MM-DD_HHmm.zip`.
+  * **Volcado de Base de Datos:** Extracción de las 16 tablas desde `/api/backup` a `rutago_bd_YYYY-MM-DD_HHmm.json`.
+  * **Subida a Google Drive:** Envío cifrado multipart a la carpeta de respaldos.
+  * **Regla de Rotación Estricta:** El script consulta los archivos de código en Drive; si existen más de 3 versiones, identifica la más antigua por fecha de creación y la elimina vía API (`DELETE`), manteniendo exactamente las **3 versiones más recientes**.
+
+---
+
+### 📍 3. Siguiente Paso / Preguntas de Confirmación:
+- Confirmar si el secreto `RESPALDOS_RUTAGO` contiene el JSON completo de la Service Account.
+- Confirmar el `FOLDER_ID` de la carpeta de Google Drive donde deben depositarse los archivos.
+- Confirmar la URL de producción activa para extraer el respaldo de base de datos.
