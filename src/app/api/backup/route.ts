@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { generateSalt, hashPinWithSalt } from '@/lib/pin-hash';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 // GET /api/backup — Export full database backup
 export async function GET() {
   try {

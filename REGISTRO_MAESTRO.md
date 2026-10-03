@@ -2776,3 +2776,27 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
   * Animación de procesamiento ("Restaurando en Base de Pruebas...").
   * Tarjeta de confirmación con desglose de registros recuperados (Socios, Buses, Personal, VTs, Frecuencias).
   * Validación de seguridad para que la operación se realice únicamente en la base de datos de pruebas (`rutago-staging-db`), manteniendo la de producción inmutable.
+
+---
+
+## 🏛️ v3.60.87 - BLINDAJE DE RESTAURACIÓN POR LOTES (CHUNKED RESTORE) Y BYPASS A VERCEL 413 (2026-10-03)
+> **ESTADO:** 🟢 RESOLUCIÓN TOTAL DE ERROR 413 PAYLOAD TOO LARGE MEDIANTE ENVÍO POR LOTES MODULARES  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Motor de Carga Ligera y Tolerancia a Fallos  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Diagnóstico del Error 413 en Vercel:
+- **Límite de Infraestructura:** Las Serverless Functions de Vercel imponen un límite infranqueable de **4.5 MB** en el cuerpo de las peticiones HTTP (`POST`).
+- **Causa Raíz:** El archivo JSON de respaldo de producción, al acumular meses de ventas de boletos y arqueos históricos, superó los 4.5 MB. Vercel rechazó la petición en el Edge proxy antes de llegar al backend con `HTTP 413 FUNCTION_PAYLOAD_TOO_LARGE` y respuesta en texto plano (`Request Entity Too Large`), provocando a su vez el fallo de parseo JSON (`Unexpected token 'R'`).
+
+### 📍 2. Solución de Ingeniería (Transmisión Modular por Lotes):
+- **Segmentación en Cliente (`src/components/common/EnvironmentBanner.tsx`):**
+  El cliente parsea el archivo en memoria y lo transmite en 4 a 5 micro-paquetes ultraligeros (< 30 KB cada uno, 150 veces más pequeños que el límite de Vercel):
+  * **Lote 1:** Cuentas de Socios, Flota de Autobuses y Suscripciones.
+  * **Lote 2:** Personal y Tripulación (Choferes y Ayudantes con sus PINs reales).
+  * **Lote 3:** Rutas, Vueltas Turno (VTs) y Frecuencias oficiales.
+  * **Lote 4:** Catálogo Maestro de Mantenimiento, Recetas por Bus y Overrides de Km.
+  * **Lote 5:** Cuentas de Gastos (`OwnerExpenses`) transmitidas en tandas de 30 ítems sin imágenes pesadas.
+- **Feedback Táctil en Tiempo Real:**
+  La ventana modal muestra el progreso paso a paso en pantalla (`Paso 1/4`, `Paso 2/4`, etc.) y consolida los resultados en la tarjeta de resumen final.
+- **Configuración Serverless (`src/app/api/backup/route.ts`):**  
+  Exportación de `dynamic = 'force-dynamic'` y `maxDuration = 60` para procesamiento garantizado en la nube.
