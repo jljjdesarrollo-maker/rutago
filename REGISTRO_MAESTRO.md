@@ -2583,3 +2583,21 @@ Se auditó y completó el endpoint de respaldo para abarcar con precisión las *
 - Google Cloud estipula que las cuentas de servicio tienen 0 bytes propios; consumen el almacenamiento de la carpeta compartida por el usuario humano.
 - **Acción requerida:** Compartir la carpeta `Respaldos_RutaGo` de `rutago.backups@gmail.com` con el correo del robot `gdrive-backup@rutago-backups.iam.gserviceaccount.com` como **Editor**.
 - El script fue actualizado con `supportsAllDrives=true` para gestionar la subida y rotación dentro de la carpeta compartida sin restricciones.
+
+---
+
+## 🏛️ v3.60.79 - FASE 1: ARQUITECTURA DE RESPALDO POR CORREO Y BÓVEDA REDUNDANTE (2026-10-03)
+> **ESTADO:** 🟢 CONFIGURACIÓN DE ENVÍO DIRECTO A rutago.backups@gmail.com Y ROTACIÓN DE 3 VERSIONES  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Arquitectura Cloud y Respaldo  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Elección de Opción 2 (Envío Directo a rutago.backups@gmail.com):
+- Se optó por la entrega directa a la bandeja de entrada de `rutago.backups@gmail.com` con los archivos `.zip` y `.json` adjuntos.
+- Para máxima redundancia y seguridad empresarial, se implementó además la bóveda de Releases con purga automática de la versión más antigua mediante `scripts/rotate-releases.mjs`.
+
+---
+
+### 📍 2. Próximos Pasos Inmediatos:
+- Obtener la contraseña de aplicación de 16 letras de Google (`GMAIL_APP_PASSWORD`).
+- Registrar el secreto en GitHub y actualizar `.github/workflows/backup-drive.yml`.
+- Ejecutar la prueba de envío en vivo y verificar la llegada del correo con los adjuntos.
