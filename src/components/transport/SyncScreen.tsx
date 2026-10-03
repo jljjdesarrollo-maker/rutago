@@ -14,13 +14,13 @@ export function SyncScreen({ session, onBack }: Props) {
   const [ventas, setVentas] = useState<any[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [syncResults, setSyncResults] = useState<{ ok: number; fail: number; total: number }>({ ok: 0, fail: 0, total: 0 });
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [autoSyncDone, setAutoSyncDone] = useState(false);
   const [autoReturned, setAutoReturned] = useState(false);
   const syncingRef = useRef(false);
 
   useEffect(() => {
-    const handle = () => setIsOnline(navigator.onLine);
+    const handle = () => setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
     window.addEventListener('online', handle);
     window.addEventListener('offline', handle);
     return () => { window.removeEventListener('online', handle); window.removeEventListener('offline', handle); };

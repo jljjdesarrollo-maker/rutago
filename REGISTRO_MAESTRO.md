@@ -2872,3 +2872,26 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
   * **Paso 7 (Boletaje):** Envío de boletos emitidos en lotes de 50 ítems.
 - **Persistencia Relacional en `POST /api/backup` (`src/app/api/backup/route.ts`):**
   * Restauración de cada `DailyRecord` con sus correspondientes vueltas (`Trip`) y gastos de ruta (`Expense`), alimentando de inmediato `/api/reports` para el cálculo del Arqueo General y Balance del Socio.
+
+---
+
+## 🏛️ v3.60.92 - CORRECCIÓN QUIRÚRGICA DE CRASH AL SELECCIONAR GRUPO VT (2026-10-03)
+> **ESTADO:** 🟢 RESOLUCIÓN DEFINITIVA DEL ERROR "¡ALGO SALIÓ MAL!" AL INGRESAR A LA VUELTA TURNO  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Flujo Operativo del Ayudante (HomeScreenVT y FrecuenciaSelector)  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Diagnóstico del Error "¡Algo salió mal!" en Producción:
+- **Causa Raíz:** En `src/components/transport/HomeScreenVT.tsx`, la línea 212 contenía una función de limpieza huérfana:
+  ```ts
+  return () => unsub();
+  ```
+  La variable `unsub` no estaba definida en ese efecto.
+- **Momento del Fallo:** Cuando el ayudante seleccionaba su grupo VT e ingresaba para iniciar la jornada, `HomeScreenVT` se desmontaba para dar paso al selector de frecuencias. Al desmontarse, React ejecutó la limpieza llamando a `unsub()`, disparando:
+  `ReferenceError: unsub is not defined`.
+- Next.js interceptó la excepción no controlada en su Error Boundary (`src/app/error.tsx`), mostrando en pantalla la tarjeta roja de bloqueo: *"¡Algo salió mal!"*.
+
+### 📍 2. Solución Aplicada en Producción (`main`):
+- **HomeScreenVT.tsx:** Eliminación inmediata del callback huérfano `return () => unsub();`.
+- **FrecuenciaSelector.tsx:** Validación estricta `Array.isArray(data)` para evitar desbordes al consultar la API de frecuencias y blindaje de `navigator.onLine` para renderizado seguro.
+- **SyncScreen.tsx:** Protección de `navigator.onLine`.
+- **src/app/page.tsx:** Cobertura de las vistas operativas de boletos con `<SafeErrorBoundary>` para que ningún fallo inesperado opaque la aplicación con la pantalla de error global.

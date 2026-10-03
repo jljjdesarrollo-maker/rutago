@@ -452,26 +452,30 @@ export default function Home() {
 
   if (view === 'boletos_home') {
     return (
-      <HomeScreenVT
-        currentUser={user}
-        onBack={() => setView('home')}
-        onSessionStart={(s) => {
-          setVtSession(s);
-          setView('boletos_frecuencias');
-        }}
-      />
+      <SafeErrorBoundary fallbackTitle="Inicio de Turno VT" onGoHome={() => setView('home')}>
+        <HomeScreenVT
+          currentUser={user}
+          onBack={() => setView('home')}
+          onSessionStart={(s) => {
+            setVtSession(s);
+            setView('boletos_frecuencias');
+          }}
+        />
+      </SafeErrorBoundary>
     );
   }
   if (view === 'boletos_frecuencias' && vtSession) {
     return (
-      <FrecuenciaSelector
-        session={vtSession}
-        onOpenFrequency={(e) => { setCurrentEstado(e); setView('boletos_tickets'); }}
-        onGoToArqueo={(e, esUltima) => { setCurrentEstado(e); setEsUltimaFrecuencia(esUltima); setView('boletos_arqueo'); }}
-        onGoToArqueoGeneral={() => setView('boletos_arqueo_general')}
-        onBack={() => setView('home')}
-        onGoToSync={() => setView('boletos_sync')}
-      />
+      <SafeErrorBoundary fallbackTitle="Selector de Frecuencias VT" onGoHome={() => setView('home')}>
+        <FrecuenciaSelector
+          session={vtSession}
+          onOpenFrequency={(e) => { setCurrentEstado(e); setView('boletos_tickets'); }}
+          onGoToArqueo={(e, esUltima) => { setCurrentEstado(e); setEsUltimaFrecuencia(esUltima); setView('boletos_arqueo'); }}
+          onGoToArqueoGeneral={() => setView('boletos_arqueo_general')}
+          onBack={() => setView('home')}
+          onGoToSync={() => setView('boletos_sync')}
+        />
+      </SafeErrorBoundary>
     );
   }
   if (view === 'boletos_tickets' && vtSession && currentEstado) {

@@ -209,7 +209,6 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
         }
       }
     } catch { /* ignore */ }
-    return () => unsub();
   }, []);
 
   useEffect(() => {

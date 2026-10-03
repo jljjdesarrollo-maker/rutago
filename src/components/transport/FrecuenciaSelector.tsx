@@ -108,7 +108,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   const [loading, setLoading] = useState(true);
   const [reassigning, setReassigning] = useState<string | null>(null);
   const [pendingCount, setPendingCount] = useState(0);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [syncingForArqueo, setSyncingForArqueo] = useState(false);
   const [syncDone, setSyncDone] = useState(false);
   const [noRealizadaModal, setNoRealizadaModal] = useState<FrecuenciaEstado | null>(null);
@@ -126,7 +126,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   const fecha = session.fecha || today();
 
   useEffect(() => {
-    const handle = () => setIsOnline(navigator.onLine);
+    const handle = () => setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
     window.addEventListener('online', handle);
     window.addEventListener('offline', handle);
     return () => { window.removeEventListener('online', handle); window.removeEventListener('offline', handle); };
@@ -137,7 +137,8 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
       const res = await fetch(`/api/frecuencias?vtCode=${session.vtCode}`);
       if (res.ok) {
         const data = await res.json();
-        setFrecuencias(data);
+        if (Array.isArray(data)) {
+          setFrecuencias(data);
 
         // Try loading saved estados from localStorage first
         const saved = loadEstadosFromLS(session.vtCode, fecha);
@@ -173,6 +174,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
           }));
           setEstados(newEstados);
           saveEstadosToLS(session.vtCode, fecha, newEstados);
+        }
         }
       }
     } catch (error) {
