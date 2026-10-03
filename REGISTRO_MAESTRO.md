@@ -2699,3 +2699,27 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
 - El nuevo ayudante puede abrir el enlace de Staging en su teléfono móvil o en el teléfono del bus.
 - Puede emitir boletos con impresora Bluetooth, practicar cobros, equivocarse, anular y cerrar arqueos de jornada con total tranquilidad y libertad.
 - En la siguiente etapa, se conecta la base de datos de pruebas para aislamiento relacional completo.
+
+---
+
+## 🏛️ v3.60.84 - FASE 2: SEGUNDA BD (STAGING) CONECTADA Y ENRUTAMIENTO DINÁMICO (2026-10-03)
+> **ESTADO:** 🟢 SEGUNDA BASE DE DATOS `rutago-staging-db` CREADA Y CONECTADA A STAGING  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Aislamiento Relacional de Ambientes  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Base de Datos de Pruebas Provisionada (`rutago-staging-db`):
+- Aprovisionada en Vercel Storage / Prisma Postgres: `rutago-staging-db`.
+- Estatus: `Available` (Verde), Plan Free (500 MB).
+- Conectada exclusivamente al entorno `Preview` de Vercel bajo el prefijo `STAGING`.
+- Variables generadas automáticamente en Vercel:
+  * `STAGING_PRISMA_DATABASE_URL`
+  * `STAGING_POSTGRES_URL`
+
+### 📍 2. Enrutamiento Dinámico Transparente (`src/lib/db.ts`):
+- Se implementó la resolución inteligente de base de datos:
+  * En **Staging / Preview**: detecta automáticamente `STAGING_PRISMA_DATABASE_URL` o `STAGING_POSTGRES_URL` y conecta a `rutago-staging-db`.
+  * En **Producción (`main`)**: al no existir variables `STAGING_...`, se conecta a `DATABASE_URL` (Base de datos real de los buses).
+- Se unificaron los endpoints de la API (`bus-vts`, `frecuencias`, `seed-frecuencias`, `seed-vts`, `ventas`, `ventas/batch`) para consumir el cliente singleton `db` de `@/lib/db`, garantizando que todas las operaciones sigan la misma regla de aislamiento y previniendo el agotamiento del pool de conexiones.
+
+### 📍 3. Despliegue de Esquema Automatizado (`package.json`):
+- El comando `build` fue configurado para inyectar dinámicamente la base de datos de staging en `prisma db push` durante los despliegues de Preview, aprovisionando de forma autónoma las 16 tablas sin tocar producción.

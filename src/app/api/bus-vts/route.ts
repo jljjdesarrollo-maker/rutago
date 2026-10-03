@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db as prisma } from '@/lib/db';
 import { VT_DATA } from '@/lib/seed-vts';
-
-const prisma = new PrismaClient();
 
 // GET all active VTs (auto-seeds first to ensure DB is up to date)
 export async function GET() {

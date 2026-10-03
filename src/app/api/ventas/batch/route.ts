@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { db as prisma } from '@/lib/db';
 import { resolveValidFrecuenciaId } from '@/lib/frecuencia-helper';
-
-const prisma = new PrismaClient();
 
 // POST /api/ventas/batch — Sync multiple ventas in one request
 export async function POST(request: NextRequest) {
