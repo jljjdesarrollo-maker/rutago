@@ -1,15 +1,18 @@
-name: Respaldo Automatico a Google Drive (Codigo + BD)
+name: Respaldo Automatico (Correo rutago.backups@gmail.com + Boveda de 3 Versiones)
 
 on:
   schedule:
     # Se ejecuta todos los dias a las 05:00 UTC (00:00 hora Ecuador)
     - cron: '0 5 * * *'
   workflow_dispatch:
-    # Permite ejecutarlo manualmente en cualquier momento desde la pestaña Actions
+    # Permite ejecutarlo manualmente en cualquier momento desde GitHub Actions
+
+permissions:
+  contents: write
 
 jobs:
   backup:
-    name: Generar y Subir Respaldos a Google Drive
+    name: Generar y Distribuir Respaldo (Correo + Boveda)
     runs-on: ubuntu-latest
 
     steps:
@@ -25,20 +28,47 @@ jobs:
         run: |
           TIMESTAMP=$(date +'%Y-%m-%d_%H%M')
           ZIP_NAME="rutago_codigo_${TIMESTAMP}.zip"
-          echo "Empaquetando repositorio excluyendo carpetas pesadas..."
+          echo "Empaquetando repositorio..."
           zip -q -r "$ZIP_NAME" . -x "node_modules/*" ".next/*" ".git/*" "dist/*"
           echo "ZIP_PATH=$ZIP_NAME" >> $GITHUB_ENV
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_ENV
 
-      - name: 🗄️ Extraer Volcado de Base de Datos (16 Tablas PostgreSQL)
+      - name: 🗄️ Extraer Base de Datos (16 Tablas PostgreSQL)
         run: |
-          TIMESTAMP=$(date +'%Y-%m-%d_%H%M')
           DB_NAME="rutago_bd_${TIMESTAMP}.json"
           PROD_URL="https://rutago.vercel.app/api/backup"
           curl -s -f "$PROD_URL" -o "$DB_NAME" || echo '{"status": "manual_trigger"}' > "$DB_NAME"
           echo "DB_PATH=$DB_NAME" >> $GITHUB_ENV
 
-      - name: ☁️ Subir a Google Drive y Rotar 3 Versiones
+      - name: 📧 Enviar Respaldo por Correo a rutago.backups@gmail.com
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: rutago.backups@gmail.com
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "📦 Respaldo Diario RutaGo - ${{ env.TIMESTAMP }}"
+          to: rutago.backups@gmail.com
+          from: "RutaGo Bóveda <rutago.backups@gmail.com>"
+          body: "Adjunto encontrarás el respaldo automático de RutaGo:\n\n1. Código fuente completo (.zip)\n2. Base de datos con las 16 tablas de PostgreSQL (.json)\n\nGenerado: ${{ env.TIMESTAMP }}"
+          attachments: "${{ env.ZIP_PATH }},${{ env.DB_PATH }}"
+
+      - name: 🏛️ Guardar en Bóveda GitHub Releases (3 Versiones)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: backup-${{ env.TIMESTAMP }}
+          name: "📦 Respaldo RutaGo - ${{ env.TIMESTAMP }}"
+          files: |
+            ${{ env.ZIP_PATH }}
+            ${{ env.DB_PATH }}
+          draft: false
+          prerelease: false
         env:
-          RESPALDOS_RUTAGO: ${{ secrets.RESPALDOS_RUTAGO }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ♻️ Purgar Versiones Antiguas (Conservar las 3 Más Recientes)
         run: |
-          node scripts/backup-to-gdrive.mjs "$ZIP_PATH" "$DB_PATH"
+          node scripts/rotate-releases.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
