@@ -2470,3 +2470,40 @@ El usuario ha seleccionado formalmente la **Opción 3 (Híbrida)**, la cual comb
   * **Opción A (Cuenta de Servicio / Service Account de Google Cloud):** Se crea una Service Account gratuita en Google Cloud Console vinculada a `rutago.backups@gmail.com`, se le comparte una carpeta en Google Drive y se guarda la llave JSON como secreto (`GDRIVE_CREDENTIALS`) en GitHub. Cero interacción humana para siempre.
   * **Opción B (OAuth Token Refresh):** Token de acceso de usuario con permisos de Drive.
   * **Opción C (Implementar primero la Capa Manual en UI y luego la Automatización de Drive):** Asegurar hoy mismo que el botón en SuperAdmin descargue el 100% de los datos y código, y luego conectar el robot de GitHub Actions a Drive.
+
+---
+
+## 🏛️ v3.60.75 - FASE 1: VOLCADO INTEGRAL 16 MODELOS EN SUPERADMIN (OPCIÓN C1) (2026-10-03)
+> **ESTADO:** 🟢 CAPA MANUAL DESPLEGADA Y VERIFICADA (BUILD APROBADO)  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Arquitectura Cloud y Respaldo  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Extensión Integral de `/api/backup`:
+Se auditó y completó el endpoint de respaldo para abarcar con precisión las **16 tablas/modelos de PostgreSQL**:
+1. `records` (`DailyRecord` con sus `trips` y `expenses` anidados de cada jornada).
+2. `personas` (`Persona` con roles, teléfonos, cédulas y vinculación de hardware `deviceId`).
+3. `socios` (`CuentaSocio` con estatus activo y fundadores SaaS).
+4. `buses` (`Bus` con números de disco y placas).
+5. `suscripciones` (`SuscripcionBus`).
+6. `pagos` (`PagoSuscripcion` con fechas y comprobantes).
+7. `ownerExpenses` (`OwnerExpense` con egresos patrimoniales y deudas con talleres).
+8. `ventasBoletos` (`VentaBoleto` con todo el boletaje emitido en ruta).
+9. `busVTs` (`BusVT` catálogo de vueltas programadas).
+10. `frecuencias` (`Frecuencia` horarias oficiales).
+11. `catalogoMaestroItems` (`CatalogoMaestroItem` catálogo global de mantenimiento).
+12. `busRecetasCombo` (`BusRecetaCombo` recetas personalizadas por unidad).
+13. `busItemOverrides` (`BusItemOverride` personalización de kilometrajes por bus).
+14. `busMantenimientoConfigs` (`BusMantenimientoConfig` estado y niveles de control).
+- **Bloque de Resumen (`summary`):** Genera automáticamente la auditoría de conteo por tabla y el rango de fechas de operación (`dateRange`).
+
+---
+
+### 📍 2. Botón Activo en Panel SuperAdmin (PIN 9999):
+- **Ubicación:** Menú SuperAdmin -> Tarjeta *"Copia de Seguridad Central (BD)"* -> Botón `[ 📤 Exportar ]`.
+- **Compatibilidad Móvil y Desktop:** Soporta descarga directa en PC/Mac y el menú nativo de compartir (`navigator.share`) en Android/iOS para guardar directamente en Google Drive, WhatsApp o archivos locales.
+
+---
+
+### 📍 3. Siguiente Paso / Decisión Actual (Fase 1 - Paso 4):
+- El usuario descarga el archivo de prueba desde su panel SuperAdmin para verificar que contiene sus datos de Enero a la fecha.
+- Una vez confirmado, se procede a estructurar la **Capa B (Robot de GitHub Actions hacia `rutago.backups@gmail.com`)** con la rotación de las 3 versiones de código.
