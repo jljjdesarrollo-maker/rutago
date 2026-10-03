@@ -2675,3 +2675,27 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
 3. Indicar que el punto exacto de inicio es el **Paso 2.1 de la FASE 2: Creación de la rama `staging` en GitHub**.
 4. Si se requiere token de GitHub para operaciones sobre ramas remotas, solicitárselo directamente al usuario antes de operar.
 5. Mantener la regla de no refactorizar código probado y preservar la ergonomía móvil a una mano (Thumb Zone).
+
+---
+
+## 🏛️ v3.60.83 - FASE 2: RAMA STAGING Y BANNER DE ENTRENAMIENTO DESPLEGADOS (2026-10-03)
+> **ESTADO:** 🟢 RAMA `staging` CREADA Y SINCRONIZADA EN GITHUB | AMBIENTE DE SIMULADOR ACTIVO  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Aislamiento de Ambientes (Staging / Capacitación)  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Creación y Despliegue de la Rama `staging`:
+- Se creó y publicó en GitHub la rama remota oficial `origin/staging`.
+- Vercel detecta automáticamente los pushes a la rama `staging` y genera un Preview Deployment independiente (ej. `rutago-git-staging-....vercel.app`).
+
+### 📍 2. Componente de Detección Visual (`EnvironmentBanner.tsx`):
+- Ubicación: `src/components/common/EnvironmentBanner.tsx`, montado globalmente en `src/app/layout.tsx`.
+- **Detección Automática Inteligente:**
+  * Si la URL contiene `staging`, `-git-staging`, `preview` o la variable `NEXT_PUBLIC_APP_ENV === 'staging'`.
+  * En **Producción (`rutago.vercel.app`)**: permanece **100% invisible** (cero interferencia visual).
+  * En **Staging / Capacitación**: despliega la barra superior fija de color ámbar de alto contraste:
+    `[ 🧪 SIMULADOR ] MODO ENTRENAMIENTO: Boletos y arqueos de prueba (Caja real intacta)`.
+
+### 📍 3. Capacitación Práctica del Nuevo Ayudante:
+- El nuevo ayudante puede abrir el enlace de Staging en su teléfono móvil o en el teléfono del bus.
+- Puede emitir boletos con impresora Bluetooth, practicar cobros, equivocarse, anular y cerrar arqueos de jornada con total tranquilidad y libertad.
+- En la siguiente etapa, se conecta la base de datos de pruebas para aislamiento relacional completo.
