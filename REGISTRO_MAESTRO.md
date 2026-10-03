@@ -2821,3 +2821,23 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
   * **Frecuencias y VTs:** Autogeneración preventiva del `BusVT` padre si una frecuencia importada lo requiere.
 - **Aislamiento por Ítem:**
   Cada entidad se procesa dentro de su propio bloque protegido, evitando que una advertencia puntual cancele el resto de la base de datos.
+
+---
+
+## 🏛️ v3.60.89 - ACCESO UNIVERSAL PARA SIMULADOR Y BYPASS DEVICE BINDING (2026-10-03)
+> **ESTADO:** 🟢 ACCESO INMEDIATO HABILITADO PARA TODOS LOS ROLES EN AMBIENTE DE PRUEBAS  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Autenticación Resiliente y Simulador de Capacitación  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Diagnóstico de Acceso en Ambiente de Pruebas:
+- **Causa 1 (Archivo de Respaldo Previo sin Hashes):** El archivo JSON descargado de producción antes de la v3.60.85 no contenía los campos `pin` en `personas` ni `pinHash` en `socios`.
+- **Causa 2 (Device Binding Activo):** Al clonar la base de producción, los ayudantes heredaron el `deviceId` del teléfono físico del autobús. Al intentar ingresar desde un navegador en PC o teléfono de prueba, el sistema bloqueaba con código 403.
+- **Causa 3 (Falta de Fallback Simétrico):** El endpoint `/api/auth` contaba con un bootstrap exclusivo para `9999` (SuperAdmin), pero no para los roles operativos.
+
+### 📍 2. Solución de Ingeniería Implementada (`src/app/api/auth/route.ts`):
+- **Bypass Automático de Device Binding en Staging:** En el entorno de pruebas, la restricción de hardware no bloquea al evaluador, permitiendo ingresar desde cualquier laptop, tablet o teléfono.
+- **Credenciales Maestras del Simulador Sincronizadas:**
+  * **Socio:** PIN **`0101`** autentica de inmediato como Socio Propietario de la unidad.
+  * **Ayudante:** PIN **`2107`** o **`1234`** autentica de inmediato como Ayudante de Ruta oficial.
+  * **Conductor:** PIN **`0423`** autentica de inmediato como Conductor.
+  * **SuperAdmin:** PIN **`9999`** autentica como SuperAdministrador SaaS.
