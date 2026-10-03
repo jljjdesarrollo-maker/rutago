@@ -12,7 +12,7 @@ import { getConfiguracionFlotaLocal, subscribeToVTConfig, verificarActualizacion
 import { ShieldCheck } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.60.30';
+const APP_VERSION = 'v3.60.31';
 
 interface Props {
   currentUser?: UserSession;
@@ -273,7 +273,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
     }
   };
 
-  const startSession = (vtCode: string, forceNew = false) => {
+  const startSession = async (vtCode: string, forceNew = false) => {
     if (!isAuthorized) return;
     const sessionDate = selectedDate;
 
@@ -334,21 +334,37 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
       esReemplazoSecretaria: Boolean(esReemplazoSecretaria),
     };
 
-    // ─── Limpieza completa al forzar nuevo VT ───
+    // ─── Limpieza atómica y anulación al forzar nuevo VT ───
     if (forceNew && existingSession) {
       const oldFecha = existingSession.fecha;
       const oldVtCode = existingSession.vtCode;
+      try {
+        await deleteVentasByVT(oldVtCode, oldFecha);
+      } catch (err) {
+        console.error('Error al anular ventas del VT anterior:', err);
+      }
       localStorage.removeItem(`rg_estados_${oldVtCode}_${oldFecha}`);
       localStorage.removeItem(`arqueo_general_${oldVtCode}_${oldFecha}`);
       localStorage.removeItem('rg_vt_session');
       localStorage.removeItem('rg_active_view');
       localStorage.removeItem('rg_active_estado_id');
       localStorage.removeItem('rg_active_es_ultima');
-      deleteVentasByVT(oldVtCode, oldFecha).catch(() => {});
     }
 
-    localStorage.removeItem(`rg_estados_${vtCode}_${sessionDate}`);
-    localStorage.removeItem(`arqueo_general_${vtCode}_${sessionDate}`);
+    if (forceNew) {
+      try {
+        await deleteVentasByVT(vtCode, sessionDate);
+      } catch {}
+      localStorage.removeItem(`rg_estados_${vtCode}_${sessionDate}`);
+      localStorage.removeItem(`arqueo_general_${vtCode}_${sessionDate}`);
+    }
+
+    // Refrescar contador de ventas pendientes tras purga
+    try {
+      const remaining = await countVentasPendientes();
+      setPendingVentasCount(remaining);
+    } catch {}
+
     localStorage.setItem('rg_vt_session', JSON.stringify({
       ...newSession,
       timestamp: Date.now(),
@@ -371,15 +387,15 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
     onSessionStart(sessionData);
   };
 
-  const handleForceNew = () => {
+  const handleForceNew = async () => {
     if (!selectedVT) return;
     setConfirmNewSession(false);
-    startSession(selectedVT, true);
+    await startSession(selectedVT, true);
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (!selectedVT) return;
-    startSession(selectedVT);
+    await startSession(selectedVT);
   };
 
   // ─── Printer connection ───
@@ -1003,14 +1019,14 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
 
       {/* Banner de Turno sin Terminar */}
       {existingUnfinished && existingSession && (
-        <div className="fixed bottom-0 left-0 right-0 bg-[#053225] text-white p-4 shadow-2xl z-40 border-t border-emerald-800/60">
+        <div className={`fixed ${pendingVentasCount > 0 ? 'bottom-28' : 'bottom-0'} left-0 right-0 bg-[#053225] text-white p-4 shadow-2xl z-40 border-t border-emerald-800/60 transition-all`}>
           <div className="max-w-lg mx-auto">
             <div className="flex items-center gap-2 mb-1">
-              <AlertTriangle className="w-5 h-5 text-amber-300" />
+              <Clock className="w-5 h-5 text-emerald-300" />
               <p className="font-bold text-sm">Turno en curso: {existingSession.vtCode} ({existingSession.fecha})</p>
             </div>
             <p className="text-white/80 text-xs mb-3">
-              Tienes frecuencias pendientes de liquidar en este turno.
+              Tienes frecuencias registradas en este turno. Puedes continuar o reemplazarlo por uno nuevo.
             </p>
             <div className="flex gap-2">
               <button
@@ -1025,38 +1041,40 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
                 onClick={() => setConfirmNewSession(true)}
                 className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs active:scale-[0.98]"
               >
-                Iniciar Nuevo VT
+                Reemplazar Turno
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Confirmación para Abandonar Turno */}
+      {/* Modal de Reemplazo de Turno del Día */}
       {confirmNewSession && existingSession && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-sm p-6 text-center shadow-2xl">
-            <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-amber-700">
-              <AlertTriangle className="w-7 h-7" />
+          <div className="bg-white rounded-3xl w-full max-w-sm p-6 text-center shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-[#053225]">
+              <RefreshCw className="w-7 h-7" />
             </div>
-            <h3 className="text-base font-black text-slate-900 mb-1">¿Iniciar Nuevo Turno?</h3>
+            <h3 className="text-base font-black text-slate-900 mb-1">¿Reemplazar Turno del Día?</h3>
             <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-              Existe una sesión para <strong>{existingSession.vtCode}</strong> en la fecha <strong>{existingSession.fecha}</strong>. Solo puede haber un turno oficial activo por fecha.
+              Existe una sesión previa para <strong>{existingSession.vtCode}</strong> en la fecha <strong>{existingSession.fecha}</strong>.
+              <br /><br />
+              Al iniciar el nuevo turno <strong>{selectedVT}</strong>, se descartarán los boletos y arqueos del turno anterior para dejar activo únicamente el nuevo VT.
             </p>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setConfirmNewSession(false)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs"
+                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs active:scale-[0.98]"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleForceNew}
-                className="flex-1 py-2.5 rounded-xl bg-[#053225] text-white font-black text-xs shadow-md"
+                className="flex-1 py-3 rounded-xl bg-[#053225] hover:bg-[#073b2d] text-white font-black text-xs shadow-md active:scale-[0.98]"
               >
-                Confirmar Nuevo
+                Reemplazar y Empezar
               </button>
             </div>
           </div>

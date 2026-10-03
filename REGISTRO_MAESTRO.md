@@ -2895,3 +2895,25 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
 - **FrecuenciaSelector.tsx:** Validación estricta `Array.isArray(data)` para evitar desbordes al consultar la API de frecuencias y blindaje de `navigator.onLine` para renderizado seguro.
 - **SyncScreen.tsx:** Protección de `navigator.onLine`.
 - **src/app/page.tsx:** Cobertura de las vistas operativas de boletos con `<SafeErrorBoundary>` para que ningún fallo inesperado opaque la aplicación con la pantalla de error global.
+
+---
+
+## 🏛️ v3.60.93 - REGLA DE REEMPLAZO ATÓMICO Y LIMPIEZA DE TURNO VT DEL DÍA (2026-10-03)
+> **ESTADO:** 🟢 REGLA OFICIAL DE 1 SOLO VT POR DÍA - REEMPLAZO Y ANULACIÓN ATÓMICA SIN BLOQUEOS  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Flujo Operativo del Ayudante (HomeScreenVT)  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Contexto y Regla de Negocio:
+- **Regla Estricta:** Un solo VT activo por fecha en la unidad.
+- **Comportamiento Requerido:** Cuando se inicia un nuevo VT en una fecha donde ya existía una sesión previa (por error de selección, cambio de turno o pruebas), los registros de boletos y arqueos del VT anterior deben ser completamente descartados/anulados de forma limpia, y el nuevo VT debe activarse como el único turno válido y oficial desde cero.
+- **Problema Previo:** Al presionar el modal de "Iniciar Nuevo Turno", `deleteVentasByVT` se ejecutaba sin `await` (en segundo plano). Esto causaba que el contador `pendingVentasCount` no se actualizara a tiempo, manteniendo bloqueado el botón de inicio con la alerta "Sincronizar ventas pendientes", además de que el banner inferior se solapaba sobre el modal y la alerta tenía un tono alarmista.
+
+### 📍 2. Solución de Ingeniería Implementada (`src/components/transport/HomeScreenVT.tsx`):
+- **Purga Atómica y Asíncrona:** `startSession` y `handleForceNew` ahora son completamente `async/await`. Esperan a que `deleteVentasByVT` elimine efectivamente los boletos de `IndexedDB`, limpian el `localStorage` del VT anterior (`rg_estados_${oldVtCode}_${oldFecha}` y `arqueo_general_${oldVtCode}_${oldFecha}`) y actualizan `pendingVentasCount` con `countVentasPendientes()` para que no quede ningún rastro ni bloqueo.
+- **Interfaz y Modal Amigable:** Sustitución de los avisos alarmistas por una ventana modal clara y profesional:
+  * **Título:** `¿Reemplazar Turno del Día?`
+  * **Explicación:** Notifica que al arrancar el nuevo VT, se descartarán los boletos y arqueos del turno anterior para dejar activo únicamente el nuevo.
+  * **Botones:** `[ Cancelar ]` y `[ Reemplazar y Empezar ]`.
+- **Desacoplamiento Visual:** Ajuste de posicionamiento dinámico en el banner inferior de turno activo para evitar cualquier solapamiento en pantallas móviles.
+- **Versión de Build:** Incrementada a `v3.60.31`.
+
