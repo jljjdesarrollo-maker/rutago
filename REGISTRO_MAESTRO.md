@@ -2405,3 +2405,38 @@ La aplicación cuenta actualmente con los datos reales de operación desde **Ene
 ### 📍 5. Punto de Partida para la Próxima Sesión:
 - **Punto de Reanudación:** Configuración de la rama `staging` en GitHub y aprovisionamiento de la segunda base de datos para el ambiente de pruebas.
 - **Nota para otra cuenta de Google AI Studio:** Al iniciar la nueva sesión, leer este archivo `REGISTRO_MAESTRO.md` para confirmar el estado en la versión `v3.60.72` y solicitar el PAT de GitHub si se requiere realizar operaciones sobre el repositorio.
+
+---
+
+## 🏛️ v3.60.73 - FASE 1: DEFINICIÓN DE RESPALDOS, VERCEL POSTGRES Y POLÍTICA DE 3 VERSIONES (2026-10-03)
+> **ESTADO:** 🟢 EN EJECUCIÓN PASO A PASO (MODO DEFINICIÓN CON EL USUARIO)  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Arquitectura Cloud y Respaldo  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Parámetros Confirmados por el Usuario:
+1. **Cuenta Oficial de Bóveda / Respaldos:**  
+   - Correo creado y activo: **`rutago.backups@gmail.com`** (15 GB limpios y exclusivos para RutaGo).
+2. **Proveedor de Base de Datos de Producción:**  
+   - Alojamiento confirmado: **Vercel Postgres** (PostgreSQL administrado en Vercel / Neon Storage).
+   - Datos reales activos: Enero 2026 a la fecha presente.
+3. **Política de Respaldo de Código Fuente (Rolling 3 Versions):**  
+   - Se mantendrán **3 versiones instantáneas consecutivas** (empaquetados `.zip` del repositorio completo).
+   - Rotación automática: al crearse una cuarta versión, se elimina automáticamente la más antigua para no acumular archivos obsoletos.
+4. **Política de Respaldo de Base de Datos:**  
+   - Volcados `.sql.gz` periódicos sincronizados hacia la bóveda en `rutago.backups@gmail.com`.
+
+---
+
+### 📍 2. Diagnóstico Técnico de Vercel Postgres (Connection Pooling):
+- En Vercel Postgres, la infraestructura provee por defecto dos tipos de conexión:
+  * `POSTGRES_PRISMA_URL` o `POSTGRES_URL`: Utiliza **PgBouncer** integrado con el parámetro `pgbouncer=true` y `connection_limit=1`. Esta es la URL que debe alimentar `DATABASE_URL` para garantizar que los 8 buses no agoten las conexiones serverless.
+  * `POSTGRES_URL_NON_POOLING`: Conexión directa utilizada únicamente para migraciones pesadas del esquema.
+- **Acción preventiva:** Verificar que en el dashboard de Vercel (Project Settings -> Environment Variables), `DATABASE_URL` apunte a la versión con pooler (`POSTGRES_PRISMA_URL`).
+
+---
+
+### 📍 3. Siguiente Paso / Decisión Actual (Fase 1 - Paso 2):
+- Definir el método de entrega de los respaldos hacia `rutago.backups@gmail.com`:
+  * **Vía A (Automática 100%):** GitHub Action diaria o por cron que toma el volcado de la BD y el zip de código (rotando las 3 versiones) y lo sube directamente al Google Drive de `rutago.backups@gmail.com`.
+  * **Vía B (Manual Asistida en UI):** Botón en el panel SuperAdmin (9999) `[ 📥 Descargar Respaldo de Emergencia ]` que descarga en 1 clic el archivo `.sql.gz` de la base y el `.zip` del código para guardarlo manualmente.
+  * **Vía C (Híbrida Recomendada):** Automatización con GitHub Action + Botón de descarga rápida en el panel SuperAdmin.
