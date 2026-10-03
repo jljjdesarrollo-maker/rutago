@@ -2440,3 +2440,33 @@ La aplicación cuenta actualmente con los datos reales de operación desde **Ene
   * **Vía A (Automática 100%):** GitHub Action diaria o por cron que toma el volcado de la BD y el zip de código (rotando las 3 versiones) y lo sube directamente al Google Drive de `rutago.backups@gmail.com`.
   * **Vía B (Manual Asistida en UI):** Botón en el panel SuperAdmin (9999) `[ 📥 Descargar Respaldo de Emergencia ]` que descarga en 1 clic el archivo `.sql.gz` de la base y el `.zip` del código para guardarlo manualmente.
   * **Vía C (Híbrida Recomendada):** Automatización con GitHub Action + Botón de descarga rápida en el panel SuperAdmin.
+
+---
+
+## 🏛️ v3.60.74 - FASE 1: APROBACIÓN DE ESTRATEGIA HÍBRIDA (OPCIÓN 3) (2026-10-03)
+> **ESTADO:** 🟢 OPCIÓN 3 APROBADA POR EL USUARIO - EN FASE DE ESPECIFICACIÓN TÉCNICA  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Arquitectura Cloud y Respaldo  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Estrategia Híbrida Aprobada:
+El usuario ha seleccionado formalmente la **Opción 3 (Híbrida)**, la cual combina dos capas de seguridad complementarias:
+1. **Capa A - Descarga Manual Directa en UI (SuperAdmin 9999):**  
+   - Acceso inmediato desde el panel administrativo para descargar en un solo clic el volcado completo de la base de datos y/o código fuente directamente a la computadora o dispositivo móvil.
+2. **Capa B - Automatización Periódica en la Nube (GitHub Actions a Google Drive):**  
+   - Proceso desatendido en segundo plano que exporta periódicamente la base de datos de Vercel Postgres y empaqueta el código fuente en `.zip`.
+   - Conexión cifrada hacia la cuenta oficial **`rutago.backups@gmail.com`**.
+   - **Regla de Rotación de Código:** Mantiene estrictamente las **3 versiones más recientes** del código en Google Drive; al generarse una cuarta versión, purga de forma automática la más antigua para mantener limpio el almacenamiento.
+
+---
+
+### 📍 2. Auditoría del Endpoint Existente (`/api/backup`):
+- Se auditó `src/app/api/backup/route.ts`: ya exporta `records`, `trips`, `expenses`, `personas`, `socios`, `buses`, `suscripciones`, `pagos`, `ownerExpenses` y `ventasBoletos`.
+- **Mejora planificada:** Extender la exportación para incluir los nuevos modelos jerárquicos de mantenimiento (`catalogoMaestroItem`, `busRecetaCombo`, `busItemOverride`, `busMantenimientoConfig`) para garantizar un volcado 100% integral.
+
+---
+
+### 📍 3. Siguiente Paso / Decisión Actual (Fase 1 - Paso 3):
+- Definir la autenticación segura para que GitHub Actions pueda depositar archivos en el Google Drive de `rutago.backups@gmail.com`:
+  * **Opción A (Cuenta de Servicio / Service Account de Google Cloud):** Se crea una Service Account gratuita en Google Cloud Console vinculada a `rutago.backups@gmail.com`, se le comparte una carpeta en Google Drive y se guarda la llave JSON como secreto (`GDRIVE_CREDENTIALS`) en GitHub. Cero interacción humana para siempre.
+  * **Opción B (OAuth Token Refresh):** Token de acceso de usuario con permisos de Drive.
+  * **Opción C (Implementar primero la Capa Manual en UI y luego la Automatización de Drive):** Asegurar hoy mismo que el botón en SuperAdmin descargue el 100% de los datos y código, y luego conectar el robot de GitHub Actions a Drive.
