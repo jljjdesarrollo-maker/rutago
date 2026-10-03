@@ -56,15 +56,15 @@ async function getGoogleAccessToken(serviceAccountJson) {
   return tokenData.access_token;
 }
 
-async function findOrCreateFolder(accessToken, folderName, parentFolderId = null) {
-  // 1. Buscar si la carpeta ya existe
+async function findOrCreateFolder(accessToken, folderName, clientEmail, parentFolderId = null) {
+  // 1. Buscar si la carpeta compartida por el usuario existe
   let query = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
   if (parentFolderId) {
     query += ` and '${parentFolderId}' in parents`;
   }
 
   const searchRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&spaces=drive`,
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name,owners)&supportsAllDrives=true&includeItemsFromAllDrives=true&spaces=drive`,
     {
       headers: { Authorization: `Bearer ${accessToken}` },
     }
@@ -73,35 +73,19 @@ async function findOrCreateFolder(accessToken, folderName, parentFolderId = null
   if (searchRes.ok) {
     const data = await searchRes.json();
     if (data.files && data.files.length > 0) {
+      console.log(`✅ Carpeta compartida encontrada: "${data.files[0].name}" (ID: ${data.files[0].id})`);
       return data.files[0].id;
     }
   }
 
-  // 2. Si no existe, crear la carpeta
-  const metadata = {
-    name: folderName,
-    mimeType: 'application/vnd.google-apps.folder',
-  };
-  if (parentFolderId) {
-    metadata.parents = [parentFolderId];
-  }
-
-  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(metadata),
-  });
-
-  if (!createRes.ok) {
-    const err = await createRes.text();
-    throw new Error(`Error al crear carpeta en Google Drive: ${err}`);
-  }
-
-  const newFolder = await createRes.json();
-  return newFolder.id;
+  // 2. Si no se encuentra, alertar que debe ser creada por la cuenta humana para usar los 15 GB
+  throw new Error(
+    `No se encontró la carpeta '${folderName}' en Google Drive.\n` +
+    `👉 Para usar los 15 GB de tu cuenta 'rutago.backups@gmail.com':\n` +
+    `   1. Abre Google Drive con rutago.backups@gmail.com.\n` +
+    `   2. Crea una carpeta llamada exactly: ${folderName}\n` +
+    `   3. Dale clic derecho ➔ Compartir ➔ Pega el correo del robot como 'Editor': ${clientEmail}`
+  );
 }
 
 async function uploadFileToDrive(accessToken, filePath, fileName, mimeType, folderId) {
@@ -130,7 +114,7 @@ async function uploadFileToDrive(accessToken, filePath, fileName, mimeType, fold
   ]);
 
   const uploadRes = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,createdTime',
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,createdTime',
     {
       method: 'POST',
       headers: {
@@ -159,7 +143,7 @@ async function rotateCodeBackups(accessToken, folderId, maxVersions = 3) {
   }
 
   const listRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&orderBy=createdTime desc&fields=files(id,name,createdTime)&spaces=drive`,
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&supportsAllDrives=true&includeItemsFromAllDrives=true&orderBy=createdTime desc&fields=files(id,name,createdTime)&spaces=drive`,
     {
       headers: { Authorization: `Bearer ${accessToken}` },
     }
@@ -179,7 +163,7 @@ async function rotateCodeBackups(accessToken, folderId, maxVersions = 3) {
     console.log(`♻️ Se encontraron ${files.length} versiones. Purgando ${filesToDelete.length} versión(es) obsoleta(s)...`);
 
     for (const file of filesToDelete) {
-      const delRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}`, {
+      const delRes = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?supportsAllDrives=true`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -209,12 +193,13 @@ async function main() {
   console.log(`🤖 Correo del Robot (Service Account): ${creds.client_email}`);
 
   // Obtener carpeta de destino compartida por el usuario
+  const folderName = 'Respaldos_RutaGo';
   const customFolderId = process.env.GDRIVE_FOLDER_ID || null;
   let targetFolderId = customFolderId;
 
   if (!targetFolderId) {
-    console.log(`🔍 Buscando carpeta compartida 'Respaldos_RutaGo'...`);
-    targetFolderId = await findOrCreateFolder(accessToken, folderName);
+    console.log(`🔍 Buscando carpeta compartida '${folderName}'...`);
+    targetFolderId = await findOrCreateFolder(accessToken, folderName, creds.client_email);
   }
   console.log(`📁 ID de Carpeta de Destino: ${targetFolderId}`);
 
