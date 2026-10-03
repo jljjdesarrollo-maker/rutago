@@ -2537,3 +2537,27 @@ Se auditó y completó el endpoint de respaldo para abarcar con precisión las *
 - Confirmar si el secreto `RESPALDOS_RUTAGO` contiene el JSON completo de la Service Account.
 - Confirmar el `FOLDER_ID` de la carpeta de Google Drive donde deben depositarse los archivos.
 - Confirmar la URL de producción activa para extraer el respaldo de base de datos.
+
+---
+
+## 🏛️ v3.60.77 - FASE 1: DESPLIEGUE DE ROBOT GITHUB ACTIONS A GOOGLE DRIVE (2026-10-03)
+> **ESTADO:** 🟢 ROBOT AUTOMÁTICO DESPLEGADO Y LISTO PARA EJECUCIÓN  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Arquitectura Cloud y Respaldo  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Artefactos Desplegados:
+1. **Script de Carga y Rotación (`scripts/backup-to-gdrive.mjs`):**  
+   - Cero dependencias externas (opera 100% con APIs nativas `crypto` y `fetch` de Node.js 20).
+   - Genera tokens JWT RS256 con las credenciales de `RESPALDOS_RUTAGO`.
+   - Busca o crea la carpeta `Respaldos_RutaGo` en la cuenta de Google Drive.
+   - Sube en formato multipart el archivo de código `.zip` y el volcado de base de datos `.json`.
+   - **Regla Estricta de Rotación:** Si existen más de 3 versiones de código, consulta la lista en Drive, ordena por fecha y elimina automáticamente (`DELETE`) la más antigua.
+2. **Flujo de Trabajo Programado (`.github/workflows/backup-drive.yml`):**  
+   - Ejecución diaria a la medianoche (05:00 UTC / 00:00 Ecuador).
+   - Activador manual (`workflow_dispatch`) para poder ejecutar el respaldo en cualquier momento con 1 clic desde GitHub Actions.
+
+---
+
+### 📍 2. Siguiente Paso / Decisión Actual (Fase 2 - Paso 1):
+- Ejecución de prueba del robot desde la pestaña *"Actions"* de GitHub para confirmar que el archivo `.zip` y el `.json` aparezcan en `Respaldos_RutaGo` de Google Drive.
+- Una vez verificado el respaldo en Google Drive, pasamos a la **FASE 2: AISLAMIENTO DE AMBIENTES (Creación de la rama `staging` y la segunda Base de Datos)**.
