@@ -2350,3 +2350,58 @@ En la auditoría de caja de la versión actual de `ArqueoScreen.tsx`, se identif
   - `arqueoSistema`: valor sumado por boletos electrónicos emitidos.
   - `arqueoDiferencia`: `arqueoEfectivo - arqueoSistema`.
   - `cajaComunMonto`: valores recaudados en boletería física de terminal Loja.
+
+---
+
+## 🏛️ v3.60.72 - AUDITORÍA ESTRATÉGICA DE INFRAESTRUCTURA CLOUD, 3 AMBIENTES Y MODELO DE NEGOCIO (2026-10-02)
+> **ESTADO:** 🟢 ANÁLISIS APROBADO Y DOCUMENTADO - BASE DE ARQUITECTURA OFICIAL  
+> **FECHA DE CIERRE:** 2026-10-02 | **SISTEMA:** RutaGo - Plataforma Integral de Transporte  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Diagnóstico de Producción Actual y Blindajes Recomendados:
+La aplicación cuenta actualmente con los datos reales de operación desde **Enero hasta la fecha**. Para abrir de forma segura el acceso a los **5 a 8 suscriptores (socios propietarios)** previstos, se establecen las siguientes directivas:
+1. **Respaldo Automático de Base de Datos (Disaster Recovery):**  
+   - Los datos históricos no deben depender exclusivamente del proveedor de base de datos en la nube.
+   - Se debe implementar un volcado (dump SQL o JSON) periódico hacia almacenamiento externo (Google Drive o repositorio privado) para garantizar que ante cualquier suspensión o fallo de cuenta, el historial contable de los socios esté 100% a salvo.
+2. **Control de Conexiones Serverless (Connection Pooling):**  
+   - Al ejecutarse Next.js en Vercel mediante funciones Serverless, cada petición puede abrir una conexión directa a PostgreSQL.
+   - Para evitar el error `Too many clients already` en bases gratuitas con límites de 10-20 conexiones, se debe forzar el uso de un **Connection Pooler** (puerto `6543` / PgBouncer en Supabase, o el endpoint `-pooler` en Neon).
+3. **Cero Archivos Pesados en Base de Datos:**  
+   - Las fotos de facturas o comprobantes de lubricadora/repuestos jamás deben almacenarse en Base64 dentro de PostgreSQL para no agotar la cuota de 500 MB. Deben enviarse a almacenamiento de objetos (ej. Cloudflare R2 con 10 GB gratis) y persistir únicamente la URL.
+
+---
+
+### 📍 2. Arquitectura Oficial de los 3 Ambientes:
+
+| Ambiente | Rama Git | Base de Datos | Dominio / URL | Nivel de Riesgo |
+| :--- | :--- | :--- | :--- | :--- |
+| **Producción (`prod`)** | `main` | **BD Producción** (Datos reales Enero a la fecha) | `rutago.com` / `rutago.vercel.app` | **SAGRADO / Cero pruebas** |
+| **Pruebas / Staging (`test`)** | `staging` | **BD Staging** (Segunda base gratuita aislada) | `test-rutago.vercel.app` | Pruebas de integración previas a pase a producción |
+| **Desarrollo (`dev`)** | `dev` | **BD Local / Docker / Dev** | `localhost:3000` | Entorno de construcción y experimentación |
+
+---
+
+### 📍 3. Política de Cuentas y Cuotas Gratuitas:
+- **GitHub:** 1 sola cuenta es suficiente. Se aprovechan repositorios privados y ramas ilimitadas (`main`, `staging`, `dev`).
+- **Vercel:** Estrategia de 2 cuentas para no comprometer el tráfico ni agotar los 100 GB mensuales de la cuenta de producción:
+  - *Cuenta Vercel A (Producción):* Conectada únicamente a la rama `main`. Consumo estimado <5% gracias a la arquitectura Offline-First de RutaGo (solo paquetes JSON de 2 KB).
+  - *Cuenta Vercel B (Pruebas / Lab):* Conectada a la rama `staging`. Permite decenas de despliegues y pruebas sin restar cuota a producción.
+- **Base de Datos (PostgreSQL):**
+  - Dos proyectos completamente independientes en proveedores como Neon.tech (0.5 GB gratis) o Supabase (500 MB gratis).
+  - **Prohibición Estricta:** Jamás ejecutar `prisma db push --accept-data-loss` ni migraciones de prueba contra la base de datos de producción.
+
+---
+
+### 📍 4. Modelo Financiero: Gratuito vs. Pago Mínimo:
+- **Fase de Despegue (0 a 3 meses):** Costo **$0.00 USD/mes**. La arquitectura Offline-First garantiza que el 90% del procesamiento ocurra en el dispositivo del chofer (IndexedDB), haciendo viable la operación gratuita con 5 a 8 buses.
+- **Fase Comercial con Ingresos (5 a 8 buses pagando $15 - $20 USD/mes = $120 - $160 USD/mes):**
+  - Inversión recomendada de bajo costo:
+    * Base de datos dedicada con backups diarios garantizados a 30 días: ~$5 a $19 USD/mes.
+    * Dominio propio oficial (`app.rutago.com`): ~$1 USD/mes ($12/año).
+  - **Margen de rentabilidad neto para el proyecto: >85%.**
+
+---
+
+### 📍 5. Punto de Partida para la Próxima Sesión:
+- **Punto de Reanudación:** Configuración de la rama `staging` en GitHub y aprovisionamiento de la segunda base de datos para el ambiente de pruebas.
+- **Nota para otra cuenta de Google AI Studio:** Al iniciar la nueva sesión, leer este archivo `REGISTRO_MAESTRO.md` para confirmar el estado en la versión `v3.60.72` y solicitar el PAT de GitHub si se requiere realizar operaciones sobre el repositorio.
