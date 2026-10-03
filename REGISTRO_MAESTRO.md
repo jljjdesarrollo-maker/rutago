@@ -2800,3 +2800,24 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
   La ventana modal muestra el progreso paso a paso en pantalla (`Paso 1/4`, `Paso 2/4`, etc.) y consolida los resultados en la tarjeta de resumen final.
 - **Configuración Serverless (`src/app/api/backup/route.ts`):**  
   Exportación de `dynamic = 'force-dynamic'` y `maxDuration = 60` para procesamiento garantizado en la nube.
+
+---
+
+## 🏛️ v3.60.88 - BLINDAJE DE CLAVES ÚNICAS Y RESTAURACIÓN RESILIENTE (2026-10-03)
+> **ESTADO:** 🟢 RESOLUCIÓN DEFINITIVA DE CONFLICTOS DE IDENTIFICADOR Y COLISIÓN DE CLAVES ÚNICAS  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Motor de Inserción Relacional No Bloqueante  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Diagnóstico del Error 500 en Restauración:
+- **Causa Raíz:** En la base de datos de pruebas existían registros precargados (semillas) de buses o socios con identificadores (`id`) autogenerados distintos a los de producción.
+- Al ejecutar `upsert({ where: { id } })`, Prisma intentaba hacer un `INSERT` de un bus con `numeroDisco: "01"` o un socio con la misma `cedula`, provocando una violación de restricción única (`Unique constraint failed on the fields: (numeroDisco / cedula)`).
+- Además, un fallo en un ítem abortaba el proceso completo.
+
+### 📍 2. Solución de Arquitectura Implementada (`src/app/api/backup/route.ts`):
+- **Búsqueda Multi-Criterio Inteligente:**
+  * **CuentaSocio:** Búsqueda por `id` O por `cedula`. Si existe, actualiza su estado y contraseñas; si no existe, lo crea.
+  * **Bus:** Búsqueda por `id`, `numeroDisco` O `placa`. Valida la existencia de `socioId` antes de asignarlo para proteger la integridad referencial.
+  * **Persona:** Búsqueda por `id`, `cedula` O `(nombre + rol)`. Garantiza que los PINs con salt sean únicos y preserva credenciales existentes.
+  * **Frecuencias y VTs:** Autogeneración preventiva del `BusVT` padre si una frecuencia importada lo requiere.
+- **Aislamiento por Ítem:**
+  Cada entidad se procesa dentro de su propio bloque protegido, evitando que una advertencia puntual cancele el resto de la base de datos.

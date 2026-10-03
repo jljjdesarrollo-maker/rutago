@@ -104,7 +104,7 @@ export async function GET() {
 
     const backup = {
       exportDate: new Date().toISOString(),
-      version: 'v3.60.85-backup-integral',
+      version: 'v3.60.88-backup-integral',
       app: 'rutago',
       platform: 'Vercel Postgres',
       records,
@@ -160,152 +160,282 @@ export async function POST(req: NextRequest) {
     }
 
     const summaryResults: Record<string, number> = {};
+    const warnings: string[] = [];
 
-    // 1. Restaurar Socios (CuentaSocio)
+    // 1. Restaurar Socios (CuentaSocio) con resolución de duplicados por Cédula o ID
     if (Array.isArray(data.socios) && data.socios.length > 0) {
       let sociosRestaurados = 0;
       for (const s of data.socios) {
-        let pinHash = s.pinHash;
-        let pinSalt = s.pinSalt;
-        if (!pinHash || !pinSalt) {
-          const defaultPin = s.rol === 'SUPERADMIN_SAAS' ? '9999' : '0101';
-          pinSalt = generateSalt();
-          pinHash = hashPinWithSalt(defaultPin, pinSalt);
-        }
+        try {
+          let pinHash = s.pinHash;
+          let pinSalt = s.pinSalt;
+          if (!pinHash || !pinSalt) {
+            const defaultPin = s.rol === 'SUPERADMIN_SAAS' ? '9999' : '0101';
+            pinSalt = generateSalt();
+            pinHash = hashPinWithSalt(defaultPin, pinSalt);
+          }
 
-        await db.cuentaSocio.upsert({
-          where: { id: s.id },
-          create: {
-            id: s.id,
-            cedula: s.cedula,
-            nombre: s.nombre,
-            email: s.email || null,
-            telefono: s.telefono || null,
-            pinHash,
-            pinSalt,
-            rol: s.rol || 'SOCIO',
-            activo: s.activo ?? true,
-            esFundadorSaaS: s.esFundadorSaaS ?? false,
-          },
-          update: {
-            cedula: s.cedula,
-            nombre: s.nombre,
-            email: s.email || null,
-            telefono: s.telefono || null,
-            pinHash,
-            pinSalt,
-            rol: s.rol || 'SOCIO',
-            activo: s.activo ?? true,
-            esFundadorSaaS: s.esFundadorSaaS ?? false,
-          },
-        });
-        sociosRestaurados++;
+          const existingSocio = await db.cuentaSocio.findFirst({
+            where: {
+              OR: [
+                { id: s.id },
+                ...(s.cedula ? [{ cedula: s.cedula }] : []),
+              ],
+            },
+          });
+
+          if (existingSocio) {
+            await db.cuentaSocio.update({
+              where: { id: existingSocio.id },
+              data: {
+                cedula: s.cedula || existingSocio.cedula,
+                nombre: s.nombre || existingSocio.nombre,
+                email: s.email || null,
+                telefono: s.telefono || null,
+                pinHash: pinHash || existingSocio.pinHash,
+                pinSalt: pinSalt || existingSocio.pinSalt,
+                rol: s.rol || existingSocio.rol,
+                activo: s.activo ?? true,
+                esFundadorSaaS: s.esFundadorSaaS ?? false,
+              },
+            });
+          } else {
+            await db.cuentaSocio.create({
+              data: {
+                id: s.id,
+                cedula: s.cedula,
+                nombre: s.nombre,
+                email: s.email || null,
+                telefono: s.telefono || null,
+                pinHash,
+                pinSalt,
+                rol: s.rol || 'SOCIO',
+                activo: s.activo ?? true,
+                esFundadorSaaS: s.esFundadorSaaS ?? false,
+              },
+            });
+          }
+          sociosRestaurados++;
+        } catch (socioErr: any) {
+          console.warn('Advertencia restaurando socio:', s.nombre, socioErr?.message);
+          warnings.push(`Socio ${s.nombre}: ${socioErr?.message}`);
+        }
       }
       summaryResults.socios = sociosRestaurados;
     }
 
-    // 2. Restaurar Buses Físicos
+    // 2. Restaurar Buses Físicos con resolución de duplicados por Disco o Placa
     if (Array.isArray(data.buses) && data.buses.length > 0) {
       let busesRestaurados = 0;
       for (const b of data.buses) {
-        await db.bus.upsert({
-          where: { id: b.id },
-          create: {
-            id: b.id,
-            numeroDisco: b.numeroDisco,
-            placa: b.placa,
-            marca: b.marca || 'Hino AK',
-            modelo: b.modelo || null,
-            anio: b.anio ? Number(b.anio) : null,
-            capacidadAsientos: b.capacidadAsientos ? Number(b.capacidadAsientos) : 45,
-            propietario: b.propietario || 'Socio Propietario',
-            tipoOperacion: b.tipoOperacion || 'TRONCAL_VT',
-            activo: b.activo ?? true,
-            socioId: b.socioId || null,
-            notas: b.notas || null,
-          },
-          update: {
-            numeroDisco: b.numeroDisco,
-            placa: b.placa,
-            marca: b.marca || 'Hino AK',
-            modelo: b.modelo || null,
-            anio: b.anio ? Number(b.anio) : null,
-            capacidadAsientos: b.capacidadAsientos ? Number(b.capacidadAsientos) : 45,
-            propietario: b.propietario || 'Socio Propietario',
-            tipoOperacion: b.tipoOperacion || 'TRONCAL_VT',
-            activo: b.activo ?? true,
-            socioId: b.socioId || null,
-            notas: b.notas || null,
-          },
-        });
-        busesRestaurados++;
+        try {
+          let validSocioId: string | null = null;
+          if (b.socioId) {
+            const socioFound = await db.cuentaSocio.findUnique({ where: { id: b.socioId } });
+            if (socioFound) validSocioId = b.socioId;
+          }
+
+          const existingBus = await db.bus.findFirst({
+            where: {
+              OR: [
+                { id: b.id },
+                ...(b.numeroDisco ? [{ numeroDisco: b.numeroDisco }] : []),
+                ...(b.placa ? [{ placa: b.placa }] : []),
+              ],
+            },
+          });
+
+          if (existingBus) {
+            await db.bus.update({
+              where: { id: existingBus.id },
+              data: {
+                numeroDisco: b.numeroDisco || existingBus.numeroDisco,
+                placa: b.placa || existingBus.placa,
+                marca: b.marca || 'Hino AK',
+                modelo: b.modelo || null,
+                anio: b.anio ? Number(b.anio) : null,
+                capacidadAsientos: b.capacidadAsientos ? Number(b.capacidadAsientos) : 45,
+                propietario: b.propietario || existingBus.propietario,
+                tipoOperacion: b.tipoOperacion || 'TRONCAL_VT',
+                activo: b.activo ?? true,
+                socioId: validSocioId ?? existingBus.socioId,
+                notas: b.notas || null,
+              },
+            });
+          } else {
+            await db.bus.create({
+              data: {
+                id: b.id,
+                numeroDisco: b.numeroDisco,
+                placa: b.placa,
+                marca: b.marca || 'Hino AK',
+                modelo: b.modelo || null,
+                anio: b.anio ? Number(b.anio) : null,
+                capacidadAsientos: b.capacidadAsientos ? Number(b.capacidadAsientos) : 45,
+                propietario: b.propietario || 'Socio Propietario',
+                tipoOperacion: b.tipoOperacion || 'TRONCAL_VT',
+                activo: b.activo ?? true,
+                socioId: validSocioId,
+                notas: b.notas || null,
+              },
+            });
+          }
+          busesRestaurados++;
+        } catch (busErr: any) {
+          console.warn('Advertencia restaurando bus:', b.numeroDisco, busErr?.message);
+          warnings.push(`Bus ${b.numeroDisco}: ${busErr?.message}`);
+        }
       }
       summaryResults.buses = busesRestaurados;
     }
 
-    // 3. Restaurar Personal Operativo (Choferes y Ayudantes)
+    // 3. Restaurar Suscripciones (validando relaciones)
+    if (Array.isArray(data.suscripciones) && data.suscripciones.length > 0) {
+      let suscripcionesRestauradas = 0;
+      for (const sub of data.suscripciones) {
+        try {
+          const [busExists, socioExists] = await Promise.all([
+            db.bus.findUnique({ where: { id: sub.busId } }),
+            db.cuentaSocio.findUnique({ where: { id: sub.socioId } }),
+          ]);
+
+          if (busExists && socioExists) {
+            await db.suscripcionBus.upsert({
+              where: { busId: sub.busId },
+              create: {
+                id: sub.id,
+                socioId: sub.socioId,
+                busId: sub.busId,
+                montoMensual: Number(sub.montoMensual) || 20.0,
+                diaCorteMensual: Number(sub.diaCorteMensual) || 5,
+                fechaInicio: sub.fechaInicio ? new Date(sub.fechaInicio) : new Date(),
+                estado: sub.estado || 'ACTIVA',
+                notasAdmin: sub.notasAdmin || null,
+              },
+              update: {
+                socioId: sub.socioId,
+                montoMensual: Number(sub.montoMensual) || 20.0,
+                estado: sub.estado || 'ACTIVA',
+              },
+            });
+            suscripcionesRestauradas++;
+          }
+        } catch (subErr: any) {
+          console.warn('Advertencia en suscripcion:', subErr?.message);
+        }
+      }
+      summaryResults.suscripciones = suscripcionesRestauradas;
+    }
+
+    // 4. Restaurar Personal Operativo (Choferes y Ayudantes con PINs protegidos)
     if (Array.isArray(data.personas) && data.personas.length > 0) {
       let personasRestauradas = 0;
       for (const p of data.personas) {
-        let pin = p.pin;
-        let pinSalt = p.pinSalt;
-        if (!pin || pin.length < 10) {
-          const defaultPin = p.pin || (p.rol === 'CONDUCTOR' ? '0423' : '2107');
-          pinSalt = generateSalt();
-          pin = hashPinWithSalt(defaultPin, pinSalt);
-        }
+        try {
+          let validSocioId: string | null = null;
+          if (p.socioId) {
+            const socioFound = await db.cuentaSocio.findUnique({ where: { id: p.socioId } });
+            if (socioFound) validSocioId = p.socioId;
+          }
 
-        await db.persona.upsert({
-          where: { id: p.id },
-          create: {
-            id: p.id,
-            nombre: p.nombre,
-            cedula: p.cedula || null,
-            telefono: p.telefono || null,
-            rol: p.rol || 'AYUDANTE',
-            pin,
-            pinSalt,
-            esActual: p.esActual ?? false,
-            socioId: p.socioId || null,
-            deviceId: p.deviceId || null,
-            deviceName: p.deviceName || null,
-          },
-          update: {
-            nombre: p.nombre,
-            cedula: p.cedula || null,
-            telefono: p.telefono || null,
-            rol: p.rol || 'AYUDANTE',
-            pin,
-            pinSalt,
-            esActual: p.esActual ?? false,
-            socioId: p.socioId || null,
-          },
-        });
-        personasRestauradas++;
+          const existingPersona = await db.persona.findFirst({
+            where: {
+              OR: [
+                { id: p.id },
+                ...(p.cedula ? [{ cedula: p.cedula }] : []),
+                { nombre: p.nombre, rol: p.rol || 'AYUDANTE' },
+              ],
+            },
+          });
+
+          let pin = p.pin || existingPersona?.pin;
+          let pinSalt = p.pinSalt || existingPersona?.pinSalt;
+
+          if (!pin || pin.length < 10) {
+            const rawPin = p.pin || (p.rol === 'CONDUCTOR' ? '0423' : '2107');
+            pinSalt = generateSalt();
+            pin = hashPinWithSalt(rawPin, pinSalt);
+          }
+
+          // Blindar PIN único en caso de coincidencia
+          const pinConflict = await db.persona.findFirst({
+            where: {
+              pin,
+              ...(existingPersona ? { id: { not: existingPersona.id } } : {}),
+            },
+          });
+
+          if (pinConflict) {
+            pinSalt = generateSalt();
+            pin = hashPinWithSalt(`${p.rol === 'CONDUCTOR' ? '0423' : '2107'}_${Date.now().toString().slice(-4)}`, pinSalt);
+          }
+
+          if (existingPersona) {
+            await db.persona.update({
+              where: { id: existingPersona.id },
+              data: {
+                nombre: p.nombre,
+                cedula: p.cedula || existingPersona.cedula,
+                telefono: p.telefono || null,
+                rol: p.rol || existingPersona.rol,
+                pin,
+                pinSalt,
+                esActual: p.esActual ?? false,
+                socioId: validSocioId ?? existingPersona.socioId,
+                deviceId: p.deviceId || null,
+                deviceName: p.deviceName || null,
+              },
+            });
+          } else {
+            await db.persona.create({
+              data: {
+                id: p.id,
+                nombre: p.nombre,
+                cedula: p.cedula || null,
+                telefono: p.telefono || null,
+                rol: p.rol || 'AYUDANTE',
+                pin,
+                pinSalt,
+                esActual: p.esActual ?? false,
+                socioId: validSocioId,
+                deviceId: p.deviceId || null,
+                deviceName: p.deviceName || null,
+              },
+            });
+          }
+          personasRestauradas++;
+        } catch (persErr: any) {
+          console.warn('Advertencia restaurando persona:', p.nombre, persErr?.message);
+          warnings.push(`Personal ${p.nombre}: ${persErr?.message}`);
+        }
       }
       summaryResults.personas = personasRestauradas;
     }
 
-    // 4. Restaurar BusVTs y Frecuencias
+    // 5. Restaurar BusVTs y Frecuencias
     if (Array.isArray(data.busVTs) && data.busVTs.length > 0) {
       let vtsRestaurados = 0;
       for (const vt of data.busVTs) {
-        await db.busVT.upsert({
-          where: { codigo: vt.codigo },
-          create: {
-            id: vt.id,
-            codigo: vt.codigo,
-            nombre: vt.nombre,
-            frecuencias: vt.frecuencias ?? [],
-            activo: vt.activo ?? true,
-          },
-          update: {
-            nombre: vt.nombre,
-            frecuencias: vt.frecuencias ?? [],
-            activo: vt.activo ?? true,
-          },
-        });
-        vtsRestaurados++;
+        try {
+          await db.busVT.upsert({
+            where: { codigo: vt.codigo },
+            create: {
+              id: vt.id,
+              codigo: vt.codigo,
+              nombre: vt.nombre || vt.codigo,
+              frecuencias: vt.frecuencias ?? [],
+              activo: vt.activo ?? true,
+            },
+            update: {
+              nombre: vt.nombre || vt.codigo,
+              frecuencias: vt.frecuencias ?? [],
+              activo: vt.activo ?? true,
+            },
+          });
+          vtsRestaurados++;
+        } catch (vtErr: any) {
+          console.warn('Advertencia restaurando BusVT:', vt.codigo, vtErr?.message);
+        }
       }
       summaryResults.busVTs = vtsRestaurados;
     }
@@ -313,164 +443,200 @@ export async function POST(req: NextRequest) {
     if (Array.isArray(data.frecuencias) && data.frecuencias.length > 0) {
       let frecsRestauradas = 0;
       for (const f of data.frecuencias) {
-        await db.frecuencia.upsert({
-          where: { id: f.id },
-          create: {
-            id: f.id,
-            vtCode: f.vtCode,
-            nombre: f.nombre,
-            ruta: f.ruta,
-            hora: f.hora,
-            direccion: f.direccion || 'ida',
-            activo: f.activo ?? true,
-          },
-          update: {
-            vtCode: f.vtCode,
-            nombre: f.nombre,
-            ruta: f.ruta,
-            hora: f.hora,
-            direccion: f.direccion || 'ida',
-            activo: f.activo ?? true,
-          },
-        });
-        frecsRestauradas++;
+        try {
+          // Garantizar existencia de BusVT para FK
+          await db.busVT.upsert({
+            where: { codigo: f.vtCode },
+            create: {
+              codigo: f.vtCode,
+              nombre: `VT ${f.vtCode}`,
+              frecuencias: [],
+              activo: true,
+            },
+            update: {},
+          });
+
+          await db.frecuencia.upsert({
+            where: { id: f.id },
+            create: {
+              id: f.id,
+              vtCode: f.vtCode,
+              nombre: f.nombre,
+              ruta: f.ruta,
+              hora: f.hora,
+              direccion: f.direccion || 'ida',
+              activo: f.activo ?? true,
+            },
+            update: {
+              vtCode: f.vtCode,
+              nombre: f.nombre,
+              ruta: f.ruta,
+              hora: f.hora,
+              direccion: f.direccion || 'ida',
+              activo: f.activo ?? true,
+            },
+          });
+          frecsRestauradas++;
+        } catch (frecErr: any) {
+          console.warn('Advertencia restaurando frecuencia:', f.hora, frecErr?.message);
+        }
       }
       summaryResults.frecuencias = frecsRestauradas;
     }
 
-    // 5. Restaurar Mantenimiento Jerárquico
+    // 6. Restaurar Mantenimiento Jerárquico
     if (Array.isArray(data.catalogoMaestroItems) && data.catalogoMaestroItems.length > 0) {
       let catRestaurados = 0;
       for (const c of data.catalogoMaestroItems) {
-        await db.catalogoMaestroItem.upsert({
-          where: { codigo: c.codigo },
-          create: {
-            id: c.id,
-            codigo: c.codigo,
-            nombre: c.nombre,
-            categoria: c.categoria,
-            intervaloKmOficial: Number(c.intervaloKmOficial) || 5000,
-            prioridad: c.prioridad || 'PREVENTIVA',
-            toleranciaKm: Number(c.toleranciaKm) || 500,
-            especificacionLubricanteRepuesto: c.especificacionLubricanteRepuesto || null,
-            instruccionesTecnicas: c.instruccionesTecnicas || null,
-            activo: c.activo ?? true,
-            asignadoChoferPorDefecto: c.asignadoChoferPorDefecto ?? true,
-            actualizadoPor: c.actualizadoPor || 'SUPERADMIN',
-          },
-          update: {
-            nombre: c.nombre,
-            categoria: c.categoria,
-            intervaloKmOficial: Number(c.intervaloKmOficial) || 5000,
-            prioridad: c.prioridad || 'PREVENTIVA',
-            toleranciaKm: Number(c.toleranciaKm) || 500,
-            activo: c.activo ?? true,
-          },
-        });
-        catRestaurados++;
+        try {
+          await db.catalogoMaestroItem.upsert({
+            where: { codigo: c.codigo },
+            create: {
+              id: c.id,
+              codigo: c.codigo,
+              nombre: c.nombre,
+              categoria: c.categoria,
+              intervaloKmOficial: Number(c.intervaloKmOficial) || 5000,
+              prioridad: c.prioridad || 'PREVENTIVA',
+              toleranciaKm: Number(c.toleranciaKm) || 500,
+              especificacionLubricanteRepuesto: c.especificacionLubricanteRepuesto || null,
+              instruccionesTecnicas: c.instruccionesTecnicas || null,
+              activo: c.activo ?? true,
+              asignadoChoferPorDefecto: c.asignadoChoferPorDefecto ?? true,
+              actualizadoPor: c.actualizadoPor || 'SUPERADMIN',
+            },
+            update: {
+              nombre: c.nombre,
+              categoria: c.categoria,
+              intervaloKmOficial: Number(c.intervaloKmOficial) || 5000,
+              prioridad: c.prioridad || 'PREVENTIVA',
+              toleranciaKm: Number(c.toleranciaKm) || 500,
+              activo: c.activo ?? true,
+            },
+          });
+          catRestaurados++;
+        } catch (catErr: any) {
+          console.warn('Advertencia restaurando catalogo:', c.codigo, catErr?.message);
+        }
       }
       summaryResults.catalogoMaestroItems = catRestaurados;
     }
 
     if (Array.isArray(data.busRecetasCombo) && data.busRecetasCombo.length > 0) {
       for (const r of data.busRecetasCombo) {
-        await db.busRecetaCombo.upsert({
-          where: { busId_estacionId: { busId: r.busId, estacionId: r.estacionId } },
-          create: {
-            id: r.id,
-            busId: r.busId,
-            estacionId: r.estacionId,
-            itemsSeleccionados: r.itemsSeleccionados ?? {},
-            codigosExtras: r.codigosExtras ?? [],
-            codigosExcluidos: r.codigosExcluidos ?? [],
-            actualizadoPor: r.actualizadoPor || 'SOCIO',
-          },
-          update: {
-            itemsSeleccionados: r.itemsSeleccionados ?? {},
-            codigosExtras: r.codigosExtras ?? [],
-            codigosExcluidos: r.codigosExcluidos ?? [],
-          },
-        });
+        try {
+          await db.busRecetaCombo.upsert({
+            where: { busId_estacionId: { busId: r.busId, estacionId: r.estacionId } },
+            create: {
+              id: r.id,
+              busId: r.busId,
+              estacionId: r.estacionId,
+              itemsSeleccionados: r.itemsSeleccionados ?? {},
+              codigosExtras: r.codigosExtras ?? [],
+              codigosExcluidos: r.codigosExcluidos ?? [],
+              actualizadoPor: r.actualizadoPor || 'SOCIO',
+            },
+            update: {
+              itemsSeleccionados: r.itemsSeleccionados ?? {},
+              codigosExtras: r.codigosExtras ?? [],
+              codigosExcluidos: r.codigosExcluidos ?? [],
+            },
+          });
+        } catch (recErr: any) {
+          console.warn('Advertencia en busRecetaCombo:', recErr?.message);
+        }
       }
     }
 
     if (Array.isArray(data.busItemOverrides) && data.busItemOverrides.length > 0) {
       for (const o of data.busItemOverrides) {
-        await db.busItemOverride.upsert({
-          where: { busId_codigo: { busId: o.busId, codigo: o.codigo } },
-          create: {
-            id: o.id,
-            busId: o.busId,
-            codigo: o.codigo,
-            intervaloKm: Number(o.intervaloKm),
-            repuestoEspecifico: o.repuestoEspecifico || null,
-            activoEnBus: o.activoEnBus ?? true,
-            asignadoChofer: o.asignadoChofer ?? true,
-            actualizadoPor: o.actualizadoPor || 'SOCIO',
-          },
-          update: {
-            intervaloKm: Number(o.intervaloKm),
-            repuestoEspecifico: o.repuestoEspecifico || null,
-            activoEnBus: o.activoEnBus ?? true,
-          },
-        });
+        try {
+          await db.busItemOverride.upsert({
+            where: { busId_codigo: { busId: o.busId, codigo: o.codigo } },
+            create: {
+              id: o.id,
+              busId: o.busId,
+              codigo: o.codigo,
+              intervaloKm: Number(o.intervaloKm),
+              repuestoEspecifico: o.repuestoEspecifico || null,
+              activoEnBus: o.activoEnBus ?? true,
+              asignadoChofer: o.asignadoChofer ?? true,
+              actualizadoPor: o.actualizadoPor || 'SOCIO',
+            },
+            update: {
+              intervaloKm: Number(o.intervaloKm),
+              repuestoEspecifico: o.repuestoEspecifico || null,
+              activoEnBus: o.activoEnBus ?? true,
+            },
+          });
+        } catch (ovErr: any) {
+          console.warn('Advertencia en busItemOverride:', ovErr?.message);
+        }
       }
     }
 
     if (Array.isArray(data.busMantenimientoConfigs) && data.busMantenimientoConfigs.length > 0) {
       for (const mc of data.busMantenimientoConfigs) {
-        await db.busMantenimientoConfig.upsert({
-          where: { busId: mc.busId },
-          create: {
-            id: mc.id,
-            busId: mc.busId,
-            moduloActivo: mc.moduloActivo ?? true,
-            nivelControl: mc.nivelControl || 'ESTRICTO',
-            itemsActivos: mc.itemsActivos ?? [],
-            decisionTomada: mc.decisionTomada ?? true,
-            actualizadoPor: mc.actualizadoPor || 'SOCIO',
-          },
-          update: {
-            moduloActivo: mc.moduloActivo ?? true,
-            nivelControl: mc.nivelControl || 'ESTRICTO',
-            itemsActivos: mc.itemsActivos ?? [],
-            decisionTomada: mc.decisionTomada ?? true,
-          },
-        });
+        try {
+          await db.busMantenimientoConfig.upsert({
+            where: { busId: mc.busId },
+            create: {
+              id: mc.id,
+              busId: mc.busId,
+              moduloActivo: mc.moduloActivo ?? true,
+              nivelControl: mc.nivelControl || 'ESTRICTO',
+              itemsActivos: mc.itemsActivos ?? [],
+              decisionTomada: mc.decisionTomada ?? true,
+              actualizadoPor: mc.actualizadoPor || 'SOCIO',
+            },
+            update: {
+              moduloActivo: mc.moduloActivo ?? true,
+              nivelControl: mc.nivelControl || 'ESTRICTO',
+              itemsActivos: mc.itemsActivos ?? [],
+              decisionTomada: mc.decisionTomada ?? true,
+            },
+          });
+        } catch (cfgErr: any) {
+          console.warn('Advertencia en busMantenimientoConfig:', cfgErr?.message);
+        }
       }
     }
 
-    // 6. Restaurar Gastos del Socio (OwnerExpenses)
+    // 7. Restaurar Gastos del Socio (OwnerExpenses)
     if (Array.isArray(data.ownerExpenses) && data.ownerExpenses.length > 0) {
       let gastosRestaurados = 0;
       for (const exp of data.ownerExpenses) {
-        await db.ownerExpense.upsert({
-          where: { id: exp.id },
-          create: {
-            id: exp.id,
-            busId: exp.busId || 'BUS-01',
-            expenseDate: exp.expenseDate,
-            category: exp.category,
-            description: exp.description,
-            provider: exp.provider || null,
-            totalAmount: Number(exp.totalAmount) || 0,
-            paidAmount: Number(exp.paidAmount) || 0,
-            pendingBalance: Number(exp.pendingBalance) || 0,
-            paymentMethod: exp.paymentMethod || 'EFECTIVO',
-            comprobanteRef: exp.comprobanteRef || null,
-            bankName: exp.bankName || null,
-            receiptPhotoUrl: exp.receiptPhotoUrl || null,
-            abonos: exp.abonos ?? [],
-            status: exp.status || 'PAGADO',
-          },
-          update: {
-            totalAmount: Number(exp.totalAmount) || 0,
-            paidAmount: Number(exp.paidAmount) || 0,
-            pendingBalance: Number(exp.pendingBalance) || 0,
-            status: exp.status || 'PAGADO',
-          },
-        });
-        gastosRestaurados++;
+        try {
+          await db.ownerExpense.upsert({
+            where: { id: exp.id },
+            create: {
+              id: exp.id,
+              busId: exp.busId || 'BUS-01',
+              expenseDate: exp.expenseDate,
+              category: exp.category,
+              description: exp.description,
+              provider: exp.provider || null,
+              totalAmount: Number(exp.totalAmount) || 0,
+              paidAmount: Number(exp.paidAmount) || 0,
+              pendingBalance: Number(exp.pendingBalance) || 0,
+              paymentMethod: exp.paymentMethod || 'EFECTIVO',
+              comprobanteRef: exp.comprobanteRef || null,
+              bankName: exp.bankName || null,
+              receiptPhotoUrl: exp.receiptPhotoUrl || null,
+              abonos: exp.abonos ?? [],
+              status: exp.status || 'PAGADO',
+            },
+            update: {
+              totalAmount: Number(exp.totalAmount) || 0,
+              paidAmount: Number(exp.paidAmount) || 0,
+              pendingBalance: Number(exp.pendingBalance) || 0,
+              status: exp.status || 'PAGADO',
+            },
+          });
+          gastosRestaurados++;
+        } catch (expErr: any) {
+          console.warn('Advertencia en ownerExpense:', expErr?.message);
+        }
       }
       summaryResults.ownerExpenses = gastosRestaurados;
     }
@@ -479,9 +645,13 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'Base de datos restaurada exitosamente desde el respaldo',
       summary: summaryResults,
+      warnings: warnings.length > 0 ? warnings : undefined,
     });
-  } catch (error) {
-    console.error('Error restaurando respaldo:', error);
-    return NextResponse.json({ error: 'Error al restaurar respaldo en base de datos' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Error general restaurando respaldo:', error);
+    return NextResponse.json({
+      error: error?.message || 'Error al restaurar respaldo en base de datos',
+      details: error?.code ? `Código Prisma: ${error.code}` : undefined,
+    }, { status: 500 });
   }
 }
