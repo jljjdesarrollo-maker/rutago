@@ -2751,3 +2751,28 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
 4. **Guía Visual en Banner de Staging (`src/components/common/EnvironmentBanner.tsx`):**  
    El banner superior indica explícitamente los PINs activos:  
    `CAPACITACIÓN: Ayudante PIN 2107 o 1234 • Socio 0101 • Admin 9999`.
+
+---
+
+## 🏛️ v3.60.86 - MOTOR DE RESTAURACIÓN DE RESPALDO Y CARGA EN AMBIENTE DE PRUEBAS (2026-10-03)
+> **ESTADO:** 🟢 RESTAURADOR DE BASE DE DATOS OPERATIVO Y DISPONIBLE EN EL SIMULADOR  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Recuperación ante Desastres y Carga de Simulador  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Motor de Restauración en Servidor (`src/app/api/backup/route.ts`):
+- Endpoint `POST /api/backup` que recibe el archivo JSON completo exportado desde producción y realiza un upsert ordenado y relacional en la base de datos conectada:
+  1. `CuentaSocio`: con migración de hashes y salts (o regeneración segura de PIN predeterminado si falta).
+  2. `Bus`: número de disco, placa, marca, modelo, capacidad, vinculación a socio.
+  3. `Persona`: tripulación con roles (`AYUDANTE`, `CONDUCTOR`), PINs con salt y vinculaciones.
+  4. `BusVT` y `Frecuencia`: itinerarios oficiales de vueltas y rutas.
+  5. `Mantenimiento Jerárquico`: `CatalogoMaestroItem`, `BusRecetaCombo`, `BusItemOverride`, `BusMantenimientoConfig`.
+  6. `OwnerExpense`: cuentas de gastos del socio propietario.
+- Enriquecimiento del exportador `GET /api/backup` para incluir los hashes y salts criptográficos de personas y socios en respaldos futuros.
+
+### 📍 2. Botón y Modal Interactivo en Pantalla de Pruebas (`src/components/common/EnvironmentBanner.tsx`):
+- Incorporación del botón ergonómico **`[ 📥 Cargar Respaldo BD ]`** en la barra superior naranja del simulador.
+- **Ventana Modal Intuitiva:**
+  * Selector de archivo `.json` de respaldo descargado previamente de producción.
+  * Animación de procesamiento ("Restaurando en Base de Pruebas...").
+  * Tarjeta de confirmación con desglose de registros recuperados (Socios, Buses, Personal, VTs, Frecuencias).
+  * Validación de seguridad para que la operación se realice únicamente en la base de datos de pruebas (`rutago-staging-db`), manteniendo la de producción inmutable.
