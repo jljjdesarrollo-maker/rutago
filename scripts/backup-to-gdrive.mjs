@@ -204,17 +204,19 @@ async function main() {
 
   const accessToken = await getGoogleAccessToken(credentialsRaw);
   console.log('✅ Autenticación con Google Drive exitosa.');
+  
+  const creds = JSON.parse(credentialsRaw);
+  console.log(`🤖 Correo del Robot (Service Account): ${creds.client_email}`);
 
-  // Obtener o crear carpeta de destino
-  const folderName = 'Respaldos_RutaGo';
+  // Obtener carpeta de destino compartida por el usuario
   const customFolderId = process.env.GDRIVE_FOLDER_ID || null;
   let targetFolderId = customFolderId;
 
   if (!targetFolderId) {
-    console.log(`📁 Buscando/Creando carpeta '${folderName}' en Google Drive...`);
+    console.log(`🔍 Buscando carpeta compartida 'Respaldos_RutaGo'...`);
     targetFolderId = await findOrCreateFolder(accessToken, folderName);
   }
-  console.log(`📁 Carpeta de destino lista: ${targetFolderId}`);
+  console.log(`📁 ID de Carpeta de Destino: ${targetFolderId}`);
 
   // Archivo 1: Código Fuente (.zip)
   const zipPath = process.argv[2];
