@@ -348,26 +348,31 @@ export async function POST(req: NextRequest) {
             },
           });
 
-          let pin = p.pin || existingPersona?.pin;
-          let pinSalt = p.pinSalt || existingPersona?.pinSalt;
+          let pin = p.pin;
+          let pinSalt = p.pinSalt;
 
-          if (!pin || pin.length < 10) {
-            const rawPin = p.pin || (p.rol === 'CONDUCTOR' ? '0423' : '2107');
-            pinSalt = generateSalt();
-            pin = hashPinWithSalt(rawPin, pinSalt);
+          // Si el archivo de respaldo no traía el PIN (respaldo anterior sin credenciales):
+          if (!pin) {
+            pin = existingPersona?.pin;
+            pinSalt = existingPersona?.pinSalt;
           }
 
-          // Blindar PIN único en caso de coincidencia
-          const pinConflict = await db.persona.findFirst({
-            where: {
-              pin,
-              ...(existingPersona ? { id: { not: existingPersona.id } } : {}),
-            },
-          });
-
-          if (pinConflict) {
+          if (!pin || pin.length < 10) {
+            const rawPin = p.rol === 'CONDUCTOR' ? '0423' : '2107';
             pinSalt = generateSalt();
-            pin = hashPinWithSalt(`${p.rol === 'CONDUCTOR' ? '0423' : '2107'}_${Date.now().toString().slice(-4)}`, pinSalt);
+            pin = hashPinWithSalt(rawPin, pinSalt);
+
+            const pinConflict = await db.persona.findFirst({
+              where: {
+                pin,
+                ...(existingPersona ? { id: { not: existingPersona.id } } : {}),
+              },
+            });
+
+            if (pinConflict) {
+              pinSalt = generateSalt();
+              pin = hashPinWithSalt(`${rawPin}_${Math.floor(Math.random() * 9000 + 1000)}`, pinSalt);
+            }
           }
 
           if (existingPersona) {

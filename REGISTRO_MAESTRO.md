@@ -2841,3 +2841,16 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
   * **Ayudante:** PIN **`2107`** o **`1234`** autentica de inmediato como Ayudante de Ruta oficial.
   * **Conductor:** PIN **`0423`** autentica de inmediato como Conductor.
   * **SuperAdmin:** PIN **`9999`** autentica como SuperAdministrador SaaS.
+
+---
+
+## 🏛️ v3.60.90 - PRESERVACIÓN INMUTABLE DE HASHES CRIPTOGRÁFICOS DE PRODUCCIÓN (2026-10-03)
+> **ESTADO:** 🟢 INTEGRIDAD TOTAL DE PINS REALES EXPORTADOS DE PRODUCCIÓN A STAGING  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Motor de Carga Criptográfica y Replicación Fidedigna  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Diagnóstico:
+- Para que las credenciales reales de los ayudantes, choferes y socios funcionen exactamente igual en pruebas que en producción, el archivo de respaldo exportado debe contener los campos `pin` y `pinSalt` en `Persona`, y `pinHash` y `pinSalt` en `CuentaSocio`.
+- Los respaldos generados previamente a la versión v3.60.85 no incluían estos campos.
+- Con la v3.60.90, al descargar un nuevo respaldo desde producción, contiene los hashes criptográficos exactos.
+- Al restaurar en staging, se conservan 100% inmutables sin sobreescribir ni rehashear.
