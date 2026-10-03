@@ -2561,3 +2561,25 @@ Se auditó y completó el endpoint de respaldo para abarcar con precisión las *
 ### 📍 2. Siguiente Paso / Decisión Actual (Fase 2 - Paso 1):
 - Ejecución de prueba del robot desde la pestaña *"Actions"* de GitHub para confirmar que el archivo `.zip` y el `.json` aparezcan en `Respaldos_RutaGo` de Google Drive.
 - Una vez verificado el respaldo en Google Drive, pasamos a la **FASE 2: AISLAMIENTO DE AMBIENTES (Creación de la rama `staging` y la segunda Base de Datos)**.
+
+---
+
+## 🏛️ v3.60.78 - FASE 1: AUTENTICACIÓN GOOGLE DRIVE EXITOSA Y VINCULACIÓN DE CARPETA (2026-10-03)
+> **ESTADO:** 🟢 AUTENTICACIÓN JWT GOOGLE DRIVE VERIFICADA CON ÉXITO EN VIVO  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Arquitectura Cloud y Respaldo  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Diagnóstico de Ejecución en Vivo de GitHub Actions:
+- Se ejecutó el workflow `backup-drive.yml` en los servidores de GitHub Actions.
+- **Resultado de Autenticación:**  
+  `✅ Autenticación con Google Drive exitosa.`  
+  La clave en el secreto `RESPALDOS_RUTAGO` es 100% válida.
+- **Identidad del Robot Identificada:**  
+  `🤖 Correo: gdrive-backup@rutago-backups.iam.gserviceaccount.com`
+
+---
+
+### 📍 2. Ajuste de Cuota de Google Drive (Uso de los 15 GB Reales):
+- Google Cloud estipula que las cuentas de servicio tienen 0 bytes propios; consumen el almacenamiento de la carpeta compartida por el usuario humano.
+- **Acción requerida:** Compartir la carpeta `Respaldos_RutaGo` de `rutago.backups@gmail.com` con el correo del robot `gdrive-backup@rutago-backups.iam.gserviceaccount.com` como **Editor**.
+- El script fue actualizado con `supportsAllDrives=true` para gestionar la subida y rotación dentro de la carpeta compartida sin restricciones.
