@@ -1,4 +1,4 @@
-name: Respaldo Automatico (Correo rutago.backups@gmail.com + Boveda de 3 Versiones)
+name: Respaldo Automatico (Boveda 3 Versiones + Correo rutago.backups@gmail.com)
 
 on:
   schedule:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   backup:
-    name: Generar y Distribuir Respaldo (Correo + Boveda)
+    name: Generar y Distribuir Respaldo (Boveda + Correo)
     runs-on: ubuntu-latest
 
     steps:
@@ -40,20 +40,6 @@ jobs:
           curl -s -f "$PROD_URL" -o "$DB_NAME" || echo '{"status": "manual_trigger"}' > "$DB_NAME"
           echo "DB_PATH=$DB_NAME" >> $GITHUB_ENV
 
-      - name: 📧 Enviar Respaldo por Correo a rutago.backups@gmail.com
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: rutago.backups@gmail.com
-          password: ${{ secrets.GMAIL_APP_PASSWORD }}
-          subject: "📦 Respaldo Diario RutaGo - ${{ env.TIMESTAMP }}"
-          to: rutago.backups@gmail.com
-          from: "RutaGo Bóveda <rutago.backups@gmail.com>"
-          body: "Adjunto encontrarás el respaldo automático de RutaGo:\n\n1. Código fuente completo (.zip)\n2. Base de datos con las 16 tablas de PostgreSQL (.json)\n\nGenerado: ${{ env.TIMESTAMP }}"
-          attachments: "${{ env.ZIP_PATH }},${{ env.DB_PATH }}"
-
       - name: 🏛️ Guardar en Bóveda GitHub Releases (3 Versiones)
         uses: softprops/action-gh-release@v2
         with:
@@ -72,3 +58,24 @@ jobs:
           node scripts/rotate-releases.mjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📧 Enviar Notificación y Base de Datos a rutago.backups@gmail.com
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: rutago.backups@gmail.com
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "📦 Respaldo Diario RutaGo - ${{ env.TIMESTAMP }}"
+          to: rutago.backups@gmail.com
+          from: "RutaGo Bóveda <rutago.backups@gmail.com>"
+          body: |
+            📦 Respaldo Automático Diario de RutaGo
+
+            ✅ Base de Datos: 16 tablas de PostgreSQL adjuntas en este correo (${{ env.DB_PATH }}).
+            ✅ Código Fuente (.zip): Disponible para descarga directa en tu bóveda privada:
+            https://github.com/jljjdesarrollo-maker/rutago/releases/tag/backup-${{ env.TIMESTAMP }}
+
+            Generado: ${{ env.TIMESTAMP }}
+          attachments: "${{ env.DB_PATH }}"
