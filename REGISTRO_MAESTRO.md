@@ -2723,3 +2723,31 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
 
 ### 📍 3. Despliegue de Esquema Automatizado (`package.json`):
 - El comando `build` fue configurado para inyectar dinámicamente la base de datos de staging en `prisma db push` durante los despliegues de Preview, aprovisionando de forma autónoma las 16 tablas sin tocar producción.
+
+---
+
+## 🏛️ v3.60.85 - AUTO-SEEDING RESILIENTE EN STAGING Y RESOLUCIÓN NATIVA POSTGRESQL (2026-10-03)
+> **ESTADO:** 🟢 DIAGNÓSTICO Y CORRECCIÓN TOTAL DE LOGIN EN AMBIENTE DE PRUEBAS COMPLETADOS  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Aislamiento Relacional y Auto-Aprovisionamiento  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Diagnóstico del Error de Inicio de Sesión en Staging:
+- **Causa Raíz 1 (Base de Datos Virgen sin Semilla):** La base de datos `rutago-staging-db` se aprovisionó vacía (0 registros). La función `seedIfEmpty()` nunca se disparaba automáticamente al recibir peticiones de login, provocando que cualquier PIN ingresado arrojara `401 PIN no encontrado o no autorizado`.
+- **Causa Raíz 2 (Omisión de Personal Operativo en Seed Histórico):** El seed anterior solo creaba `CuentaSocio` (`0101` y `9999`), omitiendo la creación de registros en la tabla `Persona`. Al ingresar el PIN tradicional de ruta `2107`, fallaba por inexistencia en base de datos.
+- **Causa Raíz 3 (Precedencia de Protocolo en Conexión):** `STAGING_PRISMA_DATABASE_URL` utiliza el protocolo `prisma+postgres://` (Accelerate), mientras que `STAGING_POSTGRES_URL` es la cadena de conexión nativa directa de PostgreSQL (`postgres://...`).
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. **Precedencia Nativa (`src/lib/db.ts`):**  
+   Priorización estricta de `STAGING_POSTGRES_URL` sobre la variante de aceleración para conexión inmediata y confiable vía `@prisma/client`.
+2. **Auto-Aprovisionamiento Transparente en Login (`src/app/api/auth/route.ts`):**  
+   Al recibir una petición de autenticación, el backend valida si la base de datos carece de cuentas de socio o personal. Si está vacía, dispara de forma reactiva e instantánea `seedIfEmpty()`.
+3. **Seeding Completo de Tripulación y VTs (`src/lib/seed.ts`):**
+   * **Ayudante Ruta Oficial:** PIN **`2107`** (Rol `AYUDANTE`, vinculado a Bus 01, activo).
+   * **Ayudante Capacitación:** PIN **`1234`** (Rol `AYUDANTE`, exclusivo para simulador).
+   * **Conductor / Chofer:** PIN **`0423`** (Rol `CONDUCTOR`, vinculado a Bus 01).
+   * **Socio Propietario:** PIN **`0101`** (Rol `SOCIO`, José Leonardo Jaya Jaramillo, Bus 01).
+   * **SuperAdmin SaaS:** PIN **`9999`** (Consola Global).
+   * **Itinerarios y Frecuencias:** VTs oficiales (`VT1`, `VT2`, `VT3`, `P1`, etc.) aprovisionados para emisión de boletos inmediata.
+4. **Guía Visual en Banner de Staging (`src/components/common/EnvironmentBanner.tsx`):**  
+   El banner superior indica explícitamente los PINs activos:  
+   `CAPACITACIÓN: Ayudante PIN 2107 o 1234 • Socio 0101 • Admin 9999`.

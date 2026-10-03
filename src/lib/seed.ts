@@ -85,6 +85,76 @@ export async function seedIfEmpty() {
 
       console.log('Seed: SuperAdmin y Socio Fundador Bus 01 creados con hashing criptográfico.');
     }
+
+    // ─── 2. Personal Operativo de Ruta y Capacitación (Conductor y Ayudantes) ───
+    const personalCount = await db.persona.count().catch(() => 0);
+    if (personalCount === 0) {
+      const socio = await db.cuentaSocio.findFirst({ where: { rol: 'SOCIO' } });
+      const socioId = socio?.id || null;
+
+      // Ayudante de Ruta Oficial (PIN estándar 2107)
+      const salt2107 = generateSalt();
+      const hash2107 = hashPinWithSalt('2107', salt2107);
+      await db.persona.create({
+        data: {
+          nombre: 'Ayudante Ruta Bus 01',
+          rol: 'AYUDANTE',
+          pin: hash2107,
+          pinSalt: salt2107,
+          socioId,
+          esActual: true,
+        },
+      });
+
+      // Ayudante de Capacitación / Pruebas (PIN 1234)
+      const salt1234 = generateSalt();
+      const hash1234 = hashPinWithSalt('1234', salt1234);
+      await db.persona.create({
+        data: {
+          nombre: 'Ayudante Capacitación (Simulador)',
+          rol: 'AYUDANTE',
+          pin: hash1234,
+          pinSalt: salt1234,
+          socioId,
+          esActual: false,
+        },
+      });
+
+      // Conductor Bus 01 (PIN 0423)
+      const salt0423 = generateSalt();
+      const hash0423 = hashPinWithSalt('0423', salt0423);
+      await db.persona.create({
+        data: {
+          nombre: 'Conductor Bus 01',
+          rol: 'CONDUCTOR',
+          pin: hash0423,
+          pinSalt: salt0423,
+          socioId,
+          esActual: true,
+        },
+      });
+
+      console.log('Seed: Personal operativo (2107, 1234, 0423) creado exitosamente.');
+    }
+
+    // ─── 3. VTs y Frecuencias Oficiales para emisión de boletos ───
+    const vtCount = await db.busVT.count().catch(() => 0);
+    if (vtCount === 0) {
+      const { VT_DATA } = await import('@/lib/seed-vts');
+      for (const vt of VT_DATA) {
+        await db.busVT.upsert({
+          where: { codigo: vt.codigo },
+          create: {
+            codigo: vt.codigo,
+            nombre: vt.nombre,
+            frecuencias: vt.frecuencias as any,
+            activo: true,
+          },
+          update: {},
+        });
+      }
+      console.log(`Seed: ${VT_DATA.length} VTs inicializados correctamente.`);
+    }
   } catch (error) {
     console.error('Seed error:', error);
   }

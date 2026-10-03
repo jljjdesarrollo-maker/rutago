@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { generateSalt, hashPinWithSalt, verifyPin } from '@/lib/pin-hash';
 import { getDeviceBindingGlobalConfigAsync } from '@/app/api/config/device-binding/route';
+import { seedIfEmpty } from '@/lib/seed';
 
 // ─── Rate limiting in-memory ───
 interface AttemptRecord {
@@ -68,6 +69,17 @@ export async function POST(req: NextRequest) {
         { error: 'Demasiados intentos erróneos. Por seguridad, espere 5 minutos.' },
         { status: 429 }
       );
+    }
+
+    // ─── 0. Auto-Inicialización / Auto-Seed (Aprovisionamiento automático para Staging/Nuevos entornos) ───
+    try {
+      const sociosTotal = await db.cuentaSocio.count();
+      const personalTotal = await db.persona.count();
+      if (sociosTotal === 0 || personalTotal === 0) {
+        await seedIfEmpty();
+      }
+    } catch (e) {
+      console.warn('Auto-seed check notice (continuing):', e);
     }
 
     // ─── 1. Búsqueda en Cuentas de Socios y SuperAdministración SaaS ───
