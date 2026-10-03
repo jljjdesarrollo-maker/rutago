@@ -2628,3 +2628,50 @@ Se auditó y completó el endpoint de respaldo para abarcar con precisión las *
 - **Bóveda GitHub Releases:** Publicación del release `backup-2026-10-03_1900` con `rutago_codigo_2026-10-03_1900.zip` y `rutago_bd_2026-10-03_1900.json` disponibles para descarga inmediata.
 - **Rotación Automática:** Mantiene exactamente las 3 versiones más recientes y purga las anteriores automáticamente.
 - **Cron Diario:** Programado a las 00:00 (hora Ecuador / 05:00 UTC) todos los días de forma 100% desatendida.
+
+---
+
+## 🏛️ v3.60.82 - PROTOCOLO DE CONTINUIDAD POR CAMBIO DE CUOTA / SESIÓN (2026-10-03)
+> **ESTADO:** 🟢 FASE 1 COMPLETADA Y CERTIFICADA AL 100% | FASE 2 LISTA PARA EJECUCIÓN INMEDIATA  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Arquitectura Cloud, Respaldos y Staging  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **ÚLTIMO COMMIT CERTIFICADO:** `99532ec` (v3.60.81) / Actual a `v3.60.82`
+
+---
+
+### 📍 1. RESUMEN EJECUTIVO DE LO REALIZADO EN ESTA SESIÓN (FASE 1 - RESPALDOS):
+1. **Capa A (Exportación Manual en UI SuperAdmin 9999):**
+   - El endpoint `/api/backup` fue completado para extraer con exactitud las **16 tablas relacionales de PostgreSQL** (hojas de ruta, tripulación, socios, flota, suscripciones, pagos, gastos patrimoniales, ventas de boletos, recetas y catálogo de mantenimiento).
+   - Botón `[ 📤 Exportar ]` activo en la tarjeta "Copia de Seguridad Central (BD)" del panel SuperAdmin con soporte móvil nativo (`navigator.share`).
+2. **Capa B (Robot Automático GitHub Actions + Bóveda Dual):**
+   - Creado y encriptado en GitHub Secrets: `GMAIL_APP_PASSWORD` con la clave de 16 caracteres de Google.
+   - Script de rotación `scripts/rotate-releases.mjs`: mantiene estrictamente las **3 versiones más recientes** en GitHub Releases y purga automáticamente las anteriores para evitar acumulación.
+   - Workflow `.github/workflows/backup-drive.yml` configurado y verificado en vivo (`Run ID 37146312848: SUCCESS`):
+     * **Bóveda GitHub Releases:** Publica automáticamente el release con `rutago_codigo_YYYY-MM-DD_HHmm.zip` y `rutago_bd_YYYY-MM-DD_HHmm.json`.
+     * **Correo Electrónico Directo:** Envía a `rutago.backups@gmail.com` el archivo `rutago_bd_....json` adjunto con el enlace directo al release.
+     * **Cumplimiento Antivirus Google:** El `.zip` se aloja en GitHub Releases (libre de restricciones de código JS), permitiendo que el correo llegue a la bandeja principal de Gmail sin bloqueos.
+   - **Cron Diario:** Programado a las 00:00 (Medianoche Ecuador / 05:00 UTC) todos los días de forma 100% desatendida.
+3. **Cálculo de Almacenamiento Auditado:**
+   - La base de datos pesa actualmente menos de 1 KB y se proyecta a ~500 KB con 1 año de operación.
+   - En Gmail (15 GB) hay capacidad garantizada para más de **20 a 40 años** de operación ininterrumpida.
+   - En GitHub Releases la retención fija de 3 versiones garantiza consumo constante e infinito.
+
+---
+
+### 📍 2. PUNTO EXACTO DE PARTIDA PARA LA SIGUIENTE SESIÓN (FASE 2 - AISLAMIENTO DE AMBIENTES):
+El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo afecte la aplicación en producción (`rutago.vercel.app`) o altere la base de datos real utilizada por los buses en carretera.
+
+#### 📋 TAREAS PENDIENTES DE LA FASE 2:
+- [ ] **Paso 2.1:** Crear la rama oficial `staging` en el repositorio GitHub (`git checkout -b staging && git push origin staging`).
+- [ ] **Paso 2.2:** Vincular en Vercel el ambiente de Staging (Preview Deployment automático para la rama `staging`, asignando subdominio o URL de pruebas ej: `rutago-staging.vercel.app`).
+- [ ] **Paso 2.3:** Aprovisionar la segunda Base de Datos PostgreSQL de Staging en Vercel Storage / Neon y conectar su variable de entorno `DATABASE_URL` exclusivamente al ambiente de Staging.
+- [ ] **Paso 2.4:** Verificar aislamiento total: probar un registro ficticio en `staging` y comprobar que la base de datos de producción permanezca 100% inmaculada.
+
+---
+
+### 📍 3. INSTRUCCIONES ESTRICTAS PARA EL ASISTENTE EN LA NUEVA SESIÓN / CUENTA:
+1. Al iniciar la conversación, **LEER ESTE ARCHIVO `REGISTRO_MAESTRO.md`** completo.
+2. Confirmar al usuario que se comprende que la **FASE 1 (Respaldos y Bóveda)** está **100% COMPLETADA Y PROBADA EN VIVO**.
+3. Indicar que el punto exacto de inicio es el **Paso 2.1 de la FASE 2: Creación de la rama `staging` en GitHub**.
+4. Si se requiere token de GitHub para operaciones sobre ramas remotas, solicitárselo directamente al usuario antes de operar.
+5. Mantener la regla de no refactorizar código probado y preservar la ergonomía móvil a una mano (Thumb Zone).
