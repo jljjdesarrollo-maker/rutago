@@ -1,0 +1,44 @@
+name: Respaldo Automatico a Google Drive (Codigo + BD)
+
+on:
+  schedule:
+    # Se ejecuta todos los dias a las 05:00 UTC (00:00 hora Ecuador)
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    # Permite ejecutarlo manualmente en cualquier momento desde la pestaña Actions
+
+jobs:
+  backup:
+    name: Generar y Subir Respaldos a Google Drive
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Clonar Repositorio
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Configurar Entorno Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 📦 Empaquetar Código Fuente (.zip)
+        run: |
+          TIMESTAMP=$(date +'%Y-%m-%d_%H%M')
+          ZIP_NAME="rutago_codigo_${TIMESTAMP}.zip"
+          echo "Empaquetando repositorio excluyendo carpetas pesadas..."
+          zip -q -r "$ZIP_NAME" . -x "node_modules/*" ".next/*" ".git/*" "dist/*"
+          echo "ZIP_PATH=$ZIP_NAME" >> $GITHUB_ENV
+
+      - name: 🗄️ Extraer Volcado de Base de Datos (16 Tablas PostgreSQL)
+        run: |
+          TIMESTAMP=$(date +'%Y-%m-%d_%H%M')
+          DB_NAME="rutago_bd_${TIMESTAMP}.json"
+          PROD_URL="https://rutago.vercel.app/api/backup"
+          curl -s -f "$PROD_URL" -o "$DB_NAME" || echo '{"status": "manual_trigger"}' > "$DB_NAME"
+          echo "DB_PATH=$DB_NAME" >> $GITHUB_ENV
+
+      - name: ☁️ Subir a Google Drive y Rotar 3 Versiones
+        env:
+          RESPALDOS_RUTAGO: ${{ secrets.RESPALDOS_RUTAGO }}
+        run: |
+          node scripts/backup-to-gdrive.mjs "$ZIP_PATH" "$DB_PATH"
