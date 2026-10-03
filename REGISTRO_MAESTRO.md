@@ -2854,3 +2854,21 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
 - Los respaldos generados previamente a la versión v3.60.85 no incluían estos campos.
 - Con la v3.60.90, al descargar un nuevo respaldo desde producción, contiene los hashes criptográficos exactos.
 - Al restaurar en staging, se conservan 100% inmutables sin sobreescribir ni rehashear.
+
+---
+
+## 🏛️ v3.60.91 - RESTAURACIÓN INTEGRAL DE ARQUEOS Y ENTREGAS DE RUTA DEL AYUDANTE (2026-10-03)
+> **ESTADO:** 🟢 INTEGRACIÓN TOTAL DE REGISTROS DIARIOS, VUELTAS, GASTOS DE RUTA Y BOLETAJE  
+> **FECHA DE REGISTRO:** 2026-10-03 | **SISTEMA:** RutaGo - Motor de Hidratación Contable de Ruta  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Diagnóstico de la Ausencia de Entregas de Ruta ($0.00):
+- **Causa Raíz:** Al segmentar la carga en lotes, se omitió la tabla `DailyRecord` (con sus tablas hijas `Trip` y `Expense`) y `VentaBoleto`.
+- **Efecto en UI:** En la pantalla del Socio ("Gastos del Socio"), el indicador "ENTREGADO DE RUTA (Ayudante + Cía)" mostraba **$0.00**, haciendo que la "Ganancia Real en Limpio" calculara un saldo negativo irreal ($-3509.14) al no tener registradas las entregas de dinero del ayudante en carretera.
+
+### 📍 2. Solución de Arquitectura Implementada:
+- **Transmisión de Registros Diarios en `EnvironmentBanner.tsx`:**
+  * **Paso 6 (Arqueos del Ayudante):** Envío en micro-lotes de 15 `DailyRecord`s con sus `trips` y `expenses`, depurando fotos pesadas para garantizar cero bloqueos por cuotas.
+  * **Paso 7 (Boletaje):** Envío de boletos emitidos en lotes de 50 ítems.
+- **Persistencia Relacional en `POST /api/backup` (`src/app/api/backup/route.ts`):**
+  * Restauración de cada `DailyRecord` con sus correspondientes vueltas (`Trip`) y gastos de ruta (`Expense`), alimentando de inmediato `/api/reports` para el cálculo del Arqueo General y Balance del Socio.

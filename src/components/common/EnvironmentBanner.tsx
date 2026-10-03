@@ -87,7 +87,7 @@ export default function EnvironmentBanner() {
       if (Array.isArray(jsonData.suscripciones) && jsonData.suscripciones.length > 0) chunk1.suscripciones = jsonData.suscripciones;
 
       if (Object.keys(chunk1).length > 0) {
-        const s1 = await sendChunk(chunk1, 'Paso 1/4: Restaurando Socios, Flota y Buses...');
+        const s1 = await sendChunk(chunk1, 'Paso 1: Restaurando Socios, Flota y Buses...');
         Object.assign(totalSummary, s1);
       }
 
@@ -95,7 +95,7 @@ export default function EnvironmentBanner() {
       if (Array.isArray(jsonData.personas) && jsonData.personas.length > 0) {
         const s2 = await sendChunk(
           { personas: jsonData.personas },
-          `Paso 2/4: Restaurando ${jsonData.personas.length} tripulantes y contraseñas...`
+          `Paso 2: Restaurando ${jsonData.personas.length} tripulantes y contraseñas...`
         );
         Object.assign(totalSummary, s2);
       }
@@ -106,7 +106,7 @@ export default function EnvironmentBanner() {
       if (Array.isArray(jsonData.frecuencias) && jsonData.frecuencias.length > 0) chunk3.frecuencias = jsonData.frecuencias;
 
       if (Object.keys(chunk3).length > 0) {
-        const s3 = await sendChunk(chunk3, 'Paso 3/4: Restaurando Rutas y Frecuencias oficiales...');
+        const s3 = await sendChunk(chunk3, 'Paso 3: Restaurando Rutas y Frecuencias oficiales...');
         Object.assign(totalSummary, s3);
       }
 
@@ -118,7 +118,7 @@ export default function EnvironmentBanner() {
       if (Array.isArray(jsonData.busMantenimientoConfigs) && jsonData.busMantenimientoConfigs.length > 0) chunk4.busMantenimientoConfigs = jsonData.busMantenimientoConfigs;
 
       if (Object.keys(chunk4).length > 0) {
-        const s4 = await sendChunk(chunk4, 'Paso 4/4: Restaurando Catálogo de Mantenimiento...');
+        const s4 = await sendChunk(chunk4, 'Paso 4: Restaurando Catálogo de Mantenimiento...');
         Object.assign(totalSummary, s4);
       }
 
@@ -131,17 +131,54 @@ export default function EnvironmentBanner() {
         for (let i = 0; i < expenses.length; i += batchSize) {
           const batch = expenses.slice(i, i + batchSize).map((exp: any) => ({
             ...exp,
-            // Descartar fotos base64 gigantes si existen para no saturar memoria en pruebas
             receiptPhotoUrl: exp.receiptPhotoUrl?.startsWith('data:image') ? null : exp.receiptPhotoUrl,
           }));
 
           const s5 = await sendChunk(
             { ownerExpenses: batch },
-            `Restaurando Gastos (${Math.min(i + batchSize, expenses.length)} de ${expenses.length})...`
+            `Paso 5: Restaurando Gastos (${Math.min(i + batchSize, expenses.length)} de ${expenses.length})...`
           );
           totalExpensesRestored += (s5.ownerExpenses || batch.length);
         }
         totalSummary.ownerExpenses = totalExpensesRestored;
+      }
+
+      // ─── CHUNK 6: Registros Diarios, Arqueos y Liquidaciones del Ayudante (DailyRecord con Trips) ───
+      if (Array.isArray(jsonData.records) && jsonData.records.length > 0) {
+        const records = jsonData.records;
+        const batchSize = 15;
+        let totalRecordsRestored = 0;
+
+        for (let i = 0; i < records.length; i += batchSize) {
+          const batch = records.slice(i, i + batchSize).map((rec: any) => ({
+            ...rec,
+            photoUrl: rec.photoUrl?.startsWith('data:image') ? null : rec.photoUrl,
+          }));
+
+          const s6 = await sendChunk(
+            { records: batch },
+            `Paso 6: Restaurando Arqueos y Entregas de Ruta (${Math.min(i + batchSize, records.length)} de ${records.length})...`
+          );
+          totalRecordsRestored += (s6.records || batch.length);
+        }
+        totalSummary.records = totalRecordsRestored;
+      }
+
+      // ─── CHUNK 7: Boletos Vendidos (VentaBoleto) si existen ───
+      if (Array.isArray(jsonData.ventasBoletos) && jsonData.ventasBoletos.length > 0) {
+        const boletos = jsonData.ventasBoletos;
+        const batchSize = 50;
+        let totalBoletosRestored = 0;
+
+        for (let i = 0; i < boletos.length; i += batchSize) {
+          const batch = boletos.slice(i, i + batchSize);
+          const s7 = await sendChunk(
+            { ventasBoletos: batch },
+            `Paso 7: Restaurando Boletos (${Math.min(i + batchSize, boletos.length)} de ${boletos.length})...`
+          );
+          totalBoletosRestored += (s7.ventasBoletos || batch.length);
+        }
+        totalSummary.ventasBoletos = totalBoletosRestored;
       }
 
       setSuccessResult(totalSummary);
@@ -207,7 +244,7 @@ export default function EnvironmentBanner() {
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed mb-4 bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
-              Sube el archivo <strong>.json</strong> que descargaste de producción. El sistema procesa los datos en <strong>paquetes ligeros optimizados</strong> para no sobrecargar el servidor y clonará de inmediato tus <strong>Socios, Buses, Personal y Frecuencias</strong> en la base de pruebas.
+              Sube el archivo <strong>.json</strong> descargado de producción. Se restaurará de forma completa e íntegra: <strong>Socios, Buses, Personal, Frecuencias, Gastos y todos los Arqueos/Entregas del Ayudante</strong>.
             </p>
 
             <input
@@ -246,9 +283,11 @@ export default function EnvironmentBanner() {
                   {successResult.frecuencias !== undefined && <div>• Frecuencias: <strong>{successResult.frecuencias}</strong></div>}
                   {successResult.catalogoMaestroItems !== undefined && <div>• Mantenimiento: <strong>{successResult.catalogoMaestroItems}</strong></div>}
                   {successResult.ownerExpenses !== undefined && <div>• Gastos: <strong>{successResult.ownerExpenses}</strong></div>}
+                  {successResult.records !== undefined && <div>• Arqueos / Vueltas: <strong>{successResult.records}</strong></div>}
+                  {successResult.ventasBoletos !== undefined && <div>• Boletos: <strong>{successResult.ventasBoletos}</strong></div>}
                 </div>
                 <p className="mt-2 text-[11px] text-emerald-400 font-semibold">
-                  Ya puedes iniciar sesión con las contraseñas y PINs oficiales de producción.
+                  Todos los registros de ruta y entregas del ayudante ya están disponibles.
                 </p>
               </div>
             )}

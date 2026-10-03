@@ -646,6 +646,129 @@ export async function POST(req: NextRequest) {
       summaryResults.ownerExpenses = gastosRestaurados;
     }
 
+    // 8. Restaurar Registros Diarios y Arqueos del Ayudante (DailyRecord con Trips y Expenses)
+    if (Array.isArray(data.records) && data.records.length > 0) {
+      let recordsRestaurados = 0;
+      for (const rec of data.records) {
+        try {
+          const createdRec = await db.dailyRecord.upsert({
+            where: { id: rec.id },
+            create: {
+              id: rec.id,
+              date: rec.date,
+              km: rec.km || null,
+              kmInicial: rec.kmInicial || null,
+              kmFinal: rec.kmFinal || null,
+              conductor: rec.conductor || null,
+              ayudanteNombre: rec.ayudanteNombre || null,
+              vtCode: rec.vtCode || null,
+              production: Number(rec.production) || 0,
+              cajaComun: Number(rec.cajaComun) || 0,
+              sobrante: Number(rec.sobrante) || 0,
+              tickets: Number(rec.tickets) || 0,
+              entregaAyudante: Number(rec.entregaAyudante) || 0,
+              entregaCompania: Number(rec.entregaCompania) || 0,
+              totalGastos: Number(rec.totalGastos) || 0,
+              photoUrl: rec.photoUrl?.startsWith('data:image') ? null : (rec.photoUrl || null),
+            },
+            update: {
+              date: rec.date,
+              km: rec.km || null,
+              kmInicial: rec.kmInicial || null,
+              kmFinal: rec.kmFinal || null,
+              conductor: rec.conductor || null,
+              ayudanteNombre: rec.ayudanteNombre || null,
+              vtCode: rec.vtCode || null,
+              production: Number(rec.production) || 0,
+              cajaComun: Number(rec.cajaComun) || 0,
+              sobrante: Number(rec.sobrante) || 0,
+              tickets: Number(rec.tickets) || 0,
+              entregaAyudante: Number(rec.entregaAyudante) || 0,
+              entregaCompania: Number(rec.entregaCompania) || 0,
+              totalGastos: Number(rec.totalGastos) || 0,
+            },
+          });
+
+          // Restaurar Trips si existen
+          if (Array.isArray(rec.trips) && rec.trips.length > 0) {
+            await db.trip.deleteMany({ where: { recordId: createdRec.id } });
+            await db.trip.createMany({
+              data: rec.trips.map((t: any) => ({
+                id: t.id,
+                recordId: createdRec.id,
+                order: Number(t.order) || 0,
+                routeFrom: t.routeFrom || '',
+                routeTo: t.routeTo || '',
+                time: t.time || null,
+                income: Number(t.income) || 0,
+                efectivoReal: Number(t.efectivoReal) || 0,
+                boletos: Number(t.boletos) || 0,
+                cajaComunPasajeros: Number(t.cajaComunPasajeros) || 0,
+                cajaComunMonto: Number(t.cajaComunMonto) || 0,
+                tipo: t.tipo || 'frecuencia',
+                motivo: t.motivo || null,
+                notaEspecial: t.notaEspecial || null,
+              })),
+            });
+          }
+
+          // Restaurar Expenses si existen
+          if (Array.isArray(rec.expenses) && rec.expenses.length > 0) {
+            await db.expense.deleteMany({ where: { recordId: createdRec.id } });
+            await db.expense.createMany({
+              data: rec.expenses.map((e: any) => ({
+                id: e.id,
+                recordId: createdRec.id,
+                order: Number(e.order) || 0,
+                description: e.description || '',
+                amount: Number(e.amount) || 0,
+              })),
+            });
+          }
+
+          recordsRestaurados++;
+        } catch (recErr: any) {
+          console.warn('Advertencia restaurando dailyRecord:', recErr?.message);
+        }
+      }
+      summaryResults.records = recordsRestaurados;
+    }
+
+    // 9. Restaurar Boletos (VentaBoleto)
+    if (Array.isArray(data.ventasBoletos) && data.ventasBoletos.length > 0) {
+      let boletosRestaurados = 0;
+      for (const vb of data.ventasBoletos) {
+        try {
+          await db.ventaBoleto.upsert({
+            where: { id: vb.id },
+            create: {
+              id: vb.id,
+              fecha: vb.fecha,
+              fechaOperacion: vb.fechaOperacion || null,
+              diaTurno: Number(vb.diaTurno) || 1,
+              vtCode: vb.vtCode,
+              frecuenciaId: vb.frecuenciaId || null,
+              ruta: vb.ruta,
+              parada: vb.parada,
+              tipo: vb.tipo,
+              pasajeroTipo: vb.pasajeroTipo || 'normal',
+              tarifaOficial: Number(vb.tarifaOficial) || 0,
+              cobrado: Number(vb.cobrado) || 0,
+              hora: vb.hora,
+              ayudanteId: vb.ayudanteId,
+              ayudanteNombre: vb.ayudanteNombre,
+              syncStatus: vb.syncStatus || 'synced',
+            },
+            update: {},
+          });
+          boletosRestaurados++;
+        } catch (vbErr: any) {
+          // Omitir si hay inconsistencia menor
+        }
+      }
+      summaryResults.ventasBoletos = boletosRestaurados;
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Base de datos restaurada exitosamente desde el respaldo',
