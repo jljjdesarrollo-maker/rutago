@@ -1,11 +1,11 @@
 {
   "name": "rutago",
-  "version": "3.60.92",
+  "version": "3.60.94",
   "private": true,
   "description": "RutaGo - Control de transporte y venta de boletos",
   "scripts": {
     "dev": "next dev -p 3000 -H 0.0.0.0",
-    "build": "prisma generate && (TARGET_DB=\"${STAGING_POSTGRES_URL:-${STAGING_PRISMA_DATABASE_URL:-$DATABASE_URL}}\"; if [ -n \"$TARGET_DB\" ]; then DATABASE_URL=\"$TARGET_DB\" prisma db push --accept-data-loss --skip-generate; fi) && NODE_ENV=production next build",
+    "build": "prisma generate && (TARGET_DB=\"${DIRECT_URL:-${STAGING_POSTGRES_URL:-${STAGING_PRISMA_DATABASE_URL:-$DATABASE_URL}}}\"; if [ -n \"$TARGET_DB\" ]; then DATABASE_URL=\"$TARGET_DB\" prisma db push --accept-data-loss --skip-generate; fi) && NODE_ENV=production next build",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
     "db:push": "(if [ -n \"$DATABASE_URL\" ]; then prisma db push --accept-data-loss; else echo 'DATABASE_URL not set, skipping db:push'; fi)",

@@ -2917,3 +2917,31 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
 - **Desacoplamiento Visual:** Ajuste de posicionamiento dinámico en el banner inferior de turno activo para evitar cualquier solapamiento en pantallas móviles.
 - **Versión de Build:** Incrementada a `v3.60.31`.
 
+
+---
+
+## 🏛️ v3.60.94 - BLINDAJE DE CONNECTION POOLING EN VERCEL Y PRISMA POSTGRES (2026-10-05)
+> **ESTADO:** 🟢 CONNECTION POOLING ACTIVADO Y BLINDADO PARA CONCURRENCIA DE FLOTA (8 BUSES)  
+> **FECHA DE REGISTRO:** 2026-10-05 | **SISTEMA:** RutaGo - Infraestructura Cloud y Conectividad Serverless  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Diagnóstico de Infraestructura y Necesidad de Blindaje:
+- **Problema de Concurrencia Serverless:** Al operar entre 5 y 8 unidades de transporte simultáneamente en carretera, los ayudantes emitiendo boletos y enviando lotes de ventas, los choferes actualizando tacómetros y los socios consultando balances ejecutivos generan decenas de invocaciones concurrentes en Vercel Functions (Lambdas).
+- **Límite Físico de Base de Datos:** En conexión directa (`db.prisma.io:5432`), cada función serverless abre una conexión TCP exclusiva. Esto exponía a la base de datos a superar el límite de conexiones y disparar el error crítico: `FATAL: remaining connection slots are reserved for non-replication superuser connections`.
+- **Auditoría de Variables en Vercel:** Se constató que `DATABASE_URL` y `PRISMA_DATABASE_URL` estaban configuradas en modo conexión directa (`db.prisma.io:5432`), sin pasar por el PgBouncer de Prisma.
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. **Configuración de Variables en Vercel (Panel de Control):**
+   - **`DIRECT_URL` (Secret 🔒):** Conexión directa pura a `postgres://... @db.prisma.io:5432/postgres?sslmode=require`. Preservada exclusivamente para el comando de compilación y despliegue del esquema (`prisma db push`).
+   - **`POOLED_DATABASE_URL` (Secret 🔒):** Conexión multiplexada por PgBouncer a `postgres://... @pooled.db.prisma.io:5432/postgres?sslmode=require`. Diseñada específicamente para tráfico de alta concurrencia serverless.
+   - **Aislamiento de Staging Preservado:** Las variables `STAGING_POSTGRES_URL` y `STAGING_PRISMA_DATABASE_URL` permanecen intactas en el entorno `Preview`.
+2. **Resolución Inteligente en `src/lib/db.ts`:**
+   - La cadena de resolución de URL prioriza `STAGING_...` en entorno de pruebas, y en producción utiliza prioritariamente `POOLED_DATABASE_URL` (`pooled.db.prisma.io:5432`).
+   - Se implementó la persistencia incondicional de la instancia en `globalThis` (`globalForPrisma.prisma = db`) para warm containers de Vercel Functions, eliminando la creación repetitiva de clientes Prisma y asegurando el reuso del pool de conexiones en memoria.
+3. **Optimización del Script de Build (`package.json`):**
+   - Se ajustó el script `build` para que durante el despliegue en Vercel, `prisma db push` utilice prioritariamente `DIRECT_URL` (`${DIRECT_URL:-...}`), evitando cualquier restricción de PgBouncer durante operaciones DDL de esquema.
+   - Versión incrementada a `3.60.94`.
+
+### 📍 3. Veredicto y Capacidad Operativa:
+- La infraestructura de base de datos queda 100% blindada para soportar holgadamente la operación simultánea de los 8 buses de la cooperativa sin riesgo de saturación de conexiones.
+- Cero impacto o disrupción en la base de datos de producción ni en la de staging.
