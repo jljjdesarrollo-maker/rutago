@@ -196,19 +196,38 @@ export async function PUT(req: NextRequest) {
     }
 
     let updated;
+    const cleanDisco = numeroDisco
+      ? String(numeroDisco).trim().padStart(2, "0")
+      : (id ? String(id).replace("BUS-", "").padStart(2, "0") : "01");
+    const cleanPlaca = fieldsToUpdate.placa ? String(fieldsToUpdate.placa).trim().toUpperCase() : "PENDIENTE";
+    const busId = id || `BUS-${cleanDisco}`;
+
     try {
-      updated = await (db as any).bus.update({
-        where: id ? { id } : { numeroDisco },
-        data: {
+      updated = await (db as any).bus.upsert({
+        where: { numeroDisco: cleanDisco },
+        update: {
           ...fieldsToUpdate,
-          ...(fieldsToUpdate.placa && { placa: String(fieldsToUpdate.placa).trim().toUpperCase() }),
+          ...(fieldsToUpdate.placa && { placa: cleanPlaca }),
+        },
+        create: {
+          id: busId,
+          numeroDisco: cleanDisco,
+          placa: cleanPlaca,
+          marca: fieldsToUpdate.marca || "Hino AK",
+          modelo: fieldsToUpdate.modelo || "AK",
+          anio: fieldsToUpdate.anio ? Number(fieldsToUpdate.anio) : 2022,
+          capacidadAsientos: fieldsToUpdate.capacidadAsientos ? Number(fieldsToUpdate.capacidadAsientos) : 45,
+          propietario: fieldsToUpdate.propietario || "Socio",
+          tipoOperacion: fieldsToUpdate.tipoOperacion || "TRONCAL_VT",
+          activo: fieldsToUpdate.activo !== false,
+          notas: fieldsToUpdate.notas || null,
         },
       });
     } catch (dbErr) {
-      console.warn('Actualización en BD falló, retorno de confirmación con datos locales:', dbErr);
+      console.warn('Upsert en BD falló, retorno de confirmación con datos locales:', dbErr);
       updated = {
-        id: id || `BUS-${numeroDisco}`,
-        numeroDisco: numeroDisco || '01',
+        id: busId,
+        numeroDisco: cleanDisco,
         ...fieldsToUpdate,
         updatedAt: new Date().toISOString(),
       };

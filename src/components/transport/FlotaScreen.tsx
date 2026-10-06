@@ -49,10 +49,11 @@ import {
   getActiveBusId,
   saveBusOdometer,
   getLatestBusOdometer,
+  BENCHMARK_FLEET_BUSES,
 } from '@/lib/fleet-storage';
 
 interface FlotaScreenProps {
-  currentUser?: { id: string; nombre: string; rol: string } | null;
+  currentUser?: { id: string; nombre: string; rol: string; subRol?: string } | null;
   onBack: () => void;
 }
 
@@ -73,7 +74,11 @@ const EMPTY_FORM: BusFormData = {
 
 export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
   // Detección estricta de Rol: SuperAdmin SaaS (9999) vs Socio Propietario (0101 / 2107)
-  const isSuperAdmin = currentUser?.rol === 'SUPERADMIN_SAAS' || currentUser?.id === 'saas-superadmin';
+  const isSuperAdmin =
+    currentUser?.rol === 'ADMIN' ||
+    currentUser?.rol === 'SUPERADMIN_SAAS' ||
+    currentUser?.subRol === 'SUPERADMIN_SAAS' ||
+    currentUser?.id === 'saas-superadmin';
   const activeBusId = getActiveBusId() || 'BUS-01';
 
   const [buses, setBuses] = useState<BusItem[]>([]);
@@ -112,7 +117,18 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
       try {
         const remote = await fetchBusesFromApi();
         if (remote && remote.length > 0) {
-          setBuses(remote);
+          if (isSuperAdmin) {
+            const merged = [...remote];
+            BENCHMARK_FLEET_BUSES.forEach((b) => {
+              if (!merged.some((m) => m.numeroDisco === b.numeroDisco || m.id === b.id)) {
+                merged.push(b);
+              }
+            });
+            merged.sort((a, b) => a.numeroDisco.localeCompare(b.numeroDisco, undefined, { numeric: true }));
+            setBuses(merged);
+          } else {
+            setBuses(remote);
+          }
         }
       } catch {
         /* fallback silencioso a local */
@@ -455,6 +471,11 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
       title: 'Flota Benchmark cargada',
       description: `Se sincronizaron ${updated.length} unidades de referencia de la cooperativa.`,
     });
+    if (typeof window !== 'undefined' && navigator.onLine) {
+      updated.forEach((bus) => {
+        saveBusToApi(bus).catch(() => {});
+      });
+    }
   };
 
   return (

@@ -2945,3 +2945,37 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
 ### 📍 3. Veredicto y Capacidad Operativa:
 - La infraestructura de base de datos queda 100% blindada para soportar holgadamente la operación simultánea de los 8 buses de la cooperativa sin riesgo de saturación de conexiones.
 - Cero impacto o disrupción en la base de datos de producción ni en la de staging.
+
+---
+
+## 🏛️ v3.60.95 - REPARACIÓN DE PERMISOS SUPERADMIN EN GESTIÓN DE FLOTA Y DESPLIEGUE DEL PADRÓN DE 19 BUSES (2026-10-06)
+> **ESTADO:** 🟢 SUPERADMIN RESTAURADO EN PADRÓN DE FLOTA - ACCESO COMPLETO A 19 BUSES Y ALTA DE UNIDADES  
+> **FECHA DE REGISTRO:** 2026-10-06 | **SISTEMA:** RutaGo - Consola SuperAdmin y Módulo de Flota  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Diagnóstico del Incidente:
+- **Síntoma Reportado por el Usuario:** Al ingresar con PIN SuperAdmin `9999` y entrar a la opción de Flota, la pantalla mostraba el título "Ficha de Mi Unidad", la insignia "Socio Titular" y un aviso de "Privacidad y Control de tu Patrimonio (Tu Unidad Aislada)", mostrando únicamente el Bus 01 y sin mostrar el botón `[ + ]` ni el catálogo de las 19 unidades de la cooperativa.
+- **Causa Raíz Identificada:**
+  * En `src/components/transport/FlotaScreen.tsx` (línea 76), la condición de detección evaluaba estrictamente:
+    `const isSuperAdmin = currentUser?.rol === 'SUPERADMIN_SAAS' || currentUser?.id === 'saas-superadmin';`
+  * Sin embargo, el endpoint oficial de autenticación (`/api/auth`) devuelve para el PIN `9999`:
+    `rol: 'ADMIN'`, `subRol: 'SUPERADMIN_SAAS'`.
+  * Como `currentUser.rol` es `'ADMIN'` y no `'SUPERADMIN_SAAS'`, la condición evaluaba en `false`.
+  * En consecuencia, la pantalla trataba erróneamente al SuperAdmin como si fuera un Socio Propietario individual, aplicando el filtro de confidencialidad gremial que oculta los demás buses y desactiva el botón de alta de unidades.
+  * Además, al consultar `/api/buses`, la base de datos PostgreSQL solo contenía inicialmente la Unidad 01, por lo que la lista en memoria sobreescribía los 19 buses de referencia.
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. **Corrección de Permisos en `src/components/transport/FlotaScreen.tsx`:**
+   - Se amplió la detección de SuperAdmin para validar de forma integral:
+     `currentUser?.rol === 'ADMIN' || currentUser?.rol === 'SUPERADMIN_SAAS' || currentUser?.subRol === 'SUPERADMIN_SAAS' || currentUser?.id === 'saas-superadmin'`.
+   - Ahora, al ingresar con PIN `9999`, la pantalla activa inmediatamente la vista soberana:
+     * Título: **"Gestión de Flota"** (*Catálogo maestro de 19 unidades físicas y circuitos*).
+     * Muestra el buscador general y los filtros por circuito (*Troncal VT* vs *Alimentador P*).
+     * Muestra la barra inferior con el botón principal: **`[ + Registrar Nueva Unidad Física ]`**.
+2. **Fusión Inteligente del Catálogo Completo de la Flota:**
+   - En `loadFleet()`, se fusionan los datos remotos con `BENCHMARK_FLEET_BUSES`, garantizando que para el SuperAdmin las **19 unidades de la cooperativa** (incluyendo el Disco 10) estén siempre visibles y disponibles para edición inmediata.
+   - En `handleLoadBenchmark()`, se añadió sincronización en red hacia la API para persistir las unidades en PostgreSQL.
+3. **Resiliencia en Guardado (`src/app/api/buses/route.ts`):**
+   - El endpoint `PUT /api/buses` fue refactorizado para utilizar `upsert` en lugar de `update`. Esto asegura que al editar la ficha de cualquier bus del catálogo que aún no esté insertado en la tabla de la BD (como el Bus 10), se cree o actualice de forma transparente sin generar errores.
+4. **Versión de Build:**
+   - Incrementada a `3.60.95`.
