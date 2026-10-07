@@ -3069,3 +3069,34 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
   3. **Herramientas Auxiliares:** Se documentaron los dos botones de acción rápida en la tarjeta: `[ 🕒 ]` (Historial de pagos y recibos generados) y `[ 📤 ]` (Compartir notificación formal de cobranza por WhatsApp).
 - **Archivo Actualizado:** `docs/TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md`.
 - **Versión de Build:** Incrementada a `3.60.99`.
+
+---
+
+## 🏛️ v3.61.00 - RESOLUCIÓN DE CLAVE FORÁNEA REGISTRADOPOR EN COBRO DE SUSCRIPCIONES SAAS (2026-10-07)
+> **ESTADO:** 🟢 REGISTRO DE COBRO Y RENOVACIÓN DE SUSCRIPCIÓN 100% OPERATIVO EN POSTGRESQL  
+> **FECHA DE REGISTRO:** 2026-10-07 | **SISTEMA:** RutaGo - Cobranzas SaaS y Motor de Pagos  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Diagnóstico del Incidente:
+- **Síntoma Reportado por el Usuario:** Al hacer clic en el botón `[ Confirmar Cobro ]` en el modal de cobro de mensualidad ($20), la acción no continuaba y el modal permanecía abierto.
+- **Causa Raíz Identificada:**
+  * En `prisma/schema.prisma`, la tabla `PagoSuscripcion` define una relación obligatoria de clave foránea:
+    `registradoPor String` vinculada a `CuentaSocio(id)`.
+  * En el frontend (`SaaSAdminScreen.tsx`), la petición enviaba el texto literal `registradoPor: 'SUPERADMIN'`.
+  * En el backend (`POST /api/saas/suscripciones`), se intentaba insertar directamente `registradoPor: 'SUPERADMIN'` (o `'SISTEMA'`).
+  * Como en `CuentaSocio` no existe ningún registro con ID `'SUPERADMIN'` (los IDs son CUIDs generados), PostgreSQL rechazaba la inserción por violación de integridad referencial de clave foránea (`Foreign key constraint violation`), retornando HTTP 500 (`Error al procesar el pago`).
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. **Resolución Automática y Resiliente de Clave Foránea (`src/app/api/saas/suscripciones/route.ts`):**
+   - Se añadió un resolvedor dinámico antes de crear el pago en Prisma:
+     * Si `registradoPor` viene como `'SUPERADMIN'`, busca automáticamente el ID real de la cuenta de SuperAdmin en `CuentaSocio` (`rol: SUPERADMIN_SAAS` o cédula `'0000000000'`).
+     * Si no se encuentra o hay contingencia, asocia de forma segura el `suscripcion.socioId`.
+   - Esto garantiza que `PagoSuscripcion.registradoPor` siempre apunte a un `CuentaSocio` válido existente, eliminando la excepción de PostgreSQL.
+2. **Resultado Operativo:**
+   - Al confirmar el cobro:
+     * Se crea el registro del recibo en `pagoSuscripcion`.
+     * Se renueva la vigencia de la suscripción avanzando la fecha de corte 30 días (`2026-11-05`).
+     * El estado dinámico de la unidad pasa automáticamente a `AL DÍA` (Verde).
+     * El modal se cierra y el MRR se actualiza en pantalla.
+3. **Versión de Build:**
+   - Incrementada a `3.61.00`.

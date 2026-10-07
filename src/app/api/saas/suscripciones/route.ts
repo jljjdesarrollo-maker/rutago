@@ -91,15 +91,41 @@ export async function POST(req: NextRequest) {
 
     // Registrar pago
     const fechaPago = new Date();
+
+    // Resolver ID válido de CuentaSocio para cumplir con la FK de PostgreSQL en registradoPor
+    let idSocioRegistrador: string = suscripcion.socioId;
+    try {
+      if (registradoPor && registradoPor !== "SUPERADMIN" && registradoPor !== "SISTEMA") {
+        const existe = await db.cuentaSocio.findUnique({
+          where: { id: registradoPor },
+          select: { id: true },
+        });
+        if (existe) idSocioRegistrador = existe.id;
+      } else {
+        const admin = await db.cuentaSocio.findFirst({
+          where: {
+            OR: [
+              { rol: "SUPERADMIN_SAAS" },
+              { cedula: "0000000000" },
+            ],
+          },
+          select: { id: true },
+        });
+        if (admin) idSocioRegistrador = admin.id;
+      }
+    } catch {
+      idSocioRegistrador = suscripcion.socioId;
+    }
+
     const pago = await db.pagoSuscripcion.create({
       data: {
         suscripcionId,
         monto: Number(monto),
         fechaPago,
-        metodoPago: metodoPago || 'TRANSFERENCIA',
+        metodoPago: metodoPago || "TRANSFERENCIA",
         numeroComprobante,
         comprobanteUrl,
-        registradoPor: registradoPor || 'SISTEMA',
+        registradoPor: idSocioRegistrador,
         notas,
       },
     });
