@@ -1,5 +1,7 @@
 'use client';
 
+import { isSuperAdmin as checkIsSuperAdmin } from '@/lib/roles';
+
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Wrench,
@@ -136,7 +138,7 @@ export function MantenimientoScreen({
 }: MantenimientoScreenProps) {
   const { toast } = useToast();
 
-  const isSuperAdmin = currentUser?.rol === 'ADMIN' && currentUser?.subRol === 'SUPERADMIN_SAAS';
+  const isSuperAdmin = checkIsSuperAdmin(currentUser);
   const isConductor = currentUser?.rol === 'CONDUCTOR';
   const isSocio = !isSuperAdmin && !isConductor;
   const socioIdActual = currentUser?.socioId || (isSocio ? currentUser?.id : null);

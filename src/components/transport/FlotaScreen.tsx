@@ -1,5 +1,7 @@
 'use client';
 
+import { isSuperAdmin as checkIsSuperAdmin } from '@/lib/roles';
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   ArrowLeft,
@@ -74,11 +76,7 @@ const EMPTY_FORM: BusFormData = {
 
 export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
   // Detección estricta de Rol: SuperAdmin SaaS (9999) vs Socio Propietario (0101 / 2107)
-  const isSuperAdmin =
-    currentUser?.rol === 'ADMIN' ||
-    currentUser?.rol === 'SUPERADMIN_SAAS' ||
-    currentUser?.subRol === 'SUPERADMIN_SAAS' ||
-    currentUser?.id === 'saas-superadmin';
+  const isSuperAdmin = checkIsSuperAdmin(currentUser);
   const activeBusId = getActiveBusId() || 'BUS-01';
 
   const [buses, setBuses] = useState<BusItem[]>([]);

@@ -1,5 +1,7 @@
 'use client';
 
+import { isSuperAdmin as checkIsSuperAdmin } from '@/lib/roles';
+
 import { useState, useEffect, useCallback } from 'react';
 import { HomeScreen } from '@/components/transport/HomeScreen';
 import { RecordForm } from '@/components/transport/RecordForm';
@@ -169,14 +171,8 @@ export default function Home() {
     } catch { /* ignore */ }
   }, [view, currentEstado, vtSession, esUltimaFrecuencia]);
 
-  const isAdmin = user?.rol === 'ADMIN' || user?.rol === 'SOCIO';
-  const isSuperAdmin = Boolean(
-    user?.id === 'saas-superadmin' ||
-    user?.id === 'user-superadmin' ||
-    user?.nombre?.toLowerCase().includes('superadmin') ||
-    user?.rol === 'SUPERADMIN_SAAS' ||
-    user?.subRol === 'SUPERADMIN_SAAS'
-  );
+  const isSuperAdmin = checkIsSuperAdmin(user);
+  const isAdmin = isSuperAdmin || user?.rol === 'ADMIN' || user?.rol === 'SOCIO';
 
   const fetchCount = useCallback(async () => {
     try {

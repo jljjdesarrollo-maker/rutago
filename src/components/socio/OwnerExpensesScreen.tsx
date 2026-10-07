@@ -1,5 +1,7 @@
 'use client';
 
+import { isSuperAdmin as checkIsSuperAdmin } from '@/lib/roles';
+
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar,
@@ -72,7 +74,7 @@ export default function OwnerExpensesScreen({
   currentUser,
   onBackToHome,
 }: Props) {
-  const isSuperAdmin = currentUser?.rol === 'ADMIN' && currentUser?.subRol === 'SUPERADMIN_SAAS';
+  const isSuperAdmin = checkIsSuperAdmin(currentUser);
   const isSocio = !isSuperAdmin;
   const socioIdActual = currentUser?.socioId || (isSocio ? currentUser?.id : null);
 

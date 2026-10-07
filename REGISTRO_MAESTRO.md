@@ -3100,3 +3100,58 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
      * El modal se cierra y el MRR se actualiza en pantalla.
 3. **Versión de Build:**
    - Incrementada a `3.61.00`.
+
+---
+
+## 🏛️ v3.61.01 - LIMPIEZA GENERAL DE ROLES Y UNIFICACIÓN CANÓNICA DE SUPERADMIN_SAAS (2026-10-07)
+> **ESTADO:** 🟢 ARQUITECTURA DE ROLES 100% LIMPIA, TRANSPARENTE Y CENTRALIZADA EN TODAS LAS INTERFACES  
+> **FECHA DE REGISTRO:** 2026-10-07 | **SISTEMA:** RutaGo - Motor de Autenticación, Permisos y Gobernanza SaaS  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **DEPLOY PRODUCCIÓN:** `https://rutago-jljjj.vercel.app`  
+
+### 📍 1. Diagnóstico de la Fragilidad Anterior:
+- Existía una dualidad histórica entre `'ADMIN'` y `'SUPERADMIN_SAAS'`:
+  * En `/api/auth/route.ts`, el PIN `9999` devolvía `rol: 'ADMIN'` con `subRol: 'SUPERADMIN_SAAS'` como puente provisional.
+  * Diferentes pantallas del frontend tenían condiciones dispares y frágiles (`currentUser?.rol === 'ADMIN' && currentUser?.subRol === 'SUPERADMIN_SAAS'`), lo que provocaba que al modificar una pantalla se rompieran permisos en otra.
+- Para el socio y el vendor, **SuperAdmin y SUPERADMIN_SAAS son una única y misma persona**.
+
+### 📍 2. Solución de Ingeniería - Arquitectura Canónica Definitiva:
+1. **Creación del Módulo Central de Roles (`src/lib/roles.ts`):**
+   - Se estableció la **Fuente Única de la Verdad** para permisos en el sistema:
+     ```ts
+     export function isSuperAdmin(user?: UserRolePayload | null): boolean
+     export function isSocio(user?: UserRolePayload | null): boolean
+     export function isTripulacion(user?: UserRolePayload | null): boolean
+     ```
+   - El helper reconoce de manera soberana y sin fallas al usuario de plataforma (por rol `SUPERADMIN_SAAS`, por PIN `9999`, por cuenta `cmumqilqq0000jp04fx4oyh1f` o por ID vendor).
+2. **Autenticación Limpia y Soberana (`src/app/api/auth/route.ts`):**
+   - El endpoint oficial `/api/auth` ahora devuelve directamente:
+     `rol: 'SUPERADMIN_SAAS'` para el usuario maestro del PIN `9999` y para cuentas de socios marcadas con dicho rol.
+3. **Refactorización Integral en Todas las Pantallas:**
+   - Se sustituyeron las 16 condiciones duplicadas por el uso estandarizado de `isSuperAdmin()` en:
+     * `src/app/page.tsx` (Enrutador principal de vistas y permisos).
+     * `src/components/transport/HomeScreen.tsx` (Acceso a módulos soberanos y panel MRR).
+     * `src/components/transport/FlotaScreen.tsx` (Catálogo de 19 unidades y botón de alta de bus).
+     * `src/components/transport/MantenimientoScreen.tsx` (Catálogo maestro de tareas preventivas y odómetros).
+     * `src/components/transport/PersonalScreen.tsx` (Directorio de tripulación y asignación de buses).
+     * `src/components/socio/OwnerExpensesScreen.tsx` (Control financiero de gastos y patrimonio).
+     * `src/components/transport/SaaSAdminScreen.tsx` (Cobranzas MRR, auditoría DB y altas de socios).
+
+---
+
+## 📌 ESTADO GLOBAL DEL PROYECTO PARA CONTINUIDAD POR CUOTAS (TRANSICIÓN DE SESIÓN)
+
+| Componente / Módulo | Estado en Producción | Detalles Técnicos |
+| :--- | :---: | :--- |
+| **Autenticación Maestro (PIN 9999)** | 🟢 OPERATIVO | Acceso soberano como `SUPERADMIN_SAAS` sin parches. |
+| **Catálogo de Flota** | 🟢 OPERATIVO | Las 19 unidades visibles; edición con **Odómetro Inicial** funcional y persistente. |
+| **Suscripciones y Cobranzas ($20/mes)** | 🟢 OPERATIVO | `POST /api/saas/suscripciones` con resolución dinámica de clave foránea; Unidad 01 y 10 al día. |
+| **Asistente de Mantenimiento** | 🟢 OPERATIVO | Conectado al odómetro del bus; cálculo predictivo por kilometraje real. |
+| **Documentación y Tutoriales** | 🟢 OPERATIVO | Documento formal creado en `docs/TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md`. |
+| **Ramas GitHub** | 🟢 SINCRONIZADAS | `main` y `staging` reflejan el commit `v3.61.01`. |
+| **Despliegue Vercel** | 🟢 ACTIVO | Build exitoso en `https://rutago-jljjj.vercel.app`. |
+
+### 🔑 Instrucciones para el Próximo Ingeniero / Próxima Sesión de Google AI Studio:
+1. **Credenciales y Roles:** El usuario principal es **SuperAdmin** (PIN **`9999`**). Su rol canónico en todo el código es **`SUPERADMIN_SAAS`** gestionado a través de `isSuperAdmin()` de `@/lib/roles`.
+2. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago`. Trabajar siempre sincronizando `main` y `staging`.
+3. **Flujo de Trabajo:** Consultar `REGISTRO_MAESTRO.md` y `docs/TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md` para cualquier duda sobre la lógica de negocio antes de aplicar cambios.

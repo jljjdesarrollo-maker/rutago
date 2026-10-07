@@ -1,5 +1,7 @@
 'use client';
 
+import { isSuperAdmin as checkIsSuperAdmin } from '@/lib/roles';
+
 import { useState, useEffect, useCallback } from 'react';
 import {
   ArrowLeft,
@@ -71,7 +73,7 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
   const [resetDevicePersona, setResetDevicePersona] = useState<PersonaItem | null>(null);
 
   // Modo SuperAdmin vs Modo Socio
-  const isSuperAdmin = currentUser?.rol === 'ADMIN' && currentUser?.subRol === 'SUPERADMIN_SAAS';
+  const isSuperAdmin = checkIsSuperAdmin(currentUser);
   const isSocio = !isSuperAdmin;
   const socioIdActual = currentUser?.socioId || (isSocio ? currentUser?.id : null);
 

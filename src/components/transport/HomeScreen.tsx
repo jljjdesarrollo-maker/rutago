@@ -1,5 +1,7 @@
 'use client';
 
+import { isSuperAdmin as checkIsSuperAdmin } from '@/lib/roles';
+
 import { useState, useEffect } from 'react';
 import {
   History,
@@ -96,16 +98,10 @@ export function HomeScreen({
   onLogout,
   recordCount,
 }: HomeScreenProps) {
-  const isSuperAdmin = Boolean(
-    user.id === 'saas-superadmin' ||
-    user.id === 'user-superadmin' ||
-    user.nombre?.toLowerCase().includes('superadmin') ||
-    user.rol === 'SUPERADMIN_SAAS' ||
-    user.subRol === 'SUPERADMIN_SAAS'
-  );
+  const isSuperAdmin = checkIsSuperAdmin(user);
 
   // Soberanía del Socio Propietario / Administrador sobre el autobús asignado
-  const isSocioOwner = Boolean(isAdmin || user.rol === 'SOCIO' || user.rol === 'ADMIN');
+  const isSocioOwner = Boolean(isSuperAdmin || isAdmin || user.rol === 'SOCIO' || user.rol === 'ADMIN');
 
   const [backupLoading, setBackupLoading] = useState(false);
   const activeBusId = getActiveBusId() || 'BUS-01';
