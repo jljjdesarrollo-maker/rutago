@@ -3221,3 +3221,36 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
      * `/api/records` / `/api/trips`: Cierres de caja y arqueo general con preservación de nombres históricos.
 6. **Versión de Build:**
    - Incrementada a `3.61.03`.
+
+---
+
+## 🏛️ v3.61.04 - HOMOLOGACIÓN INTEGRAL Y DESPLIEGUE DEL MANUAL OFICIAL DEL SOCIO PROPIETARIO (2026-10-07)
+> **ESTADO:** 🟢 GUÍA GERENCIAL DEL SOCIO PROPIETARIO 100% HOMOLOGADA CON LAS INTERFACES REALES  
+> **FECHA DE REGISTRO:** 2026-10-07 | **SISTEMA:** RutaGo - Documentación, Onboarding y Gobernanza Financiera  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **DEPLOY PRODUCCIÓN:** `https://rutago-jljjj.vercel.app`  
+
+### 📍 1. Diagnóstico y Necesidad de Negocio:
+- **Cierre del Ciclo de Adopción SaaS:** Tras implementar la captación y cobro de suscripciones ($20/mes) en `TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md`, era indispensable dotar al Socio Propietario de su manual oficial de bienvenida y uso.
+- **Erradicación de Imprecisiones:** Se auditó minuciosamente el código fuente de los 4 componentes centrales del Socio (`HomeScreen.tsx`, `OwnerExpensesScreen.tsx`, `MantenimientoScreen.tsx` y `PersonalScreen.tsx`) garantizando que cada botón, badge, fórmula y flujo descrito en el manual coincida con exactitud matemática y visual con lo renderizado en pantalla.
+
+### 📍 2. Artefactos y Cobertura Operativa (`docs/MANUAL_DE_USUARIO_SOCIO.md`):
+1. **Inicio de Sesión y Privacidad Multi-Tenant:** Explicación del ingreso con PIN de 4 dígitos, aislamiento absoluto de datos por unidad y garantía de confidencialidad entre socios.
+2. **Dashboard Ejecutivo (`HomeScreen`):** Interpretación del Balance Rápido en 3 segundos, Entregas Netas de Ruta, Gastos del Socio y Utilidad Neta Real (Número Rey en verde esmeralda).
+3. **Principio Anti-Duplicidad Financiera:** Claridad técnica y contable de por qué los gastos de carretera liquidados por el ayudante en sus arqueos quedan estrictamente excluidos de los gastos del dueño, protegiendo su ganancia en limpio.
+4. **Finanzas, Estado de Resultados (P&L) y Cartera de Talleres (`OwnerExpensesScreen`):**
+   - Registro de facturas a crédito vs. contado con comprobante.
+   - Procedimiento de abonos reactivos a mecánicos y casas de repuestos con extinción automática de deuda en saldo $0.00.
+   - Visualización y exportación a PDF del Estado de Resultados clasificado por cuentas contables.
+5. **Auditoría de Mantenimiento sin Carga Operativa (`MantenimientoScreen`):**
+   - Odómetro auditado en solo lectura alimentado del tacómetro del ayudante.
+   - Selección de niveles de control: Básico (7), Medio (15) y Total (27 Hino AK).
+   - Semáforo ejecutivo de 3 segundos (🟢 En Regla, 🟡 Por Vencer, 🔴 Vencidos).
+   - Regularización retroactiva de cambios pasados (`⏱️ ¿Se realizó antes?`) preservando el odómetro del bus intacto.
+6. **Administración de Tripulación (`PersonalScreen`):**
+   - Altas de choferes y ayudantes con PIN.
+   - Activación de turno diario (`[ Activar en Turno ]` vs `RELEVO / EN ESPERA`).
+   - Baja lógica con retención de historial de boletos y reactivación en un toque (`[ 🔄 Reactivar Personal ]`).
+   - Desvinculación de hardware (Device Binding) ante cambio o daño del teléfono oficial.
+7. **Preguntas Frecuentes (FAQ):** Resolución de dudas operativas sobre sincronización offline, seguridad de datos frente a la tripulación y conciliación bancaria.
+8. **Versión de Build:** Incrementada a `3.61.04`.
