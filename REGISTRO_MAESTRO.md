@@ -3036,3 +3036,21 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
    - **Sanitización estricta para Prisma:** Se filtran exclusivamente las columnas oficiales del modelo `Bus` (`placa`, `marca`, `modelo`, `anio`, `capacidadAsientos`, `propietario`, `tipoOperacion`, `activo`, `notas`), descartando `promoConfig` u otras propiedades de UI.
 4. **Versión de Build:**
    - Incrementada a `3.60.97`.
+
+---
+
+## 🏛️ v3.60.98 - HOMOLOGACIÓN OFICIAL DEL TUTORIAL DE ALTA DE SOCIOS Y SUSCRIPCIONES SAAS (2026-10-07)
+> **ESTADO:** 🟢 TUTORIAL OFICIAL INTEGRADO Y HOMOLOGADO CON LA INTERFAZ REAL DE RUTAGO  
+> **FECHA DE REGISTRO:** 2026-10-07 | **SISTEMA:** RutaGo - Documentación Operativa y Onboarding de Socios  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Contexto de la Homologación:
+- **Auditoría UI vs Tutorial:** Se contrastó la redacción del tutorial de alta de socios contra la interfaz de usuario en vivo (`SuperAdminHomeScreen.tsx` y `SaaSAdminScreen.tsx`).
+- **Ajustes Realizados:**
+  1. Se sincronizaron los nombres literales de las pestañas en la pantalla de Cobranzas:
+     - `[ Control Comercial & MRR ]` (Gestión de suscripciones, cobros y WhatsApp).
+     - `[ Padrón Oficial de Socios ]` (Directorio de socios con botón `+ Registrar Nuevo Socio`).
+     - `[ Soporte Técnico L2 & DB ]` (Auditoría de base de datos y métricas).
+  2. Se documentaron las dos vías de acceso directo: Tarjeta *Suscripciones y Recaudación* (Pilar 1) y enlace *Ver Cobranzas →* (Banner MRR).
+  3. Se creó el documento formal en el repositorio: `docs/TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md`.
+- **Versión de Build:** Incrementada a `3.60.98`.
