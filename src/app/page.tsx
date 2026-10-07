@@ -344,7 +344,7 @@ export default function Home() {
 
   // VT Config screen (SuperAdmin only)
   if (view === 'vtconfig') {
-    if (user.rol !== 'ADMIN') {
+    if (!isSuperAdmin) {
       setView('home');
       return null;
     }
@@ -395,7 +395,7 @@ export default function Home() {
 
   // Suscripciones SaaS (SuperAdmin only)
   if (view === 'saas_admin') {
-    if (user.rol !== 'ADMIN' || user.subRol !== 'SUPERADMIN_SAAS') {
+    if (!isSuperAdmin) {
       setView('home');
       return null;
     }

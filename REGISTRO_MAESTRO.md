@@ -3155,3 +3155,27 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
 1. **Credenciales y Roles:** El usuario principal es **SuperAdmin** (PIN **`9999`**). Su rol canónico en todo el código es **`SUPERADMIN_SAAS`** gestionado a través de `isSuperAdmin()` de `@/lib/roles`.
 2. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago`. Trabajar siempre sincronizando `main` y `staging`.
 3. **Flujo de Trabajo:** Consultar `REGISTRO_MAESTRO.md` y `docs/TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md` para cualquier duda sobre la lógica de negocio antes de aplicar cambios.
+
+---
+
+## 🏛️ v3.61.02 - CORRECCIÓN DE GUARDIA DE RUTA SAAS_ADMIN EN ENRUTADOR PRINCIPAL (2026-10-07)
+> **ESTADO:** 🟢 ACCESO A COBRANZAS Y VER COBRANZAS 100% OPERATIVO EN ENRUTADOR PRINCIPAL  
+> **FECHA DE REGISTRO:** 2026-10-07 | **SISTEMA:** RutaGo - Router y Control de Vistas  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Diagnóstico del Incidente:
+- **Síntoma Reportado por el Usuario:** Al tocar "Ver Cobranzas" o la tarjeta "1. Cobranzas & Facturación SaaS" en la pantalla de SuperAdmin, la aplicación no entraba a la vista.
+- **Causa Raíz Identificada:**
+  * En `src/app/page.tsx` (línea 398), la guardia de la vista `saas_admin` conservaba una condición antigua:
+    `if (user.rol !== 'ADMIN' || user.subRol !== 'SUPERADMIN_SAAS') { setView('home'); return null; }`
+  * Al unificar el rol canónico a `rol: 'SUPERADMIN_SAAS'`, la comprobación `user.rol !== 'ADMIN'` resultaba verdadera, provocando que el enrutador redirigiera inmediatamente de vuelta a `'home'`.
+  * Lo mismo ocurría en la vista `vtconfig` (línea 347).
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. **Unificación con el Helper Canónico (`src/app/page.tsx`):**
+   - Se actualizaron las guardias de acceso para usar directamente:
+     * `if (view === 'saas_admin') { if (!isSuperAdmin) { setView('home'); return null; } ... }`
+     * `if (view === 'vtconfig') { if (!isSuperAdmin) { setView('home'); return null; } ... }`
+   - El acceso ahora responde con total inmediatez para el SuperAdmin (PIN 9999).
+2. **Versión de Build:**
+   - Incrementada a `3.61.02`.
