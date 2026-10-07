@@ -283,12 +283,21 @@ export async function saveBusToApi(bus: Partial<BusItem>): Promise<BusItem | nul
   }
 }
 
-export async function updateBusInApi(id: string, bus: Partial<BusItem>): Promise<BusItem | null> {
+export async function updateBusInApi(
+  idOrPayload: string | BusItem,
+  busData?: Partial<BusItem>
+): Promise<BusItem | null> {
   try {
+    let payload: any = {};
+    if (typeof idOrPayload === "object" && idOrPayload !== null) {
+      payload = { ...idOrPayload };
+    } else {
+      payload = { id: idOrPayload, ...(busData || {}) };
+    }
     const res = await fetch(`/api/buses`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, ...bus }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const json = await res.json();

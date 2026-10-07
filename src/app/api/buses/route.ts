@@ -182,53 +182,72 @@ export async function POST(req: NextRequest) {
 }
 
 // PUT /api/buses
-// Actualización de datos de una unidad
+// Actualización o upsert de datos de una unidad en PostgreSQL
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, numeroDisco, ...fieldsToUpdate } = body;
 
-    if (!id && !numeroDisco) {
+    // Desestructuración defensiva por si id viene anidado como objeto o plano
+    let targetId = body.id;
+    let targetDisco = body.numeroDisco;
+    let fields = { ...body };
+
+    if (typeof targetId === "object" && targetId !== null) {
+      fields = { ...targetId };
+      targetId = fields.id;
+      targetDisco = fields.numeroDisco;
+    }
+
+    if (!targetId && !targetDisco) {
       return NextResponse.json(
-        { success: false, message: 'Se requiere id o numeroDisco para actualizar.' },
+        { success: false, message: "Se requiere id o numeroDisco para actualizar." },
         { status: 400 }
       );
     }
 
-    let updated;
-    const cleanDisco = numeroDisco
-      ? String(numeroDisco).trim().padStart(2, "0")
-      : (id ? String(id).replace("BUS-", "").padStart(2, "0") : "01");
-    const cleanPlaca = fieldsToUpdate.placa ? String(fieldsToUpdate.placa).trim().toUpperCase() : "PENDIENTE";
-    const busId = id || `BUS-${cleanDisco}`;
+    const cleanDisco = targetDisco
+      ? String(targetDisco).trim().padStart(2, "0")
+      : (targetId ? String(targetId).replace("BUS-", "").padStart(2, "0") : "01");
+    const cleanPlaca = fields.placa ? String(fields.placa).trim().toUpperCase() : "PENDIENTE";
+    const busId = (typeof targetId === "string" && targetId) ? targetId : `BUS-${cleanDisco}`;
 
+    // Sanitización estricta de campos permitidos en el modelo Bus de Prisma
+    const cleanUpdateData: any = {};
+    if (fields.placa) cleanUpdateData.placa = cleanPlaca;
+    if (fields.marca !== undefined) cleanUpdateData.marca = String(fields.marca).trim();
+    if (fields.modelo !== undefined) cleanUpdateData.modelo = fields.modelo ? String(fields.modelo).trim() : "AK";
+    if (fields.anio !== undefined) cleanUpdateData.anio = fields.anio ? Number(fields.anio) : null;
+    if (fields.capacidadAsientos !== undefined) cleanUpdateData.capacidadAsientos = Number(fields.capacidadAsientos) || 45;
+    if (fields.propietario !== undefined) cleanUpdateData.propietario = String(fields.propietario).trim();
+    if (fields.tipoOperacion !== undefined) cleanUpdateData.tipoOperacion = fields.tipoOperacion === "ALIMENTADOR_P" ? "ALIMENTADOR_P" : "TRONCAL_VT";
+    if (fields.activo !== undefined) cleanUpdateData.activo = fields.activo !== false;
+    if (fields.notas !== undefined) cleanUpdateData.notas = fields.notas ? String(fields.notas).trim() : null;
+
+    let updated;
     try {
       updated = await (db as any).bus.upsert({
         where: { numeroDisco: cleanDisco },
-        update: {
-          ...fieldsToUpdate,
-          ...(fieldsToUpdate.placa && { placa: cleanPlaca }),
-        },
+        update: cleanUpdateData,
         create: {
           id: busId,
           numeroDisco: cleanDisco,
           placa: cleanPlaca,
-          marca: fieldsToUpdate.marca || "Hino AK",
-          modelo: fieldsToUpdate.modelo || "AK",
-          anio: fieldsToUpdate.anio ? Number(fieldsToUpdate.anio) : 2022,
-          capacidadAsientos: fieldsToUpdate.capacidadAsientos ? Number(fieldsToUpdate.capacidadAsientos) : 45,
-          propietario: fieldsToUpdate.propietario || "Socio",
-          tipoOperacion: fieldsToUpdate.tipoOperacion || "TRONCAL_VT",
-          activo: fieldsToUpdate.activo !== false,
-          notas: fieldsToUpdate.notas || null,
+          marca: fields.marca ? String(fields.marca).trim() : "Hino AK",
+          modelo: fields.modelo ? String(fields.modelo).trim() : "AK",
+          anio: fields.anio ? Number(fields.anio) : 2022,
+          capacidadAsientos: Number(fields.capacidadAsientos) || 45,
+          propietario: fields.propietario ? String(fields.propietario).trim() : "Socio",
+          tipoOperacion: fields.tipoOperacion === "ALIMENTADOR_P" ? "ALIMENTADOR_P" : "TRONCAL_VT",
+          activo: fields.activo !== false,
+          notas: fields.notas ? String(fields.notas).trim() : null,
         },
       });
     } catch (dbErr) {
-      console.warn('Upsert en BD falló, retorno de confirmación con datos locales:', dbErr);
+      console.warn("Upsert en BD falló, retorno de confirmación con datos locales:", dbErr);
       updated = {
         id: busId,
         numeroDisco: cleanDisco,
-        ...fieldsToUpdate,
+        ...cleanUpdateData,
         updatedAt: new Date().toISOString(),
       };
     }
@@ -236,12 +255,12 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({
       success: true,
       data: updated,
-      message: 'Unidad actualizada correctamente',
+      message: "Unidad actualizada correctamente",
     });
   } catch (error) {
-    console.error('Error al actualizar unidad:', error);
+    console.error("Error al actualizar unidad:", error);
     return NextResponse.json(
-      { success: false, message: error instanceof Error ? error.message : 'Error inesperado' },
+      { success: false, message: error instanceof Error ? error.message : "Error inesperado" },
       { status: 500 }
     );
   }

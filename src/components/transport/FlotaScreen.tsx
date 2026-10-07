@@ -401,7 +401,7 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
       // 2. Sincronización con backend si hay red
       if (typeof window !== 'undefined' && navigator.onLine) {
         if (editingId) {
-          await updateBusInApi(busPayload);
+          await updateBusInApi(editingId, busPayload);
         } else {
           await saveBusToApi(busPayload);
         }

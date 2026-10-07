@@ -3008,3 +3008,31 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
    * Se dispara automáticamente la sincronización en segundo plano hacia `POST /api/buses/odometro` para auditoría y persistencia en PostgreSQL.
 3. **Versión de Build:**
    * Incrementada a `3.60.96`.
+
+---
+
+## 🏛️ v3.60.97 - BLINDAJE DE PAYLOAD Y SANITIZACIÓN ESTRICTA EN ACTUALIZACIÓN DE FLOTA (2026-10-07)
+> **ESTADO:** 🟢 ERROR PRISMA VALIDATION RESUELTO - UPSERT EN POSTGRESQL 100% BLINDADO  
+> **FECHA DE REGISTRO:** 2026-10-07 | **SISTEMA:** RutaGo - Backend API de Flota y Almacenamiento  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Diagnóstico del Error de Log:
+- **Síntoma Reportado en Log de Vercel:**
+  `[warn] Upsert en BD falló: Error [PrismaClientValidationError]: Invalid prisma.bus.upsert() invocation: where: { numeroDisco: "[object Object]" } Argument id: Invalid value provided. Expected String, provided Object.`
+- **Causa Raíz:**
+  1. En `src/components/transport/FlotaScreen.tsx` (línea 404), la invocación era `updateBusInApi(busPayload)`.
+  2. Sin embargo, en `src/lib/fleet-storage.ts`, `updateBusInApi` requería dos parámetros: `(id: string, bus: Partial<BusItem>)`.
+  3. Al enviar un solo argumento, `id` recibía todo el objeto `busPayload` y `bus` era `undefined`. Al serializar con `{ id, ...bus }`, el cuerpo de la petición se convertía en `{ id: { id: "BUS-10", numeroDisco: "10", ... } }`.
+  4. En el endpoint `PUT /api/buses`, `id` era un objeto, haciendo que `String(id)` se evaluara como `"[object Object]"`, y `create.id` recibiera un objeto en lugar de un string `String`.
+  5. Además, `busPayload` contenía la propiedad frontend `promoConfig`, la cual no pertenece al modelo `Bus` de Prisma, provocando el fallo de validación en la base de datos.
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. **Sobrecarga Flexible en `src/lib/fleet-storage.ts`:**
+   - Se refactorizó `updateBusInApi` para soportar tanto `updateBusInApi(editingId, busPayload)` como `updateBusInApi(busPayload)`, detectando automáticamente si el primer parámetro es un string o un objeto.
+2. **Corrección de Invocación en `FlotaScreen.tsx`:**
+   - Se corrigió la llamada a `updateBusInApi(editingId, busPayload)`.
+3. **Desempaquetado Defensivo y Sanitización Estricta en `src/app/api/buses/route.ts`:**
+   - Se añadió extracción defensiva: si `body.id` viene como objeto, se extraen automáticamente `id` y `numeroDisco` limpios.
+   - **Sanitización estricta para Prisma:** Se filtran exclusivamente las columnas oficiales del modelo `Bus` (`placa`, `marca`, `modelo`, `anio`, `capacidadAsientos`, `propietario`, `tipoOperacion`, `activo`, `notas`), descartando `promoConfig` u otras propiedades de UI.
+4. **Versión de Build:**
+   - Incrementada a `3.60.97`.
