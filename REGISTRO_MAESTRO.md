@@ -3054,3 +3054,18 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
   2. Se documentaron las dos vías de acceso directo: Tarjeta *Suscripciones y Recaudación* (Pilar 1) y enlace *Ver Cobranzas →* (Banner MRR).
   3. Se creó el documento formal en el repositorio: `docs/TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md`.
 - **Versión de Build:** Incrementada a `3.60.98`.
+
+---
+
+## 🏛️ v3.60.99 - REFINAMIENTO DE DOCUMENTACIÓN DE COBRANZAS MRR Y ESTADOS DINÁMICOS DE SUSCRIPCIÓN (2026-10-07)
+> **ESTADO:** 🟢 FASE 3 DE TUTORIAL HOMOLOGADA AL 100% CON LA INTERFAZ REAL DE SUSCRIPCIONES  
+> **FECHA DE REGISTRO:** 2026-10-07 | **SISTEMA:** RutaGo - Cobranzas SaaS y Documentación Operativa  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Contexto del Refinamiento:
+- **Auditoría de Interfaz (`Control Comercial & MRR`):** Se validó la tarjeta de suscripción en vivo (Unidad 10 y Unidad 01) para que el tutorial refleje con exactitud matemática el comportamiento de la plataforma:
+  1. **Estado Vigencia:** Explicación técnica de por qué aparece como `● Período de Gracia` (naranja) cuando la fecha de corte inicial (día 5) ha transcurrido sin registro previo de pagos (período de 5 días de gracia reglamentarios), y cómo pasa a `● Al Día` (verde) una vez registrado el cobro de $20.
+  2. **Etiqueta del Botón de Cobro:** Se homologó al texto literal del botón morado: `[ 💳 Registrar Pago ]`.
+  3. **Herramientas Auxiliares:** Se documentaron los dos botones de acción rápida en la tarjeta: `[ 🕒 ]` (Historial de pagos y recibos generados) y `[ 📤 ]` (Compartir notificación formal de cobranza por WhatsApp).
+- **Archivo Actualizado:** `docs/TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md`.
+- **Versión de Build:** Incrementada a `3.60.99`.

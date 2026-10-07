@@ -85,15 +85,21 @@ En cuanto tocas *Registrar Socio*, el servidor ejecuta en PostgreSQL:
 
 ## 📍 FASE 3: Monitoreo, Recibos y Cobranzas por WhatsApp
 
-1. En la misma pantalla de Cobranzas, regresa a la primera pestaña:  
+1. En la pantalla de Cobranzas SaaS, asegúrate de estar en la primera pestaña:  
    👉 **`[ Control Comercial & MRR ]`**.
-2. Verás que la lista ahora incluye la tarjeta de la **Unidad 10**:
-   * Encabezado: `DISCO 10 • HAA-3509 • Marina Alexandra Jaya Jaramillo`.
-   * Insignia: `ACTIVA` (Verde).
-   * Tarifa: `$20.00 / mes` • Corte: `Día 5`.
-3. **Acciones comerciales disponibles en la tarjeta:**
-   * **Botón `[ WhatsApp ]` (Compartir):** Abre WhatsApp con una plantilla ejecutiva que saluda formalmente al socio, detalla su placa, fecha de corte, tarifa de $20 y datos de cuenta bancaria para pago.
-   * **Botón `[ Registrar Cobro ]`:** Cuando el socio pague su cuota, ingresas el monto ($20), el método (Efectivo/Transferencia) y el número de comprobante. El sistema registra el pago, avanza la fecha de corte y genera el recibo contable.
+
+2. En el listado verás la tarjeta de la unidad registrada (ej. **Unidad 10**):
+   * **Encabezado:** `DISCO 10 • Unidad 10 (HAA-3509) • Marina Alexandra Jaya Jaramillo`.
+   * **Tarifa:** `$20.00 USD / mes`.
+   * **Estado Vigencia:** 
+     - Mostrará **`● Período de Gracia` (naranja)** si la unidad recién ingresa y su fecha de corte inicial ya pasó (ej. `2026-10-05`) sin pagos previos registrados. El sistema otorga automáticamente 5 días de gracia reglamentarios.
+     - Cambiará a **`● Al Día` (verde)** en cuanto se registre el primer pago mensual.
+   * **Último Pago:** `Sin registro` • **Próximo Corte:** `2026-10-05`.
+
+3. **Botones y herramientas disponibles en la tarjeta:**
+   * **Botón morado `[ 💳 Registrar Pago ]`:** Al recibir los $20 de suscripción, tocas este botón, seleccionas el método (Efectivo o Transferencia Banco Pichincha/Loja) y digitas el número de comprobante. Al guardar, la vigencia se extiende automáticamente al siguiente mes (`2026-11-05`) y la insignia pasa a **"Al Día" (Verde)**.
+   * **Botón de Historial `[ 🕒 ]`:** Muestra la relación histórica de pagos, recibos y comprobantes generados para esa unidad.
+   * **Botón de WhatsApp `[ 📤 ]`:** Abre WhatsApp con una plantilla ejecutiva prediseñada que saluda formalmente al socio, detalla su placa, su tarifa de $20, su estado de vigencia actual y las cuentas bancarias para la transferencia.
 
 ---
 
