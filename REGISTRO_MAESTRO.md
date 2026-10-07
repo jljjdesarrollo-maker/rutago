@@ -2979,3 +2979,32 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
    - El endpoint `PUT /api/buses` fue refactorizado para utilizar `upsert` en lugar de `update`. Esto asegura que al editar la ficha de cualquier bus del catálogo que aún no esté insertado en la tabla de la BD (como el Bus 10), se cree o actualice de forma transparente sin generar errores.
 4. **Versión de Build:**
    - Incrementada a `3.60.95`.
+
+---
+
+## 🏛️ v3.60.96 - INTEGRACIÓN DEL CAMPO VISUAL ODÓMETRO INICIAL EN EDICIÓN Y ALTA DE FLOTA (2026-10-07)
+> **ESTADO:** 🟢 ODÓMETRO INICIAL VISIBLE Y VINCULADO AL ASISTENTE DE MANTENIMIENTO EN VIVO  
+> **FECHA DE REGISTRO:** 2026-10-07 | **SISTEMA:** RutaGo - Padrón de Flota y Control Mecánico  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+
+### 📍 1. Diagnóstico del Incidente:
+- **Discrepancia Interfaz vs Tutorial:** Al abrir el modal de "Editar Bus Disco 10" (o alta de nueva unidad), el tutorial indicaba verificar o ingresar el "Odómetro Inicial (kilometraje del tablero hoy)", pero en la pantalla dicho campo no existía visualmente.
+- **Auditoría de Código (`FlotaScreen.tsx`):**
+  * La variable `formData.odometroInicial` existía en el estado del formulario (líneas 71 y 227).
+  * La función `handleOpenEdit` ya leía el odómetro con `getLatestBusOdometer(bus.numeroDisco)`.
+  * La función `handleSubmit` ya tenía programado el guardado en `saveBusOdometer`.
+  * **Causa Raíz:** En la estructura JSX del formulario modal (entre Año de Fabricación y Socio Titular), se había omitido renderizar el componente visual `<Input>` del Odómetro Inicial.
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. **Componente Visual Integrado en `FlotaScreen.tsx`:**
+   - Se insertó un bloque dedicado para el tacómetro entre Año de Fabricación y Socio Titular:
+     * Ícono: `<Gauge className="w-4 h-4 text-slate-600" />`.
+     * Etiqueta: **`Odómetro Inicial / Kilometraje del Tablero (km) *`**.
+     * Badge auxiliar: `Línea Base Mecánica`.
+     * Entrada validada numéricamente con fuente monospace y formato destacado.
+     * Mensaje de ayuda explicativo: *"Kilometraje real que marca el tacómetro hoy. Servirá como punto de partida para las alertas de cambio de aceite, filtros y lubricación."*
+2. **Sincronización Multicapa:**
+   * Al guardar o actualizar la ficha, el odómetro se registra en `saveBusOdometer` (almacenamiento local reactivo para el Arqueo General y el Asistente de Mantenimiento).
+   * Se dispara automáticamente la sincronización en segundo plano hacia `POST /api/buses/odometro` para auditoría y persistencia en PostgreSQL.
+3. **Versión de Build:**
+   * Incrementada a `3.60.96`.

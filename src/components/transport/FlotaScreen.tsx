@@ -1117,6 +1117,27 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
                 </div>
               </div>
 
+              {/* Odómetro Inicial / Kilometraje del Tablero */}
+              <div className="space-y-1 p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Gauge className="w-4 h-4 text-slate-600" />
+                    Odómetro Inicial / Kilometraje del Tablero (km) *
+                  </Label>
+                  <span className="text-[10px] text-slate-500 font-semibold">Línea Base Mecánica</span>
+                </div>
+                <Input
+                  type="text"
+                  placeholder="ej. 245680 o 896523"
+                  value={formData.odometroInicial}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, odometroInicial: e.target.value.replace(/\D/g, "") }))}
+                  className="h-11 rounded-xl text-sm font-mono font-bold bg-white text-center tracking-wider"
+                />
+                <p className="text-[10px] text-slate-500">
+                  Kilometraje real que marca el tacómetro hoy. Servirá como punto de partida para las alertas de cambio de aceite, filtros y lubricación.
+                </p>
+              </div>
+
               {/* Propietario / Socio */}
               <div className="space-y-1">
                 <Label className="text-xs font-bold text-gray-700">Socio Titular *</Label>
