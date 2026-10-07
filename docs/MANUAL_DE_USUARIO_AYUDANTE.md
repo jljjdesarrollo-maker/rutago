@@ -1,6 +1,6 @@
 # 📘 MANUAL DE USUARIO OFICIAL: RUTINA OPERATIVA DEL AYUDANTE
 **Aplicación:** RutaGo • Cooperativa de Transportes VilcabambaTuris  
-**Versión:** v3.60.27 (UX Ergonómica & Contabilidad Real)  
+**Versión:** v3.61.03 (Gobernanza SaaS, Borrado Lógico & Control de Tripulación)  
 **Rol Destinatario:** Ayudante Oficial de Ruta  
 
 ---
@@ -16,7 +16,10 @@ Este manual detalla paso a paso la rutina diaria que debe seguir el ayudante de 
 1. Enciende el teléfono móvil o abre la aplicación RutaGo en el navegador/PWA.
 2. En la pantalla de bienvenida aparecerá el teclado numérico de alta visibilidad solicitando tu PIN de 4 dígitos.
 3. Digita tu PIN personal asignado (ej. `5555`, `6666`, etc.).
-4. El sistema validará tu identidad y abrirá directamente el **Panel Principal del Ayudante**.
+4. El sistema validará tu identidad contra la base de datos central:
+   - **Cuenta Activa:** Si tu usuario está activo, abrirá directamente el **Panel Principal del Ayudante**.
+   - **Usuario Inactivo / Baja Lógica:** Si el socio propietario ha dado de baja o pausado tu cuenta, el sistema denegará el acceso mostrando: *«Usuario inactivo o dado de baja. Comuníquese con el socio propietario o administración»*.
+   - **Vinculación de Dispositivo (Device Binding):** Si el control de dispositivo está activo, el acceso solo se permitirá desde el teléfono oficial asignado al bus para proteger la caja y emisión de boletos.
 
 > 💡 **Nota de Operación Offline:** Si te encuentras en un punto de la ruta sin cobertura celular (sin señal), la aplicación te permitirá ingresar automáticamente con tu sesión guardada en el dispositivo.
 

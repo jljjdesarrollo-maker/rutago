@@ -9,10 +9,19 @@ export async function GET(req: NextRequest) {
     const rol = url.searchParams.get('rol');
     const esActual = url.searchParams.get('esActual');
     const socioId = url.searchParams.get('socioId');
+    const activoParam = url.searchParams.get('activo');
+    const incluirInactivos = url.searchParams.get('incluirInactivos') === 'true';
 
     const where: Record<string, unknown> = {};
     if (rol) where.rol = rol;
     if (esActual !== null) where.esActual = esActual === 'true';
+
+    if (activoParam !== null) {
+      where.activo = activoParam === 'true';
+    } else if (!incluirInactivos) {
+      // Por defecto en listas operativas mostrar solo los activos
+      where.activo = true;
+    }
 
     if (socioId === 'SIN_SOCIO') {
       where.socioId = null;
@@ -30,6 +39,8 @@ export async function GET(req: NextRequest) {
         cedula: true,
         telefono: true,
         rol: true,
+        activo: true,
+        desactivadoAt: true,
         esActual: true,
         deviceId: true,
         deviceName: true,
@@ -104,6 +115,7 @@ export async function POST(req: NextRequest) {
         pinSalt: salt,
         socioId: targetSocioId,
         esActual,
+        activo: true,
       },
       include: {
         socio: {

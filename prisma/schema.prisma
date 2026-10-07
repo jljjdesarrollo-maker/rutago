@@ -84,6 +84,8 @@ model Persona {
   rol            String       @default("CONDUCTOR") // CONDUCTOR | AYUDANTE | ADMIN
   pin            String       @unique
   pinSalt        String?      // Salt criptográfico único
+  activo         Boolean      @default(true) // Borrado Lógico: true = operativo, false = dado de baja
+  desactivadoAt  DateTime?    // Fecha y hora en que se dio de baja lógica
   esActual       Boolean      @default(false)
   deviceId       String?      // UUID de hardware del teléfono oficial asignado
   deviceName     String?      // Nombre amigable (ej. "Terminal Móvil Bus 01")
@@ -94,6 +96,7 @@ model Persona {
   socio          CuentaSocio? @relation(fields: [socioId], references: [id])
 
   @@index([socioId])
+  @@index([activo])
 }
 
 // ─── RutaGo: Módulo de Venta de Boletos Offline ───

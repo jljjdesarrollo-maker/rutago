@@ -19,6 +19,8 @@ import {
   Users,
   AlertCircle,
   Filter,
+  RotateCcw,
+  UserX,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +43,8 @@ interface PersonaItem {
   telefono: string | null;
   rol: string;
   pin?: string;
+  activo?: boolean;
+  desactivadoAt?: string | null;
   esActual: boolean;
   deviceId?: string | null;
   deviceName?: string | null;
@@ -71,6 +75,7 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [resetDevicePersona, setResetDevicePersona] = useState<PersonaItem | null>(null);
+  const [tabEstado, setTabEstado] = useState<'ACTIVOS' | 'INACTIVOS'>('ACTIVOS');
 
   // Modo SuperAdmin vs Modo Socio
   const isSuperAdmin = checkIsSuperAdmin(currentUser);
@@ -96,6 +101,7 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
     try {
       let url = '/api/personas';
       const params = new URLSearchParams();
+      params.set('incluirInactivos', 'true');
 
       if (isSocio && socioIdActual) {
         params.set('socioId', socioIdActual);
@@ -126,8 +132,15 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
     fetchPersonas();
   }, [fetchPersonas]);
 
-  const conductores = personas.filter((p) => p.rol === 'CONDUCTOR');
-  const ayudantes = personas.filter((p) => p.rol === 'AYUDANTE');
+  const totalActivos = personas.filter((p) => p.activo !== false).length;
+  const totalInactivos = personas.filter((p) => p.activo === false).length;
+
+  const personasVisibles = personas.filter((p) =>
+    tabEstado === 'ACTIVOS' ? p.activo !== false : p.activo === false
+  );
+
+  const conductores = personasVisibles.filter((p) => p.rol === 'CONDUCTOR');
+  const ayudantes = personasVisibles.filter((p) => p.rol === 'AYUDANTE');
 
   const handleSetActive = async (persona: PersonaItem) => {
     try {
@@ -143,6 +156,24 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
       fetchPersonas();
     } catch {
       /* ignore */
+    }
+  };
+
+  const handleReactivar = async (persona: PersonaItem) => {
+    setSaving(true);
+    try {
+      await fetch(`/api/personas/${persona.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activo: true,
+        }),
+      });
+      fetchPersonas();
+    } catch {
+      /* ignore */
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -393,25 +424,39 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
       );
     }
 
+    const esInactivo = p.activo === false;
+
     return (
       <Card
         key={p.id}
         className={`rounded-2xl border bg-white shadow-xs transition ${
-          p.esActual ? 'border-[#912D26]/70 ring-1 ring-[#912D26]/20' : 'border-[#D6D6D6]'
+          esInactivo
+            ? 'border-dashed border-gray-300 opacity-80 bg-gray-50/50'
+            : p.esActual
+            ? 'border-[#912D26]/70 ring-1 ring-[#912D26]/20'
+            : 'border-[#D6D6D6]'
         }`}
       >
         <CardContent className="p-4">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-bold text-sm text-[#3A3A3A] truncate">{p.nombre}</p>
-                <span
-                  className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
-                    p.esActual ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-500'
-                  }`}
-                >
-                  {p.esActual ? 'EN RUTA (ACTIVO)' : 'RELEVO / INACTIVO'}
-                </span>
+                <p className={`font-bold text-sm truncate ${esInactivo ? 'text-gray-500 line-through' : 'text-[#3A3A3A]'}`}>
+                  {p.nombre}
+                </p>
+                {esInactivo ? (
+                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 bg-gray-200 text-gray-600 flex items-center gap-1">
+                    <UserX className="w-2.5 h-2.5" /> DADO DE BAJA (INACTIVO)
+                  </span>
+                ) : (
+                  <span
+                    className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
+                      p.esActual ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {p.esActual ? 'EN RUTA (ACTIVO)' : 'RELEVO / EN ESPERA'}
+                  </span>
+                )}
 
                 {/* Badge de Socio para SuperAdmin */}
                 {isSuperAdmin && (
@@ -432,9 +477,14 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
                   <Phone className="w-3 h-3 text-gray-400" /> Tel: {p.telefono}
                 </p>
               )}
+              {esInactivo && p.desactivadoAt && (
+                <p className="text-[10px] text-gray-400 mt-1 italic">
+                  Dado de baja el: {new Date(p.desactivadoAt).toLocaleDateString('es-EC')}
+                </p>
+              )}
 
               {/* Indicador de Teléfono Vinculado (Device Binding para Ayudantes) */}
-              {p.rol === 'AYUDANTE' && (
+              {!esInactivo && p.rol === 'AYUDANTE' && (
                 <div className="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
                   {p.deviceId ? (
                     <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
@@ -469,7 +519,16 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
 
           <div className="flex items-center justify-between mt-3 pt-2 border-t border-[#D6D6D6]/50">
             <div className="flex items-center gap-1.5">
-              {!p.esActual ? (
+              {esInactivo ? (
+                <Button
+                  onClick={() => handleReactivar(p)}
+                  disabled={saving}
+                  size="sm"
+                  className="h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 font-semibold"
+                >
+                  <RotateCcw className="w-3 h-3 mr-1" /> Reactivar Personal
+                </Button>
+              ) : !p.esActual ? (
                 <Button
                   onClick={() => handleSetActive(p)}
                   size="sm"
@@ -483,24 +542,27 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1">
-              <Button
-                onClick={() => startEdit(p)}
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 rounded-lg text-[#3A3A3A]/70 hover:bg-gray-100"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                onClick={() => setDeleteId(p.id)}
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 rounded-lg text-[#3A3A3A]/70 hover:text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
-            </div>
+            {!esInactivo && (
+              <div className="flex items-center gap-1">
+                <Button
+                  onClick={() => startEdit(p)}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 rounded-lg text-[#3A3A3A]/70 hover:bg-gray-100"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  onClick={() => setDeleteId(p.id)}
+                  variant="ghost"
+                  size="sm"
+                  title="Dar de baja lógica"
+                  className="h-8 w-8 p-0 rounded-lg text-[#3A3A3A]/70 hover:text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -675,6 +737,34 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
             <div className="text-center py-12 text-[#3A3A3A]/40 text-sm">Cargando personal...</div>
           ) : (
             <>
+              {/* Selector de Pestañas: Personal Activo vs Histórico / Inactivos */}
+              <div className="flex bg-gray-100 p-1 rounded-xl gap-1 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setTabEstado('ACTIVOS')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+                    tabEstado === 'ACTIVOS'
+                      ? 'bg-white text-gray-900 shadow-xs'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Personal Activo ({totalActivos})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTabEstado('INACTIVOS')}
+                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+                    tabEstado === 'INACTIVOS'
+                      ? 'bg-white text-gray-900 shadow-xs'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  <UserX className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Dados de Baja ({totalInactivos})</span>
+                </button>
+              </div>
+
               {/* Conductores */}
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -749,20 +839,20 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
         </div>
       </main>
 
-      {/* Modal de confirmación de eliminación */}
+      {/* Modal de confirmación de baja lógica */}
       {deleteId && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-6">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-[#3A3A3A]">Eliminar Miembro del Personal</h3>
+            <h3 className="text-lg font-bold text-[#3A3A3A]">Dar de Baja al Personal</h3>
             <p className="text-xs text-[#3A3A3A]/70 mt-2 leading-relaxed">
-              Esta acción dará de baja su acceso con PIN al sistema RutaGo.
+              Esta acción desactivará su acceso con PIN al sistema RutaGo (Baja Lógica). Su historial de boletos, turnos y arqueos pasados se mantendrá intacto para auditoría y podrás reactivarlo cuando sea necesario.
             </p>
             <div className="flex gap-2 mt-5">
               <Button onClick={() => setDeleteId(null)} variant="outline" className="flex-1 h-11 rounded-xl border-[#D6D6D6] text-xs font-semibold">
                 Cancelar
               </Button>
               <Button onClick={() => handleDelete(deleteId)} className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs">
-                Sí, Eliminar
+                Sí, Dar de Baja
               </Button>
             </div>
           </div>

@@ -117,6 +117,15 @@ export async function POST(req: NextRequest) {
 
     for (const p of personal) {
       if (verifyPin(cleanPin, p.pin, p.pinSalt)) {
+        // Bloqueo estricto por Borrado Lógico / Inactividad
+        if (p.activo === false) {
+          recordFailedAttempt(ip);
+          return NextResponse.json(
+            { error: 'Usuario inactivo o dado de baja. Comuníquese con el socio propietario o administración.' },
+            { status: 403 }
+          );
+        }
+
         matchedPersona = p;
         if (!p.pinSalt || p.pin.length <= 6) {
           const newSalt = generateSalt();
@@ -194,9 +203,9 @@ export async function POST(req: NextRequest) {
 
     // ─── 5. Bootstrap / Fallback de Capacitación y Simulador para Ayudantes (2107 o 1234) ───
     if (cleanPin === '2107' || cleanPin === '1234') {
-      const ayudante = personal.find(p => p.rol === 'AYUDANTE' && p.esActual) ||
-                       personal.find(p => p.rol === 'AYUDANTE') ||
-                       personal[0];
+      const ayudante = personal.find(p => p.rol === 'AYUDANTE' && p.activo !== false && p.esActual) ||
+                       personal.find(p => p.rol === 'AYUDANTE' && p.activo !== false) ||
+                       personal.find(p => p.activo !== false);
       if (ayudante) {
         recordSuccess(ip);
         return NextResponse.json({
@@ -213,9 +222,9 @@ export async function POST(req: NextRequest) {
 
     // ─── 6. Bootstrap / Fallback de Capacitación y Simulador para Conductores (0423) ───
     if (cleanPin === '0423') {
-      const conductor = personal.find(p => p.rol === 'CONDUCTOR') ||
-                        personal.find(p => p.rol !== 'AYUDANTE') ||
-                        personal[0];
+      const conductor = personal.find(p => p.rol === 'CONDUCTOR' && p.activo !== false) ||
+                        personal.find(p => p.rol !== 'AYUDANTE' && p.activo !== false) ||
+                        personal.find(p => p.activo !== false);
       if (conductor) {
         recordSuccess(ip);
         return NextResponse.json({

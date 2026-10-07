@@ -15,6 +15,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         cedula: true,
         telefono: true,
         rol: true,
+        activo: true,
+        desactivadoAt: true,
         esActual: true,
         deviceId: true,
         deviceName: true,
@@ -45,7 +47,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await req.json();
-    const { nombre, cedula, telefono, rol, pin, esActual, deviceId, deviceName, resetDevice, socioId } = body;
+    const { nombre, cedula, telefono, rol, pin, esActual, deviceId, deviceName, resetDevice, socioId, activo } = body;
 
     const existing = await db.persona.findUnique({ where: { id } });
     if (!existing) {
@@ -102,6 +104,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         ...(socioId !== undefined && { socioId: targetSocioId }),
         ...updatePinData,
         ...(esActual !== undefined && { esActual }),
+        ...(activo !== undefined && {
+          activo,
+          desactivadoAt: activo ? null : new Date(),
+          ...(activo === false ? { esActual: false } : {}),
+        }),
         ...(resetDevice
           ? { deviceId: null, deviceName: null, deviceLinkedAt: null }
           : {
@@ -128,14 +135,38 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-// DELETE /api/personas/[id] — Delete persona
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+// DELETE /api/personas/[id] — Soft Delete por defecto (Borrado Lógico)
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await db.persona.delete({ where: { id } });
-    return NextResponse.json({ success: true });
+    const url = new URL(req.url);
+    const hardDelete = url.searchParams.get('hard') === 'true';
+
+    const existing = await db.persona.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
+    }
+
+    if (hardDelete) {
+      await db.persona.delete({ where: { id } });
+      return NextResponse.json({ success: true, mode: 'hard' });
+    }
+
+    // Borrado Lógico: Preserva trazabilidad histórica contable y bloquea accesos
+    await db.persona.update({
+      where: { id },
+      data: {
+        activo: false,
+        desactivadoAt: new Date(),
+        esActual: false,
+        deviceId: null,
+        deviceName: null,
+        deviceLinkedAt: null,
+      },
+    });
+    return NextResponse.json({ success: true, mode: 'soft' });
   } catch (error) {
     console.error('Error deleting persona:', error);
-    return NextResponse.json({ error: 'Error al eliminar personal' }, { status: 500 });
+    return NextResponse.json({ error: 'Error al dar de baja al personal' }, { status: 500 });
   }
 }

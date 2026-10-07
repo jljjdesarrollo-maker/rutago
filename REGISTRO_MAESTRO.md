@@ -3179,3 +3179,45 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
    - El acceso ahora responde con total inmediatez para el SuperAdmin (PIN 9999).
 2. **Versión de Build:**
    - Incrementada a `3.61.02`.
+
+---
+
+## 🏛️ v3.61.03 - BORRADO LÓGICO DE TRIPULACIÓN, CONTROL DE ACCESO ACTIVO/INACTIVO Y AUDITORÍA DE API DEL AYUDANTE (2026-10-07)
+> **ESTADO:** 🟢 BORRADO LÓGICO ACTIVO, HISTORIAL Y AUDITORÍA CONTABLE 100% PRESERVADOS  
+> **FECHA DE REGISTRO:** 2026-10-07 | **SISTEMA:** RutaGo - Motor de Personal, Seguridad y Control de Tripulación  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **DEPLOY PRODUCCIÓN:** `https://rutago-jljjj.vercel.app`  
+
+### 📍 1. Diagnóstico del Incidente y Principio de Ingeniería Contable:
+- **Problema de la Eliminación Física Previa:**
+  * Al pulsar el botón de papelera en `PersonalScreen`, se ejecutaba `DELETE FROM Persona`. En sistemas de transporte y recaudación de boletos con dinero en mano, el borrado físico destruye la trazabilidad histórica de quién emitió boletos y cerró arqueos en hojas de ruta pasadas (`DailyRecord`).
+  * Adicionalmente, el estado visual `RELEVO / INACTIVO` (`esActual: false`) no bloqueaba el login en `/api/auth` porque no existía un campo formal de estado laboral (`activo: Boolean`) en el modelo `Persona`.
+- **Principio Rector:** 
+  * Las cuentas del personal operativo nunca deben ser borradas físicamente. Se aplica **Borrado Lógico (Soft Delete)** con `activo: false` y `desactivadoAt`.
+  * La desactivación revoca de inmediato el login con PIN (`403 Usuario inactivo o dado de baja`) pero preserva todos los registros pasados intactos.
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. **Extensión del Modelo Prisma (`prisma/schema.prisma`):**
+   - Agregados los campos de trazabilidad y gobernanza en `model Persona`:
+     * `activo Boolean @default(true)`
+     * `desactivadoAt DateTime?`
+     * Índice optimizado `@@index([activo])` para consultas de alta concurrencia.
+2. **Endpoints de Personal (`/api/personas` y `/api/personas/[id]`):**
+   - `DELETE /api/personas/[id]`: Convierte la acción por defecto en un **Borrado Lógico (Soft Delete)**. Actualiza `activo: false`, `desactivadoAt: new Date()`, `esActual: false`, y desvincula el hardware (`deviceId: null`, `deviceName: null`). Somete borrado físico estricto solo si se especifica explícitamente `?hard=true`.
+   - `PUT /api/personas/[id]`: Soporta el campo `activo` para permitir la reactivación instantánea (`activo: true`, limpiando `desactivadoAt`).
+   - `GET /api/personas`: Incorpora el parámetro `incluirInactivos=true` para permitir visualización segregada en frontend.
+3. **Guardia de Seguridad Estricta en `/api/auth/route.ts`:**
+   - Durante la verificación criptográfica del PIN: si `p.activo === false`, el acceso es rechazado inmediatamente con HTTP 403:
+     `"Usuario inactivo o dado de baja. Comuníquese con el socio propietario o administración."`
+   - Los fallbacks de simulación y capacitación también filtran `p.activo !== false`.
+4. **Ergonomía UI Móvil en `PersonalScreen.tsx`:**
+   - **Segmentador Táctil:** Pestañas superiores `Personal Activo (X)` vs `Dados de Baja (Y)` en la zona del pulgar.
+   - **Tarjeta de Inactivo:** Tipografía atenuada, badge `DADO DE BAJA (INACTIVO)` con fecha de corte, y botón táctil destacado `[ 🔄 Reactivar Personal ]` para reintegrar al trabajador con un solo toque.
+   - **Modal de Confirmación Transparente:** Informa al socio que la acción es una baja lógica y que sus registros históricos se conservarán para auditoría.
+5. **Auditoría Integral de la API del Asistente:**
+   - Verificados los endpoints clave de la operación del Ayudante:
+     * `/api/auth`: Verificación de PIN + Device Binding + Bloqueo de inactivos.
+     * `/api/ventas`: Registro y reasignación de boletos con protección de clave foránea.
+     * `/api/records` / `/api/trips`: Cierres de caja y arqueo general con preservación de nombres históricos.
+6. **Versión de Build:**
+   - Incrementada a `3.61.03`.
