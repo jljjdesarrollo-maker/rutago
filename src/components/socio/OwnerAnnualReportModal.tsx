@@ -22,6 +22,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   busId: string;
+  socioId?: string;
   allExpenses: OwnerExpense[];
 }
 
@@ -34,6 +35,7 @@ export default function OwnerAnnualReportModal({
   isOpen,
   onClose,
   busId,
+  socioId,
   allExpenses,
 }: Props) {
   const [selectedYear, setSelectedYear] = useState<number>(2026);
@@ -48,12 +50,15 @@ export default function OwnerAnnualReportModal({
 
     const fetchYearData = async () => {
       try {
+        const busParam = busId && busId !== 'TODOS' ? `&busId=${encodeURIComponent(busId)}` : '';
+        const socioParam = socioId && socioId !== 'TODOS' ? `&socioId=${encodeURIComponent(socioId)}` : '';
+
         // Consultar cada mes que tenga potenciales registros (o los 12 meses)
         const monthsToFetch = [1, 2, 7, 8, 9, 10, 11, 12];
         const results = await Promise.all(
           monthsToFetch.map(async (m) => {
             try {
-              const res = await fetch(`/api/reports?type=monthly&year=${selectedYear}&month=${m}`);
+              const res = await fetch(`/api/reports?type=monthly&year=${selectedYear}&month=${m}${busParam}${socioParam}`);
               if (res.ok) {
                 const data = await res.json();
                 if (data && data.totals && (data.totals.production > 0 || data.dailySummaries?.length > 0)) {

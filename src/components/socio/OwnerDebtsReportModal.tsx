@@ -22,6 +22,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   busId: string;
+  socioId?: string;
   allExpenses: OwnerExpense[];
   onOpenAbonoModal: (expense: OwnerExpense) => void;
 }
@@ -30,6 +31,7 @@ export default function OwnerDebtsReportModal({
   isOpen,
   onClose,
   busId,
+  socioId,
   allExpenses,
   onOpenAbonoModal,
 }: Props) {

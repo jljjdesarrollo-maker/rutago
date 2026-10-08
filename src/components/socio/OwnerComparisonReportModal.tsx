@@ -25,6 +25,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   busId: string;
+  socioId?: string;
   allExpenses: OwnerExpense[];
 }
 
@@ -32,6 +33,7 @@ export default function OwnerComparisonReportModal({
   isOpen,
   onClose,
   busId,
+  socioId,
   allExpenses,
 }: Props) {
   // Selector de meses para comparar
@@ -63,7 +65,9 @@ export default function OwnerComparisonReportModal({
       try {
         const fetchMonth = async (ym: string) => {
           const [y, m] = ym.split('-');
-          const res = await fetch(`/api/reports?type=monthly&year=${parseInt(y, 10)}&month=${parseInt(m, 10)}`);
+          const busParam = busId && busId !== 'TODOS' ? `&busId=${encodeURIComponent(busId)}` : '';
+          const socioParam = socioId && socioId !== 'TODOS' ? `&socioId=${encodeURIComponent(socioId)}` : '';
+          const res = await fetch(`/api/reports?type=monthly&year=${parseInt(y, 10)}&month=${parseInt(m, 10)}${busParam}${socioParam}`);
           if (res.ok) {
             const data = await res.json();
             if (data && data.totals) {

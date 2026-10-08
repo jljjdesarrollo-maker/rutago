@@ -3599,6 +3599,53 @@ bun test tests/manual-socio.test.ts
 - **TOTAL:** **31 Ítems** completos Hino AK.
 - Actualizados badges en `MantenimientoScreen.tsx` y redacción en `docs/MANUAL_DE_USUARIO_SOCIO.md`.
 
+---
+
+## 🏛️ v3.61.15 - BLINDAJE Y AISLAMIENTO MULTI-TENANT UNIVERSAL DE REPORTES E INFORMES (2026-10-08)
+
+> **ESTADO:** 🟢 AUDITORÍA, REFACTORIZACIÓN Y DESPLIEGUE COMPLETO | AISLAMIENTO TOTAL EN TODAS LAS UNIDADES (SUSCRITAS Y FUTURAS)  
+> **FECHA DE REGISTRO:** 2026-10-08 | **SISTEMA:** RutaGo - Motor de Reportería y Liquidación Multi-Tenant  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **DEPLOY PRODUCCIÓN:** `https://rutago-jljjj.vercel.app`  
+
+### 📍 1. Diagnóstico de Ingeniería y Causa Raíz:
+- **Problema Reportado:** Al auditar los reportes e informes con la Unidad 10 (socio recién suscrito: Marina Alexandra), aparecían datos históricos, ingresos de carretera o valores de septiembre pertenecientes a otras unidades o pruebas demo de la cooperativa en lugar de iniciar limpio en $0.00.
+- **Causa Raíz Identificada:**
+  1. **Falta de Inyección de Identidad en `src/app/page.tsx`:** `ReportsScreen` y `ReporteOperativoScreen` se invocaban únicamente con `onBack`, omitiendo `currentUser` y `activeBusId`.
+  2. **Omisión de Parámetros de Aislamiento en el Frontend:** Las pantallas de reportes y los modales financieros (`OwnerIncomeStatementModal`, `OwnerAnnualReportModal`, `OwnerComparisonReportModal`) ejecutaban peticiones a `/api/reports` y `/api/reports/operativo` sin enviar `busId` ni `socioId`.
+  3. **Backend sin Filtrado de Tripulación en Reporte Operativo (`/api/reports/operativo`):** La API consultaba `db.dailyRecord.findMany` solo por rango de fechas, devolviendo las frecuencias de toda la flota cooperativa.
+  4. **Fuga en Caja Común (`type=caja-comun`):** `handleCajaComunReport` carecía de los argumentos `socioId` y `busId`, exponiendo las retenciones de oficina de todos los buses.
+  5. **Fallback Offline Hardcoded en `OwnerExpensesScreen.tsx`:** Inyectaba $12,334.75 para agosto 2026 de forma generalizada ante demoras de red.
+  6. **Divisa no Estandarizada:** Presencia residual de `S/ ` en textos y generador de PDF de reporte operativo.
+
+### 📍 2. Solución Arquitectónica Implementada (Universal para Unidades Actuales y Futuras):
+1. **Inyección Soberana en Enrutador Principal (`src/app/page.tsx`):**
+   - Propagación de `currentUser={user}` y `activeBusId={user.busId || getActiveBusId()}` a `ReportsScreen` y `ReporteOperativoScreen`.
+2. **Blindaje de la API de Reporte Operativo (`src/app/api/reports/operativo/route.ts`):**
+   - Extracción de `busId` y `socioId`.
+   - Resolución relacional de la tripulación asignada a la unidad en `db.persona`.
+   - Filtrado estricto `where.OR = [{ ayudanteNombre: { in: crewNames } }, { conductor: { in: crewNames } }]`.
+   - Para unidades nuevas o sin actividad: retorna `where.id = 'NO_RECORDS_YET'` (0 programadas, 0 realizadas, $0.00 en ingresos, días vacíos).
+3. **Blindaje de Reportes Periódicos y Caja Común (`src/app/api/reports/route.ts`):**
+   - Propagación de `socioId` y `busId` a `handleCajaComunReport`.
+   - Aislamiento riguroso de grupos y detalle de frecuencias por tripulación del socio.
+4. **Blindaje de la API de Registros Diarios (`src/app/api/records/route.ts`):**
+   - Soporte de `busId` y `socioId` para que los desplegables de personal y ayudantes solo listen a los tripulantes asignados a esa unidad.
+5. **Selector de Unidad y Aislamiento en UI (`ReportsScreen.tsx` & `ReporteOperativoScreen.tsx`):**
+   - **SuperAdmin (PIN 9999):** Selector dinámico para alternar entre "Toda la Cooperativa (Consolidado Global)" o cualquier unidad individual de la flota.
+   - **Socio Propietario:** Bloqueado y enlazado herméticamente a su unidad (ej. Bus 10 • Marina Alexandra), con selector si posee múltiples unidades.
+   - Envío permanente de `busId` y `socioId` en vista previa, exportación PDF y Excel.
+   - Reemplazo y unificación total de moneda de `S/ ` a `$ ` (USD).
+6. **Aislamiento en Modales Financieros del Socio:**
+   - `OwnerIncomeStatementModal.tsx`, `OwnerAnnualReportModal.tsx`, `OwnerComparisonReportModal.tsx` y `OwnerDebtsReportModal.tsx` ahora reciben `socioId` y concatenan `&busId=...&socioId=...` en todas las consultas.
+   - Corrección del fallback de agosto en `OwnerExpensesScreen.tsx` para restringirse exclusivamente a `BUS-01` del socio fundador.
+7. **Suite de Pruebas Automatizadas (`tests/manual-socio.test.ts`):**
+   - Incorporada **ETAPA 6** con 5 nuevas pruebas unitarias (28/28 passed al 100%, 90 expect calls).
+8. **Documentación Sincronizada:**
+   - `docs/MANUAL_DE_USUARIO_SOCIO.md`: Nueva sección de la Etapa 6 detallando la reportería gerencial y el aislamiento universal en $0.00.
+   - `docs/TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md`: Cláusula explícita de aislamiento para nuevas altas.
+   - `package.json`: Versión actualizada a **3.61.15**.
+
 
 
 

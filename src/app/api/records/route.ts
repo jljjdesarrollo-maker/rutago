@@ -6,6 +6,8 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
+    const busId = url.searchParams.get('busId') || '';
+    const socioId = url.searchParams.get('socioId') || '';
     const limitParam = url.searchParams.get('limit');
     // Límite estricto de rendimiento móvil: máximo 90 registros diarios (3 meses de operación)
     const defaultLimit = (from || to) ? 90 : 10;
@@ -15,6 +17,47 @@ export async function GET(req: NextRequest) {
     const where: Record<string, unknown> = {};
     if (from && to) {
       where.date = { gte: from, lte: to };
+    }
+
+    // Aislamiento Multi-Tenant por Socio Propietario o Unidad Fisiológica
+    let effectiveSocioId = socioId;
+    if ((!effectiveSocioId || effectiveSocioId === 'TODOS') && busId && busId !== 'TODOS') {
+      try {
+        const cleanBusNum = busId.replace(/^BUS-/i, '');
+        const busFound = await db.bus.findFirst({
+          where: {
+            OR: [
+              { id: busId },
+              { numeroDisco: cleanBusNum },
+              { numeroDisco: busId },
+            ],
+          },
+          select: { socioId: true },
+        });
+        if (busFound?.socioId) {
+          effectiveSocioId = busFound.socioId;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
+      const socioPersonas = await db.persona.findMany({
+        where: { socioId: effectiveSocioId },
+        select: { nombre: true },
+      });
+      const crewNames = socioPersonas.map((p) => p.nombre).filter(Boolean);
+      if (crewNames.length > 0) {
+        where.OR = [
+          { ayudanteNombre: { in: crewNames } },
+          { conductor: { in: crewNames } },
+        ];
+      } else {
+        where.id = 'NO_RECORDS_YET';
+      }
+    } else if (busId && busId !== 'TODOS' && busId !== 'BUS-01' && busId !== '01') {
+      where.id = 'NO_RECORDS_YET';
     }
 
     const records = await db.dailyRecord.findMany({

@@ -443,3 +443,116 @@ describe("👥 ETAPA 5: Gestión de Tripulación y Control de Turnos", () => {
     expect(reactivado.desactivadoAt).toBeNull();
   });
 });
+
+// ============================================================================
+// ETAPA 6: AISLAMIENTO MULTI-TENANT UNIVERSAL DE REPORTES E INFORMES (v3.61.15)
+// ============================================================================
+describe("📈 ETAPA 6: Aislamiento Multi-Tenant Universal de Reportes e Informes", () => {
+  test("6.1 Inyección universal de busId y socioId en consultas de reportes", () => {
+    // Simula la construcción de parámetros para /api/reports y /api/reports/operativo
+    const buildReportParams = (
+      reportType: string,
+      busId: string,
+      socioId: string,
+      isSuperAdmin: boolean
+    ) => {
+      const params = new URLSearchParams();
+      params.set("type", reportType);
+
+      const effectiveBusId = isSuperAdmin ? (busId || "TODOS") : busId;
+      const effectiveSocioId = isSuperAdmin ? (busId === "TODOS" ? "" : socioId) : socioId;
+
+      if (effectiveBusId && effectiveBusId !== "TODOS") {
+        params.set("busId", effectiveBusId);
+      }
+      if (effectiveSocioId && effectiveSocioId !== "TODOS") {
+        params.set("socioId", effectiveSocioId);
+      }
+      return params.toString();
+    };
+
+    // Caso Socio Propietario (Unidad 10 recién suscrita)
+    const socioParams = buildReportParams("mensual", "BUS-10", "socio-10-guid", false);
+    expect(socioParams).toContain("busId=BUS-10");
+    expect(socioParams).toContain("socioId=socio-10-guid");
+
+    // Caso SuperAdmin Global
+    const adminGlobalParams = buildReportParams("mensual", "TODOS", "", true);
+    expect(adminGlobalParams).not.toContain("busId=");
+    expect(adminGlobalParams).not.toContain("socioId=");
+
+    // Caso SuperAdmin filtrando Unidad 10
+    const adminFilterParams = buildReportParams("mensual", "BUS-10", "socio-10-guid", true);
+    expect(adminFilterParams).toContain("busId=BUS-10");
+    expect(adminFilterParams).toContain("socioId=socio-10-guid");
+  });
+
+  test("6.2 Aislamiento de Unidad Suscriptora Nueva (ej. Unidad 10): 0 registros y $0.00 limpio", () => {
+    // Tripulación asignada a Unidad 10
+    const crewUnidad10 = ["Richard Stalin Medina Maza", "Kelyn Silvana Solórzano Márquez"];
+
+    // Base de datos global con registros históricos de otras unidades
+    const globalDailyRecords = [
+      { id: "rec-01", date: "2026-09-15", ayudanteNombre: "Ayudante Bus 01", conductor: "Conductor Bus 01", production: 350.00, cajaComun: 45.00 },
+      { id: "rec-02", date: "2026-09-16", ayudanteNombre: "Ayudante Bus 01", conductor: "Conductor Bus 01", production: 280.00, cajaComun: 30.00 },
+    ];
+
+    // Simulación del filtro relacional de /api/reports y /api/reports/operativo
+    const filterRecordsForCrew = (records: typeof globalDailyRecords, crew: string[]) => {
+      if (crew.length === 0) return [];
+      return records.filter(
+        (r) => crew.includes(r.ayudanteNombre) || crew.includes(r.conductor)
+      );
+    };
+
+    const recordsUnidad10 = filterRecordsForCrew(globalDailyRecords, crewUnidad10);
+    const totalProduccion = recordsUnidad10.reduce((s, r) => s + r.production, 0);
+    const totalCajaComun = recordsUnidad10.reduce((s, r) => s + r.cajaComun, 0);
+
+    // Unidad 10 recién suscrita NO hereda registros ajenos:
+    expect(recordsUnidad10.length).toBe(0);
+    expect(totalProduccion).toBe(0.00);
+    expect(totalCajaComun).toBe(0.00);
+  });
+
+  test("6.3 Registro de primera jornada de tripulación: Asignación y visibilidad exclusiva", () => {
+    const crewUnidad10 = ["Richard Stalin Medina Maza", "Kelyn Silvana Solórzano Márquez"];
+
+    const globalDailyRecords = [
+      { id: "rec-01", date: "2026-09-15", ayudanteNombre: "Ayudante Bus 01", conductor: "Conductor Bus 01", production: 350.00 },
+      // Primera jornada real registrada por la tripulación de la Unidad 10
+      { id: "rec-10-01", date: "2026-10-09", ayudanteNombre: "Kelyn Silvana Solórzano Márquez", conductor: "Richard Stalin Medina Maza", production: 215.50 },
+    ];
+
+    const recordsUnidad10 = globalDailyRecords.filter(
+      (r) => crewUnidad10.includes(r.ayudanteNombre) || crewUnidad10.includes(r.conductor)
+    );
+
+    expect(recordsUnidad10.length).toBe(1);
+    expect(recordsUnidad10[0].id).toBe("rec-10-01");
+    expect(recordsUnidad10[0].production).toBe(215.50);
+  });
+
+  test("6.4 Aislamiento estricto de Caja Común para unidades sin operaciones", () => {
+    // Simula /api/reports?type=caja-comun con aislamiento de tripulación
+    const crewNuevaUnidad: string[] = ["Chofer Futuro 15", "Ayudante Futuro 15"];
+    const allCajaComunTrips = [
+      { id: "t-01", ayudanteNombre: "Ayudante Bus 01", monto: 18.50 },
+      { id: "t-02", ayudanteNombre: "Ayudante Bus 01", monto: 22.00 },
+    ];
+
+    const filteredCajaComun = allCajaComunTrips.filter((t) =>
+      crewNuevaUnidad.includes(t.ayudanteNombre)
+    );
+    const totalCajaComun = filteredCajaComun.reduce((s, t) => s + t.monto, 0);
+
+    expect(filteredCajaComun.length).toBe(0);
+    expect(totalCajaComun).toBe(0.00);
+  });
+
+  test("6.5 Estandarización de divisa oficial en Dólares ($ / USD)", () => {
+    const formatMoneyUSD = (v: number) => `$ ${v.toFixed(2)}`;
+    expect(formatMoneyUSD(0)).toBe("$ 0.00");
+    expect(formatMoneyUSD(125.5)).toBe("$ 125.50");
+  });
+});

@@ -381,8 +381,14 @@ export default function OwnerExpensesScreen({
     const fetchRouteData = async () => {
       const minDelay = new Promise(resolve => setTimeout(resolve, 350));
       try {
+        const effectiveSocioId = isSocio
+          ? (socioIdActual || currentUser?.socioId || currentUser?.id || '')
+          : (filtroSocioSuperAdmin !== 'TODOS' ? filtroSocioSuperAdmin : '');
+        const busParam = busId && busId !== 'TODOS' ? `&busId=${encodeURIComponent(busId)}` : '';
+        const socioParam = effectiveSocioId ? `&socioId=${encodeURIComponent(effectiveSocioId)}` : '';
+
         const [res] = await Promise.all([
-          fetch(`/api/reports?type=mensual&month=${selectedYearMonth}`),
+          fetch(`/api/reports?type=mensual&month=${selectedYearMonth}${busParam}${socioParam}`),
           minDelay
         ]);
 
@@ -409,8 +415,8 @@ export default function OwnerExpensesScreen({
       }
 
       await minDelay;
-      // Fallback para Agosto 2026 en caso de modo offline
-      if (isCurrent && selectedYearMonth === '2026-08') {
+      // Fallback para Agosto 2026 en caso de modo offline (exclusivo para Bus 01 Fundador)
+      if (isCurrent && selectedYearMonth === '2026-08' && currentUser?.esFundadorSaaS && (busId === 'BUS-01' || busId === '01')) {
         setMonthlyRouteData({
           production: 12334.75,
           entregaAyudante: 2828.80,
@@ -435,7 +441,7 @@ export default function OwnerExpensesScreen({
     return () => {
       isCurrent = false;
     };
-  }, [selectedYearMonth]);
+  }, [selectedYearMonth, busId, isSocio, socioIdActual, filtroSocioSuperAdmin, currentUser?.socioId, currentUser?.id]);
 
   // Entregas de ruta reales del mes (Ayudante + Compañía)
   const routeDeliveryCurrentMonth = monthlyRouteData.totalEntregado;
@@ -452,9 +458,15 @@ export default function OwnerExpensesScreen({
         ? filtroSocioSuperAdmin
         : undefined;
 
+      const effectiveSocioId = isSocio
+        ? (socioIdActual || currentUser?.socioId || currentUser?.id || '')
+        : (filtroSocioSuperAdmin !== 'TODOS' ? filtroSocioSuperAdmin : '');
+      const busParam = busId && busId !== 'TODOS' ? `&busId=${encodeURIComponent(busId)}` : '';
+      const socioParam = effectiveSocioId ? `&socioId=${encodeURIComponent(effectiveSocioId)}` : '';
+
       const [onlineExpensesRes, reportRes] = await Promise.all([
         fetchOwnerExpensesFromApi(busId, socioFilter).catch(() => null),
-        fetch(`/api/reports?type=mensual&month=${selectedYearMonth}`).then(r => r.ok ? r.json() : null).catch(() => null)
+        fetch(`/api/reports?type=mensual&month=${selectedYearMonth}${busParam}${socioParam}`).then(r => r.ok ? r.json() : null).catch(() => null)
       ]);
 
       if (onlineExpensesRes && onlineExpensesRes.length > 0) {
@@ -2084,6 +2096,7 @@ export default function OwnerExpensesScreen({
           isOpen={isIncomeStatementOpen}
           onClose={() => setIsIncomeStatementOpen(false)}
           busId={busId}
+          socioId={isSocio ? (socioIdActual || currentUser?.socioId || currentUser?.id || '') : (filtroSocioSuperAdmin !== 'TODOS' ? filtroSocioSuperAdmin : '')}
           selectedYearMonth={selectedYearMonth}
           allExpenses={allExpenses}
         />
@@ -2095,6 +2108,7 @@ export default function OwnerExpensesScreen({
           isOpen={isDebtsReportOpen}
           onClose={() => setIsDebtsReportOpen(false)}
           busId={busId}
+          socioId={isSocio ? (socioIdActual || currentUser?.socioId || currentUser?.id || '') : (filtroSocioSuperAdmin !== 'TODOS' ? filtroSocioSuperAdmin : '')}
           allExpenses={allExpenses}
           onOpenAbonoModal={(exp) => {
             setAbonoTargetExpense(exp);
@@ -2110,6 +2124,7 @@ export default function OwnerExpensesScreen({
           isOpen={isComparisonReportOpen}
           onClose={() => setIsComparisonReportOpen(false)}
           busId={busId}
+          socioId={isSocio ? (socioIdActual || currentUser?.socioId || currentUser?.id || '') : (filtroSocioSuperAdmin !== 'TODOS' ? filtroSocioSuperAdmin : '')}
           allExpenses={allExpenses}
         />
       )}
@@ -2120,6 +2135,7 @@ export default function OwnerExpensesScreen({
           isOpen={isAnnualReportOpen}
           onClose={() => setIsAnnualReportOpen(false)}
           busId={busId}
+          socioId={isSocio ? (socioIdActual || currentUser?.socioId || currentUser?.id || '') : (filtroSocioSuperAdmin !== 'TODOS' ? filtroSocioSuperAdmin : '')}
           allExpenses={allExpenses}
         />
       )}

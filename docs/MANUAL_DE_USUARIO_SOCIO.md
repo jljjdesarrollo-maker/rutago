@@ -212,6 +212,40 @@ Si tu ayudante asciende a conductor (o un chofer rota temporalmente a cobrar bol
 
 ---
 
+## 📈 ETAPA 6: REPORTES E INFORMES GERENCIALES (AISLAMIENTO TOTAL MULTI-TENANT)
+
+Como Socio Propietario, cuentas con un centro de reportería ejecutiva de alta fidelidad para auditar cada centavo y cada kilómetro recorrido por tu autobús:
+
+### 6.1 Módulo Principal de Reportes Periódicos (`ReportsScreen`)
+Accesible desde tu menú superior o lateral, te permite generar y descargar reportes auditados en formato PDF o Excel (.xlsx):
+* **Reporte Diario:** Cierre de caja por jornada con desglose de producción, gastos de carretera liquidados, tickets y saldo neto a entregar.
+* **Reporte Semanal:** Resumen de lunes a domingo para control de ciclos operativos.
+* **Reporte Mensual:** Consolidado contable del mes con rendimiento financiero por kilómetro recorrido ($/km).
+* **Reporte por Conductor / Ayudante:** Evaluación de productividad y recaudación individual de tu personal.
+* **Reporte por Rango de Fechas:** Filtro flexible de fechas personalizado.
+* **Reporte de Caja Común:** Desglose vuelta por vuelta de los aportes a la cooperativa y retenciones en oficina.
+
+> 🔒 **Garantía Universal de Aislamiento Privado (v3.61.15):**  
+> Todos los reportes están estrictamente enlazados a tu identidad de socio y al disco de tu autobús (ej. **Unidad 10**, **Unidad 01**, o cualquier unidad futura).
+> * **Unidad Recién Suscrita:** Si acabas de suscribir tu unidad y tu tripulación aún no sale a carretera, todos los reportes inician inmaculados en **$0.00 en limpio** con 0 vueltas y 0 registros. Jamás se filtrarán datos históricos ni vueltas de otras unidades de la cooperativa.
+> * **Unidad en Operación:** Al concluir cada jornada, los reportes mostrarán de forma exclusiva las vueltas, pasajeros y dinero generado por tu tripulación asignada.
+
+### 6.2 Reporte Operativo de Frecuencias (`ReporteOperativoScreen`)
+Audita el cumplimiento de frecuencias y turnos de tu autobús:
+* **Frecuencias Realizadas vs. No Realizadas:** Cumplimiento porcentual de tu ruta troncal.
+* **Registro de Motivos de Incumplimiento:** Detalle de vueltas perdidas por mantenimiento, lluvia/clima o factores de vía.
+* **Desglose Contable Transparente:** Total recaudado en efectivo de ruta vs. caja común de oficina.
+* **Selector de Unidad:** Si posees más de un autobús, puedes alternar entre ellos manteniendo aislamiento total.
+
+### 6.3 Modales de Auditoría Financiera de la Unidad
+Desde la pantalla de **Gastos y Negocio**, dispones de 4 herramientas ejecutivas:
+1. **Estado de Resultados Integral (Fase 4.1):** Utilidad Neta Real del Bolsillo, producción bruta y margen operativo del mes.
+2. **Cuentas por Pagar y Deudas con Talleres (Fase 4.2):** Saldo deudor pendiente y plan de abonos a crédito.
+3. **Comparativo Intermensual (Fase 4.3):** Comparación directa mes contra mes para evaluar tendencias.
+4. **Liquidación Anual Acumulada (Fase 4.4):** Rendimiento financiero de los 12 meses del año calendario.
+
+---
+
 ## ❓ PREGUNTAS FRECUENTES DEL SOCIO (FAQ)
 
 **1. ¿Por qué mi Utilidad Neta no coincide con lo que tengo en mi cuenta bancaria?**  

@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Calendar, Loader2, CheckCircle, XCircle, Sparkles, AlertTriangle, Download, Building2, Coins, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Calendar, Loader2, CheckCircle, XCircle, Sparkles, AlertTriangle, Download, Building2, Coins, TrendingUp, Bus as BusIcon, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { type UserSession } from '@/components/transport/types';
+import { getAllBuses, getActiveBusId, type BusItem } from '@/lib/fleet-storage';
 
 interface OperativoTrip {
   date: string;
@@ -52,6 +54,8 @@ interface OperativoData {
 
 interface Props {
   onBack: () => void;
+  currentUser?: UserSession | null;
+  activeBusId?: string;
 }
 
 function formatDate(d: string): string {
@@ -60,7 +64,7 @@ function formatDate(d: string): string {
 }
 
 function formatMoney(v: number): string {
-  return `S/ ${v.toFixed(2)}`;
+  return `$ ${v.toFixed(2)}`;
 }
 
 const MOTIVO_LABELS: Record<string, string> = {
@@ -78,7 +82,7 @@ function labelMotivo(m: string): string {
   return MOTIVO_LABELS[m] || m;
 }
 
-export function ReporteOperativoScreen({ onBack }: Props) {
+export function ReporteOperativoScreen({ onBack, currentUser, activeBusId: propActiveBusId }: Props) {
   const { toast } = useToast();
   const now = new Date();
   const y = now.getFullYear();
@@ -89,18 +93,54 @@ export function ReporteOperativoScreen({ onBack }: Props) {
   const [data, setData] = useState<OperativoData | null>(null);
   const [exporting, setExporting] = useState(false);
 
+  const isSuperAdmin = currentUser?.rol === 'ADMIN' || currentUser?.rol === 'SUPERADMIN_SAAS' || currentUser?.subRol === 'SUPERADMIN_SAAS';
+  const isSocio = !isSuperAdmin && (currentUser?.rol === 'SOCIO' || currentUser?.subRol === 'SOCIO');
+
+  const [availableBuses, setAvailableBuses] = useState<BusItem[]>(() => getAllBuses());
+  const [selectedBusId, setSelectedBusId] = useState<string>(() => {
+    if (isSuperAdmin) return 'TODOS';
+    if (currentUser?.busId) return currentUser.busId;
+    if (propActiveBusId) return propActiveBusId;
+    return getActiveBusId() || 'BUS-01';
+  });
+
+  // Cargar catálogo de buses actualizado de la BD
+  useEffect(() => {
+    fetch('/api/buses')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const list = d?.data || d;
+        if (Array.isArray(list) && list.length > 0) {
+          setAvailableBuses(list);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const load = useCallback(async () => {
     if (!from || !to) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/reports/operativo?from=${from}&to=${to}`);
+      const params = new URLSearchParams();
+      params.set('from', from);
+      params.set('to', to);
+
+      const effectiveSocioId = isSocio ? (currentUser?.socioId || currentUser?.id || '') : '';
+      if (selectedBusId && selectedBusId !== 'TODOS') {
+        params.set('busId', selectedBusId);
+      }
+      if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
+        params.set('socioId', effectiveSocioId);
+      }
+
+      const res = await fetch(`/api/reports/operativo?${params.toString()}`);
       if (res.ok) {
         const json = await res.json();
         if (!json.error) setData(json);
       }
     } catch { /* ignore */ }
     setLoading(false);
-  }, [from, to]);
+  }, [from, to, selectedBusId, isSocio, currentUser?.socioId, currentUser?.id]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -203,6 +243,54 @@ export function ReporteOperativoScreen({ onBack }: Props) {
       </header>
 
       <main className="flex-1 overflow-y-auto pb-6 px-4 pt-4 space-y-4">
+        {/* Selector de Unidad / Filtro Multi-Tenant */}
+        <div className="bg-white p-3 rounded-2xl border border-[#D6D6D6] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-[#912D26]/10 flex items-center justify-center text-[#912D26]">
+              <BusIcon className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-[#3A3A3A]/40 uppercase tracking-wider">Unidad en Auditoría</p>
+              <p className="text-xs font-semibold text-[#3A3A3A]">
+                {isSuperAdmin
+                  ? selectedBusId === 'TODOS' ? 'Toda la Cooperativa (Consolidado)' : `Bus ${availableBuses.find(b => b.id === selectedBusId)?.numeroDisco || selectedBusId}`
+                  : `Bus ${currentUser?.busNumero || availableBuses.find(b => b.id === selectedBusId)?.numeroDisco || '01'} • ${currentUser?.nombre || 'Socio Propietario'}`}
+              </p>
+            </div>
+          </div>
+          {isSuperAdmin ? (
+            <select
+              value={selectedBusId}
+              onChange={(e) => setSelectedBusId(e.target.value)}
+              className="w-full sm:w-auto h-9 text-xs font-medium bg-[#FAFAFA] border border-[#D6D6D6] rounded-xl px-3 text-[#3A3A3A] focus:outline-none focus:border-[#912D26]"
+            >
+              <option value="TODOS">🚌 Toda la Cooperativa (Consolidado Global)</option>
+              {availableBuses.map((b) => (
+                <option key={b.id} value={b.id}>
+                  Bus {b.numeroDisco} ({b.placa} • {b.propietario || 'Socio'})
+                </option>
+              ))}
+            </select>
+          ) : currentUser?.buses && currentUser.buses.length > 1 ? (
+            <select
+              value={selectedBusId}
+              onChange={(e) => setSelectedBusId(e.target.value)}
+              className="w-full sm:w-auto h-9 text-xs font-medium bg-[#FAFAFA] border border-[#D6D6D6] rounded-xl px-3 text-[#3A3A3A] focus:outline-none focus:border-[#912D26]"
+            >
+              {currentUser.buses.map((b) => (
+                <option key={b.id} value={b.id}>
+                  Bus {b.numeroDisco} ({b.placa})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-green-50 border border-green-200 text-green-700 text-[11px] font-medium">
+              <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
+              <span>Aislamiento Privado Activo</span>
+            </div>
+          )}
+        </div>
+
         {/* Rango rapido */}
         <div className="flex gap-1.5 flex-wrap">
           <button

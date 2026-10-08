@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
     // ─── CAJA COMÚN REPORT ───
     if (type === 'caja-comun') {
-      return handleCajaComunReport(from, to);
+      return handleCajaComunReport(from, to, socioId, busId);
     }
 
     // Build date range
@@ -355,7 +355,7 @@ interface CajaComunDayGroup {
   tickets: number;
 }
 
-async function handleCajaComunReport(from: string, to: string) {
+async function handleCajaComunReport(from: string, to: string, socioId: string = '', busId: string = '') {
   // Default: current month
   let startDate = from;
   let endDate = to;
@@ -367,14 +367,61 @@ async function handleCajaComunReport(from: string, to: string) {
     if (!endDate) endDate = `${y}-${m}-${String(new Date(y, parseInt(m), 0).getDate()).padStart(2, '0')}`;
   }
 
+  const where: Record<string, unknown> = {
+    date: { gte: startDate, lte: endDate },
+    OR: [
+      { cajaComun: { gt: 0 } },
+      { trips: { some: { cajaComunMonto: { gt: 0 } } } },
+    ],
+  };
+
+  // Aislamiento Multi-Tenant por Socio Propietario o Unidad Fisiológica
+  let effectiveSocioId = socioId;
+  if ((!effectiveSocioId || effectiveSocioId === 'TODOS') && busId && busId !== 'TODOS') {
+    try {
+      const cleanBusNum = busId.replace(/^BUS-/i, '');
+      const busFound = await db.bus.findFirst({
+        where: {
+          OR: [
+            { id: busId },
+            { numeroDisco: cleanBusNum },
+            { numeroDisco: busId },
+          ],
+        },
+        select: { socioId: true },
+      });
+      if (busFound?.socioId) {
+        effectiveSocioId = busFound.socioId;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
+    const socioPersonas = await db.persona.findMany({
+      where: { socioId: effectiveSocioId },
+      select: { nombre: true },
+    });
+    const crewNames = socioPersonas.map((p) => p.nombre).filter(Boolean);
+    if (crewNames.length > 0) {
+      where.AND = [
+        {
+          OR: [
+            { ayudanteNombre: { in: crewNames } },
+            { conductor: { in: crewNames } },
+          ],
+        },
+      ];
+    } else {
+      where.id = 'NO_RECORDS_YET';
+    }
+  } else if (busId && busId !== 'TODOS' && busId !== 'BUS-01' && busId !== '01') {
+    where.id = 'NO_RECORDS_YET';
+  }
+
   const records = await db.dailyRecord.findMany({
-    where: {
-      date: { gte: startDate, lte: endDate },
-      OR: [
-        { cajaComun: { gt: 0 } },
-        { trips: { some: { cajaComunMonto: { gt: 0 } } } },
-      ],
-    },
+    where,
     orderBy: { date: 'asc' },
     include: { trips: { orderBy: { order: 'asc' } } },
   });

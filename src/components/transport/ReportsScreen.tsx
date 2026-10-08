@@ -5,20 +5,25 @@ import {
   ArrowLeft, FileText, Calendar, Loader2, Share2,
   CheckCircle2, AlertTriangle, AlertCircle, ChevronDown,
   ChevronUp, ArrowRightLeft, CalendarDays, ChevronLeft,
-  ChevronRight, Sparkles, Building2, UserCheck, FileSpreadsheet
+  ChevronRight, Sparkles, Building2, UserCheck, FileSpreadsheet,
+  Bus as BusIcon, ShieldCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { type UserSession } from '@/components/transport/types';
+import { getAllBuses, getActiveBusId, type BusItem } from '@/lib/fleet-storage';
 
 type ReportType = 'diario' | 'semanal' | 'mensual' | 'conductor' | 'rango' | 'caja-comun';
 
 interface ReportsScreenProps {
   onBack: () => void;
+  currentUser?: UserSession | null;
+  activeBusId?: string;
 }
 
-export function ReportsScreen({ onBack }: ReportsScreenProps) {
+export function ReportsScreen({ onBack, currentUser, activeBusId: propActiveBusId }: ReportsScreenProps) {
   const [reportType, setReportType] = useState<ReportType>('diario');
   const [date, setDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [month, setMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
@@ -36,6 +41,39 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
   const [showDaysDetail, setShowDaysDetail] = useState(false);
   const { toast } = useToast();
 
+  const isSuperAdmin = currentUser?.rol === 'ADMIN' || currentUser?.rol === 'SUPERADMIN_SAAS' || currentUser?.subRol === 'SUPERADMIN_SAAS';
+  const isSocio = !isSuperAdmin && (currentUser?.rol === 'SOCIO' || currentUser?.subRol === 'SOCIO');
+
+  const [availableBuses, setAvailableBuses] = useState<BusItem[]>(() => getAllBuses());
+  const [selectedBusId, setSelectedBusId] = useState<string>(() => {
+    if (isSuperAdmin) return 'TODOS';
+    if (currentUser?.busId) return currentUser.busId;
+    if (propActiveBusId) return propActiveBusId;
+    return getActiveBusId() || 'BUS-01';
+  });
+
+  const effectiveSocioId = useMemo(() => {
+    if (isSocio) return currentUser?.socioId || currentUser?.id || '';
+    if (isSuperAdmin && selectedBusId !== 'TODOS') {
+      const found = availableBuses.find(b => b.id === selectedBusId);
+      return (found as any)?.socioId || '';
+    }
+    return '';
+  }, [isSocio, currentUser?.socioId, currentUser?.id, isSuperAdmin, selectedBusId, availableBuses]);
+
+  // Cargar catálogo de autobuses de la BD para tener siempre la flota completa
+  useEffect(() => {
+    fetch('/api/buses')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const list = d?.data || d;
+        if (Array.isArray(list) && list.length > 0) {
+          setAvailableBuses(list);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Fecha de referencia para la semana (lunes-domingo) según el offset
   const weekRefDate = useMemo(() => {
     const d = new Date();
@@ -43,16 +81,20 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
     return d.toISOString().split('T')[0];
   }, [weekOffset]);
 
-  // Nombres de ayudantes para filtro
+  // Nombres de ayudantes para filtro (aislados por unidad y socio)
   useEffect(() => {
-    fetch('/api/records')
+    const params = new URLSearchParams();
+    if (selectedBusId && selectedBusId !== 'TODOS') params.set('busId', selectedBusId);
+    if (effectiveSocioId && effectiveSocioId !== 'TODOS') params.set('socioId', effectiveSocioId);
+
+    fetch(`/api/records?${params.toString()}`)
       .then(r => r.json())
       .then((records: any[]) => {
         const names = [...new Set(records.map((r: any) => r.ayudanteNombre).filter(Boolean))] as string[];
         setConductorNames(names);
       })
       .catch(() => {});
-  }, []);
+  }, [selectedBusId, effectiveSocioId]);
 
   // Carga automática de la vista previa para cualquier tipo de reporte (Fase 1 y Fase 2)
   const loadPreview = useCallback(() => {
@@ -82,6 +124,13 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
       params.set('to', rangeTo);
     }
 
+    if (selectedBusId && selectedBusId !== 'TODOS') {
+      params.set('busId', selectedBusId);
+    }
+    if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
+      params.set('socioId', effectiveSocioId);
+    }
+
     fetch(`/api/reports?${params.toString()}`)
       .then(r => (r.ok ? r.json() : null))
       .then(d => {
@@ -100,7 +149,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
     return () => {
       cancelled = true;
     };
-  }, [reportType, date, weekRefDate, month, conductorName, rangeFrom, rangeTo]);
+  }, [reportType, date, weekRefDate, month, conductorName, rangeFrom, rangeTo, selectedBusId, effectiveSocioId]);
 
   useEffect(() => {
     loadPreview();
@@ -155,6 +204,13 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
       } else if (reportType === 'rango' || reportType === 'caja-comun') {
         params.set('from', rangeFrom);
         params.set('to', rangeTo);
+      }
+
+      if (selectedBusId && selectedBusId !== 'TODOS') {
+        params.set('busId', selectedBusId);
+      }
+      if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
+        params.set('socioId', effectiveSocioId);
       }
 
       const res = await fetch(`/api/reports?${params.toString()}`);
@@ -239,6 +295,13 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
         else if (reportType === "conductor") { params.set("conductorId", conductorName); if (month) params.set("month", month); }
         else if (reportType === "rango" || reportType === "caja-comun") { params.set("from", rangeFrom); params.set("to", rangeTo); }
 
+        if (selectedBusId && selectedBusId !== "TODOS") {
+          params.set("busId", selectedBusId);
+        }
+        if (effectiveSocioId && effectiveSocioId !== "TODOS") {
+          params.set("socioId", effectiveSocioId);
+        }
+
         const res = await fetch(`/api/reports?${params.toString()}`);
         if (!res.ok) throw new Error("Error al consultar datos");
         dataToUse = await res.json();
@@ -282,6 +345,13 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
         params.set('to', rangeTo);
       }
 
+      if (selectedBusId && selectedBusId !== 'TODOS') {
+        params.set('busId', selectedBusId);
+      }
+      if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
+        params.set('socioId', effectiveSocioId);
+      }
+
       const res = await fetch(`/api/reports?${params.toString()}`);
       if (!res.ok) throw new Error('Error');
       const data = await res.json();
@@ -293,26 +363,26 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
         const saldoA = t.saldoALiquidar ?? (t.production - t.gastos - t.tickets);
         const delta = t.cuadreDelta ?? ((t.entregaCompania + t.entregaAyudante) - saldoA);
         const estadoCuadre = Math.abs(delta) < 0.01
-          ? 'CUADRE EXACTO (Δ: S/ 0.00)'
+          ? 'CUADRE EXACTO (Δ: $ 0.00)'
           : delta > 0
-          ? `SOBRANTE (+S/ ${delta.toFixed(2)})`
-          : `FALTANTE / DESCUADRE (-S/ ${Math.abs(delta).toFixed(2)})`;
+          ? `SOBRANTE (+$ ${delta.toFixed(2)})`
+          : `FALTANTE / DESCUADRE (-$ ${Math.abs(delta).toFixed(2)})`;
 
         text = `*CIERRE DE CAJA DIARIO - RUTAGO*\n` +
           `Fecha: ${date}\n` +
           `Estado Cuadre: ${estadoCuadre}\n\n` +
-          `Produccion Total: S/ ${t.production.toFixed(2)}\n` +
-          ` - Efectivo Ruta: S/ ${(t.production - t.cajaComun).toFixed(2)}\n` +
-          ` - Caja Comun: S/ ${t.cajaComun.toFixed(2)}\n\n` +
-          `Total Gastos: S/ ${t.gastos.toFixed(2)}\n` +
-          ` - Diesel: S/ ${(t.dieselGasto || 0).toFixed(2)} (${(t.pctDiesel || 0).toFixed(1)}%)\n` +
-          `Total Tickets: S/ ${t.tickets.toFixed(2)}\n` +
-          `Saldo a Liquidar: S/ ${saldoA.toFixed(2)}\n\n` +
-          `Entrega Compania: S/ ${t.entregaCompania.toFixed(2)}\n` +
-          `Entrega Ayudante: S/ ${t.entregaAyudante.toFixed(2)}\n` +
-          `Total Entregado: S/ ${(t.entregaCompania + t.entregaAyudante).toFixed(2)}\n\n` +
+          `Produccion Total: $ ${t.production.toFixed(2)}\n` +
+          ` - Efectivo Ruta: $ ${(t.production - t.cajaComun).toFixed(2)}\n` +
+          ` - Caja Comun: $ ${t.cajaComun.toFixed(2)}\n\n` +
+          `Total Gastos: $ ${t.gastos.toFixed(2)}\n` +
+          ` - Diesel: $ ${(t.dieselGasto || 0).toFixed(2)} (${(t.pctDiesel || 0).toFixed(1)}%)\n` +
+          `Total Tickets: $ ${t.tickets.toFixed(2)}\n` +
+          `Saldo a Liquidar: $ ${saldoA.toFixed(2)}\n\n` +
+          `Entrega Compania: $ ${t.entregaCompania.toFixed(2)}\n` +
+          `Entrega Ayudante: $ ${t.entregaAyudante.toFixed(2)}\n` +
+          `Total Entregado: $ ${(t.entregaCompania + t.entregaAyudante).toFixed(2)}\n\n` +
           `Km Recorridos: ${t.km.toFixed(0)} km\n` +
-          `Rendimiento: S/ ${(t.km > 0 ? (t.production / t.km).toFixed(2) : '0.00')}/km\n` +
+          `Rendimiento: $ ${(t.km > 0 ? (t.production / t.km).toFixed(2) : '0.00')}/km\n` +
           `Vueltas Realizadas: ${t.frecRealizadas || 0}\n` +
           `_RutaGo Control Operativo v3.49.3_`;
       } else {
@@ -329,10 +399,10 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
         const delta = t.cuadreDelta ?? 0;
         const cuadra = Math.abs(delta) < 0.01;
         const estadoCuadre = cuadra
-          ? 'CUADRE EXACTO (Δ: S/ 0.00)'
+          ? 'CUADRE EXACTO (Δ: $ 0.00)'
           : delta > 0
-          ? `SOBRANTE (+S/ ${delta.toFixed(2)})`
-          : `FALTANTE / DESCUADRE (-S/ ${Math.abs(delta).toFixed(2)})`;
+          ? `SOBRANTE (+$ ${delta.toFixed(2)})`
+          : `FALTANTE / DESCUADRE (-$ ${Math.abs(delta).toFixed(2)})`;
 
         const saldoA = t.saldoALiquidar ?? (t.production - t.gastos - t.tickets);
 
@@ -340,19 +410,19 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
           `Periodo: ${periodoTxt}\n` +
           `Auditoria: ${found}/${expected} registros (${t.daysWorked} dias trabajados)\n` +
           `Estado Cuadre: ${estadoCuadre}\n\n` +
-          `Produccion Total: S/ ${t.production.toFixed(2)}\n` +
-          ` - Efectivo Ruta: S/ ${(t.production - t.cajaComun).toFixed(2)}\n` +
-          ` - Caja Comun: S/ ${t.cajaComun.toFixed(2)}\n\n` +
-          `Total Gastos: S/ ${t.gastos.toFixed(2)}\n` +
-          ` - Diesel: S/ ${(t.dieselGasto || 0).toFixed(2)} (${(t.pctDiesel || 0).toFixed(1)}%)\n` +
-          `Total Tickets: S/ ${t.tickets.toFixed(2)}\n` +
-          `Utilidad Neta: S/ ${(t.utilidadNeta ?? saldoA).toFixed(2)}\n\n` +
+          `Produccion Total: $ ${t.production.toFixed(2)}\n` +
+          ` - Efectivo Ruta: $ ${(t.production - t.cajaComun).toFixed(2)}\n` +
+          ` - Caja Comun: $ ${t.cajaComun.toFixed(2)}\n\n` +
+          `Total Gastos: $ ${t.gastos.toFixed(2)}\n` +
+          ` - Diesel: $ ${(t.dieselGasto || 0).toFixed(2)} (${(t.pctDiesel || 0).toFixed(1)}%)\n` +
+          `Total Tickets: $ ${t.tickets.toFixed(2)}\n` +
+          `Utilidad Neta: $ ${(t.utilidadNeta ?? saldoA).toFixed(2)}\n\n` +
           `Entregas Consolidadas:\n` +
-          ` - Compania: S/ ${t.entregaCompania.toFixed(2)}\n` +
-          ` - Ayudante: S/ ${t.entregaAyudante.toFixed(2)}\n` +
-          ` - Total Entregado: S/ ${(t.entregaCompania + t.entregaAyudante).toFixed(2)}\n\n` +
+          ` - Compania: $ ${t.entregaCompania.toFixed(2)}\n` +
+          ` - Ayudante: $ ${t.entregaAyudante.toFixed(2)}\n` +
+          ` - Total Entregado: $ ${(t.entregaCompania + t.entregaAyudante).toFixed(2)}\n\n` +
           `Km Recorridos: ${t.km.toFixed(0)} km\n` +
-          `Rendimiento: S/ ${(t.km > 0 ? (t.production / t.km).toFixed(2) : '0.00')}/km\n` +
+          `Rendimiento: $ ${(t.km > 0 ? (t.production / t.km).toFixed(2) : '0.00')}/km\n` +
           `Vueltas Realizadas: ${t.frecRealizadas || 0}\n` +
           `_Control de Transporte RutaGo v3.49.3_`;
       }
@@ -397,6 +467,54 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
       </header>
 
       <main className="flex-1 overflow-y-auto pb-6 px-4 pt-4 space-y-4">
+        {/* Selector de Unidad / Filtro Multi-Tenant */}
+        <div className="bg-white p-3 rounded-2xl border border-[#D6D6D6] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-[#912D26]/10 flex items-center justify-center text-[#912D26]">
+              <BusIcon className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-[#3A3A3A]/40 uppercase tracking-wider">Unidad en Consulta</p>
+              <p className="text-xs font-semibold text-[#3A3A3A]">
+                {isSuperAdmin
+                  ? selectedBusId === 'TODOS' ? 'Toda la Cooperativa (Consolidado Global)' : `Bus ${availableBuses.find(b => b.id === selectedBusId)?.numeroDisco || selectedBusId}`
+                  : `Bus ${currentUser?.busNumero || availableBuses.find(b => b.id === selectedBusId)?.numeroDisco || '01'} • ${currentUser?.nombre || 'Socio Propietario'}`}
+              </p>
+            </div>
+          </div>
+          {isSuperAdmin ? (
+            <select
+              value={selectedBusId}
+              onChange={(e) => setSelectedBusId(e.target.value)}
+              className="w-full sm:w-auto h-9 text-xs font-medium bg-[#FAFAFA] border border-[#D6D6D6] rounded-xl px-3 text-[#3A3A3A] focus:outline-none focus:border-[#912D26]"
+            >
+              <option value="TODOS">🚌 Toda la Cooperativa (Consolidado Global)</option>
+              {availableBuses.map((b) => (
+                <option key={b.id} value={b.id}>
+                  Bus {b.numeroDisco} ({b.placa} • {b.propietario || 'Socio'})
+                </option>
+              ))}
+            </select>
+          ) : currentUser?.buses && currentUser.buses.length > 1 ? (
+            <select
+              value={selectedBusId}
+              onChange={(e) => setSelectedBusId(e.target.value)}
+              className="w-full sm:w-auto h-9 text-xs font-medium bg-[#FAFAFA] border border-[#D6D6D6] rounded-xl px-3 text-[#3A3A3A] focus:outline-none focus:border-[#912D26]"
+            >
+              {currentUser.buses.map((b) => (
+                <option key={b.id} value={b.id}>
+                  Bus {b.numeroDisco} ({b.placa})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-green-50 border border-green-200 text-green-700 text-[11px] font-medium">
+              <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
+              <span>Aislamiento Privado Activo</span>
+            </div>
+          )}
+        </div>
+
         {/* Report type selector */}
         <div className="grid grid-cols-2 gap-2">
           {reportTypes.map(rt => (
@@ -678,7 +796,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                       </div>
                     </div>
                     <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      Δ S/ 0.00
+                      Δ $ 0.00
                     </span>
                   </div>
                 ) : delta > 0 ? (
@@ -691,7 +809,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                       </div>
                     </div>
                     <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
-                      +S/ {delta.toFixed(2)}
+                      +$ {delta.toFixed(2)}
                     </span>
                   </div>
                 ) : (
@@ -704,7 +822,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                       </div>
                     </div>
                     <span className="text-xs font-bold text-red-800 bg-red-100 px-2 py-0.5 rounded-full">
-                      -S/ {Math.abs(delta).toFixed(2)}
+                      -$ {Math.abs(delta).toFixed(2)}
                     </span>
                   </div>
                 )}
@@ -713,17 +831,17 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2.5 rounded-xl bg-[#F8F9FA] border border-gray-100">
                     <p className="text-[10px] font-medium text-gray-500">Producción Total</p>
-                    <p className="text-base font-bold text-[#3A3A3A]">S/ {t.production.toFixed(2)}</p>
-                    <p className="text-[9px] text-gray-400">Ef: S/ {(t.production - t.cajaComun).toFixed(0)} | CC: S/ {t.cajaComun.toFixed(0)}</p>
+                    <p className="text-base font-bold text-[#3A3A3A]">$ {t.production.toFixed(2)}</p>
+                    <p className="text-[9px] text-gray-400">Ef: $ {(t.production - t.cajaComun).toFixed(0)} | CC: $ {t.cajaComun.toFixed(0)}</p>
                   </div>
                   <div className="p-2.5 rounded-xl bg-[#F8F9FA] border border-gray-100">
                     <p className="text-[10px] font-medium text-gray-500">Utilidad Neta</p>
-                    <p className="text-base font-bold text-emerald-700">S/ {(t.utilidadNeta ?? saldoA).toFixed(2)}</p>
-                    <p className="text-[9px] text-gray-400">Gastos: S/ {t.gastos.toFixed(0)} | Tk: S/ {t.tickets.toFixed(0)}</p>
+                    <p className="text-base font-bold text-emerald-700">$ {(t.utilidadNeta ?? saldoA).toFixed(2)}</p>
+                    <p className="text-[9px] text-gray-400">Gastos: $ {t.gastos.toFixed(0)} | Tk: $ {t.tickets.toFixed(0)}</p>
                   </div>
                   <div className="p-2.5 rounded-xl bg-[#F8F9FA] border border-gray-100">
                     <p className="text-[10px] font-medium text-gray-500">Rendimiento Km</p>
-                    <p className="text-base font-bold text-[#3A3A3A]">S/ {ingKm.toFixed(2)}<span className="text-xs font-normal text-gray-400">/km</span></p>
+                    <p className="text-base font-bold text-[#3A3A3A]">$ {ingKm.toFixed(2)}<span className="text-xs font-normal text-gray-400">/km</span></p>
                     <p className="text-[9px] text-gray-400">{t.km.toFixed(0)} km recorridos</p>
                   </div>
                   <div className="p-2.5 rounded-xl bg-[#F8F9FA] border border-gray-100">
@@ -731,7 +849,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                     <p className={`text-base font-bold ${pctDiesel <= 35 ? 'text-emerald-700' : pctDiesel <= 42 ? 'text-amber-600' : 'text-red-600'}`}>
                       {pctDiesel.toFixed(1)}%
                     </p>
-                    <p className="text-[9px] text-gray-400">Gasto: S/ {(t.dieselGasto || 0).toFixed(0)}</p>
+                    <p className="text-[9px] text-gray-400">Gasto: $ {(t.dieselGasto || 0).toFixed(0)}</p>
                   </div>
                 </div>
 
@@ -782,7 +900,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                                 )}
                               </div>
                               <div className="text-right shrink-0">
-                                <span className="font-bold text-[#912D26]">S/ {tot.toFixed(2)}</span>
+                                <span className="font-bold text-[#912D26]">$ {tot.toFixed(2)}</span>
                                 <p className="text-[9px] text-gray-400">Ef: {ef.toFixed(0)} | CC: {cc.toFixed(0)}</p>
                               </div>
                             </div>
@@ -849,7 +967,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                       </div>
                     </div>
                     <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      Δ S/ 0.00
+                      Δ $ 0.00
                     </span>
                   </div>
                 ) : delta > 0 ? (
@@ -862,7 +980,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                       </div>
                     </div>
                     <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
-                      +S/ {delta.toFixed(2)}
+                      +$ {delta.toFixed(2)}
                     </span>
                   </div>
                 ) : (
@@ -875,7 +993,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                       </div>
                     </div>
                     <span className="text-xs font-bold text-red-800 bg-red-100 px-2 py-0.5 rounded-full">
-                      -S/ {Math.abs(delta).toFixed(2)}
+                      -$ {Math.abs(delta).toFixed(2)}
                     </span>
                   </div>
                 )}
@@ -884,17 +1002,17 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2.5 rounded-xl bg-[#F8F9FA] border border-gray-100">
                     <p className="text-[10px] font-medium text-gray-500">Producción Total</p>
-                    <p className="text-base font-bold text-[#3A3A3A]">S/ {t.production.toFixed(2)}</p>
-                    <p className="text-[9px] text-gray-400">Ef: S/ {(t.production - t.cajaComun).toFixed(0)} | CC: S/ {t.cajaComun.toFixed(0)}</p>
+                    <p className="text-base font-bold text-[#3A3A3A]">$ {t.production.toFixed(2)}</p>
+                    <p className="text-[9px] text-gray-400">Ef: $ {(t.production - t.cajaComun).toFixed(0)} | CC: $ {t.cajaComun.toFixed(0)}</p>
                   </div>
                   <div className="p-2.5 rounded-xl bg-[#F8F9FA] border border-gray-100">
                     <p className="text-[10px] font-medium text-gray-500">Utilidad Neta Período</p>
-                    <p className="text-base font-bold text-emerald-700">S/ {(t.utilidadNeta ?? saldoA).toFixed(2)}</p>
-                    <p className="text-[9px] text-gray-400">Gastos: S/ {t.gastos.toFixed(0)} | Tk: S/ {t.tickets.toFixed(0)}</p>
+                    <p className="text-base font-bold text-emerald-700">$ {(t.utilidadNeta ?? saldoA).toFixed(2)}</p>
+                    <p className="text-[9px] text-gray-400">Gastos: $ {t.gastos.toFixed(0)} | Tk: $ {t.tickets.toFixed(0)}</p>
                   </div>
                   <div className="p-2.5 rounded-xl bg-[#F8F9FA] border border-gray-100">
                     <p className="text-[10px] font-medium text-gray-500">Rendimiento Promedio</p>
-                    <p className="text-base font-bold text-[#3A3A3A]">S/ {ingKm.toFixed(2)}<span className="text-xs font-normal text-gray-400">/km</span></p>
+                    <p className="text-base font-bold text-[#3A3A3A]">$ {ingKm.toFixed(2)}<span className="text-xs font-normal text-gray-400">/km</span></p>
                     <p className="text-[9px] text-gray-400">{t.km.toFixed(0)} km recorridos en {t.daysWorked} días</p>
                   </div>
                   <div className="p-2.5 rounded-xl bg-[#F8F9FA] border border-gray-100">
@@ -902,7 +1020,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                     <p className={`text-base font-bold ${pctDiesel <= 35 ? 'text-emerald-700' : pctDiesel <= 42 ? 'text-amber-600' : 'text-red-600'}`}>
                       {pctDiesel.toFixed(1)}%
                     </p>
-                    <p className="text-[9px] text-gray-400">Gasto total: S/ {(t.dieselGasto || 0).toFixed(0)}</p>
+                    <p className="text-[9px] text-gray-400">Gasto total: $ {(t.dieselGasto || 0).toFixed(0)}</p>
                   </div>
                 </div>
 
@@ -911,7 +1029,7 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                   <div className="p-3 rounded-xl bg-[#F8F9FA] border border-gray-100 space-y-2">
                     <div className="flex items-center justify-between text-[11px] font-bold text-gray-700">
                       <span>Distribución de Producción</span>
-                      <span className="text-[#912D26]">100% (S/ {t.production.toFixed(0)})</span>
+                      <span className="text-[#912D26]">100% ($ {t.production.toFixed(0)})</span>
                     </div>
                     <div className="w-full h-3 rounded-full bg-gray-200 overflow-hidden flex shadow-inner">
                       <div
@@ -948,14 +1066,14 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                 <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 text-xs flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-gray-600">
                     <Building2 className="w-3.5 h-3.5 text-[#912D26]" />
-                    <span>Cía: <strong className="text-[#3A3A3A]">S/ {t.entregaCompania.toFixed(0)}</strong></span>
+                    <span>Cía: <strong className="text-[#3A3A3A]">$ {t.entregaCompania.toFixed(0)}</strong></span>
                   </div>
                   <div className="flex items-center gap-1.5 text-gray-600">
                     <UserCheck className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>Ayud: <strong className="text-[#3A3A3A]">S/ {t.entregaAyudante.toFixed(0)}</strong></span>
+                    <span>Ayud: <strong className="text-[#3A3A3A]">$ {t.entregaAyudante.toFixed(0)}</strong></span>
                   </div>
                   <div className="font-bold text-[#912D26]">
-                    Total: S/ {(t.entregaCompania + t.entregaAyudante).toFixed(0)}
+                    Total: $ {(t.entregaCompania + t.entregaAyudante).toFixed(0)}
                   </div>
                 </div>
 
@@ -1001,11 +1119,11 @@ export function ReportsScreen({ onBack }: ReportsScreenProps) {
                                 )}
                               </div>
                               <span className="text-[10px] text-gray-400">
-                                Gastos: S/ {d.totalGastos.toFixed(0)} | Km: {d.totalKm.toFixed(0)}
+                                Gastos: $ {d.totalGastos.toFixed(0)} | Km: {d.totalKm.toFixed(0)}
                               </span>
                             </div>
                             <div className="text-right shrink-0">
-                              <span className="font-bold text-[#912D26]">S/ {d.totalProduction.toFixed(2)}</span>
+                              <span className="font-bold text-[#912D26]">$ {d.totalProduction.toFixed(2)}</span>
                               <p className="text-[9px] text-gray-400">
                                 Ef: {(d.totalProduction - d.totalCajaComun).toFixed(0)} | CC: {d.totalCajaComun.toFixed(0)}
                               </p>

@@ -30,6 +30,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   busId: string;
+  socioId?: string;
   selectedYearMonth: string; // ej: '2026-08' o '2026-09'
   allExpenses: OwnerExpense[];
 }
@@ -38,6 +39,7 @@ export default function OwnerIncomeStatementModal({
   isOpen,
   onClose,
   busId,
+  socioId,
   selectedYearMonth,
   allExpenses,
 }: Props) {
@@ -73,8 +75,11 @@ export default function OwnerIncomeStatementModal({
         const year = parseInt(yearStr, 10);
         const month = parseInt(monthStr, 10);
 
+        const busParam = busId && busId !== 'TODOS' ? `&busId=${encodeURIComponent(busId)}` : '';
+        const socioParam = socioId && socioId !== 'TODOS' ? `&socioId=${encodeURIComponent(socioId)}` : '';
+
         // Llamada a la API real de reportes de la base de datos
-        const res = await fetch(`/api/reports?type=monthly&year=${year}&month=${month}`);
+        const res = await fetch(`/api/reports?type=monthly&year=${year}&month=${month}${busParam}${socioParam}`);
         if (!res.ok) {
           throw new Error(`Error ${res.status}: no se pudo cargar el reporte del mes.`);
         }

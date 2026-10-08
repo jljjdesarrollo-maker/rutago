@@ -32,6 +32,7 @@ import { type AppView, type RecordFormData, type SavedRecord, type UserSession, 
 import { type VTSession, type FrecuenciaEstado } from '@/components/transport/types-boletos';
 import { useToast } from '@/hooks/use-toast';
 import { useConnectionStatus } from '@/hooks/use-connection';
+import { getActiveBusId } from '@/lib/fleet-storage';
 
 export default function Home() {
   const [user, setUser] = useState<UserSession | null>(null);
@@ -329,6 +330,8 @@ export default function Home() {
     return (
       <ReportsScreen
         onBack={() => setView('home')}
+        currentUser={user}
+        activeBusId={user.busId || getActiveBusId()}
       />
     );
   }
@@ -338,6 +341,8 @@ export default function Home() {
     return (
       <ReporteOperativoScreen
         onBack={() => setView('home')}
+        currentUser={user}
+        activeBusId={user.busId || getActiveBusId()}
       />
     );
   }

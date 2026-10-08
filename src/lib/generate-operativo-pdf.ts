@@ -27,7 +27,7 @@ function formatDate(dateStr: string): string {
 }
 
 function formatMoney(val: number): string {
-  return `S/ ${(val || 0).toFixed(2)}`;
+  return `$ ${(val || 0).toFixed(2)}`;
 }
 
 const MOTIVO_LABELS: Record<string, string> = {

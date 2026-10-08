@@ -7,6 +7,8 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const from = url.searchParams.get('from') || '';
     const to = url.searchParams.get('to') || '';
+    const busId = url.searchParams.get('busId') || '';
+    const socioId = url.searchParams.get('socioId') || '';
 
     // Default: current month
     let startDate = from;
@@ -19,9 +21,56 @@ export async function GET(req: NextRequest) {
       if (!endDate) endDate = `${y}-${m}-${String(new Date(y, parseInt(m), 0).getDate()).padStart(2, '0')}`;
     }
 
+    const where: Record<string, unknown> = {
+      date: { gte: startDate, lte: endDate },
+    };
+
+    // Aislamiento Multi-Tenant por Socio Propietario o Unidad Fisiológica
+    let effectiveSocioId = socioId;
+    if ((!effectiveSocioId || effectiveSocioId === 'TODOS') && busId && busId !== 'TODOS') {
+      try {
+        const cleanBusNum = busId.replace(/^BUS-/i, '');
+        const busFound = await db.bus.findFirst({
+          where: {
+            OR: [
+              { id: busId },
+              { numeroDisco: cleanBusNum },
+              { numeroDisco: busId },
+            ],
+          },
+          select: { socioId: true },
+        });
+        if (busFound?.socioId) {
+          effectiveSocioId = busFound.socioId;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
+      const socioPersonas = await db.persona.findMany({
+        where: { socioId: effectiveSocioId },
+        select: { nombre: true },
+      });
+      const crewNames = socioPersonas.map((p) => p.nombre).filter(Boolean);
+      if (crewNames.length > 0) {
+        where.OR = [
+          { ayudanteNombre: { in: crewNames } },
+          { conductor: { in: crewNames } },
+        ];
+      } else {
+        // Socio recién suscrito o sin tripulación asignada: iniciar limpio en 0 registros
+        where.id = 'NO_RECORDS_YET';
+      }
+    } else if (busId && busId !== 'TODOS' && busId !== 'BUS-01' && busId !== '01') {
+      // Unidad específica sin tripulación vinculada: 0 registros limpios
+      where.id = 'NO_RECORDS_YET';
+    }
+
     // Query: daily records with trips in date range
     const records = await db.dailyRecord.findMany({
-      where: { date: { gte: startDate, lte: endDate } },
+      where,
       orderBy: { date: 'asc' },
       include: { trips: { orderBy: { order: 'asc' } } },
     });
