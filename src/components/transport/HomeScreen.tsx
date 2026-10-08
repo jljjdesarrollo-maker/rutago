@@ -50,7 +50,7 @@ import { AyudanteJornadaCard } from './AyudanteJornadaCard';
 import type { UserSession } from './types';
 import { getOwnerExpenses, fetchOwnerExpensesFromApi } from '@/lib/owner-expenses-storage';
 import { SuperAdminHomeScreen } from './SuperAdminHomeScreen';
-import { getAllBuses, getActiveBusId } from '@/lib/fleet-storage';
+import { getAllBuses, getActiveBusId, setActiveBus, subscribeToActiveBus } from '@/lib/fleet-storage';
 import { getCurrentYearMonth, formatMonthName } from '@/lib/date-helpers';
 import { getSuscripciones } from '@/lib/saas-storage';
 import { getBusModuloMantenimientoActivo, isBusModuloMantenimientoConfigurado, syncMantenimientoConfigConServidor } from '@/lib/mantenimiento-estaciones';
@@ -104,7 +104,66 @@ export function HomeScreen({
   const isSocioOwner = Boolean(isSuperAdmin || isAdmin || user.rol === 'SOCIO' || user.rol === 'ADMIN');
 
   const [backupLoading, setBackupLoading] = useState(false);
-  const activeBusId = getActiveBusId() || 'BUS-01';
+  const [activeBusId, setActiveBusId] = useState<string>(() => {
+    if (user?.busId) return user.busId;
+    return getActiveBusId() || 'BUS-01';
+  });
+
+  // ─── Auto-enlace y Sincronización Multi-Tenant de Unidad para Socios ───
+  useEffect(() => {
+    const unsub = subscribeToActiveBus((bus) => {
+      if (bus?.id) {
+        setActiveBusId(bus.id);
+      }
+    });
+
+    if (!isSocioOwner || !user) return unsub;
+
+    const resolveSocioBus = async () => {
+      if (user.busId) {
+        if (getActiveBusId() !== user.busId) {
+          const assigned = setActiveBus(user.busId);
+          setActiveBusId(assigned.id);
+        }
+        return;
+      }
+
+      const sId = user.socioId || user.id;
+      if (sId) {
+        try {
+          const res = await fetch(`/api/buses?socioId=${sId}`);
+          if (res.ok) {
+            const data = await res.json();
+            const busList = data?.data || data;
+            if (Array.isArray(busList) && busList.length > 0) {
+              const miBus = busList[0];
+              if (miBus?.id || miBus?.numeroDisco) {
+                const assigned = setActiveBus(miBus.id || miBus.numeroDisco);
+                setActiveBusId(assigned.id);
+                if (typeof window !== 'undefined') {
+                  const stored = localStorage.getItem('ct_session');
+                  if (stored) {
+                    try {
+                      const parsed = JSON.parse(stored);
+                      parsed.busId = assigned.id;
+                      parsed.busNumero = assigned.numeroDisco;
+                      parsed.busPlaca = assigned.placa;
+                      localStorage.setItem('ct_session', JSON.stringify(parsed));
+                    } catch {}
+                  }
+                }
+              }
+            }
+          }
+        } catch {
+          // Mantener bus previo en caso de falla de red
+        }
+      }
+    };
+
+    resolveSocioBus();
+    return unsub;
+  }, [user?.id, user?.socioId, user?.busId, isSocioOwner]);
   const defaultYearMonth = getCurrentYearMonth();
   const currentYearMonth = defaultYearMonth;
   const [displayYearMonth, setDisplayYearMonth] = useState<string>(defaultYearMonth);
@@ -267,11 +326,13 @@ export function HomeScreen({
         }
         setDisplayYearMonth(targetMonth);
 
-        // Consultar ingresos de ruta reales del mes
-        let initialIncome = targetMonth === "2026-08" ? 3915.25 : 0;
+        // Consultar ingresos de ruta reales del mes aislados por socio y unidad
+        let initialIncome = (user?.esFundadorSaaS && targetMonth === "2026-08") ? 3915.25 : 0;
         let apiSuccess = false;
         try {
-          const res = await fetch(`/api/reports?type=mensual&month=${targetMonth}`);
+          const busParam = activeBusId ? `&busId=${activeBusId}` : '';
+          const socioParam = user?.socioId ? `&socioId=${user.socioId}` : '';
+          const res = await fetch(`/api/reports?type=mensual&month=${targetMonth}${busParam}${socioParam}`);
           if (res.ok) {
             const reportData = await res.json();
             if (reportData && reportData.totals) {
@@ -279,9 +340,7 @@ export function HomeScreen({
               const ay = t.entregaAyudante || 0;
               const cia = t.entregaCompania || 0;
               const total = t.totalEntregado || (ay + cia);
-              if (total > 0 || targetMonth !== "2026-08") {
-                initialIncome = total;
-              }
+              initialIncome = total;
             }
             apiSuccess = true;
           }
@@ -655,6 +714,7 @@ export function HomeScreen({
 
             {/* ─── RADAR Y ASESORÍA PATRIMONIAL DE VENTANAS OPERATIVAS (SOCIO PROPIETARIO) ─── */}
             <SocioMantenimientoWidget
+              propBusId={activeBusId}
               onGoToMantenimiento={onGoToMantenimiento}
             />
 

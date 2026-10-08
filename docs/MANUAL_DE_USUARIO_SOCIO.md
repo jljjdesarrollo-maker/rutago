@@ -24,6 +24,7 @@ Este manual es la guía de referencia oficial para el **Socio Propietario**. Su 
 4. El sistema validará tu identidad mediante cifrado seguro y abrirá directamente tu **Panel Privado del Socio**.
 
 > 🔒 **Garantía de Privacidad Multi-Tenant:** Tu cuenta está estrictamente aislada. Los reportes financieros, deudas de talleres y datos de tripulación que observas pertenecen de forma 100% privada y confidencial a tus unidades. Ningún otro socio tiene visibilidad sobre tus números.
+> 🚌 **Auto-Enlace Multi-Tenant de Unidad:** Al ingresar con tu PIN, el sistema detecta de forma automática la unidad que te pertenece en la cooperativa (ej. Bus 02, Bus 05, Bus 10, etc.), sincronizando la cabecera, la pastilla superior, la ficha técnica, el odómetro y el radar de mantenimiento exclusivamente con tu vehículo. Si es tu primera vez ingresando y tu unidad aún no ha salido a carretera, tu balance iniciará limpio e inmaculado en **$0.00 EN LIMPIO** sin heredar registros ajenos.
 
 ---
 

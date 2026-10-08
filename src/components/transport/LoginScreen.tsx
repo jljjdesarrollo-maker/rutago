@@ -5,6 +5,7 @@ import { Delete, Truck, Loader2, ShieldAlert } from 'lucide-react';
 import { getDeviceInfo } from '@/lib/device-storage';
 import { syncMantenimientoConfigConServidor } from '@/lib/mantenimiento-estaciones';
 import { fetchCatalogoGlobalFromApi } from '@/lib/mantenimiento-catalogo';
+import { setActiveBus } from '@/lib/fleet-storage';
 
 interface LoginScreenProps {
   onLogin: (user: { id: string; nombre: string; rol: string }) => void;
@@ -89,6 +90,10 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
       if (res.ok) {
         const data = await res.json();
+        // Auto-enlace multi-tenant de unidad asignada al socio o tripulante
+        if (data.busId) {
+          setActiveBus(data.busId);
+        }
         // Save session to localStorage for offline use
         localStorage.setItem('ct_session', JSON.stringify(data));
         triggerBackgroundSyncMantenimiento(data);

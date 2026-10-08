@@ -10,6 +10,8 @@ export async function GET(req: NextRequest) {
     const to = url.searchParams.get('to') || '';
     const month = url.searchParams.get('month') || '';
     const conductorId = url.searchParams.get('conductorId') || '';
+    const socioId = url.searchParams.get('socioId') || '';
+    const busId = url.searchParams.get('busId') || '';
 
     // ─── CAJA COMÚN REPORT ───
     if (type === 'caja-comun') {
@@ -59,6 +61,23 @@ export async function GET(req: NextRequest) {
     }
     if (conductorId) {
       where.ayudanteNombre = conductorId;
+    }
+
+    // Aislamiento Multi-Tenant por Socio Propietario (Tripulación asignada a su unidad)
+    if (socioId && socioId !== 'TODOS') {
+      const socioPersonas = await db.persona.findMany({
+        where: { socioId },
+        select: { nombre: true },
+      });
+      const crewNames = socioPersonas.map((p) => p.nombre).filter(Boolean);
+      if (crewNames.length > 0) {
+        where.OR = [
+          { ayudanteNombre: { in: crewNames } },
+          { conductor: { in: crewNames } },
+        ];
+      } else {
+        where.id = 'NO_RECORDS_YET';
+      }
     }
 
     // Fetch records with trips and expenses

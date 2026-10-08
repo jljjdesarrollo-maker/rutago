@@ -90,14 +90,21 @@ export async function POST(req: NextRequest) {
       console.warn('Auto-seed check notice (continuing):', e);
     }
 
-    // ─── 1. Búsqueda directa por hash criptográfico en Cuentas de Socios ───
+    // ─── 1. Búsqueda directa por hash criptográfico en Cuentas de Socios con autobuses asociados ───
     const socios = await db.cuentaSocio.findMany({
       where: { activo: true },
+      include: {
+        buses: {
+          where: { activo: true },
+          orderBy: { numeroDisco: 'asc' },
+        },
+      },
     });
 
     for (const socio of socios) {
       if (verifyPin(cleanPin, socio.pinHash, socio.pinSalt)) {
         recordSuccess(ip);
+        const primerBus = socio.buses && socio.buses.length > 0 ? socio.buses[0] : null;
         return NextResponse.json({
           id: socio.id,
           nombre: socio.nombre,
@@ -107,6 +114,16 @@ export async function POST(req: NextRequest) {
           socioId: socio.id,
           esFundadorSaaS: socio.esFundadorSaaS,
           esActual: true,
+          busId: primerBus ? primerBus.id : undefined,
+          busNumero: primerBus ? primerBus.numeroDisco : undefined,
+          busPlaca: primerBus ? primerBus.placa : undefined,
+          buses: (socio.buses || []).map((b) => ({
+            id: b.id,
+            numeroDisco: b.numeroDisco,
+            placa: b.placa,
+            marca: b.marca,
+            modelo: b.modelo,
+          })),
         });
       }
     }

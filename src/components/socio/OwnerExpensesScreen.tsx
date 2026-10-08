@@ -86,15 +86,17 @@ export default function OwnerExpensesScreen({
   >([]);
   const [filtroSocioSuperAdmin, setFiltroSocioSuperAdmin] = useState<string>('TODOS');
 
-  // Inicializar busId según la sesión o fallback
+  // Inicializar busId según la sesión o fallback multi-tenant
   const [busId, setBusId] = useState<string>(() => {
     if (currentUser?.busId) {
       return currentUser.busId.startsWith('BUS-') ? currentUser.busId : `BUS-${currentUser.busId}`;
     }
-    return initialBusId;
+    return getActiveBusId() || initialBusId;
   });
   const [formBusId, setFormBusId] = useState<string>('');
-  const [allExpenses, setAllExpenses] = useState<OwnerExpense[]>(() => getOwnerExpenses(initialBusId));
+  const [allExpenses, setAllExpenses] = useState<OwnerExpense[]>(() =>
+    getOwnerExpenses(currentUser?.busId || getActiveBusId() || initialBusId)
+  );
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [isOnlineDb, setIsOnlineDb] = useState<boolean>(true);
 

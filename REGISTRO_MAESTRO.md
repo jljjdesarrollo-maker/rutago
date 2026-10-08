@@ -3421,3 +3421,41 @@ bun test tests/manual-socio.test.ts
 21 pass | 0 fail | 68 expect() calls | Tiempo total: 274 ms
 ```
 - `package.json` actualizado a la versión **3.61.09** con script `npm test` / `bun test`.
+
+
+---
+
+## 🏛️ v3.61.10 - AUTO-ENLACE MULTI-TENANT DE UNIDADES Y AISLAMIENTO DE BALANCE EN BIENVENIDA (2026-10-08)
+
+> **ESTADO:** 🟢 RESOLUCIÓN INTEGRAL: ASOCIACIÓN DINÁMICA DE AUTOBÚS (BUS 10) Y BALANCE AISLADO EN $0.00  
+> **FECHA DE REGISTRO:** 2026-10-08 | **SISTEMA:** RutaGo - Gobernanza Multi-Tenant, Sesión y Reportes de Flota  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **DEPLOY PRODUCCIÓN:** `https://rutago-jljjj.vercel.app`  
+
+### 📍 1. Diagnóstico del Incidente Operativo:
+- **Caso Reportado:** Al ingresar por primera vez la Socia de la **Unidad 10 (Marina Alexandra Jaya Jaramillo)** tras ser dada de alta por SuperAdmin con su tripulación (Richard Stalin Medina Maza como Chofer y Kelyn Silvana Solórzano Márquez como Ayudante), la pantalla presentaba información inesperada:
+  1. *Unidad Incorrecta:* Mostraba `Bus 01 • TAA-5152` en la pastilla superior y en la ficha técnica inferior, en lugar de la Unidad 10 (`TAA-3420`).
+  2. *Balance Negativo Inesperado:* Mostraba `$-21.50 EN LIMPIO` a pesar de que la unidad y su tripulación aún no habían iniciado operaciones ni vendido boletos.
+  3. *Mantenimiento Ajeno:* El widget inferior mostraba una alerta roja `🔴 1 Vencido: Engrase de Chasis (excedido por 929 km en VT03 del Bus 01)`.
+- **Causa Raíz de Arquitectura:**
+  * En `HomeScreen.tsx`, `activeBusId` dependía de `localStorage.getItem(rutago_active_bus_id)` con un fallback rígido a `BUS-01`. Al ser un nuevo acceso, caía indefectiblemente en el Bus 01.
+  * `/api/auth` no retornaba la unidad asignada al socio (`buses: socio.buses`) durante la autenticación por PIN.
+  * `/api/reports?type=mensual` totalizaba registros de toda la cooperativa sin filtrar por `socioId` ni `busId`, arrastrando balances de otras unidades.
+
+### 📍 2. Solución de Ingeniería Universal Implementada:
+1. **Auto-Detección y Carga de Unidad en Login (`src/app/api/auth/route.ts` y `LoginScreen.tsx`):**
+   * `/api/auth` incluye `buses: { where: { activo: true }, orderBy: { numeroDisco: asc } }`.
+   * Retorna `busId`, `busNumero`, `busPlaca` y el array completo de buses autorizados del socio.
+   * `LoginScreen.tsx` ejecuta inmediatamente `setActiveBus(data.busId)` al autenticar.
+2. **Auto-Enlace Reactivo en Dashboard (`src/components/transport/HomeScreen.tsx`):**
+   * Hook reactivo para resolver el bus del socio mediante sesión o consulta a `/api/buses?socioId=...`.
+   * Vincula la pastilla superior, la ficha técnica inferior y el widget `SocioMantenimientoWidget` (`propBusId={activeBusId}`) a la unidad del socio (ej. **Bus 10 • TAA-3420**).
+3. **Aislamiento Multi-Tenant Estricto de Balance (`src/app/api/reports/route.ts`):**
+   * Soporte de parámetro `socioId`: filtra los registros de ruta (`DailyRecord`) estrictamente a la tripulación asignada al socio.
+   * Si la unidad aún no ha rodado, los ingresos inician limpiamente en **`$0.00 EN LIMPIO`** (Ruta: $0.00, Gastos: $0.00).
+   * Eliminados los fallbacks demo hardcodeados para nuevos socios suscriptores.
+4. **Sincronización de Pantallas Auxiliares (`OwnerExpensesScreen.tsx`):**
+   * Inicialización de gastos aislada por el `busId` asignado en lugar del Bus 01.
+5. **Actualización de Documentación:**
+   * `docs/MANUAL_DE_USUARIO_SOCIO.md` y `docs/TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md` actualizados documentando la regla universal de auto-enlace multi-tenant.
+   * Suite de pruebas unitarias (`tests/manual-socio.test.ts`) ejecutada al 100% (21/21 passed).
