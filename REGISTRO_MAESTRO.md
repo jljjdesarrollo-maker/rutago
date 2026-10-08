@@ -3573,5 +3573,32 @@ bun test tests/manual-socio.test.ts
    - `docs/MANUAL_DE_USUARIO_SOCIO.md` y `docs/TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md` actualizados con la garantía de bienvenida en `$0.00 EN LIMPIO` en el mes en curso.
    - `package.json` incrementado a la versión **3.61.13**.
 
+---
+
+## 🏛️ v3.61.14 - CLARIFICACIÓN DEL PADRÓN DE MANTENIMIENTO: 31 ÍTEMS REALES HINO AK (2026-10-08)
+
+> **ESTADO:** 🟢 AUDITORÍA Y SINCRONIZACIÓN COMPLETA | 31 ÍTEMS OFICIALES IDENTIFICADOS Y ALINEADOS EN UI Y MANUAL  
+> **FECHA DE REGISTRO:** 2026-10-08 | **SISTEMA:** RutaGo - Padrón Maestro de Mantenimiento Preventivo Hino AK  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **DEPLOY PRODUCCIÓN:** `https://rutago-jljjj.vercel.app`  
+
+### 📍 1. Diagnóstico y Respuesta a la Consulta del Usuario:
+- **Pregunta:** ¿Por qué salen 27 ítems en el manual y cuántos son en realidad?
+- **Origen Histórico:** En la calibración inicial de la versión `v3.58.10` se establecieron 27 componentes básicos en 5 bloques mecánicos. Posteriormente, al añadir el sistema de aire acondicionado, rotación y renovación de baterías 24V y bronces de transmisión, el catálogo maestro oficial (`CATALOGO_MAESTRO_HINO_AK`) se amplió a **31 ítems**.
+- **Desglose de los 31 Ítems Oficiales por Categoría:**
+  1. **Motor (11 ítems):** Aceite 5k, Filtro Aceite 5k, Filtro Trampa 5k, Filtro Diésel 5k, Válvulas/Toberas 50k, Bandas 100k, Termostato 100k, Rotación Mensual Baterías 8.6k, Renovación Baterías 200k, Radiador/Coolant 100k, Metales de Motor 800k.
+  2. **Transmisión (6 ítems):** Kit Embrague 100k, Aceite Caja 30k, Aceite Corona 30k, Reparación Mayor Caja 280k, Bronces y Palillos 140k, Mantenimiento Corona 150k.
+  3. **Sistema de Aire y Admisión (6 ítems):** Soplado 5k, Lavado Malla Pasillo 5k, Mangueras Admisión 10k, Aire Acondicionado 110k, Filtro Aire Pequeño 20k, Filtro Aire Grande 40k.
+  4. **Rodaje y Suspensión (5 ítems):** Engrase Chasis 1.5k, Alineación 15k, Bocinas Post 50k, Bocinas Del 60k, Muelles y Bujes 50k.
+  5. **Frenos (3 ítems):** Raches 800 km, Zapatas Post 12.5k, Zapatas Del 11k.
+  - **TOTAL REAL:** $11 + 6 + 6 + 5 + 3 = \mathbf{31\text{ Ítems}}$.
+
+### 📍 2. Ajuste de Niveles de Control:
+- **BÁSICO:** **7 Ítems** vitales.
+- **MEDIO:** **16 Ítems** operativos.
+- **TOTAL:** **31 Ítems** completos Hino AK.
+- Actualizados badges en `MantenimientoScreen.tsx` y redacción en `docs/MANUAL_DE_USUARIO_SOCIO.md`.
+
+
 
 

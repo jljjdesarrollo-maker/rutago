@@ -115,14 +115,15 @@ El módulo de mantenimiento del socio está diseñado para **auditoría ejecutiv
 Puedes ajustar qué tan profundo deseas vigilar el vehículo:
 1. **BÁSICO (7 componentes):** Monitorea lo indispensable para evitar fundir el motor o desgastar raches:
    * Aceite de motor (cada 5.000 km)
-   * Filtro de aceite, trampa de agua y filtro diésel
+   * Filtro de aceite, trampa de agua y filtro diésel secundario
    * Engrase de chasis
    * Raches y zapatas traseras
-2. **MEDIO (15 componentes):** Añade fluidos de transmisión y frenos delanteros:
+2. **MEDIO (16 componentes):** Añade fluidos de transmisión, baterías 24V, sistema de aire y frenos delanteros:
+   * Básico + Rotación mensual de baterías
    * Valvulinas de caja y corona (cada 30.000 km)
-   * Filtros de aire (seguridad y primario)
+   * Filtros de aire (seguridad y primario) y mangueras de admisión
    * Bocinas posteriores y zapatas delanteras
-3. **TOTAL (27 componentes Hino AK):** Catálogo de fábrica completo (embrague, coolant, termostato, metales y alineación).
+3. **TOTAL (31 componentes Hino AK):** Catálogo oficial de fábrica completo (embrague, coolant, termostato, metales, overhaul de caja/corona, renovación de baterías y alineación láser).
 
 ### 4.3 Semáforo Ejecutivo de 3 Segundos
 En la cabecera dispones de 3 tarjetas de alto contraste:

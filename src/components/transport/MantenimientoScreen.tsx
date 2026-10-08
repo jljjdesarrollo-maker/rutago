@@ -2270,7 +2270,7 @@ export function MantenimientoScreen({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-black text-blue-950">3. TOTAL</span>
-                    <span className="text-[9px] font-black px-1.5 py-0.5 bg-blue-200 text-blue-900 rounded">27 Ítems</span>
+                    <span className="text-[9px] font-black px-1.5 py-0.5 bg-blue-200 text-blue-900 rounded">31 Ítems</span>
                   </div>
                   <p className="text-[11px] text-blue-800 leading-snug">
                     Catálogo oficial Hino AK completo: embrague, corona, bocinas, radiador y bajada de motor.
@@ -2312,7 +2312,7 @@ export function MantenimientoScreen({
         />
 
         {/* ========================================================= */}
-        {/* ASISTENTE DE NIVELES DE CONTROL (BÁSICO 7 | MEDIO 15 | TOTAL 27) */}
+        {/* ASISTENTE DE NIVELES DE CONTROL (BÁSICO 7 | MEDIO 16 | TOTAL 31) */}
         {/* ========================================================= */}
         <div className="bg-white rounded-3xl border border-slate-200/80 p-3.5 shadow-xs flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
@@ -2364,7 +2364,7 @@ export function MantenimientoScreen({
                 <span className={`w-2 h-2 rounded-full ${nivelControl === 'MEDIO' ? 'bg-amber-500' : 'bg-slate-300'}`} />
                 <span className="text-xs font-black">MEDIO</span>
               </div>
-              <span className="text-[10px] font-extrabold text-amber-700 mt-0.5">15 Ítems</span>
+              <span className="text-[10px] font-extrabold text-amber-700 mt-0.5">16 Ítems</span>
               <span className="text-[9px] text-slate-500 leading-tight hidden sm:block">Operativo & Rodaje</span>
             </button>
 
@@ -2381,7 +2381,7 @@ export function MantenimientoScreen({
                 <span className={`w-2 h-2 rounded-full ${nivelControl === 'TOTAL' ? 'bg-blue-600' : 'bg-slate-300'}`} />
                 <span className="text-xs font-black">TOTAL</span>
               </div>
-              <span className="text-[10px] font-extrabold text-blue-700 mt-0.5">27 Ítems</span>
+              <span className="text-[10px] font-extrabold text-blue-700 mt-0.5">31 Ítems</span>
               <span className="text-[9px] text-slate-500 leading-tight hidden sm:block">Hino AK Completo</span>
             </button>
           </div>
@@ -3919,9 +3919,9 @@ export function MantenimientoScreen({
       {modalConfirmNivel && (() => {
         const plantilla = PLANTILLAS_NIVEL_CONTROL[modalConfirmNivel.nivel];
         const cantidadItems = modalConfirmNivel.nivel === 'TOTAL'
-          ? 27
+          ? (catalogoGlobal.filter(c => c.activoBiblioteca).length || 31)
           : modalConfirmNivel.nivel === 'MEDIO'
-          ? 15
+          ? 16
           : 7;
 
         return (
