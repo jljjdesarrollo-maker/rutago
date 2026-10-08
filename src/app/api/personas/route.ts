@@ -76,13 +76,13 @@ export async function POST(req: NextRequest) {
     const cleanPin = pin.trim();
 
     // Check if PIN already exists by scanning personas and cuentas de socios
-    const existingPersonas = await db.persona.findMany();
+    const existingPersonas = await db.persona.findMany({ select: { id: true, pin: true, pinSalt: true } });
     const pinEnUsoPersona = existingPersonas.some(p => verifyPin(cleanPin, p.pin, p.pinSalt));
     if (pinEnUsoPersona) {
       return NextResponse.json({ error: 'El PIN ya está en uso por otro usuario del personal' }, { status: 400 });
     }
 
-    const existingSocios = await db.cuentaSocio.findMany({ where: { activo: true } });
+    const existingSocios = await db.cuentaSocio.findMany({ where: { activo: true }, select: { id: true, pinHash: true, pinSalt: true } });
     const pinEnUsoSocio = existingSocios.some(s => verifyPin(cleanPin, s.pinHash, s.pinSalt));
     if (pinEnUsoSocio) {
       return NextResponse.json({ error: 'El PIN ya está reservado por una cuenta de socio o administrador' }, { status: 400 });
@@ -155,6 +155,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Error de relación: No se encontró la cuenta de socio asociada en la base de datos.' },
         { status: 400 }
+      );
+    }
+    if (error?.message?.includes('connection pool') || error?.message?.includes('Timed out fetching')) {
+      return NextResponse.json(
+        { error: 'La base de datos estaba en reposo y se está reconectando. Por favor, pulsa Guardar una vez más.' },
+        { status: 503 }
       );
     }
     return NextResponse.json(

@@ -3343,3 +3343,32 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
 3. **Control de Versiones y Despliegue:**
    * `package.json` incrementado a `3.61.07`.
    * Sincronizado a GitHub en ramas `main` y `staging`.
+
+
+---
+
+## 🏛️ v3.61.08 - OPTIMIZACIÓN DE TIMEOUT DEL CONNECTION POOL (30S) Y CONSULTAS LIGHTWEIGHT (2026-10-08)
+
+> **ESTADO:** 🟢 RESOLUCIÓN DE "TIMED OUT FETCHING A NEW CONNECTION FROM THE CONNECTION POOL"  
+> **FECHA DE REGISTRO:** 2026-10-08 | **SISTEMA:** RutaGo - Motor de Base de Datos y Alta Disponibilidad Serverless  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **DEPLOY PRODUCCIÓN:** `https://rutago-jljjj.vercel.app`  
+
+### 📍 1. Diagnóstico del Error:
+- **Error:** `"Error al crear personal: Invalid prisma.persona.findMany() invocation: Timed out fetching a new connection from the connection pool. More info: http://pris.ly/d/connection-pool (Current connection pool timeout: 10, connection limit: 5)"`.
+- **Causa Raíz:**
+  * En funciones serverless de Vercel tras un despliegue reciente o periodos de inactividad, la base de datos PostgreSQL / PgBouncer sufre un arranque en frío (cold start).
+  * Por defecto, Prisma Client utiliza un límite de espera muy corto (`pool_timeout: 10` segundos). Si el handshake TCP y la negociación de conexión tardan más de 10s, la primera consulta (`db.persona.findMany`) es abortada con timeout.
+  * Además, las consultas de verificación de colisión de PIN traían modelos completos con todas sus columnas en lugar de proyecciones ligeras.
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. **Configuración Automática del Pool en `src/lib/db.ts`:**
+   - Se inyectan dinámicamente los parámetros `pool_timeout=30` y `connect_timeout=30` en la cadena de conexión de Prisma Client.
+   - Otorga 30 segundos (el triple del tiempo) para absorber holgadamente cualquier arranque en frío o reconexión de PgBouncer sin abortar transacciones.
+2. **Consultas Proyectadas Ligeras en `POST /api/personas`:**
+   - `db.persona.findMany` y `db.cuentaSocio.findMany` ahora seleccionan estrictamente los campos criptográficos mínimos (`select: { id: true, pin: true, pinSalt: true }`), reduciendo radicalmente el payload y el tiempo de respuesta.
+3. **Mapeo Amigable ante Fallos Transitorios de Pool:**
+   - Si la base de datos se encuentra despertando, se devuelve HTTP 503 con indicación clara: *«La base de datos estaba en reposo y se está reconectando. Por favor, pulsa Guardar una vez más.»*
+4. **Control de Versiones y Despliegue:**
+   - `package.json` incrementado a `3.61.08`.
+   - Sincronizado en ramas `main` y `staging`.
