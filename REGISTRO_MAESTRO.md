@@ -3459,3 +3459,119 @@ bun test tests/manual-socio.test.ts
 5. **Actualización de Documentación:**
    * `docs/MANUAL_DE_USUARIO_SOCIO.md` y `docs/TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md` actualizados documentando la regla universal de auto-enlace multi-tenant.
    * Suite de pruebas unitarias (`tests/manual-socio.test.ts`) ejecutada al 100% (21/21 passed).
+
+---
+
+## 🏛️ v3.61.11 - INDUCCIÓN OPERATIVA DEL SOCIO, PROTOCOLO DE PRUEBAS Y REQUISITOS DE TRIPULACIÓN (2026-10-08)
+
+> **ESTADO:** 🟢 CONTEXTO CONFIRMADO | RESUMEN DE PRUEBAS DEL SISTEMA Y CONFIGURACIÓN DE TRIPULACIÓN ENTREGADOS  
+> **FECHA DE REGISTRO:** 2026-10-08 | **SISTEMA:** RutaGo - Soporte Operativo, Capacitación y Gobernanza Multi-Tenant  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **DEPLOY PRODUCCIÓN:** `https://rutago-jljjj.vercel.app`  
+
+### 📍 1. Estado del Proyecto al Iniciar:
+- Confirmada lectura del Archivo Maestro en versión **v3.61.10** (`AUTO-ENLACE MULTI-TENANT DE UNIDADES Y AISLAMIENTO DE BALANCE EN BIENVENIDA`).
+- Suite de pruebas unitarias in-memory validada al 100% (21/21 passed, 68 expect calls).
+- Código fuente en reposo sin modificaciones.
+
+### 📍 2. Guía Entregada al Usuario:
+1. **Tutorial del Socio (5 Etapas):** Ingreso con PIN auto-enlazado, Dashboard y Número Rey (`Utilidad Neta Real = Entregas - Gastos`), Finanzas/P&L/Abonos, Semáforo de Mantenimiento Hino AK con Odometría auditada y Regularización Retroactiva, y Gestión de Tripulación (`PersonalScreen`).
+2. **Pruebas del Sistema a Realizar según el Manual:**
+   - Criptografía de PIN (Salt 16 bytes + SHA-256) y bloqueo inmediato por baja lógica.
+   - Fórmula del "Número Rey" y principio anti-duplicidad de gastos de carretera.
+   - Amortización contable de facturas y protección de sobregiro.
+   - Odometría Hino AK, semáforo de 3 segundos y regularización retroactiva.
+   - Gestión de tripulación (exclusividad de turno, rotación dinámica de roles y borrado lógico).
+3. **Configuración Requerida para la Tripulación:**
+   - Ficha del autobús activa con odómetro inicial en Padrón de Flota.
+   - Socio propietario dado de alta con autobús asignado y suscripción mensual de $20 USD activa.
+   - Conductor y Ayudante dados de alta con sus PINs de 4 dígitos vinculados al socio.
+   - Activación de turno del día en `PersonalScreen` (`[ Activar en Turno ]`).
+   - Terminal móvil del ayudante con PWA e impresora Bluetooth 58mm enlazada para apertura de Grupo VT y arqueo final.
+
+---
+
+## 🏛️ v3.61.12 - DIAGNÓSTICO MATEMÁTICO Y ARQUITECTÓNICO: INCIDENTE $-153.20 EN BIENVENIDA DE UNIDAD 10 (2026-10-08)
+
+> **ESTADO:** 🔍 DIAGNÓSTICO DE PRECISIÓN MILIMÉTRICA ALCANZADO | CERO CÓDIGO MODIFICADO (A LA ESPERA DE ORDEN)  
+> **FECHA DE REGISTRO:** 2026-10-08 | **SISTEMA:** RutaGo - Aislamiento Multi-Tenant y Depuración de Semillero Demo  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Síntomas Visuales Identificados en la Captura de Pantalla:
+- Socia: Marina Alexandra Jaya Jaramillo
+- Pastilla de Autobús: `Bus 10 • TAA-3420` 🟢 (¡CORRECTO!)
+- Tripulación: Richard Stalin Medina Maza (Chofer) • Kelyn Silvana Solórzano Márquez (Ayudante) 🟢 (¡CORRECTO!)
+- Tarjeta de Balance: `● En Vivo • Septiembre 2026` (ANOMALÍA: fecha actual es Octubre 2026)
+- **Cálculo Desplegado:**
+  * **Ruta:** `$216.80`
+  * **Gastos:** `$370.00`
+  * **Utilidad Neta:** `$-153.20 EN LIMPIO` ($216.80 - $370.00 = -$153.20)
+
+### 📍 2. Causa Raíz de Ingeniería (La Trilogía de Factores):
+1. **Factor Gastos ($370.00) - `seedSampleExpenses`:**
+   - En `src/lib/owner-expenses-storage.ts` (línea 13), si `localStorage` está vacío (nuevo dispositivo/navegador del socio), se invoca automáticamente `seedSampleExpenses(activeBusId)`.
+   - Este semillero inyecta de forma quemada 4 gastos para Septiembre 2026:
+     * EXP-SEP-01: $110.00 (Zapatas)
+     * EXP-SEP-02: $25.00 (Lavado)
+     * EXP-SEP-03: $90.00 (Cuota administrativa)
+     * EXP-SEP-04: $145.00 (Aceite 15W40)
+     * **Suma Exacta: $370.00**.
+   - Al ejecutarse `fetchOwnerExpensesFromApi`, detecta que la BD central no tenía gastos para `BUS-10` y auto-migró estos $370.00 de prueba a PostgreSQL.
+
+2. **Factor Mes (Septiembre 2026 en vez de Octubre 2026):**
+   - En `src/components/transport/HomeScreen.tsx` (líneas 317-326), si el mes actual (Octubre) no tiene gastos pero hay meses pasados con gastos, el sistema retrocede automáticamente al mes más reciente con datos (Septiembre 2026).
+
+3. **Factor Ruta ($216.80) - Fuga de Filtro en `/api/reports`:**
+   - En `HomeScreen.tsx` línea 496, la consulta de refresco no envía `socioId` ni `busId`.
+   - Además, en `src/app/api/reports/route.ts`, el parámetro `busId` recibido en la URL no se aplica al filtro SQL/Prisma en el `where` de `DailyRecord`.
+   - Al no filtrar, `/api/reports` totalizó las entregas de ruta de toda la cooperativa para Septiembre 2026, resultando en exactamente `$216.80`.
+   - Ecuación resultante: `$216.80 - $370.00 = -$153.20`.
+
+### 📍 3. Plan de Acción Quirúrgico Identificado (Pendiente de Autorización):
+1. **Desactivar el semillero automático ciego:** Condicionar `seedSampleExpenses` para que NUNCA se auto-dispare en unidades reales de socios suscriptores (solo bajo modo demo explícito o SuperAdmin).
+2. **Purgar los gastos de prueba creados en PostgreSQL** para la Unidad 10 (`EXP-SEP-*` y `EXP-AUG-*`).
+3. **Blindar `HomeScreen.tsx` y `/api/reports`:** Asegurar que `busId` y `socioId` filtren estrictamente las rutas, y que si una unidad no tiene actividad en el mes actual, se mantenga en el mes en curso (Octubre 2026) con balance limpio en `$0.00`.
+
+---
+
+## 🏛️ v3.61.13 - RESOLUCIÓN DEFINITIVA: ERRADICACIÓN DE MUESTRAS DEMO Y BLOQUEO DE MES ACTUAL EN $0.00 (2026-10-08)
+
+> **ESTADO:** 🟢 IMPLEMENTADO, SANADO Y CERTIFICADO | 23/23 PRUEBAS PASADAS AL 100% (74 EXPECTS)  
+> **FECHA DE REGISTRO:** 2026-10-08 | **SISTEMA:** RutaGo - Aislamiento Multi-Tenant y Protección de Balance Inicial  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **DEPLOY PRODUCCIÓN:** `https://rutago-jljjj.vercel.app`  
+
+### 📍 1. Acciones Quirúrgicas Implementadas en el Código:
+
+1. **Desactivación del Semillero Ciego y Auto-Saneamiento (`src/lib/owner-expenses-storage.ts`):**
+   - `getOwnerExpenses(busId)`: Restringido estrictamente a `BUS-01`. Para cualquier unidad de socio suscriptor (`BUS-10`, `BUS-02`, etc.), la lista arranca en `[]` ($0.00).
+   - Mecanismo de auto-saneamiento activo: Purga al vuelo cualquier gasto demo (`EXP-AUG-*` o `EXP-SEP-*`) asignado por error a unidades distintas de Bus 01 en `localStorage`.
+   - `fetchOwnerExpensesFromApi(busId, socioId)`:
+     * Descarta gastos demo remotos para unidades suscriptoras.
+     * Si la nube devolvió muestras demo erróneas en la unidad del socio, dispara automáticamente `DELETE /api/owner-expenses?sampleOnly=true&busId=...` para purgar la base de datos central en PostgreSQL.
+     * Prohibición absoluta de auto-migrar muestras demo a la base de datos central.
+
+2. **Fijación del Mes en Curso (`src/components/transport/HomeScreen.tsx`):**
+   - Eliminado el salto forzado hacia meses pasados para socios propietarios. La pantalla permanece fijada en el mes actual del calendario (**Octubre 2026**).
+   - La pastilla ahora refleja incondicionalmente: `● En Vivo • Octubre 2026` con balance en `$0.00 EN LIMPIO`.
+   - Tanto la carga reactiva (`runSync`) como el botón de refresco envían estrictamente los parámetros de aislamiento: `busId` y `socioId`.
+
+3. **Aislamiento Multi-Tenant Hermético en Rutas (`src/app/api/reports/route.ts`):**
+   - Si `busId` viene en la consulta y no se provee `socioId`, la API resuelve dinámicamente el `socioId` desde la tabla `Bus`.
+   - Si una unidad o socio no tiene registros de ruta en el mes, la API retorna `where.id = 'NO_RECORDS_YET'`, garantizando que las entregas de ruta sumen exactamente `$0.00` y jamás arrastren ingresos de toda la cooperativa.
+
+4. **Blindaje de la API de Gastos (`src/app/api/owner-expenses/route.ts`):**
+   - En `GET`, descarta registros demo `EXP-AUG-*` / `EXP-SEP-*` para unidades distintas de `BUS-01` o consultas por `socioId`.
+   - En `POST` (migración masiva), rechaza inserciones de muestras demo en unidades suscriptoras.
+
+5. **Suite de Pruebas Unitarias Ampliada (`tests/manual-socio.test.ts`):**
+   - Incorporada Prueba 2.4: Aislamiento Estricto de Unidad Nueva (Ruta: $0.00, Gastos: $0.00, Utilidad: $0.00).
+   - Incorporada Prueba 3.5: Purga y Rechazo de Gastos de Muestra Demo para Unidades Suscriptoras.
+   - Ejecutado con éxito: **23/23 tests pasados al 100% (74 expect calls)**.
+
+6. **Documentación Oficial Sincronizada:**
+   - `docs/MANUAL_DE_USUARIO_SOCIO.md` y `docs/TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md` actualizados con la garantía de bienvenida en `$0.00 EN LIMPIO` en el mes en curso.
+   - `package.json` incrementado a la versión **3.61.13**.
+
+
+

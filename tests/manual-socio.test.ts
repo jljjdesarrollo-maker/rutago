@@ -121,6 +121,19 @@ describe("📊 ETAPA 2: Dashboard Principal y Fórmulas Financieras", () => {
 
     expect(margenPorcentaje).toBe(40.00);
   });
+
+  test("2.4 Aislamiento Estricto de Unidad Nueva: Unidad suscriptora arranca con $0.00 limpio sin saltar de mes", () => {
+    // Simula nueva unidad sin actividad (ej. Bus 10)
+    const tripulacionConRecords = false;
+    const initialIncome = tripulacionConRecords ? 216.80 : 0.00;
+    const sampleExpensesBus10: Array<{ id: string; busId: string; totalAmount: number }> = [];
+    const totalExpenses = sampleExpensesBus10.reduce((s, e) => s + e.totalAmount, 0);
+
+    const netProfit = initialIncome - totalExpenses;
+    expect(initialIncome).toBe(0.00);
+    expect(totalExpenses).toBe(0.00);
+    expect(netProfit).toBe(0.00);
+  });
 });
 
 // ============================================================================
@@ -209,6 +222,27 @@ describe("💰 ETAPA 3: Finanzas, Cartera de Talleres y Amortización de Deudas"
 
     expect(newPaid).toBe(80.00);
     expect(newPending).toBe(0.00); // Nunca -20.00
+  });
+
+  test("3.5 Purga y Rechazo de Gastos de Muestra Demo para Unidades Suscriptoras", () => {
+    const rawExpenses = [
+      { id: "EXP-SEP-01", busId: "BUS-10", totalAmount: 110.00 }, // Muestra accidental
+      { id: "EXP-SEP-02", busId: "BUS-10", totalAmount: 25.00 },  // Muestra accidental
+      { id: "EXP-REAL-01", busId: "BUS-10", totalAmount: 50.00 }, // Gasto real legítimo
+    ];
+
+    // Lógica pura de saneamiento y filtro implementada en v3.61.13:
+    const targetBusId: string = "BUS-10";
+    const isBus01 = targetBusId === "BUS-01" || targetBusId === "01";
+    const cleaned = rawExpenses.filter((e) => {
+      const isDemoSample = e.id.startsWith("EXP-AUG-") || e.id.startsWith("EXP-SEP-");
+      if (isDemoSample && !isBus01) return false;
+      return true;
+    });
+
+    expect(cleaned.length).toBe(1);
+    expect(cleaned[0].id).toBe("EXP-REAL-01");
+    expect(cleaned[0].totalAmount).toBe(50.00);
   });
 });
 

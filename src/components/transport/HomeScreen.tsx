@@ -313,15 +313,18 @@ export function HomeScreen({
           // Mantener caché local si falla la red
         }
 
-        // Determinar mes objetivo
+        // Determinar mes objetivo: Para socios propietarios SIEMPRE el mes actual en curso (defaultYearMonth)
+        // Solo para cuentas fundadoras en modo demo se permite saltar a meses anteriores si no hay datos actuales
         let targetMonth = defaultYearMonth;
-        const hasCurrent = expensesToUse.some(e => e.expenseDate && e.expenseDate.startsWith(defaultYearMonth));
-        if (!hasCurrent && expensesToUse.length > 0) {
-          const monthsWithData = Array.from(
-            new Set(expensesToUse.map((e: any) => e.expenseDate?.substring(0, 7)).filter(Boolean))
-          ).sort().reverse();
-          if (monthsWithData.length > 0 && typeof monthsWithData[0] === "string") {
-            targetMonth = monthsWithData[0];
+        if (user?.esFundadorSaaS) {
+          const hasCurrent = expensesToUse.some(e => e.expenseDate && e.expenseDate.startsWith(defaultYearMonth));
+          if (!hasCurrent && expensesToUse.length > 0) {
+            const monthsWithData = Array.from(
+              new Set(expensesToUse.map((e: any) => e.expenseDate?.substring(0, 7)).filter(Boolean))
+            ).sort().reverse();
+            if (monthsWithData.length > 0 && typeof monthsWithData[0] === "string") {
+              targetMonth = monthsWithData[0];
+            }
           }
         }
         setDisplayYearMonth(targetMonth);
@@ -330,8 +333,9 @@ export function HomeScreen({
         let initialIncome = (user?.esFundadorSaaS && targetMonth === "2026-08") ? 3915.25 : 0;
         let apiSuccess = false;
         try {
-          const busParam = activeBusId ? `&busId=${activeBusId}` : '';
-          const socioParam = user?.socioId ? `&socioId=${user.socioId}` : '';
+          const effectiveSocioId = user?.socioId || user?.id || '';
+          const busParam = activeBusId ? `&busId=${encodeURIComponent(activeBusId)}` : '';
+          const socioParam = effectiveSocioId ? `&socioId=${encodeURIComponent(effectiveSocioId)}` : '';
           const res = await fetch(`/api/reports?type=mensual&month=${targetMonth}${busParam}${socioParam}`);
           if (res.ok) {
             const reportData = await res.json();
@@ -491,12 +495,15 @@ export function HomeScreen({
                   setIsRefreshingBalance(true);
                   setBalanceStatus("loading");
                   const target = displayYearMonth || defaultYearMonth;
+                  const effectiveSocioId = user?.socioId || user?.id || '';
+                  const busParam = activeBusId ? `&busId=${encodeURIComponent(activeBusId)}` : '';
+                  const socioParam = effectiveSocioId ? `&socioId=${encodeURIComponent(effectiveSocioId)}` : '';
                   Promise.all([
-                    fetchOwnerExpensesFromApi(activeBusId).catch(() => []),
-                    fetch(`/api/reports?type=mensual&month=${target}`).then(r => r.ok ? r.json() : null).catch(() => null)
+                    fetchOwnerExpensesFromApi(activeBusId, effectiveSocioId).catch(() => []),
+                    fetch(`/api/reports?type=mensual&month=${target}${busParam}${socioParam}`).then(r => r.ok ? r.json() : null).catch(() => null)
                   ]).then(([expensesRes, reportRes]) => {
                     const expenses = (expensesRes && expensesRes.length > 0) ? expensesRes : getOwnerExpenses(activeBusId);
-                    let inc = target === "2026-08" ? 3915.25 : 0;
+                    let inc = (user?.esFundadorSaaS && target === "2026-08") ? 3915.25 : 0;
                     if (reportRes && reportRes.totals) {
                       const t = reportRes.totals;
                       const total = t.totalEntregado || ((t.entregaAyudante || 0) + (t.entregaCompania || 0));

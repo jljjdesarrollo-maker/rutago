@@ -80,10 +80,22 @@ export async function GET(req: NextRequest) {
       orderBy: { expenseDate: 'desc' },
     });
 
+    // Aislamiento estricto de datos de demostración:
+    // Los registros de ejemplo EXP-AUG-* y EXP-SEP-* solo aplican a la unidad BUS-01 histórica.
+    // Para cualquier otra unidad (ej. BUS-10, BUS-02) o cuando se consulta con socioId, se descartan 100%.
+    const isTargetBus01 = (!rawBusId || rawBusId === 'BUS-01' || rawBusId === '01') && (!socioId || socioId === 'TODOS');
+    const filteredExpenses = expenses.filter((e) => {
+      const isDemoSample = e.id.startsWith('EXP-AUG-') || e.id.startsWith('EXP-SEP-');
+      if (isDemoSample) {
+        return isTargetBus01;
+      }
+      return true;
+    });
+
     return NextResponse.json({
       success: true,
-      data: expenses,
-      count: expenses.length,
+      data: filteredExpenses,
+      count: filteredExpenses.length,
     });
   } catch (error) {
     console.error('Error al obtener gastos de socio:', error);
@@ -112,6 +124,11 @@ export async function POST(req: NextRequest) {
 
       for (const item of items) {
         if (!item.expenseDate || !item.description) continue;
+        const targetBus = item.busId || 'BUS-01';
+        const isBus01 = targetBus === 'BUS-01' || targetBus === '01';
+        const isDemoSample = item.id?.startsWith('EXP-AUG-') || item.id?.startsWith('EXP-SEP-');
+        // Nunca permitir que muestras demo se graben en unidades reales de socios suscriptores
+        if (isDemoSample && !isBus01) continue;
 
         const total = Number(item.totalAmount) || 0;
         const paid = Number(item.paidAmount) || 0;

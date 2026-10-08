@@ -125,6 +125,6 @@ Para que el personal que opera el bus diariamente pueda identificarse en la app:
 
 ## ✅ Resumen del Ecosistema Operativo Creado
 * **Socio Propietario (PIN `1010`):** Ingresa en `https://rutago-jljjj.vercel.app` para ver su utilidad neta diaria, alertas mecánicas y estado de suscripción de forma 100% privada.
-  * **Auto-Enlace Multi-Tenant:** La aplicación asocia automáticamente su número de disco y placa (ej. *Bus 10 • TAA-3420*), su tripulación activa y su balance inicial limpio en **$0.00 EN LIMPIO**, sin arrastrar datos de la unidad 01 ni de la cooperativa.
+  * **Auto-Enlace Multi-Tenant:** La aplicación asocia automáticamente su número de disco y placa (ej. *Bus 10 • TAA-3420*), su tripulación activa y su balance inicial limpio en **$0.00 EN LIMPIO** fijado en el mes actual en curso (ej. Octubre 2026), sin arrastrar datos de la unidad 01 ni gastos demo de prueba de la cooperativa.
 * **Tripulación (PINs `1001` y `1002`):** Ingresan para abrir la jornada, registrar el odómetro y liquidar el arqueo nocturno de 2 minutos.
 * **SuperAdmin (PIN `9999`):** Monitorea el MRR, las alertas técnicas de la flota y el cumplimiento de suscripciones de toda la cooperativa.

@@ -63,10 +63,32 @@ export async function GET(req: NextRequest) {
       where.ayudanteNombre = conductorId;
     }
 
-    // Aislamiento Multi-Tenant por Socio Propietario (Tripulación asignada a su unidad)
-    if (socioId && socioId !== 'TODOS') {
+    // Aislamiento Multi-Tenant por Socio Propietario o Unidad (Tripulación asignada a su unidad)
+    let effectiveSocioId = socioId;
+    if ((!effectiveSocioId || effectiveSocioId === 'TODOS') && busId && busId !== 'TODOS') {
+      try {
+        const cleanBusNum = busId.replace(/^BUS-/i, '');
+        const busFound = await db.bus.findFirst({
+          where: {
+            OR: [
+              { id: busId },
+              { numeroDisco: cleanBusNum },
+              { numeroDisco: busId },
+            ],
+          },
+          select: { socioId: true },
+        });
+        if (busFound?.socioId) {
+          effectiveSocioId = busFound.socioId;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
       const socioPersonas = await db.persona.findMany({
-        where: { socioId },
+        where: { socioId: effectiveSocioId },
         select: { nombre: true },
       });
       const crewNames = socioPersonas.map((p) => p.nombre).filter(Boolean);
@@ -78,6 +100,9 @@ export async function GET(req: NextRequest) {
       } else {
         where.id = 'NO_RECORDS_YET';
       }
+    } else if (busId && busId !== 'TODOS' && busId !== 'BUS-01' && busId !== '01') {
+      // Unidad específica (no BUS-01) sin tripulación asignada: devolver 0 registros limpios
+      where.id = 'NO_RECORDS_YET';
     }
 
     // Fetch records with trips and expenses

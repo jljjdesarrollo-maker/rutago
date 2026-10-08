@@ -10,24 +10,44 @@ export function getOwnerExpenses(busId = 'BUS-01', includeAnulados = false): Own
   if (typeof window === 'undefined') return [];
   try {
     let raw = localStorage.getItem(STORAGE_KEY);
+    const isBus01 = busId === 'BUS-01' || busId === '01';
+
     if (!raw) {
-      // Auto-inicialización segura con los datos validados del socio
-      seedSampleExpenses(busId);
-      raw = localStorage.getItem(STORAGE_KEY);
+      // IMPORTANTE: Solo auto-inicializar muestras si es estrictamente BUS-01 histórico
+      // Las unidades de socios suscriptores (Bus 10, Bus 02, etc.) SIEMPRE arrancan con lista limpia en $0.00
+      if (isBus01) {
+        seedSampleExpenses('BUS-01');
+        raw = localStorage.getItem(STORAGE_KEY);
+      }
     }
     if (!raw) return [];
-    const all: OwnerExpense[] = JSON.parse(raw);
+    let all: OwnerExpense[] = JSON.parse(raw);
+
+    // Auto-saneamiento de seguridad: Purgar gastos de muestra (EXP-AUG- / EXP-SEP-) asignados por error a otras unidades
+    const hasCorruptedSamples = all.some(
+      (e) => (e.id.startsWith('EXP-AUG-') || e.id.startsWith('EXP-SEP-')) && e.busId !== 'BUS-01' && e.busId !== '01'
+    );
+    if (hasCorruptedSamples) {
+      all = all.filter(
+        (e) => !((e.id.startsWith('EXP-AUG-') || e.id.startsWith('EXP-SEP-')) && e.busId !== 'BUS-01' && e.busId !== '01')
+      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+    }
+
+    const cleanBus = busId.replace(/^BUS-/i, '');
     const busExpenses = all.filter(
-      (item) => item.busId === busId && (includeAnulados ? true : item.status !== 'ANULADO')
+      (item) =>
+        (item.busId === busId || item.busId === cleanBus || item.busId === `BUS-${cleanBus}`) &&
+        (includeAnulados ? true : item.status !== 'ANULADO')
     );
     const isInitialized = localStorage.getItem(INITIALIZED_KEY) === 'true';
-    if (busExpenses.length === 0 && busId === 'BUS-01' && !isInitialized) {
-      seedSampleExpenses(busId);
+    if (busExpenses.length === 0 && isBus01 && !isInitialized) {
+      seedSampleExpenses('BUS-01');
       const reRead = localStorage.getItem(STORAGE_KEY);
       if (reRead) {
         const reAll: OwnerExpense[] = JSON.parse(reRead);
         return reAll.filter(
-          (item) => item.busId === busId && (includeAnulados ? true : item.status !== 'ANULADO')
+          (item) => (item.busId === 'BUS-01' || item.busId === '01') && (includeAnulados ? true : item.status !== 'ANULADO')
         );
       }
     }
@@ -427,10 +447,25 @@ export async function fetchOwnerExpensesFromApi(
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     if (json.success && Array.isArray(json.data)) {
-      if (json.data.length > 0) {
+      const isBus01 = busId === 'BUS-01' || busId === '01';
+      // Descartar muestras demo (EXP-AUG- / EXP-SEP-) para unidades que no sean BUS-01 histórico
+      const cleanRemoteData = json.data.filter((item: any) => {
+        const isDemoSample = item.id.startsWith('EXP-AUG-') || item.id.startsWith('EXP-SEP-');
+        if (isDemoSample && !isBus01) return false;
+        return true;
+      });
+
+      // Si la API devolvió muestras demo en una unidad de socio, purgarlas silenciosamente en la nube
+      if (!isBus01 && json.data.some((item: any) => item.id.startsWith('EXP-AUG-') || item.id.startsWith('EXP-SEP-'))) {
+        fetch(`/api/owner-expenses?sampleOnly=true&busId=${encodeURIComponent(busId)}`, {
+          method: 'DELETE',
+        }).catch(() => {});
+      }
+
+      if (cleanRemoteData.length > 0) {
         // 1. La base de datos central ya tiene gastos guardados
         const deletedIds = getDeletedExpenseIds();
-        const parsed: OwnerExpense[] = json.data
+        const parsed: OwnerExpense[] = cleanRemoteData
           .filter((item: any) => !deletedIds.has(item.id))
           .map((item: any) => {
             const esDeRuta =
@@ -462,12 +497,15 @@ export async function fetchOwnerExpensesFromApi(
 
         return parsed;
       } else {
-        // 2. La base de datos central está vacía (tabla recién creada)
-        // Verificamos si en este teléfono ya existían gastos (ej: los $809 de Agosto)
-        const localList = getOwnerExpenses(busId);
+        // 2. La base de datos central no tiene gastos reales
+        // Solo auto-migrar si son gastos legítimos creados por el usuario (NUNCA muestras demo en unidades de socios)
+        const localList = getOwnerExpenses(busId).filter((e) => {
+          const isDemoSample = e.id.startsWith('EXP-AUG-') || e.id.startsWith('EXP-SEP-');
+          return isBus01 ? true : !isDemoSample;
+        });
+
         if (localList.length > 0) {
           console.log(`Auto-migrando ${localList.length} gastos locales a la base de datos central...`);
-          // Subirlos a la nube en segundo plano para que queden asegurados
           fetch('/api/owner-expenses', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
