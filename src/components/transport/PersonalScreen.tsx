@@ -21,6 +21,8 @@ import {
   Filter,
   RotateCcw,
   UserX,
+  Bus,
+  Ticket,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -240,10 +242,13 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
     setFormError(null);
 
     try {
+      const personaActual = personas.find((item) => item.id === id);
+      const rolHaCambiado = personaActual && personaActual.rol !== formRol;
       const payload: Record<string, unknown> = {
         nombre: formNombre.trim(),
         cedula: formCedula.trim() || null,
         telefono: formTelefono.trim() || null,
+        rol: formRol,
       };
 
       if (formPin.length >= 4) {
@@ -252,6 +257,11 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
 
       if (isSuperAdmin) {
         payload.socioId = formSocioId || null;
+      }
+
+      if (rolHaCambiado) {
+        payload.resetDevice = true;
+        payload.esActual = false;
       }
 
       const res = await fetch(`/api/personas/${id}`, {
@@ -314,6 +324,7 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
     setFormTelefono(p.telefono || '');
     setFormPin('');
     setFormSocioId(p.socioId || '');
+    setFormRol(p.rol === 'AYUDANTE' ? 'AYUDANTE' : 'CONDUCTOR');
     setFormError(null);
   };
 
@@ -325,6 +336,7 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
     setFormTelefono('');
     setFormPin('');
     setFormSocioId('');
+    setFormRol('CONDUCTOR');
     setFormError(null);
   };
 
@@ -336,7 +348,9 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#912D26] uppercase">Editar Datos de Tripulación</span>
-              <span className="text-[10px] text-gray-500">{p.rol}</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                {formRol === 'CONDUCTOR' ? 'Chofer / Conductor' : 'Ayudante / Boletero'}
+              </span>
             </div>
 
             {formError && (
@@ -353,6 +367,48 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
                 onChange={(e) => setFormNombre(e.target.value)}
                 className="h-9 text-sm rounded-lg border-[#D6D6D6]"
               />
+            </div>
+
+            {/* Selector de Puesto / Rol Operativo */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-semibold text-[#3A3A3A]/70">Puesto / Rol Operativo *</Label>
+                <span className="text-[9px] font-semibold text-gray-500">
+                  {formRol === 'CONDUCTOR' ? 'Panel Conductor y Tacómetro' : 'Venta y Emisión de Boletos'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setFormRol('CONDUCTOR')}
+                  className={`h-9 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    formRol === 'CONDUCTOR'
+                      ? 'bg-[#053225] text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 bg-transparent'
+                  }`}
+                >
+                  <Bus className="w-3.5 h-3.5" /> Conductor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormRol('AYUDANTE')}
+                  className={`h-9 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                    formRol === 'AYUDANTE'
+                      ? 'bg-[#912D26] text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 bg-transparent'
+                  }`}
+                >
+                  <Ticket className="w-3.5 h-3.5" /> Ayudante
+                </button>
+              </div>
+              {p.rol !== formRol && (
+                <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[10px] flex items-start gap-1.5 leading-tight">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Reasignación de puesto:</strong> Conservará su mismo PIN y su historial contable. Se liberará el teléfono oficial asignado y quedará en estado de <em>Relevo / En Espera</em> hasta activar su turno.
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2">

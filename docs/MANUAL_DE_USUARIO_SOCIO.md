@@ -192,6 +192,22 @@ Para proteger tus ingresos, los ayudantes solo pueden emitir boletos desde el te
   3. Pulsa `[ Desvincular ]` y confirma.
   4. Su PIN quedará liberado para registrarse en el nuevo teléfono oficial al iniciar su siguiente turno.
 
+### 5.8 Promoción o Rotación de Puesto (Ayudante 🔁 Conductor)
+Si tu ayudante asciende a conductor (o un chofer rota temporalmente a cobrar boletos como ayudante), **no debes crear un registro nuevo**.
+
+**Procedimiento en 1 solo paso:**
+1. Ve a la sección **«Tripulación»**.
+2. Pulsa el icono de lápiz `[ ✏️ ]` en la tarjeta del trabajador.
+3. En la sección **«Puesto / Rol Operativo»**, selecciona el nuevo rol: **`[ Conductor ]`** o **`[ Ayudante ]`**.
+4. Pulsa **`[ Guardar ]`**.
+
+**Garantías Contables y Operativas:**
+* **Mismo PIN:** El trabajador no necesita memorizar un código nuevo; su PIN personal de 4 dígitos sigue siendo exactamente el mismo.
+* **Historial Contable 100% Protegido:** Todos los boletos emitidos y arqueos cerrados cuando era ayudante quedan registrados con su nombre y fecha inalterables en los libros contables.
+* **Liberación Automática de Teléfono (Device Binding):** Si era ayudante, el teléfono oficial de boletos queda liberado de inmediato para que el nuevo ayudante pueda enlazarlo en su primer turno.
+* **Paso a Relevo Seguro:** Al cambiar de rol, pasa a estado *Relevo / En Espera* para que puedas pulsar `[ Activar en Turno ]` cuando inicie formalmente su jornada en el nuevo puesto.
+* **Reversibilidad Total:** Si en el futuro vuelve a cubrir el puesto de ayudante, simplemente editas su tarjeta y lo regresas a Ayudante con un toque.
+
 ---
 
 ## ❓ PREGUNTAS FRECUENTES DEL SOCIO (FAQ)

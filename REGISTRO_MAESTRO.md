@@ -3254,3 +3254,41 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
    - Desvinculación de hardware (Device Binding) ante cambio o daño del teléfono oficial.
 7. **Preguntas Frecuentes (FAQ):** Resolución de dudas operativas sobre sincronización offline, seguridad de datos frente a la tripulación y conciliación bancaria.
 8. **Versión de Build:** Incrementada a `3.61.04`.
+
+
+---
+
+## 🏛️ v3.61.05 - ROTACIÓN DINÁMICA DE TRIPULACIÓN (AYUDANTE 🔁 CONDUCTOR) Y HOMOLOGACIÓN DE MANUALES (2026-10-08)
+
+> **ESTADO:** 🟢 REASIGNACIÓN BIDIRECCIONAL DE ROL IMPLEMENTADA | HISTORIAL CONTABLE Y PIN ÚNICO 100% PRESERVADOS  
+> **FECHA DE REGISTRO:** 2026-10-08 | **SISTEMA:** RutaGo - Motor de Personal, Seguridad y Control de Tripulación  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **DEPLOY PRODUCCIÓN:** `https://rutago-jljjj.vercel.app`  
+
+### 📍 1. Diagnóstico del Incidente y Decisión de Ingeniería Operativa:
+- **Caso Operativo Planteado:**  
+  Un ayudante de bus pasa a desempeñarse como chofer/conductor de la unidad. El socio consulta el procedimiento correcto: si debe crear un nuevo registro o cuál es el mecanismo técnico.
+- **Auditoría Técnica del Código Previo:**  
+  1. *Restricción de PIN Único:* `model Persona` impone `pin @unique` con hash criptográfico y verificación contra colisiones. Crear un nuevo registro para la misma persona forzaría a asignarle un segundo PIN diferente, generando confusión y fricción en la cabina.
+  2. *Inmutabilidad Contable:* Las hojas de ruta (`DailyRecord`) guardan el nombre histórico (`conductor`, `ayudanteNombre`), y los boletos emitidos (`VentaBoleto`) almacenan instantáneas (`ayudanteId`, `ayudanteNombre`). Por ende, cambiar el rol de una persona no borra ni afecta en absoluto los arqueos de días anteriores.
+  3. *Bloqueo en UI:* El backend (`PUT /api/personas/[id]`) ya soportaba recibir `rol`, pero en el frontend (`PersonalScreen.tsx`) el rol se mostraba en solo lectura sin selector táctil para cambiarlo.
+- **Decisión de Arquitectura Experta (Opción Única):**  
+  **Reasignación de Rol Dinámica en el Mismo Registro.**  
+  * Cero duplicidad de personas ni cédulas en la base de datos.  
+  * El trabajador conserva su mismo PIN de 4 dígitos de toda la vida.  
+  * Desvinculación automática del teléfono físico (`resetDevice: true`) para liberar el terminal de cobro al nuevo ayudante.  
+  * Transición 100% reversible: si en temporada baja o vacaciones el chofer vuelve a ejercer de ayudante, se cambia de nuevo en 1 solo toque y la app reconfigura dinámicamente sus permisos.
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. **Componente de Gestión de Tripulación (`src/components/transport/PersonalScreen.tsx`):**  
+   - **Selector de Rol Ergonómico:** Añadido selector táctil en el formulario de edición de tripulación con botones estilizados (`Conductor` [Verde bosque #053225] vs `Ayudante` [Vino tinto #912D26]).  
+   - **Indicador Informativo Contextual:** Muestra al socio un aviso claro de que el PIN y el historial se conservan intactos.  
+   - **Lógica de Transición Segura en `handleEdit`:**  
+     * Si `rolHaCambiado`: envía `resetDevice: true` y `esActual: false`.  
+     * Esto traslada al trabajador a estado de *Relevo / En Espera* para que el socio active formalmente su turno cuando inicie labores al volante.  
+2. **Actualización de Documentación y Manuales:**  
+   - **`docs/MANUAL_DE_USUARIO_SOCIO.md`:** Agregada la sección **5.8 Promoción o Rotación de Puesto (Ayudante 🔁 Conductor)** con el procedimiento paso a paso y garantías contables.  
+   - **`docs/MANUAL_DE_USUARIO_AYUDANTE.md`:** Actualizado a versión v3.61.05 e incorporada nota explicativa de ascenso y rotación con el mismo PIN en la Etapa 1.1.  
+3. **Control de Versiones y Build:**  
+   - `package.json` incrementado a `3.61.05`.  
+   - Verificado el build y tipos de TypeScript.

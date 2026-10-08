@@ -1,6 +1,6 @@
 # 📘 MANUAL DE USUARIO OFICIAL: RUTINA OPERATIVA DEL AYUDANTE
 **Aplicación:** RutaGo • Cooperativa de Transportes VilcabambaTuris  
-**Versión:** v3.61.03 (Gobernanza SaaS, Borrado Lógico & Control de Tripulación)  
+**Versión:** v3.61.05 (Rotación Dinámica de Tripulación & Paridad Operativa)  
 **Rol Destinatario:** Ayudante Oficial de Ruta  
 
 ---
@@ -22,6 +22,7 @@ Este manual detalla paso a paso la rutina diaria que debe seguir el ayudante de 
    - **Vinculación de Dispositivo (Device Binding):** Si el control de dispositivo está activo, el acceso solo se permitirá desde el teléfono oficial asignado al bus para proteger la caja y emisión de boletos.
 
 > 💡 **Nota de Operación Offline:** Si te encuentras en un punto de la ruta sin cobertura celular (sin señal), la aplicación te permitirá ingresar automáticamente con tu sesión guardada en el dispositivo.
+> 💡 **Nota de Ascenso o Rotación:** Si eres promovido a Chofer/Conductor o rotas de puesto, ingresarás con tu mismo PIN personal y la aplicación adaptará tu pantalla de forma automática al panel de mantenimiento y tacómetro de la unidad.
 
 ---
 
