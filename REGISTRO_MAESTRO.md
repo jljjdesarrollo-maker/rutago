@@ -3292,3 +3292,25 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
 3. **Control de Versiones y Build:**  
    - `package.json` incrementado a `3.61.05`.  
    - Verificado el build y tipos de TypeScript.
+
+
+---
+
+## 🏛️ v3.61.06 - HOTFIX: DECLARACIÓN DE ESTADO `formRol` EN EDICIÓN DE TRIPULACIÓN (2026-10-08)
+
+> **ESTADO:** 🟢 RESOLUCIÓN INMEDIATA DEL RUNTIME ERROR `formRol is not defined`  
+> **FECHA DE REGISTRO:** 2026-10-08 | **SISTEMA:** RutaGo - Motor de Personal y Control de Tripulación  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **DEPLOY PRODUCCIÓN:** `https://rutago-jljjj.vercel.app`  
+
+### 📍 1. Diagnóstico del Error:
+- Al pulsar el botón de edición (`✏️`) sobre la tarjeta de un ayudante desde la cuenta del socio, la aplicación disparaba un error de React en tiempo de ejecución: `"formRol is not defined"`.
+- **Causa Raíz:** En la integración anterior de `v3.61.05`, el hook `const [formRol, setFormRol] = useState<CONDUCTOR | AYUDANTE>(CONDUCTOR)` no quedó persistido en la cabecera de estados del componente `PersonalScreen.tsx`, a pesar de que sus referencias en `startEdit`, `handleEdit` y el selector JSX ya estaban presentes.
+
+### 📍 2. Solución Implementada:
+1. Declaración formal del estado reactivo en `src/components/transport/PersonalScreen.tsx`:
+   ```typescript
+   const [formRol, setFormRol] = useState<CONDUCTOR | AYUDANTE>(CONDUCTOR);
+   ```
+2. Verificación de compilación en caliente con Bun/TypeScript para descartar cualquier otra variable huérfana.
+3. Versión de build incrementada a `3.61.06` y sincronizada a GitHub (`main` y `staging`).

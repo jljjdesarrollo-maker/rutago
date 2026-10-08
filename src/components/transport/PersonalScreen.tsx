@@ -73,6 +73,7 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
   const [formTelefono, setFormTelefono] = useState('');
   const [formPin, setFormPin] = useState('');
   const [formSocioId, setFormSocioId] = useState<string>('');
+  const [formRol, setFormRol] = useState<'CONDUCTOR' | 'AYUDANTE'>('CONDUCTOR');
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
