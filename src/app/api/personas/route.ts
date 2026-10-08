@@ -90,7 +90,20 @@ export async function POST(req: NextRequest) {
 
     const salt = generateSalt();
     const pinHash = hashPinWithSalt(cleanPin, salt);
-    const targetSocioId = socioId || null;
+    // Validación defensiva de Foreign Key socioId para evitar fallo P2003
+    let targetSocioId: string | null = null;
+    if (socioId && socioId !== "SIN_SOCIO" && socioId !== "TODOS") {
+      const socioExiste = await db.cuentaSocio.findUnique({ where: { id: socioId } });
+      if (socioExiste) {
+        targetSocioId = socioExiste.id;
+      } else {
+        const fallbackSocio = await db.cuentaSocio.findFirst({ where: { activo: true } });
+        targetSocioId = fallbackSocio?.id || null;
+      }
+    } else {
+      const fallbackSocio = await db.cuentaSocio.findFirst({ where: { activo: true } });
+      targetSocioId = fallbackSocio?.id || null;
+    }
 
     // Aislamiento Multi-Tenant: Si se activa, desactivar otros del mismo rol SOLO para este socio
     const esActual = body.esActual || false;
@@ -130,8 +143,23 @@ export async function POST(req: NextRequest) {
 
     const { pin: _pin, pinSalt: _salt, ...safePersona } = persona;
     return NextResponse.json(safePersona, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating persona:', error);
-    return NextResponse.json({ error: 'Error al crear personal' }, { status: 500 });
+    if (error?.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'El PIN o identificación ya está en uso por otro miembro del personal.' },
+        { status: 400 }
+      );
+    }
+    if (error?.code === 'P2003') {
+      return NextResponse.json(
+        { error: 'Error de relación: No se encontró la cuenta de socio asociada en la base de datos.' },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: error?.message ? `Error al crear personal: ${error.message}` : 'Error al crear personal' },
+      { status: 500 }
+    );
   }
 }

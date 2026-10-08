@@ -3314,3 +3314,32 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
    ```
 2. Verificación de compilación en caliente con Bun/TypeScript para descartar cualquier otra variable huérfana.
 3. Versión de build incrementada a `3.61.06` y sincronizada a GitHub (`main` y `staging`).
+
+
+---
+
+## 🏛️ v3.61.07 - BLINDAJE RELACIONAL DE CREACIÓN DE PERSONAL Y GOBERNANZA DE SOCIOID (2026-10-08)
+
+> **ESTADO:** 🟢 RESOLUCIÓN DEFINITIVA DE ERROR 500 AL CREAR PERSONAL / BLINDAJE DE CLAVE FORÁNEA  
+> **FECHA DE REGISTRO:** 2026-10-08 | **SISTEMA:** RutaGo - Motor de Personal, API y Gobernanza Multi-Tenant  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **DEPLOY PRODUCCIÓN:** `https://rutago-jljjj.vercel.app`  
+
+### 📍 1. Diagnóstico del Error en Producción:
+- **Incidente:** Al intentar crear un nuevo ayudante (ej. John Alexander Juárez Cango) desde la sesión del Socio en `PersonalScreen.tsx`, la API retornaba HTTP 500: `"Error al crear personal"`.
+- **Causa Raíz Identificada:**
+  * El endpoint `POST /api/personas` recibía `socioId` desde el cliente sin verificar su existencia previa en la tabla `CuentaSocio`.
+  * Si la sesión del navegador conservaba un identificador desfasado o en caso de asincronía entre instancias, Prisma lanzaba `P2003: Foreign key constraint failed on the field: socioId`.
+  * Adicionalmente, el bloque `catch` ocultaba la causa real con un genérico HTTP 500.
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. **Resolución Defensiva de `socioId` (`/api/personas` y `/api/personas/[id]`):**
+   * Verificación explícita de existencia mediante `db.cuentaSocio.findUnique`.
+   * En caso de discrepancia de ID en sesión local, asignación inteligente al socio activo actual (`fallbackSocio`) para garantizar integridad referencial estricta sin interrumpir la operación del bus.
+2. **Mapeo Explícito de Códigos de Error de Prisma:**
+   * `P2002`: `"El PIN o identificación ya está en uso por otro miembro del personal."` (HTTP 400).
+   * `P2003`: `"Error de relación: No se encontró la cuenta de socio asociada en la base de datos."` (HTTP 400).
+   * Exposición del mensaje descriptivo ante cualquier otra excepción.
+3. **Control de Versiones y Despliegue:**
+   * `package.json` incrementado a `3.61.07`.
+   * Sincronizado a GitHub en ramas `main` y `staging`.

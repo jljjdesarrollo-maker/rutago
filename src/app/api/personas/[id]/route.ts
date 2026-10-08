@@ -78,7 +78,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       updatePinData.pinSalt = newSalt;
     }
 
-    const targetSocioId = socioId !== undefined ? (socioId || null) : existing.socioId;
+    // Validación defensiva de socioId para evitar fallo P2003
+    let targetSocioId = existing.socioId;
+    if (socioId !== undefined) {
+      if (socioId && socioId !== "SIN_SOCIO" && socioId !== "TODOS") {
+        const socioExiste = await db.cuentaSocio.findUnique({ where: { id: socioId } });
+        targetSocioId = socioExiste ? socioExiste.id : existing.socioId;
+      } else {
+        targetSocioId = null;
+      }
+    }
 
     // Si se activa este registro, desactivar otros del mismo rol SOLO dentro del mismo socio
     if (esActual && (rol || existing.rol)) {
@@ -129,9 +138,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const { pin: _pin, pinSalt: _salt, ...safePersona } = persona;
     return NextResponse.json(safePersona);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating persona:', error);
-    return NextResponse.json({ error: 'Error al actualizar personal' }, { status: 500 });
+    if (error?.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'El PIN o identificación ya está en uso por otro miembro del personal.' },
+        { status: 400 }
+      );
+    }
+    if (error?.code === 'P2003') {
+      return NextResponse.json(
+        { error: 'Error de relación: No se encontró la cuenta de socio asociada en la base de datos.' },
+        { status: 400 }
+      );
+    }
+    return NextResponse.json(
+      { error: error?.message ? `Error al actualizar personal: ${error.message}` : 'Error al actualizar personal' },
+      { status: 500 }
+    );
   }
 }
 
