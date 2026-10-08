@@ -1,6 +1,6 @@
 {
   "name": "rutago",
-  "version": "3.61.08",
+  "version": "3.61.09",
   "private": true,
   "description": "RutaGo - Control de transporte y venta de boletos",
   "scripts": {
@@ -11,7 +11,8 @@
     "db:push": "(if [ -n \"$DATABASE_URL\" ]; then prisma db push --accept-data-loss; else echo 'DATABASE_URL not set, skipping db:push'; fi)",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "test": "bun test tests/"
   },
   "dependencies": {
     "@prisma/client": "^6.11.1",

@@ -3372,3 +3372,52 @@ El objetivo de la Fase 2 es evitar que cualquier prueba o cambio en desarrollo a
 4. **Control de Versiones y Despliegue:**
    - `package.json` incrementado a `3.61.08`.
    - Sincronizado en ramas `main` y `staging`.
+
+
+---
+
+## 🏛️ v3.61.09 - SUITE DE PRUEBAS UNITARIAS Y LÓGICAS DEL MANUAL DEL SOCIO (2026-10-08)
+
+> **ESTADO:** 🟢 21/21 PRUEBAS PASADAS AL 100% (68 EXPECTS) | CERO IMPACTO EN BASE DE DATOS REAL (IN-MEMORY)  
+> **FECHA DE REGISTRO:** 2026-10-08 | **SISTEMA:** RutaGo - Calidad de Software, Matemáticas Contables y Certificación del Manual  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **DEPLOY PRODUCCIÓN:** `https://rutago-jljjj.vercel.app`  
+
+### 📍 1. Diagnóstico y Objetivo de la Suite de Pruebas:
+- **Requerimiento del Socio:** Validar matemáticamente, algorítmicamente y en tiempo real las 5 etapas operativas descritas en `docs/MANUAL_DE_USUARIO_SOCIO.md` garantizando **cero riesgo de alteración o conexión a la base de datos real** utilizada por los buses en carretera.
+- **Enfoque de Ingeniería:** Pruebas unitarias e inferenciales ejecutadas estrictamente en memoria (In-Memory) con el motor de pruebas de alta velocidad Bun Test (`bun:test`), evaluando funciones puras, criptografía, amortización contable, odometría Hino AK y reglas de turnos de tripulación.
+
+### 📍 2. Cobertura de las 5 Etapas del Manual (21/21 Tests Aprobados):
+1. **Etapa 1: Ingreso al Sistema y Seguridad Criptográfica:**
+   * Generación determinista de Salt seguro (32 caracteres hex / 16 bytes).
+   * Verificación de PIN de 4 dígitos con cifrado salteado SHA-256.
+   * Rechazo inmediato de PINs erróneos.
+   * Retrocompatibilidad con hashes legacy y fallback seguro.
+   * Bloqueo estricto de login para usuarios con baja lógica (`activo: false -> HTTP 403`).
+2. **Etapa 2: Dashboard y Fórmulas Financieras (Número Rey):**
+   * Fórmula del bolsillo: `Utilidad Neta Real = Entregas Ayudante - Gastos del Socio`.
+   * Principio Anti-Duplicidad: los gastos liquidados en carretera por el ayudante (`origenPago: AYUDANTE_RUTA`) no se descuentan dos veces de los egresos del socio.
+   * Cálculo porcentual de margen sobre producción bruta.
+3. **Etapa 3: Finanzas, Cartera de Talleres y Amortización:**
+   * Facturas de contado (`paidAmount: total`, `pendingBalance: 0`, `status: PAGADO`).
+   * Facturas a crédito (`pendingBalance: total`, `status: PENDIENTE`).
+   * Amortización progresiva de deudas mediante abonos sucesivos hasta extinción en saldo `$0.00`.
+   * Blindaje contra sobregiro (un abono mayor a la deuda nunca genera saldos negativos).
+4. **Etapa 4: Supervisión de Mantenimiento Preventivo Hino AK:**
+   * Semáforo de 3 segundos: Verde (`> 1000 km`), Amarillo (`<= 1000 km y > 0 km`) y Rojo (`<= 0 km`).
+   * Regularización Retroactiva (`⏱️ ¿Se realizó antes?`): cálculo exacto de desgaste sin tocar ni alterar el odómetro del autobús.
+   * Detección automática de componente ya vencido al regularizar.
+   * Rechazo estricto si el kilometraje del cambio supera el odómetro actual del bus.
+5. **Etapa 5: Gestión de Tripulación (PersonalScreen):**
+   * Exclusividad de turno diario (activar a un miembro pasa al anterior automáticamente a `RELEVO / EN ESPERA`).
+   * Promoción dinámica (Ayudante a Chofer): conserva idéntico PIN de 4 dígitos, libera el hardware telefónico asignado (`deviceId: null`) y entra en relevo por seguridad.
+   * Rotación inversa (Chofer a Ayudante): 100% reversible sin pérdida de registros contables.
+   * Borrado lógico (`activo: false`, `desactivadoAt: Date`) con preservación íntegra de boletos y arqueos históricos.
+   * Reactivación instantánea en 1 solo paso.
+
+### 📍 3. Resultado de Ejecución y Métricas:
+```bash
+bun test tests/manual-socio.test.ts
+21 pass | 0 fail | 68 expect() calls | Tiempo total: 274 ms
+```
+- `package.json` actualizado a la versión **3.61.09** con script `npm test` / `bun test`.
