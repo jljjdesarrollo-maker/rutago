@@ -3707,3 +3707,23 @@ bun test tests/manual-socio.test.ts
 - **`docs/GUIA_ENTREVISTA_Y_CONTROL_MANTENIMIENTO.md`**: Guía oficial completa con tablas de padrón, combos de parada y preguntas de relevamiento.
 - **`package.json`**: Versión elevada a `3.61.17`.
 - **`download/RutaGo_Contexto_Maestro_v3.61.17.md`**: Respaldo contextual para garantizar continuidad multiplataforma sin pérdida de información por cuotas.
+
+---
+
+## 🏛️ v3.61.18 - HOMOLOGACIÓN OFICIAL: 7 ESTACIONES DE TALLER COMERCIAL + 1 RUTINA DE CHOFER (2026-10-09)
+> **ESTADO:** 🟢 COMPLETADO, VERIFICADO Y DESPLEGADO A PRODUCCIÓN  
+> **FECHA DE REGISTRO:** 2026-10-09 | **SISTEMA:** RutaGo - Motor de Mantenimiento Preventivo Multi-Tenant  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Paridad 1:1 estricta entre la documentación/guía de entrevista y la interfaz visual móvil de talleres.
+
+### 📍 1. Diagnóstico y Resolución de la Discrepancia:
+- **Causa Raíz de las 9 Estaciones en Modelo:** En `src/lib/mantenimiento-estaciones.ts`, el catálogo técnico definía 9 claves: `LUBRICADORA`, `MNT_MAYOR`, `MOTOR_MECANICO`, `FRENOS_RUEDAS`, `ADMISION_AIRE`, `ALINEACION`, `ELECTROAUTO`, `RADIADOR` y `CHOFER_RUTINA`.
+- **Diseño Ergonómico de la UI (7 Botones Comerciales):**
+  1. `CHOFER_RUTINA` fue separada como sección y tarjeta independiente (`🚌 Mi Rutina Chofer $0`) al no ser un taller externo ni generar costos comerciales.
+  2. `RADIADOR` (mantenimiento bianual/anual de 100,000 km) fue absorbida dentro de `MOTOR_MECANICO` (Maestro Mecánico y Motor) para evitar ruido visual y botones redundantes en la botonera táctil móvil.
+- **Acción Ejecutada:** Homologación total de la Guía Oficial de Entrevista (`docs/GUIA_ENTREVISTA_Y_CONTROL_MANTENIMIENTO.md`), alineándola con las 7 estaciones comerciales oficiales + la sección especial de Rutina Chofer ($0.00).
+
+### 📍 2. Artefactos Modificados y Sincronizados:
+- **`docs/GUIA_ENTREVISTA_Y_CONTROL_MANTENIMIENTO.md`**: Actualizado a la arquitectura de 7 talleres comerciales + 1 rutina de patio ($0).
+- **`package.json`**: Versión incrementada a `3.61.18`.
+- **`download/RutaGo_Contexto_Maestro_v3.61.18.md`**: Respaldo contextual generado para asegurar continuidad multiplataforma.

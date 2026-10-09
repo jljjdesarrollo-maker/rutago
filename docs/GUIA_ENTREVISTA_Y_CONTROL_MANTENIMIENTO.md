@@ -1,7 +1,7 @@
 # 📋 Guía Oficial de Entrevista y Relevamiento de Mantenimiento Preventivo
-## Protocolo de Auditoría de Flota, Padrón Hino AK (31 Ítems) y Validación de Estaciones de Parada
+## Protocolo de Auditoría de Flota, Padrón Hino AK (31 Ítems) y Validación de Talleres y Rutina
 
-> **Versión del Sistema:** RutaGo SaaS v3.61.16+  
+> **Versión del Sistema:** RutaGo SaaS v3.61.18+  
 > **Destinatario:** Socio Propietario, Conductor Titular, Ayudante y Administrador de Flota  
 > **Ámbito de Operación:** Flota Hino AK (Ruta Interprovincial / Cantonal Loja – Malacatos – Vilcabamba – Yangana – La Elvira)  
 > **Entorno Oficial:** `https://rutago-tau.vercel.app`  
@@ -13,9 +13,9 @@
 Esta guía proporciona el instrumento técnico y metodológico para llevar a cabo la **entrevista inicial de relevamiento mecánico** entre el **Socio Propietario** y su **Conductor Titular**. 
 
 El propósito es triple:
-1. **Levantar la historia clínica exacta del autobús:** Determinar con precisión qué mantenimientos están al día, cuáles están por vencer y qué kilometrajes reales marca el odómetro hoy.
+1. **Levantar la historia clínica exacta del autobús:** Determinar con precisión qué mantenimientos están al día, cuáles están por vencer y qué kilometrajes reales marca el odómetro hoy para calibrar el semáforo sin falsas alertas.
 2. **Personalizar las políticas de durabilidad por unidad:** Acordar si la unidad utilizará los intervalos de fábrica o políticas extendidas según la calidad de lubricantes y repuestos instalados (`BusItemOverride`).
-3. **Validar las 9 Estaciones de Taller y Combos de Parada:** Confirmar con el conductor qué componentes se cambian en conjunto en cada visita física a la fosa o taller para que el registro en ruta sea inmediato (1 solo toque táctil) y sin fricción contable.
+3. **Validar las 7 Estaciones de Taller Comercial + 1 Rutina Directa del Chofer:** Confirmar con el conductor qué componentes se cambian en conjunto en cada visita física al taller para que el registro en ruta sea inmediato (1 solo toque táctil) y sin fricción contable.
 
 ---
 
@@ -60,6 +60,7 @@ Antes de llenar las tablas numéricas, el entrevistador formulará las siguiente
    * Lubricadora de cabecera: __________________________________________________  
    * Frenista / Muellero: __________________________________________________  
    * Taller de Caja y Corona: __________________________________________________  
+   * Maestro Mecánico de Motor: __________________________________________________  
    * Serviteca / Alineación: __________________________________________________  
 
 ---
@@ -141,20 +142,21 @@ Antes de llenar las tablas numéricas, el entrevistador formulará las siguiente
 
 ---
 
-## 🏬 5. Validación de las 9 Estaciones de Talleres Físicos (Combos de Parada)
+## 🏬 5. Validación de las 7 Estaciones de Talleres Físicos Oficiales en RutaGo
+*(Paridad 1:1 con la Botonera Móvil de la Aplicación)*
 
-En RutaGo, el Conductor o el Socio no registran 31 ítems uno por uno en la carretera. Utilizan la **Botonera Táctil de Estaciones**. Durante la entrevista, valide con el conductor qué componentes integran habitualmente cada parada técnica:
+En RutaGo, el Conductor o el Socio no registran 31 ítems uno por uno en la carretera. Utilizan la **Botonera Táctil de Estaciones**. Durante la entrevista, valide con el conductor qué componentes integran habitualmente cada parada técnica en estos 7 talleres comerciales:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│               MAPA DE LAS 9 ESTACIONES FÍSICAS EN RUTAGO               │
+│           LAS 7 ESTACIONES OFICIALES DE TALLER COMERCIAL EN RUTAGO     │
 ├──────────────────────────┬──────────────────────────┬──────────────────┤
 │ 🛢️ 1. LUBRICADORA        │ ⚙️ 2. CAJA Y CORONA      │ 🔧 3. MOTOR      │
 ├──────────────────────────┼──────────────────────────┼──────────────────┤
 │ 🛑 4. FRENOS Y RODAJE    │ 💨 5. SISTEMA DE AIRE    │ 🛞 6. SERVITECA  │
-├──────────────────────────┼──────────────────────────┼──────────────────┤
-│ ⚡ 7. ELECTROAUTO         │ 🧼 8. RADIADOR           │ 🚌 9. CHOFER     │
-└──────────────────────────┴──────────────────────────┴──────────────────┘
+├──────────────────────────┴──────────────────────────┴──────────────────┤
+│ ⚡ 7. ELECTROAUTO Y BATERÍAS                                            │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -167,7 +169,7 @@ En RutaGo, el Conductor o el Socio no registran 31 ítems uno por uno en la carr
   * `[✓]` Filtro de Aceite de Motor
   * `[✓]` Filtro Trampa de Agua (Separador Diésel)
   * `[✓]` Filtro Combustible Secundario
-* **Opcionales de 1 Toque (Revisión según estado):**
+* **Opcionales de 1 Toque (Revisión según estado en la misma fosa):**
   * `[ ]` Engrase de Chasis en Fosa (1,500 km)
   * `[ ]` Soplado Filtro de Aire (5,000 km)
   * `[ ]` Lavado Malla Aire Pasillo (5,000 km)
@@ -181,7 +183,36 @@ En RutaGo, el Conductor o el Socio no registran 31 ítems uno por uno en la carr
 
 ---
 
-### 🛑 Estación 2: FRENOS, RODAJE Y SUSPENSIÓN (El Frenista y Muellero)
+### ⚙️ Estación 2: CAJA Y CORONA (Taller de Transmisión Pesada y Embrague)
+*Frecuencia habitual: Cada 30,000 km (fluidos) / 100,000 km (embrague) / 140,000+ km (caja).*
+
+* **Componentes del Combo y Efecto Cascada:**
+  * `[ ]` Aceite de Caja (Valvulina SAE 80W-90 / 85W-140)
+  * `[ ]` Aceite de Corona (Valvulina SAE 85W-140)
+  * `[ ]` Kit de Embrague Completo (Disco, Prensa, Rulimán)
+  * `[ ]` Bronces y Palillos de Caja Sincronizados
+  * `[ ]` Mantenimiento de Corona (Piñón y Corona)
+  * `[ ]` Reparación Mayor de Caja (Overhaul 3 Años)
+* **Efecto Cascada Confirmado en RutaGo:** Al registrar Overhaul de Caja o Corona, el sistema resetea automáticamente a 0 km el aceite de caja/corona correspondiente para no duplicar alertas ni gastos.
+
+---
+
+### 🔧 Estación 3: MAESTRO MECÁNICO Y MOTOR
+*Frecuencia habitual: Preventivos mayores de motor y sistema de enfriamiento (50,000 a 100,000 km).*
+
+* **Componentes del Combo (Incluye Radiador, Termostato y Toberas):**
+  * `[ ]` Calibración de Válvulas y Toberas (Denso)
+  * `[ ]` Termostato del Motor (82°C)
+  * `[ ]` Lavado Químico de Radiador, Intercooler y Refrigerante Coolant
+  * `[ ]` Cambio de Bandas del Motor (Correas)
+  * `[ ]` Metales de Motor (Biela y Bancada)
+* **Validación con el Conductor:**  
+  *¿A qué kilometraje acostumbra enviar las toberas al banco de prueba?* ________ km.  
+  *¿El mantenimiento del radiador lo realiza en este mismo taller o en fosa?* ________________________  
+
+---
+
+### 🛑 Estación 4: FRENOS, RODAJE Y SUSPENSIÓN (El Frenista y Muellero)
 *Frecuencia habitual: Según desgaste en descensos de montaña (cada 11,000 – 12,500 km).*
 
 * **Componentes del Combo de Parada:**
@@ -197,34 +228,6 @@ En RutaGo, el Conductor o el Socio no registran 31 ítems uno por uno en la carr
 
 ---
 
-### ⚙️ Estación 3: CAJA Y CORONA (Taller de Transmisión Pesada y Embrague)
-*Frecuencia habitual: Cada 30,000 km (fluidos) / 100,000 km (embrague) / 140,000+ km (caja).*
-
-* **Componentes del Combo y Efecto Cascada:**
-  * `[ ]` Aceite de Caja (Valvulina SAE 80W-90)
-  * `[ ]` Aceite de Corona (Valvulina SAE 85W-140)
-  * `[ ]` Kit de Embrague Completo (Disco, Prensa, Rulimán)
-  * `[ ]` Bronces y Palillos de Caja Sincronizados
-  * `[ ]` Mantenimiento de Corona (Piñón y Corona)
-  * `[ ]` Reparación Mayor de Caja (Overhaul 3 Años)
-* **Efecto Cascada Confirmado en RutaGo:** Al registrar Overhaul de Caja o Corona, el sistema resetea automáticamente a 0 km el aceite de caja/corona correspondiente para no duplicar alertas.
-
----
-
-### 🔧 Estación 4: MAESTRO MECÁNICO Y MOTOR
-*Frecuencia habitual: Preventivos mayores de motor (50,000 a 100,000 km).*
-
-* **Componentes del Combo:**
-  * `[ ]` Calibración de Válvulas y Toberas (Denso)
-  * `[ ]` Termostato del Motor
-  * `[ ]` Lavado Químico de Radiador e Intercooler
-  * `[ ]` Cambio de Bandas de Accesorios
-  * `[ ]` Metales de Motor (Biela y Bancada)
-* **Validación con el Conductor:**  
-  *¿A qué kilometraje acostumbra enviar las toberas al banco de prueba?* ________ km.  
-
----
-
 ### 💨 Estación 5: SISTEMA DE AIRE Y ADMISIÓN (Neumática y Clima)
 *Frecuencia habitual: Cada 10,000 a 40,000 km.*
 
@@ -232,7 +235,7 @@ En RutaGo, el Conductor o el Socio no registran 31 ítems uno por uno en la carr
   * `[ ]` Ajuste y Chequeo de Mangueras de Admisión / Turbo (10,000 km)
   * `[ ]` Filtro de Aire Pequeño Secundario (20,000 km)
   * `[ ]` Filtro de Aire Grande Primario (40,000 km)
-  * `[ ]` Mantenimiento Anual de Climatización A/C (110,000 km)
+  * `[ ]` Mantenimiento Preventivo Anual de Climatización A/C (110,000 km)
 
 ---
 
@@ -252,50 +255,41 @@ En RutaGo, el Conductor o el Socio no registran 31 ítems uno por uno en la carr
 * **Componentes del Combo:**
   * `[ ]` Rotación de Baterías A ⇄ B y Protección de Bornes (8,600 km)
   * `[ ]` Renovación del Juego de Baterías Par 24V (200,000 km)
-  * `[ ]` Chequeo de Alternador y Bandas (100,000 km)
+  * `[ ]` Chequeo de Alternador y Sistema de Carga (100,000 km)
 
 ---
 
-### 🧼 Estación 8: RADIADOR Y ENFRIAMIENTO
-*Frecuencia habitual: Cada 100,000 km (Anual o bianual).*
+## 🚌 6. Sección Especial: Rutina Directa de Chofer ($0.00 Mano de Obra Propia)
+*(Operación Diaria y Semanal en Terminal o Patio — No genera factura ni costo de taller)*
 
-* **Componentes del Combo:**
-  * `[ ]` Baqueteado y Lavado Químico de Radiador
-  * `[ ]` Limpieza Externa de Intercooler
-  * `[ ]` Reemplazo Total de Coolant de Servicio Pesado 50/50
-  * `[ ]` Cambio de Termostato
+Esta sección se audita de forma separada porque **no constituye un taller comercial externo**. El chofer dispone de su botón dedicado en la aplicación: `🚌 Mi Rutina Chofer ($0)`:
 
----
-
-### 🚌 Estación 9: RUTINA DIRECTA DE CHOFER (En Terminal o Parada)
-*Frecuencia habitual: Diaria / Semanal — Mano de Obra Propia ($0.00).*
-
-* **Componentes:**
-  * `[✓]` Calibración de Raches de Freno (800 km)
-  * `[✓]` Engrase Rápido de Chasis (1,500 km)
-  * `[✓]` Soplado Filtro de Aire (5,000 km)
-  * `[✓]` Lavado Malla de Aire en Pasillo (5,000 km)
-  * `[✓]` Rotación Mensual de Baterías (8,600 km)
+| # | Labor Propia de Patio | Frecuencia | ¿Cómo se realiza? | ¿Quién lo ejecuta? |
+|:-:|:---|:---:|:---|:---:|
+| 1 | **Calibración de Raches de Freno** | 800 km | Ajuste manual con llave en terminal | Conductor Titular |
+| 2 | **Engrase Rápido de Chasis** | 1,500 km | Grasera manual en fosa de cooperativa | Conductor Titular |
+| 3 | **Soplado Filtro de Aire** | 5,000 km | Manguera de aire en vulcanizadora | Conductor Titular |
+| 4 | **Lavado Malla Aire Pasillo** | 5,000 km | Lavado manual con agua y detergente | Conductor / Ayudante |
+| 5 | **Rotación Mensual Baterías** | 8,600 km | Intercambio de posición física y bornes | Conductor Titular |
 
 ---
 
-## 📊 6. Matriz de Síntesis y Calibración Inmediata
+## 📊 7. Matriz de Síntesis y Calibración Inmediata
 
-| Estación de Servicio | Taller / Proveedor Acordado | Kilometraje Próximo Estimado | ¿Quién Paga Habitualmente? |
+| Taller / Estación de Servicio | Proveedor / Taller Acordado | Kilometraje Próximo Estimado | ¿Quién Paga Habitualmente? |
 |:---|:---|:---:|:---:|
 | **1. Lubricadora (Fosa)** | __________________________________ | ____________ km | `[ ] Ayudante  [ ] Socio` |
-| **2. Frenos y Muelles** | __________________________________ | ____________ km | `[ ] Ayudante  [ ] Socio` |
-| **3. Caja y Transmisión** | __________________________________ | ____________ km | `[ ] Ayudante  [ ] Socio` |
-| **4. Motor Mayor** | __________________________________ | ____________ km | `[ ] Ayudante  [ ] Socio` |
+| **2. Caja y Corona** | __________________________________ | ____________ km | `[ ] Ayudante  [ ] Socio` |
+| **3. Maestro Mecánico (Motor y Radiador)**| __________________________________ | ____________ km | `[ ] Ayudante  [ ] Socio` |
+| **4. Frenos, Rodaje y Muelles**| __________________________________ | ____________ km | `[ ] Ayudante  [ ] Socio` |
 | **5. Aire y Admisión** | __________________________________ | ____________ km | `[ ] Ayudante  [ ] Socio` |
-| **6. Serviteca / Llantas** | __________________________________ | ____________ km | `[ ] Ayudante  [ ] Socio` |
-| **7. Electroauto** | __________________________________ | ____________ km | `[ ] Ayudante  [ ] Socio` |
-| **8. Radiador / Coolant** | __________________________________ | ____________ km | `[ ] Ayudante  [ ] Socio` |
-| **9. Rutina de Chofer** | *Mano de obra propia ($0)* | En terminal / casa | `[ ] Conductor Titular` |
+| **6. Serviteca / Llantera** | __________________________________ | ____________ km | `[ ] Ayudante  [ ] Socio` |
+| **7. Electroauto y Baterías** | __________________________________ | ____________ km | `[ ] Ayudante  [ ] Socio` |
+| **8. Rutina Propia Chofer ($0)**| *Mano de obra propia ($0)* | En terminal / casa | `[ ] Conductor Titular` |
 
 ---
 
-## 📝 7. Observaciones Particulares y Novedades Mecánicas Detectadas
+## 📝 8. Observaciones Particulares y Novedades Mecánicas Detectadas
 
 Describa cualquier ruido, holgura, fuga o trabajo pendiente que la unidad arrastre a la fecha de la entrevista:
 
@@ -306,7 +300,7 @@ Describa cualquier ruido, holgura, fuga o trabajo pendiente que la unidad arrast
 
 ---
 
-## ✍️ 8. Acta de Conformidad y Asignación de Responsabilidades
+## ✍️ 9. Acta de Conformidad y Asignación de Responsabilidades
 
 Habiendo revisado conjuntamente el estado mecánico de la **Unidad N° [ ______ ]**, el Socio Propietario y el Conductor Titular declaran su conformidad con los kilometrajes base y las políticas de mantenimiento preventivo acordadas, comprometiéndose a registrar oportunamente cada parada técnica en la aplicación **RutaGo**.
 
