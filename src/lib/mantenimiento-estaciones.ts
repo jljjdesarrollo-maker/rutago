@@ -1731,6 +1731,11 @@ export function resolveMantenimientoItemsParaBus(
       c.codigo === "MNT-FILT-TRAMPA" ||
       c.codigo === "MNT-FILT-DIESEL-SEC"
     ) {
+      const esBus01 = busId === "BUS-01" || busId === "01";
+      const uKm = esBus01
+        ? 893100
+        : Math.max(0, odometroActual - Math.floor(intervaloFinal * 0.2));
+      const fUlt = esBus01 ? "2026-09-19" : new Date().toISOString().split("T")[0];
       return {
         id: `mbus-${c.id}-${busId}`,
         catalogoId: c.id,
@@ -1738,8 +1743,8 @@ export function resolveMantenimientoItemsParaBus(
         nombre: c.nombre,
         categoria: c.categoria,
         intervaloKm: intervaloFinal,
-        ultimoKm: 893100,
-        fechaUltimo: "2026-09-19",
+        ultimoKm: uKm,
+        fechaUltimo: fUlt,
         costoEstimado: c.codigo === "MNT-ACEITE-MOT" ? 120 : 35,
         repuestoDetalle: c.especificacionLubricanteRepuesto,
         asignadoChofer: esChofer,
@@ -1748,6 +1753,11 @@ export function resolveMantenimientoItemsParaBus(
     }
 
     if (c.codigo === "MNT-ENGRASE-CHASIS") {
+      const esBus01 = busId === "BUS-01" || busId === "01";
+      const uKm = esBus01
+        ? 893085
+        : Math.max(0, odometroActual - Math.floor(intervaloFinal * 0.2));
+      const fUlt = esBus01 ? "2026-09-19" : new Date().toISOString().split("T")[0];
       return {
         id: `mbus-${c.id}-${busId}`,
         catalogoId: c.id,
@@ -1755,8 +1765,8 @@ export function resolveMantenimientoItemsParaBus(
         nombre: c.nombre,
         categoria: c.categoria,
         intervaloKm: intervaloFinal,
-        ultimoKm: 893085,
-        fechaUltimo: "2026-09-19",
+        ultimoKm: uKm,
+        fechaUltimo: fUlt,
         costoEstimado: 25,
         repuestoDetalle: c.especificacionLubricanteRepuesto,
         asignadoChofer: esChofer,

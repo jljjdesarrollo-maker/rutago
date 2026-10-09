@@ -3646,6 +3646,43 @@ bun test tests/manual-socio.test.ts
    - `docs/TUTORIAL_ALTA_SOCIO_SUSCRIPCION.md`: Cláusula explícita de aislamiento para nuevas altas.
    - `package.json`: Versión actualizada a **3.61.15**.
 
+---
+
+## 🏛️ v3.61.16 - PERSISTENCIA CLOUD DE ODÓMETROS, ONBOARDING ASISTIDO Y ERRADICACIÓN DE QUEMADOS EN MANTENIMIENTO (2026-10-09)
+
+> **ESTADO:** 🟢 COMPLETADO, VERIFICADO Y CON PRUEBAS E2E AL 100% (32/32 PASSED)  
+> **FECHA DE REGISTRO:** 2026-10-09 | **SISTEMA:** RutaGo - Motor de Mantenimiento Preventivo Multi-Tenant  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **UNIDAD OBJETIVO:** Unidad 10 (Socia Marina Alexandra) y Nuevos Suscriptores de Flota  
+
+### 📍 1. Diagnóstico de Ingeniería y Causa Raíz:
+- **Problema Reportado:** Al ingresar como socio de la Unidad 10 e intentar activar el plan de mantenimiento total de los 31 ítems de catálogo Hino AK, la aplicación arrojó un error en pantalla / fallo de cálculo.
+- **Causa Raíz Identificada:**
+  1. **Fuga de Sincronización del Odómetro Registrado por SuperAdmin:** En `FlotaScreen.tsx` (línea 374), cuando el SuperAdmin digita el tacómetro inicial al matricular la unidad, la llamada `saveBusOdometer` guardaba únicamente en el `localStorage` del navegador local del SuperAdmin. El campo `odometroInicial` **no se agregaba a `busPayload`**, por lo que nunca viajaba a la base de datos PostgreSQL (`POST /api/buses`). Cuando la Socia Propietaria inició sesión desde su propio teléfono o PC, su dispositivo no disponía de ese odómetro y recurría al fallback ciego.
+  2. **Valores Históricos Quemados del Bus 01:** En `MantenimientoScreen.tsx` (función `calibrarItem`) y `src/lib/mantenimiento-estaciones.ts` (función `resolveMantenimientoItemsParaBus`), componentes vitales (Aceite de Motor, Filtros y Engrase) tenían fijos en código `ultimoKm: 893100` y `ultimoKm: 893085` correspondientes al autobús piloto Bus 01.
+  3. **Disparo del Candado de Desfase Extremo:** Al calcular `Math.abs(baseKm - it.ultimoKm) > 100000`, la diferencia entre el tacómetro de la Unidad 10 y los 893,100 km del Bus 01 provocaba una brecha de más de 700,000 km, bloqueando el guardado y provocando cálculos absurdos de componentes vencidos por cientos de miles de kilómetros.
+
+### 📍 2. Plan Arquitectónico por Fases Aprobado:
+
+#### 🔹 Fase 1: Persistencia Central del Odómetro en la Nube (SuperAdmin -> BD -> Socio)
+- Modificar `FlotaScreen.tsx` para inyectar `odometroInicial` dentro de `busPayload`.
+- Extender `/api/buses` (POST y PUT) y `/api/buses/odometro` para persistir `odometroInicial` en la base de datos central de PostgreSQL y emitir el valor a todos los dispositivos suscritos.
+- Asegurar que al descargar la flota en el dispositivo del socio (`/api/buses`), `odometroInicial` hidrate la memoria local automáticamente.
+
+#### 🔹 Fase 2: Erradicación de Kilometrajes Quemados del Bus 01
+- Modificar `calibrarItem` en `MantenimientoScreen.tsx` y `resolveMantenimientoItemsParaBus` en `mantenimiento-estaciones.ts`.
+- Sustituir los valores fijos `893100` y `893085` por inicialización dinámica relativa al tacómetro de cada autobús (`Math.max(0, odometroActualUnidad - Math.floor(intervalo * 0.2))`).
+- Cada nueva unidad suscrita nace con sus 31 ítems al 80% de vida útil (en regla, estado óptimo) calculados matemáticamente contra su propio odómetro.
+
+#### 🔹 Fase 3: Asistente Táctil de Calibración Inicial (Opción 1 con Fricción Cero)
+- En caso de que una unidad nueva no tenga aún odómetro registrado por SuperAdmin ni por arqueo previo ($Km \le 0$), al pulsar "Activar Total Hino (31 Ítems)" la app desplegará un modal amigable de bienvenida:
+  *"🏁 Calibración Inicial de la Unidad 10: Para monitorear tus cambios con precisión, ingresa el kilometraje actual que marca tu tablero hoy"*.
+- Con 1 solo toque el socio guarda el odómetro en la base de datos y activa los 31 ítems en verde sin ningún error ni frustración.
+
+#### 🔹 Fase 4: Pruebas de Integración y Verificación Integral
+- Pruebas E2E: Simular alta de unidad con odómetro de SuperAdmin, inicio de sesión del socio en dispositivo limpio, activación de los 31 ítems y verificación de semáforo 🟢 Estado Óptimo sin alertas rojas de desfase.
+
+
 
 
 

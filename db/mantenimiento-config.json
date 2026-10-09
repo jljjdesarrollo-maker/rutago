@@ -33,5 +33,19 @@
     ],
     "origenDispositivo": "SuperAdministrador (PIN 9999)",
     "updatedAt": "2026-09-25T15:41:37.512Z"
+  },
+  "BUS-10": {
+    "busId": "BUS-10",
+    "moduloActivo": true,
+    "nivelControl": "TOTAL",
+    "decisionTomada": true,
+    "fechaDecision": "2026-10-09",
+    "combosPersonalizados": {},
+    "intervalosPersonalizados": {},
+    "updatedAt": "2026-10-09T11:55:18.881Z",
+    "itemsActivos": {
+      "MNT-ACEITE-MOT": true
+    },
+    "origenDispositivo": "Cliente Web / Móvil"
   }
 }

@@ -79,18 +79,31 @@ async function cargarConfiguracionesAsync(): Promise<Record<string, BusMantenimi
 
   let configs: Record<string, BusMantenimientoConfig> = { ...DEFAULT_CONFIGS };
 
-  // 1. Intentar consultar desde PostgreSQL en la nube vía BusVT (SYS_CONFIG_MANTENIMIENTO)
-  try {
-    const record = await (db as any).busVT.findUnique({
-      where: { codigo: "SYS_CONFIG_MANTENIMIENTO" },
-    });
-    if (record?.frecuencias && typeof record.frecuencias === "object" && !Array.isArray(record.frecuencias)) {
-      configs = { ...DEFAULT_CONFIGS, ...(record.frecuencias as Record<string, BusMantenimientoConfig>) };
-      globalStore.__rutago_mantenimiento_configs__ = configs;
-      return configs;
+  // 1. Intentar consultar desde PostgreSQL en la nube vía BusVT (SYS_CONFIG_MANTENIMIENTO) con timeout rápido
+  const hasDbUrl = Boolean(
+    process.env.DATABASE_URL ||
+    process.env.POOLED_DATABASE_URL ||
+    process.env.STAGING_POSTGRES_URL ||
+    process.env.STAGING_PRISMA_DATABASE_URL
+  );
+
+  if (hasDbUrl) {
+    try {
+      const dbPromise = (db as any).busVT.findUnique({
+        where: { codigo: "SYS_CONFIG_MANTENIMIENTO" },
+      });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("DB timeout")), 2000)
+      );
+      const record = await Promise.race([dbPromise, timeoutPromise]);
+      if (record?.frecuencias && typeof record.frecuencias === "object" && !Array.isArray(record.frecuencias)) {
+        configs = { ...DEFAULT_CONFIGS, ...(record.frecuencias as Record<string, BusMantenimientoConfig>) };
+        globalStore.__rutago_mantenimiento_configs__ = configs;
+        return configs;
+      }
+    } catch {
+      // Si la BD no está disponible o timeout, continuar con archivo
     }
-  } catch {
-    // Si la BD no está disponible en este instante, continuar con archivo
   }
 
   // 2. Fallback a archivos en disco
@@ -119,22 +132,35 @@ async function guardarConfiguracionesAsync(configs: Record<string, BusMantenimie
   globalStore.__rutago_mantenimiento_configs__ = configs;
   guardarEnArchivo(configs);
 
-  try {
-    await (db as any).busVT.upsert({
-      where: { codigo: "SYS_CONFIG_MANTENIMIENTO" },
-      create: {
-        codigo: "SYS_CONFIG_MANTENIMIENTO",
-        nombre: "Sistema Config Mantenimiento (Global)",
-        activo: false,
-        frecuencias: configs,
-      },
-      update: {
-        frecuencias: configs,
-        activo: false,
-      },
-    });
-  } catch (dbErr) {
-    console.warn("Aviso: Persistencia en PostgreSQL diferida o no disponible:", dbErr);
+  const hasDbUrl = Boolean(
+    process.env.DATABASE_URL ||
+    process.env.POOLED_DATABASE_URL ||
+    process.env.STAGING_POSTGRES_URL ||
+    process.env.STAGING_PRISMA_DATABASE_URL
+  );
+
+  if (hasDbUrl) {
+    try {
+      const upsertPromise = (db as any).busVT.upsert({
+        where: { codigo: "SYS_CONFIG_MANTENIMIENTO" },
+        create: {
+          codigo: "SYS_CONFIG_MANTENIMIENTO",
+          nombre: "Sistema Config Mantenimiento (Global)",
+          activo: false,
+          frecuencias: configs,
+        },
+        update: {
+          frecuencias: configs,
+          activo: false,
+        },
+      });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("DB timeout")), 2500)
+      );
+      await Promise.race([upsertPromise, timeoutPromise]);
+    } catch (dbErr) {
+      console.warn("Aviso: Persistencia en PostgreSQL diferida o no disponible:", dbErr);
+    }
   }
 }
 

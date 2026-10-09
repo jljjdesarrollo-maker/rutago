@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     let motivoCalibrado: string | null = null;
 
     if (busData?.notas) {
-      const matchKm = busData.notas.match(/\[Odómetro Calibrado\]:\s*([0-9,.]+)\s*km/i);
+      const matchKm = busData.notas.match(/\[Odómetro (?:Calibrado|Inicial)\]:\s*([0-9,.]+)\s*km/i);
       if (matchKm) {
         kmCalibrado = parseInt(matchKm[1].replace(/[^0-9]/g, ''), 10);
       }

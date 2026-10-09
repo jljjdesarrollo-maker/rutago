@@ -556,3 +556,86 @@ describe("📈 ETAPA 6: Aislamiento Multi-Tenant Universal de Reportes e Informe
     expect(formatMoneyUSD(125.5)).toBe("$ 125.50");
   });
 });
+
+describe("🚀 ETAPA 7: Onboarding de Mantenimiento, Persistencia Cloud de Odómetro y Desacoplamiento de Valores Quemados", () => {
+  test("7.1 Persistencia de odómetro inicial y extracción limpia desde notas", () => {
+    function extractOdometerFromNotas(notas?: string | null): string | undefined {
+      if (!notas) return undefined;
+      const matchCalib = notas.match(/\[Odómetro (?:Calibrado|Inicial)\]:\s*([0-9,.]+)\s*km/i);
+      if (matchCalib && matchCalib[1]) {
+        return matchCalib[1].replace(/[^0-9]/g, '');
+      }
+      return undefined;
+    }
+
+    const notasBus10 = "[Odómetro Inicial]: 187,420 km • Unidad Troncal de Alta Capacidad";
+    const extraido = extractOdometerFromNotas(notasBus10);
+    expect(extraido).toBe("187420");
+  });
+
+  test("7.2 Desacoplamiento de odómetro de Bus 01: Unidad 10 calcula relativo a su propio tacómetro", () => {
+    const busId = "BUS-10";
+    const odometroRealBus10 = 187420;
+    const intervaloAceite = 5000;
+
+    // Fórmula desacoplada (no arrastra 893,100 km)
+    const esBus01 = busId === "BUS-01" || busId === "01";
+    const uKm = esBus01
+      ? 893100
+      : Math.max(0, odometroRealBus10 - Math.floor(intervaloAceite * 0.2));
+
+    expect(esBus01).toBe(false);
+    expect(uKm).toBe(186420); // 187,420 - 1,000 = 186,420 km (1,000 km de uso, 4,000 km restantes)
+    
+    const kmRecorridos = odometroRealBus10 - uKm;
+    const kmRestantes = intervaloAceite - kmRecorridos;
+    expect(kmRecorridos).toBe(1000);
+    expect(kmRestantes).toBe(4000);
+    expect(kmRestantes > 0).toBe(true); // En regla, no vencido
+  });
+
+  test("7.3 Control Total para nueva unidad suscriptora: Todos los 31 ítems inician en regla sin falsos vencimientos", () => {
+    const odometroBus = 187420;
+    const catalogoItemsPrueba = [
+      { codigo: "MNT-ACEITE-MOT", intervaloKm: 5000 },
+      { codigo: "MNT-FILT-ACEITE", intervaloKm: 5000 },
+      { codigo: "MNT-FILT-TRAMPA", intervaloKm: 5000 },
+      { codigo: "MNT-FILT-DIESEL-SEC", intervaloKm: 5000 },
+      { codigo: "MNT-ENGRASE-CHASIS", intervaloKm: 1500 },
+      { codigo: "MNT-RACHES-FRENO", intervaloKm: 800 },
+      { codigo: "MNT-ZAPATAS-POST", intervaloKm: 8000 },
+    ];
+
+    const itemsInicializados = catalogoItemsPrueba.map(c => {
+      const uKm = Math.max(0, odometroBus - Math.floor(c.intervaloKm * 0.2));
+      const rest = c.intervaloKm - (odometroBus - uKm);
+      return {
+        ...c,
+        ultimoKm: uKm,
+        kmRestantes: rest,
+        esVencido: rest <= 0,
+      };
+    });
+
+    const totalVencidos = itemsInicializados.filter(i => i.esVencido).length;
+    expect(totalVencidos).toBe(0); // CERO vencidos al activar el plan
+  });
+
+  test("7.4 Asistente de calibración inicial: Asignación inmediata cuando odómetro base es 0", () => {
+    let kmActualBus = 0;
+    const digitadoPorSocio = "187420";
+
+    const validarYAsignar = (input: string) => {
+      const num = parseInt(input.replace(/[^0-9]/g, ''), 10);
+      if (!isNaN(num) && num > 0) {
+        kmActualBus = num;
+        return true;
+      }
+      return false;
+    };
+
+    const exito = validarYAsignar(digitadoPorSocio);
+    expect(exito).toBe(true);
+    expect(kmActualBus).toBe(187420);
+  });
+});

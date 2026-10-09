@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { INITIAL_PILOT_BUS } from '@/lib/fleet-storage';
+import { INITIAL_PILOT_BUS, getAllBuses } from '@/lib/fleet-storage';
 
 export const dynamic = 'force-dynamic';
+
+function extractOdometerFromNotas(notas?: string | null): string | undefined {
+  if (!notas) return undefined;
+  const matchCalib = notas.match(/\[Odómetro (?:Calibrado|Inicial)\]:\s*([0-9,.]+)\s*km/i);
+  if (matchCalib && matchCalib[1]) {
+    return matchCalib[1].replace(/[^0-9]/g, '');
+  }
+  return undefined;
+}
 
 // GET /api/buses
 // Parámetros opcionales: ?disco=01 ó ?tipoOperacion=TRONCAL_VT
@@ -64,20 +73,34 @@ export async function GET(req: NextRequest) {
       }
     } catch (dbErr) {
       console.warn('Consulta a tabla Bus en BD falló (posible offline o migración pendiente), fallback seguro:', dbErr);
-      buses = [INITIAL_PILOT_BUS];
+      const all = getAllBuses();
+      buses = all.filter(b => {
+        if (disco && b.numeroDisco !== disco) return false;
+        if (tipoOperacion && b.tipoOperacion !== tipoOperacion) return false;
+        return true;
+      });
     }
+
+    const mappedBuses = buses.map((b: any) => {
+      const odo = extractOdometerFromNotas(b.notas) || (b.numeroDisco === '01' ? '893485' : undefined);
+      return {
+        ...b,
+        odometroInicial: odo,
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      data: buses,
-      count: buses.length,
+      data: mappedBuses,
+      count: mappedBuses.length,
     });
   } catch (error) {
     console.error('Error al obtener flota de buses:', error);
+    const all = getAllBuses();
     return NextResponse.json({
       success: true,
-      data: [INITIAL_PILOT_BUS],
-      count: 1,
+      data: all,
+      count: all.length,
       fallback: true,
     });
   }
@@ -99,6 +122,7 @@ export async function POST(req: NextRequest) {
       tipoOperacion,
       activo,
       notas,
+      odometroInicial,
     } = body;
 
     if (!numeroDisco || !placa || !marca || !propietario) {
@@ -116,6 +140,15 @@ export async function POST(req: NextRequest) {
     const safeTipoOperacion = tipoOperacion === 'ALIMENTADOR_P' ? 'ALIMENTADOR_P' : 'TRONCAL_VT';
     const safeCapacidad = Number(capacidadAsientos) > 0 ? Number(capacidadAsientos) : 45;
 
+    let finalNotas = notas ? String(notas).trim() : '';
+    if (odometroInicial) {
+      const cleanKm = String(odometroInicial).replace(/[^0-9]/g, '');
+      if (cleanKm && !finalNotas.includes('[Odómetro')) {
+        const tag = `[Odómetro Inicial]: ${Number(cleanKm).toLocaleString()} km`;
+        finalNotas = finalNotas ? `${tag} • ${finalNotas}` : tag;
+      }
+    }
+
     let savedBus;
     try {
       savedBus = await (db as any).bus.upsert({
@@ -129,7 +162,7 @@ export async function POST(req: NextRequest) {
           propietario: String(propietario).trim(),
           tipoOperacion: safeTipoOperacion,
           activo: activo !== false,
-          notas: notas ? String(notas).trim() : undefined,
+          notas: finalNotas || undefined,
         },
         create: {
           id: `BUS-${cleanDisco}`,
@@ -142,7 +175,7 @@ export async function POST(req: NextRequest) {
           propietario: String(propietario).trim(),
           tipoOperacion: safeTipoOperacion,
           activo: activo !== false,
-          notas: notas ? String(notas).trim() : undefined,
+          notas: finalNotas || undefined,
         },
       });
     } catch (dbErr) {
@@ -158,15 +191,22 @@ export async function POST(req: NextRequest) {
         propietario: String(propietario).trim(),
         tipoOperacion: safeTipoOperacion,
         activo: activo !== false,
-        notas: notas ? String(notas).trim() : undefined,
+        notas: finalNotas || undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
     }
 
+    const odoReturn = odometroInicial
+      ? String(odometroInicial).replace(/[^0-9]/g, '')
+      : extractOdometerFromNotas(savedBus.notas);
+
     return NextResponse.json({
       success: true,
-      data: savedBus,
+      data: {
+        ...savedBus,
+        odometroInicial: odoReturn,
+      },
       message: `Unidad ${cleanDisco} guardada correctamente`,
     });
   } catch (error) {
@@ -221,7 +261,20 @@ export async function PUT(req: NextRequest) {
     if (fields.propietario !== undefined) cleanUpdateData.propietario = String(fields.propietario).trim();
     if (fields.tipoOperacion !== undefined) cleanUpdateData.tipoOperacion = fields.tipoOperacion === "ALIMENTADOR_P" ? "ALIMENTADOR_P" : "TRONCAL_VT";
     if (fields.activo !== undefined) cleanUpdateData.activo = fields.activo !== false;
-    if (fields.notas !== undefined) cleanUpdateData.notas = fields.notas ? String(fields.notas).trim() : null;
+    
+    let notasVal = fields.notas !== undefined ? (fields.notas ? String(fields.notas).trim() : null) : undefined;
+    if (fields.odometroInicial) {
+      const cleanKm = String(fields.odometroInicial).replace(/[^0-9]/g, '');
+      if (cleanKm) {
+        const tag = `[Odómetro Inicial]: ${Number(cleanKm).toLocaleString()} km`;
+        if (notasVal && !notasVal.includes('[Odómetro')) {
+          notasVal = `${tag} • ${notasVal}`;
+        } else if (!notasVal) {
+          notasVal = tag;
+        }
+      }
+    }
+    if (notasVal !== undefined) cleanUpdateData.notas = notasVal;
 
     let updated;
     try {
@@ -239,7 +292,7 @@ export async function PUT(req: NextRequest) {
           propietario: fields.propietario ? String(fields.propietario).trim() : "Socio",
           tipoOperacion: fields.tipoOperacion === "ALIMENTADOR_P" ? "ALIMENTADOR_P" : "TRONCAL_VT",
           activo: fields.activo !== false,
-          notas: fields.notas ? String(fields.notas).trim() : null,
+          notas: notasVal ?? (fields.notas ? String(fields.notas).trim() : null),
         },
       });
     } catch (dbErr) {
@@ -252,9 +305,16 @@ export async function PUT(req: NextRequest) {
       };
     }
 
+    const odoReturn = fields.odometroInicial
+      ? String(fields.odometroInicial).replace(/[^0-9]/g, '')
+      : extractOdometerFromNotas(updated?.notas);
+
     return NextResponse.json({
       success: true,
-      data: updated,
+      data: {
+        ...updated,
+        odometroInicial: odoReturn,
+      },
       message: "Unidad actualizada correctamente",
     });
   } catch (error) {

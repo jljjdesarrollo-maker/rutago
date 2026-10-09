@@ -219,6 +219,14 @@ export function saveBus(bus: BusItem): BusItem[] {
       buses.push({ ...bus, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(buses));
+
+    // Si viene con odómetro inicial, auto-sincronizar el caché de tacómetro de la unidad
+    if (bus.odometroInicial) {
+      const discoClean = String(bus.numeroDisco || '').replace(/[^0-9]/g, '').padStart(2, '0');
+      if (discoClean) {
+        saveBusOdometer(discoClean, bus.odometroInicial, new Date().toISOString().split('T')[0]);
+      }
+    }
     return buses;
   } catch (err) {
     console.error('Error guardando unidad de flota:', err);

@@ -151,13 +151,15 @@ export function MantenimientoScreen({
   >([]);
   const [filtroSocioSuperAdmin, setFiltroSocioSuperAdmin] = useState<string>('TODOS');
 
-  const [activeBusId, setActiveBusId] = useState<string>(() => {
+  const initialBusId = (() => {
     if (currentUser?.busId) {
       return currentUser.busId.startsWith('BUS-') ? currentUser.busId : `BUS-${currentUser.busId}`;
     }
     if (typeof window === 'undefined') return 'BUS-01';
     return getActiveBusId();
-  });
+  })();
+
+  const [activeBusId, setActiveBusId] = useState<string>(initialBusId);
 
   // Cargar lista de autobuses autorizados según rol y socioId
   useEffect(() => {
@@ -253,7 +255,7 @@ export function MantenimientoScreen({
   }, []);
 
   // Odómetro actual del bus auditado (garantizado numérico para evitar errores de render)
-  const [kmActual, setKmActual] = useState<number>(() => resolverKmActual(getActiveBusId()));
+  const [kmActual, setKmActual] = useState<number>(() => resolverKmActual(initialBusId));
 
   const cargarItems = useCallback((busId: string): MantenimientoBusItem[] => {
     if (typeof window === 'undefined') return [];
@@ -272,22 +274,27 @@ export function MantenimientoScreen({
     };
 
     const calibrarItem = (c: any): MantenimientoBusItem => {
-      // Aceite de motor y tríada de filtros: 19 de septiembre de 2026 a 893,100 km
+      // Aceite de motor y tríada de filtros: 19 de septiembre de 2026 a 893,100 km (Calibración específica para Bus 01)
       if (
         c.codigo === 'MNT-ACEITE-MOT' ||
         c.codigo === 'MNT-FILT-ACEITE' ||
         c.codigo === 'MNT-FILT-TRAMPA' ||
         c.codigo === 'MNT-FILT-DIESEL-SEC'
       ) {
+        const intervaloFinal = getIntervaloFinal(c.codigo, c.intervaloKmOficial);
+        const ultimoKmCalculado = busId === 'BUS-01'
+          ? 893100
+          : Math.max(0, baseKm - Math.floor(intervaloFinal * 0.2));
+        const fechaCalculada = busId === 'BUS-01' ? '2026-09-19' : new Date().toISOString().split('T')[0];
         return {
           id: `mbus-${c.id}-calibrado`,
           catalogoId: c.id,
           codigo: c.codigo,
           nombre: c.nombre,
           categoria: c.categoria,
-          intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
-          ultimoKm: 893100,
-          fechaUltimo: '2026-09-19',
+          intervaloKm: intervaloFinal,
+          ultimoKm: ultimoKmCalculado,
+          fechaUltimo: fechaCalculada,
           costoEstimado: c.codigo === 'MNT-ACEITE-MOT' ? 120 : 35,
           repuestoDetalle: c.especificacionLubricanteRepuesto,
           asignadoChofer: c.asignadoChoferPorDefecto,
@@ -296,15 +303,20 @@ export function MantenimientoScreen({
       }
       // Engrase de chasis
       if (c.codigo === 'MNT-ENGRASE-CHASIS') {
+        const intervaloFinal = getIntervaloFinal(c.codigo, c.intervaloKmOficial);
+        const ultimoKmCalculado = busId === 'BUS-01'
+          ? 893085
+          : Math.max(0, baseKm - Math.floor(intervaloFinal * 0.2));
+        const fechaCalculada = busId === 'BUS-01' ? '2026-09-19' : new Date().toISOString().split('T')[0];
         return {
           id: `mbus-${c.id}-calibrado`,
           catalogoId: c.id,
           codigo: c.codigo,
           nombre: c.nombre,
           categoria: c.categoria,
-          intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
-          ultimoKm: 893085,
-          fechaUltimo: '2026-09-19',
+          intervaloKm: intervaloFinal,
+          ultimoKm: ultimoKmCalculado,
+          fechaUltimo: fechaCalculada,
           costoEstimado: 25,
           repuestoDetalle: c.especificacionLubricanteRepuesto,
           asignadoChofer: c.asignadoChoferPorDefecto,
@@ -438,7 +450,9 @@ export function MantenimientoScreen({
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const desfaseExtremo = parsed.some(
-            (it: MantenimientoBusItem) => it.ultimoKm > 0 && Math.abs(baseKm - it.ultimoKm) > 100000
+            (it: MantenimientoBusItem) =>
+              it.ultimoKm > 0 &&
+              (it.ultimoKm > baseKm + 5000 || Math.abs(baseKm - it.ultimoKm) > Math.max(300000, (it.intervaloKm || 5000) * 2))
           );
           if (!desfaseExtremo) {
             itemsExistentes = parsed;
@@ -504,7 +518,7 @@ export function MantenimientoScreen({
   }, [resolverKmActual]);
 
   // Mantenimientos activos de esta unidad
-  const [items, setItems] = useState<MantenimientoBusItem[]>(() => cargarItems(getActiveBusId()));
+  const [items, setItems] = useState<MantenimientoBusItem[]>(() => cargarItems(initialBusId));
 
   // Suscripción reactiva al cambio de unidad física y al odómetro auditado (Arqueo de Llegada)
   useEffect(() => {
@@ -674,6 +688,12 @@ export function MantenimientoScreen({
     nivel: NivelControlMantenimiento;
     activarModulo: boolean;
   } | null>(null);
+  const [modalCalibracionInicial, setModalCalibracionInicial] = useState<{
+    nivel: NivelControlMantenimiento;
+    activarModulo: boolean;
+  } | null>(null);
+  const [inputCalibracionKm, setInputCalibracionKm] = useState<string>('');
+  const [isGuardandoCalibracion, setIsGuardandoCalibracion] = useState<boolean>(false);
   const [modalConfirmReactivarOpen, setModalConfirmReactivarOpen] = useState<boolean>(false);
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
 
@@ -823,7 +843,42 @@ export function MantenimientoScreen({
   };
 
   const solicitarConfirmacionNivel = (nuevoNivel: NivelControlMantenimiento, activarModulo: boolean = true) => {
+    // Si la unidad no tiene aún odómetro o es 0, asistir al socio inmediatamente
+    if (kmActual <= 0) {
+      setInputCalibracionKm('');
+      setModalCalibracionInicial({ nivel: nuevoNivel, activarModulo });
+      return;
+    }
     setModalConfirmNivel({ nivel: nuevoNivel, activarModulo });
+  };
+
+  const handleGuardarCalibracionInicial = async () => {
+    if (!modalCalibracionInicial) return;
+    const cleanNum = parseInt(inputCalibracionKm.replace(/[^0-9]/g, ''), 10);
+    if (isNaN(cleanNum) || cleanNum <= 0) {
+      toast({
+        title: 'Kilometraje Inválido',
+        description: 'Por favor ingresa un kilometraje mayor a cero para el tacómetro de tu autobús.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsGuardandoCalibracion(true);
+    try {
+      await handleUpdateKmActual(cleanNum, 'Calibración Inicial al Activar Mantenimiento');
+      const planPendiente = modalCalibracionInicial;
+      setModalCalibracionInicial(null);
+      setModalConfirmNivel(planPendiente);
+    } catch (err: any) {
+      toast({
+        title: 'Error al Calibrar Tacómetro',
+        description: err?.message || 'No se pudo guardar la lectura en el servidor.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGuardandoCalibracion(false);
+    }
   };
 
   const ejecutarCambioNivelConfirmado = () => {
@@ -854,7 +909,19 @@ export function MantenimientoScreen({
       decisionTomada: true,
     });
 
-    const codigosExistentes = new Set(items.map(it => it.codigo));
+    const itemsSaneados = items.map(it => {
+      const tieneDesfaseSevero = it.ultimoKm > 0 && Math.abs(kmActual - it.ultimoKm) > 100000;
+      if (tieneDesfaseSevero) {
+        return {
+          ...it,
+          ultimoKm: Math.max(0, kmActual - Math.floor(it.intervaloKm * 0.2)),
+          fechaUltimo: new Date().toISOString().split("T")[0],
+        };
+      }
+      return it;
+    });
+
+    const codigosExistentes = new Set(itemsSaneados.map(it => it.codigo));
     const itemsNuevosParaAgregar: MantenimientoBusItem[] = [];
     catalogo.forEach(c => {
       const debeEstarActivo = nuevaConfig[c.codigo];
@@ -875,9 +942,7 @@ export function MantenimientoScreen({
         });
       }
     });
-    if (itemsNuevosParaAgregar.length > 0) {
-      saveItems([...items, ...itemsNuevosParaAgregar]);
-    }
+    saveItems([...itemsSaneados, ...itemsNuevosParaAgregar]);
 
     setModalConfirmNivel(null);
 
@@ -3915,11 +3980,103 @@ export function MantenimientoScreen({
         </div>
       )}
 
+      {/* MODAL DE CALIBRACIÓN INICIAL ASISTIDA (OPCIÓN 1 DE FRICCIÓN CERO) */}
+      {modalCalibracionInicial && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
+                <Gauge className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-black text-slate-900 leading-tight">
+                    Calibración Inicial del Tacómetro
+                  </h3>
+                  <Badge className="text-[9px] font-black uppercase bg-amber-100 text-amber-900">
+                    Unidad {activeBusDisco}
+                  </Badge>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Placa <strong>{activeBusPlaca}</strong> • Base para el plan {PLANTILLAS_NIVEL_CONTROL[modalCalibracionInicial.nivel].nombre}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50/70 rounded-2xl p-3 border border-amber-200/80 text-xs text-amber-950 leading-relaxed">
+              <p className="font-bold text-amber-900 mb-1">
+                🏁 Indícanos el kilometraje real de tu autobús hoy
+              </p>
+              <p className="text-[11px] text-amber-900/90">
+                Para proyectar tus cambios de aceite, filtros y zapatas con exactitud matemática, ingresa la lectura actual del odómetro que marca el tablero de tu unidad.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-700 uppercase tracking-wide">
+                Lectura Actual del Tablero (Km):
+              </label>
+              <div className="relative">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={inputCalibracionKm}
+                  onChange={(e) => setInputCalibracionKm(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Ej: 187420"
+                  className="h-12 text-lg font-black font-mono tracking-wider rounded-2xl border-slate-300 pr-12 focus:ring-2 focus:ring-amber-500"
+                  autoFocus
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">
+                  KM
+                </span>
+              </div>
+              {inputCalibracionKm && Number(inputCalibracionKm) > 0 && (
+                <p className="text-[11px] font-bold text-emerald-700 flex items-center gap-1 mt-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Tacómetro: {Number(inputCalibracionKm).toLocaleString()} km
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isGuardandoCalibracion}
+                onClick={() => setModalCalibracionInicial(null)}
+                className="w-full sm:w-auto h-10 text-xs font-bold text-slate-700 rounded-xl"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                disabled={!inputCalibracionKm || Number(inputCalibracionKm) <= 0 || isGuardandoCalibracion}
+                onClick={handleGuardarCalibracionInicial}
+                className="w-full sm:w-auto h-10 text-xs font-black bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs flex items-center gap-2"
+              >
+                {isGuardandoCalibracion ? (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Guardando Odómetro...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Guardar Odómetro y Continuar</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL DE CONFIRMACIÓN: ACTIVAR O CAMBIAR PLAN DE MANTENIMIENTO */}
       {modalConfirmNivel && (() => {
         const plantilla = PLANTILLAS_NIVEL_CONTROL[modalConfirmNivel.nivel];
+        const catalogo = getCatalogoMaestroGlobal();
         const cantidadItems = modalConfirmNivel.nivel === 'TOTAL'
-          ? (catalogoGlobal.filter(c => c.activoBiblioteca).length || 31)
+          ? (catalogo.filter(c => c.activoBiblioteca).length || 31)
           : modalConfirmNivel.nivel === 'MEDIO'
           ? 16
           : 7;
@@ -3949,6 +4106,30 @@ export function MantenimientoScreen({
                   <p className="text-xs text-slate-500 mt-1">
                     Para la Unidad <strong>{activeBusDisco}</strong> ({activeBusPlaca})
                   </p>
+                </div>
+              </div>
+
+              {/* Tacómetro de Referencia con Enlace Rápido de Calibración */}
+              <div className="flex items-center justify-between py-2 px-3 rounded-2xl bg-slate-100 border border-slate-200/80 text-xs">
+                <div className="flex items-center gap-2 text-slate-700">
+                  <Gauge className="w-4 h-4 text-slate-500" />
+                  <span className="font-bold">Tacómetro del autobús:</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-black text-slate-900 font-mono text-sm">
+                    {kmActual.toLocaleString()} km
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputCalibracionKm(kmActual.toString());
+                      setModalCalibracionInicial(modalConfirmNivel);
+                      setModalConfirmNivel(null);
+                    }}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline ml-1 cursor-pointer"
+                  >
+                    Ajustar
+                  </button>
                 </div>
               </div>
 

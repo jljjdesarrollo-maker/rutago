@@ -387,6 +387,7 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
       tipoOperacion: tipoFinal,
       activo: formData.activo,
       notas: formData.notas?.trim() || undefined,
+      odometroInicial: busKm || undefined,
       promoConfig: sanitizedPromo,
     };
     savePromoConfig(sanitizedPromo, `BUS-${cleanDisco}`);
@@ -402,6 +403,25 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
           await updateBusInApi(editingId, busPayload);
         } else {
           await saveBusToApi(busPayload);
+        }
+
+        // Si se especificó odómetro, persistir en base de datos central en nube
+        if (busKm) {
+          try {
+            await fetch('/api/buses/odometro', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                busId: `BUS-${cleanDisco}`,
+                numeroDisco: cleanDisco,
+                nuevoKm: busKm,
+                motivo: 'Registro Inicial por SuperAdmin',
+                actualizadoPor: 'SuperAdmin 9999',
+              }),
+            });
+          } catch (odoErr) {
+            console.warn('Aviso sincronizando odómetro en nube:', odoErr);
+          }
         }
       }
 
