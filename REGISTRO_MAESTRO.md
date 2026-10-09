@@ -3686,3 +3686,24 @@ bun test tests/manual-socio.test.ts
 
 
 
+
+---
+
+## 🏛️ v3.61.17 - GUÍA OFICIAL DE ENTREVISTA Y RELEVAMIENTO DE MANTENIMIENTO PREVENTIVO (2026-10-09)
+> **ESTADO:** 🟢 COMPLETADO, VERIFICADO Y HOMOLOGADO CON EL SISTEMA  
+> **FECHA DE REGISTRO:** 2026-10-09 | **SISTEMA:** RutaGo - Motor de Mantenimiento Preventivo Multi-Tenant  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Protocolo de auditoría de historia clínica mecánica, relevamiento con conductor y calibración de combos de taller.
+
+### 📍 1. Requerimiento y Propuesta Aprobada:
+- **Necesidad:** Establecer un instrumento formal para que el socio propietario y el auditor de flota realicen una entrevista técnica presencial con el chofer titular, definiendo la historia clínica del autobús, el odómetro base de inicio y las políticas de durabilidad por componente.
+- **Alineación con el Sistema:**
+  1. Integración de los **31 ítems oficiales del catálogo maestro Hino AK** divididos en 6 bloques temáticos.
+  2. Integración y validación de las **9 estaciones físicas de taller (combos de paradas)** de RutaGo (`LUBRICADORA`, `FRENOS_RUEDAS`, `MNT_MAYOR`, `MOTOR_MECANICO`, `ADMISION_AIRE`, `ALINEACION`, `ELECTROAUTO`, `RADIADOR`, `CHOFER_RUTINA`).
+  3. Preguntas clave de entrevista para acordar lubricantes, periodicidad de calibración de raches, filtros obligatorios y asignación de pagador (Ayudante en ruta vs. Socio directo).
+  4. Ficha lista para imprimir / exportar en PDF mediante Gemini con actas de firmas de responsabilidad.
+
+### 📍 2. Artefactos Creados y Sincronizados:
+- **`docs/GUIA_ENTREVISTA_Y_CONTROL_MANTENIMIENTO.md`**: Guía oficial completa con tablas de padrón, combos de parada y preguntas de relevamiento.
+- **`package.json`**: Versión elevada a `3.61.17`.
+- **`download/RutaGo_Contexto_Maestro_v3.61.17.md`**: Respaldo contextual para garantizar continuidad multiplataforma sin pérdida de información por cuotas.
