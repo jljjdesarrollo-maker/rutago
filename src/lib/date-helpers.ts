@@ -58,3 +58,29 @@ export function formatMonthName(ym: string): string {
   if (monthIndex < 0 || monthIndex > 11) return ym;
   return `${months[monthIndex]} ${year}`;
 }
+
+/**
+ * Formatea la fecha actual o una fecha dada a formato completo legible en español
+ * Ejemplo: "Viernes, 09 de Octubre de 2026"
+ */
+export function formatFechaCompletaEcuador(date: Date = new Date()): string {
+  try {
+    const formatter = new Intl.DateTimeFormat('es-EC', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      timeZone: ECUADOR_TIMEZONE,
+    });
+    const partes = formatter.format(date);
+    // Capitalizar primera letra: "viernes, 09 de octubre de 2026" -> "Viernes, 09 de Octubre de 2026"
+    return partes.charAt(0).toUpperCase() + partes.slice(1);
+  } catch {
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const months = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    return `${days[date.getDay()]}, ${String(date.getDate()).padStart(2, '0')} de ${months[date.getMonth()]} de ${date.getFullYear()}`;
+  }
+}

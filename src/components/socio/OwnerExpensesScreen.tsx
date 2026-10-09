@@ -60,7 +60,7 @@ import {
   removeSampleExpensesFromApi,
   syncAllLocalExpensesToApi,
 } from '../../lib/owner-expenses-storage';
-import { getCurrentYearMonth, getTodayDateString } from '../../lib/date-helpers';
+import { getCurrentYearMonth, getTodayDateString, formatFechaCompletaEcuador } from '../../lib/date-helpers';
 import type { UserSession } from '../transport/types';
 
 interface Props {
@@ -827,8 +827,8 @@ export default function OwnerExpensesScreen({
                   Gastos del Socio
                 </h1>
               </div>
-              <p className="text-[11px] text-red-100 font-medium">
-                Socio Propietario • Coo. Vilcabambaturis
+              <p className="text-[11px] text-red-100 font-medium capitalize">
+                Socio Propietario • {formatFechaCompletaEcuador()}
               </p>
             </div>
           </div>

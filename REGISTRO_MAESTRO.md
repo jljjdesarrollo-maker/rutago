@@ -3751,3 +3751,26 @@ bun test tests/manual-socio.test.ts
 - **`docs/GUIA_ENTREVISTA_Y_CONTROL_MANTENIMIENTO.md`**: Incorporada la Sección 6 con la Matriz Maestra de Equivalencia Temporal (Días, Semanas, Meses, Ciclos de VTs vs. Kilómetros) de 1 día a 3 años.
 - **`package.json`**: Versión incrementada a `3.61.19`.
 - **`download/RutaGo_Contexto_Maestro_v3.61.19.md`**: Respaldo contextual generado.
+
+---
+
+## 🏛️ v3.61.20 - INTEGRACIÓN DE FECHA COMPLETA AUTOMÁTICA EN CABECERA DEL SOCIO Y PANTALLAS CLAVE (2026-10-09)
+> **ESTADO:** 🟢 COMPLETADO, VERIFICADO Y DESPLEGADO A PRODUCCIÓN  
+> **FECHA DE REGISTRO:** 2026-10-09 | **SISTEMA:** RutaGo - Motor de Mantenimiento y Dashboard del Socio  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Certeza de auditoría en vivo mediante fecha completa automática y sin fricción de digitación.
+
+### 📍 1. Diagnóstico de Necesidad:
+- **Problema Reportado:** Al iniciar sesión con credenciales de un Socio Propietario suscriptor, no se visualizaba la fecha en la pantalla de inicio, generando incertidumbre sobre el día de operación y el período financiero auditado.
+- **Resolución Ergonómica:**
+  1. **Cero Fricción:** El socio NO debe ingresar la fecha manualmente (el sistema la resuelve automáticamente según la zona horaria oficial `America/Guayaquil` UTC-5).
+  2. **Certeza Visual:** Se incorporó la visualización completa en formato legible en español (ej. `📅 Viernes, 09 de Octubre de 2026`).
+
+### 📍 2. Artefactos Modificados y Sincronizados:
+- **`src/lib/date-helpers.ts`**: Implementada función `formatFechaCompletaEcuador()` con capitalización automática del día.
+- **`src/components/transport/HomeScreen.tsx`**: Fecha visible bajo el saludo de bienvenida en cabeceras de Socio, Conductor y Ayudante.
+- **`src/components/socio/OwnerExpensesScreen.tsx`**: Fecha visible en el subtítulo del encabezado de gastos del socio.
+- **`src/components/transport/MantenimientoScreen.tsx`**: Fecha visible destacada en el banner superior del panel de mantenimiento.
+- **`package.json`**: Versión incrementada a `3.61.20`.
+- **`download/RutaGo_Contexto_Maestro_v3.61.20.md`**: Respaldo contextual generado.
+- **Suite de Pruebas:** 32/32 tests aprobados (100%).

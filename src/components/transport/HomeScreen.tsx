@@ -51,7 +51,7 @@ import type { UserSession } from './types';
 import { getOwnerExpenses, fetchOwnerExpensesFromApi } from '@/lib/owner-expenses-storage';
 import { SuperAdminHomeScreen } from './SuperAdminHomeScreen';
 import { getAllBuses, getActiveBusId, setActiveBus, subscribeToActiveBus } from '@/lib/fleet-storage';
-import { getCurrentYearMonth, formatMonthName } from '@/lib/date-helpers';
+import { getCurrentYearMonth, formatMonthName, formatFechaCompletaEcuador } from '@/lib/date-helpers';
 import { getSuscripciones } from '@/lib/saas-storage';
 import { getBusModuloMantenimientoActivo, isBusModuloMantenimientoConfigurado, syncMantenimientoConfigConServidor } from '@/lib/mantenimiento-estaciones';
 
@@ -451,6 +451,10 @@ export function HomeScreen({
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
                 {user.nombre || "Socio 01"}
               </h1>
+              <div className="flex items-center gap-1.5 mt-1 text-xs font-semibold text-slate-500">
+                <Calendar className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                <span className="capitalize">{formatFechaCompletaEcuador()}</span>
+              </div>
             </div>
 
             {/* Pastilla del Autobús */}
@@ -588,6 +592,10 @@ export function HomeScreen({
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
                 {user.nombre || "Conductor"}
               </h1>
+              <div className="flex items-center gap-1.5 mt-1 text-xs font-semibold text-slate-500">
+                <Calendar className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                <span className="capitalize">{formatFechaCompletaEcuador()}</span>
+              </div>
             </div>
 
             {/* Pastilla del Autobús */}
@@ -623,6 +631,10 @@ export function HomeScreen({
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
                 {user.nombre || "Ayudante"}
               </h1>
+              <div className="flex items-center gap-1.5 mt-1 text-xs font-semibold text-slate-500">
+                <Calendar className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                <span className="capitalize">{formatFechaCompletaEcuador()}</span>
+              </div>
             </div>
 
             {/* Pastilla del Autobús */}

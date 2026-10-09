@@ -48,6 +48,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { formatFechaCompletaEcuador } from '@/lib/date-helpers';
 import type { UserSession } from './types';
 import { MantenimientoOdometroCard } from './mantenimiento/MantenimientoOdometroCard';
 import { MantenimientoPoliticasModal } from './mantenimiento/MantenimientoPoliticasModal';
@@ -2125,6 +2126,7 @@ export function MantenimientoScreen({
                 )}
               </div>
               <p className="text-[11px] text-slate-300 font-medium">
+                <span className="capitalize text-amber-300 font-bold">{formatFechaCompletaEcuador()}</span> •{' '}
                 {isSuperAdmin
                   ? 'Gobernanza de recetas maestras y calibración de flota'
                   : 'Gestión patrimonial, recetas y alertas de tu unidad'}
