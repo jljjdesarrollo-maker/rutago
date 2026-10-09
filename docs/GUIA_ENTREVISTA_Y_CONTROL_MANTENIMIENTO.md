@@ -1,7 +1,7 @@
 # 📋 Guía Oficial de Entrevista y Relevamiento de Mantenimiento Preventivo
-## Protocolo de Auditoría de Flota, Padrón Hino AK (31 Ítems) y Validación de Talleres y Rutina
+## Protocolo de Auditoría de Flota, Padrón Hino AK (31 Ítems), Equivalencia Temporal y Validación de Talleres
 
-> **Versión del Sistema:** RutaGo SaaS v3.61.18+  
+> **Versión del Sistema:** RutaGo SaaS v3.61.19+  
 > **Destinatario:** Socio Propietario, Conductor Titular, Ayudante y Administrador de Flota  
 > **Ámbito de Operación:** Flota Hino AK (Ruta Interprovincial / Cantonal Loja – Malacatos – Vilcabamba – Yangana – La Elvira)  
 > **Entorno Oficial:** `https://rutago-tau.vercel.app`  
@@ -12,10 +12,11 @@
 
 Esta guía proporciona el instrumento técnico y metodológico para llevar a cabo la **entrevista inicial de relevamiento mecánico** entre el **Socio Propietario** y su **Conductor Titular**. 
 
-El propósito es triple:
+El propósito es cuádruple:
 1. **Levantar la historia clínica exacta del autobús:** Determinar con precisión qué mantenimientos están al día, cuáles están por vencer y qué kilometrajes reales marca el odómetro hoy para calibrar el semáforo sin falsas alertas.
 2. **Personalizar las políticas de durabilidad por unidad:** Acordar si la unidad utilizará los intervalos de fábrica o políticas extendidas según la calidad de lubricantes y repuestos instalados (`BusItemOverride`).
 3. **Validar las 7 Estaciones de Taller Comercial + 1 Rutina Directa del Chofer:** Confirmar con el conductor qué componentes se cambian en conjunto en cada visita física al taller para que el registro en ruta sea inmediato (1 solo toque táctil) y sin fricción contable.
+4. **Traducción Temporal Inmediata (Días/Meses vs. Kilómetros):** Permitir al chofer y al socio saber exactamente a cuántos días o vueltas al rol de 15 VTs equivale cada mantenimiento, erradicando el error común de esperar "a fin de mes" para cambiar fluidos ya vencidos.
 
 ---
 
@@ -162,7 +163,7 @@ En RutaGo, el Conductor o el Socio no registran 31 ítems uno por uno en la carr
 ---
 
 ### 🛢️ Estación 1: LUBRICADORA (Fosa de Servicio Rápido)
-*Frecuencia habitual: Cada 5,000 km (~25 a 30 días de ruta).*
+*Frecuencia habitual: Cada 5,000 km (~16 días de ruta continua).*
 
 * **Combo Núcleo Obligatorio (4 Pre-marcados fijos en el sistema):**
   * `[✓]` Aceite de Motor (Fluido 15W-40)
@@ -184,7 +185,7 @@ En RutaGo, el Conductor o el Socio no registran 31 ítems uno por uno en la carr
 ---
 
 ### ⚙️ Estación 2: CAJA Y CORONA (Taller de Transmisión Pesada y Embrague)
-*Frecuencia habitual: Cada 30,000 km (fluidos) / 100,000 km (embrague) / 140,000+ km (caja).*
+*Frecuencia habitual: Cada 30,000 km (~3 meses) / 100,000 km (11 meses).*
 
 * **Componentes del Combo y Efecto Cascada:**
   * `[ ]` Aceite de Caja (Valvulina SAE 80W-90 / 85W-140)
@@ -213,7 +214,7 @@ En RutaGo, el Conductor o el Socio no registran 31 ítems uno por uno en la carr
 ---
 
 ### 🛑 Estación 4: FRENOS, RODAJE Y SUSPENSIÓN (El Frenista y Muellero)
-*Frecuencia habitual: Según desgaste en descensos de montaña (cada 11,000 – 12,500 km).*
+*Frecuencia habitual: Según desgaste en descensos de montaña (cada 11,000 – 12,500 km / ~35 a 40 días).*
 
 * **Componentes del Combo de Parada:**
   * `[ ]` Zapatas y Tambores Posteriores (12,500 km)
@@ -240,7 +241,7 @@ En RutaGo, el Conductor o el Socio no registran 31 ítems uno por uno en la carr
 ---
 
 ### 🛞 Estación 6: SERVITECA Y LLANTERA
-*Frecuencia habitual: Cada 15,000 km.*
+*Frecuencia habitual: Cada 15,000 km (~48 días).*
 
 * **Componentes del Combo:**
   * `[ ]` Alineación Láser Delantera
@@ -259,22 +260,72 @@ En RutaGo, el Conductor o el Socio no registran 31 ítems uno por uno en la carr
 
 ---
 
-## 🚌 6. Sección Especial: Rutina Directa de Chofer ($0.00 Mano de Obra Propia)
+## ⏱️ 6. Tabla Maestra de Equivalencia Temporal vs. Kilómetros Recorridos
+*(Basada en 309 km/día Reales y Ciclos de 15 VTs de la Flota)*
+
+### 🔍 La Verdad Matemática del Autobús:
+Al auditar los registros reales del tacómetro a lo largo de **1,779 días de operación continua (5 años)**:
+* **24/Nov/2021 (349,218 km) a 20/Abr/2024 (620,414 km):** 271,196 km en 878 días = **308.88 km/día**.
+* **20/Abr/2024 (620,414 km) a 08/Oct/2026 (899,198 km):** 278,784 km en 901 días = **309.42 km/día**.
+* **Promedio Histórico Oficial:** **`309 km/día`**.
+
+### 🔄 Dinámica del Rol Rotativo:
+* El ciclo completo de los 15 cuadernos de turnos (**VT01 al VT15**) suma exactamente **`4,635 km recorridos por ciclo`** ($309 \times 15$).
+* **En 1 mes calendario (30 días):** El bus cumple **2 ciclos completos de VTs (9,270 km)**.
+
+> 🚨 **REGLA DE ORO PARA EL CONDUCTOR: "EL ACEITE NO DURA UN MES"**  
+> Si el chofer espera "a fin de mes" para cambiar aceite, el motor ya rodó **9,270 km** (casi el doble de los 5,000 km recomendados).  
+> **El cambio de aceite y filtros de motor se debe realizar cada 16 DÍAS** (exactamente al completar **1 ciclo de 15 VTs**).
+
+---
+
+### 🗓️ Matriz de Equivalencias de Mantenimiento por Días y Ciclos de Rol
+
+| Tiempo Calendario | Ciclos de Rol (VTs) | Kilometraje Real Recorrido (309 km/día) | 🛠️ Mantenimiento Hino AK que Coincide Exactamente | Estación / Responsable |
+|:---|:---:|:---:|:---|:---|
+| **1 Día** | 1 VT del día | **309 km** | Chequeo diario de niveles y presión de aire | Conductor (Ruta) |
+| **3 Días** | 3 VTs | **927 km** | 🛑 **Calibración de Raches de Freno (800 km)** | 🚌 Rutina Chofer ($0) |
+| **5 Días** | 5 VTs | **1,545 km** | 🛢️ **Engrase General de Chasis (1,500 km)** | 🚌 Rutina Chofer ($0) |
+| **1 Semana (7 días)** | 7 VTs (medio ciclo) | **2,163 km** | Segundo engrase rápido de chasis y crucetas | 🚌 Rutina Chofer ($0) |
+| **15 Días (Quincena)** | **1 Ciclo Completo (VT01 a VT15)** | **4,635 km** | ⚠️ **¡ALERTA AMARILLA DE FOSA!** (Faltan solo 365 km para cambio) | 🛢️ Fosa / Lubricadora |
+| **16 Días** | 1 Ciclo + 1 VT | **4,944 ≈ 5,000 km** | 🛢️ **COMBO FOSA / LUBRICADORA OBLIGATORIO (5,000 km)**<br>*(Aceite 15W-40 + 3 Filtros Motor + Soplado + Malla)* | 🛢️ **Lubricadora** |
+| **1 Mes (30 días)** | **2 Ciclos Completos de VTs** | **9,270 km** | ⚡ Rotación Mensual de Baterías (8,600 km)<br>💨 Ajuste de mangueras turbo/admisión (10,000 km)<br>*(¡Cerca del 2do cambio de aceite de motor!)* | ⚡ Electroauto<br>💨 Aire y Admisión |
+| **35 Días (~5 semanas)**| 2 Ciclos + 5 VTs | **10,815 ≈ 11,000 km**| 🛑 **Zapatas y Tambores Delanteros (11,000 km)** | 🛑 **Frenos y Rodaje** |
+| **40 Días (~6 semanas)**| 2 Ciclos + 10 VTs | **12,360 ≈ 12,500 km**| 🛑 **Zapatas y Tambores Posteriores (12,500 km)** | 🛑 **Frenos y Rodaje** |
+| **48 Días (~7 semanas)**| 3 Ciclos + 3 VTs | **14,832 ≈ 15,000 km**| 🛞 **Alineación Láser y Chequeo Llantas (15,000 km)**<br>🛢️ **3er Cambio de Aceite y Filtros (15,000 km)** | 🛞 Serviteca<br>🛢️ Lubricadora |
+| **2 Meses (60 días)** | **4 Ciclos Completos de VTs** | **18,540 km** | Próximo a filtro de aire pequeño (20,000 km) | Conductor / Taller |
+| **65 Días (~2 meses y 5 d)**| 4 Ciclos + 5 VTs | **20,085 ≈ 20,000 km**| 💨 **Filtro de Aire Pequeño de Seguridad (20,000 km)**<br>🛢️ **4to Cambio de Aceite de Motor (20,000 km)** | 💨 Aire y Admisión<br>🛢️ Lubricadora |
+| **3 Meses (90 días)** | **6 Ciclos Completos de VTs** | **27,810 km** | ⚠️ Alerta de fluidos de transmisión mayor | Taller Transmisión |
+| **97 Días (~3 meses y 1 sem)**| 6 Ciclos + 7 VTs | **29,973 ≈ 30,000 km**| ⚙️ **ACEITE DE CAJA Y CORONA (30,000 km)**<br>*(Valvulinas SAE 80W-90 y SAE 85W-140)*<br>🛢️ **6to Cambio de Aceite de Motor (30,000 km)** | ⚙️ **Caja y Corona**<br>🛢️ Lubricadora |
+| **4 Meses (120 días)** | **8 Ciclos Completos de VTs** | **37,080 km** | Próximo a filtro de aire grande primario | 💨 Aire y Admisión |
+| **130 Días (~4 meses y 10 d)**| 8 Ciclos + 10 VTs | **40,170 ≈ 40,000 km**| 💨 **Filtro de Aire Grande Primario (40,000 km)**<br>🛢️ **8vo Cambio de Aceite de Motor (40,000 km)** | 💨 Aire y Admisión |
+| **5 Meses y Medio (162 días)**| 10 Ciclos + 12 VTs | **50,058 ≈ 50,000 km**| 🔧 **Calibración de Válvulas y Toberas Denso (50,000 km)**<br>🛑 **Engrase Bocinas Posteriores (50,000 km)**<br>🛑 **Revisión de Muelles y Bujes (50,000 km)** | 🔧 **Maestro Motor**<br>🛑 **Frenos y Muelles** |
+| **6 Meses y Medio (194 días)**| 13 Ciclos Completos | **59,946 ≈ 60,000 km**| 🛑 **Engrase Bocinas Delanteras (60,000 km)** | 🛑 **Frenista** |
+| **11 Meses (324 días)**| 21 Ciclos + 9 VTs | **100,116 ≈ 100,000 km**| ⚙️ **KIT DE EMBRAGUE (100,000 km)**<br>🔧 **Bandas y Correas de Motor (100,000 km)**<br>🔧 **Termostato del Motor (100,000 km)**<br>🧼 **Lavado Químico Radiador e Intercooler (100,000 km)** | ⚙️ **Transmisión**<br>🔧 **Maestro Motor**<br>🧼 **Radiador** |
+| **1 Año (365 días)** | **24.3 Ciclos de VTs** | **112,785 km** | 💨 Mantenimiento Anual de Aire Acondicionado (110k)<br>Balance anual preventivo general | Flota Integral |
+| **1 Año y 3 Meses (453 días)**| 30 Ciclos Completos | **139,977 ≈ 140,000 km**| ⚙️ **Bronces y Palillos Sincronizados de Caja (140,000 km)** | ⚙️ **Caja y Corona** |
+| **1 Año y 4 Meses (485 días)**| 32 Ciclos Completos | **149,865 ≈ 150,000 km**| ⚙️ **Mantenimiento Integral de Corona (150,000 km)** | ⚙️ **Caja y Corona** |
+| **1 Año y 9 Meses (647 días)**| 43 Ciclos Completos | **199,923 ≈ 200,000 km**| ⚡ **RENOVACIÓN DE BATERÍAS (PAR 24V - 200,000 km)** | ⚡ **Electroauto** |
+| **2 Años y Medio (906 días)**| 60 Ciclos Completos | **279,954 ≈ 280,000 km**| ⚙️ **OVERHAUL MAYOR DE CAJA DE CAMBIOS (280,000 km)** | ⚙️ **Taller Transmisión** |
+
+---
+
+## 🚌 7. Sección Especial: Rutina Directa de Chofer ($0.00 Mano de Obra Propia)
 *(Operación Diaria y Semanal en Terminal o Patio — No genera factura ni costo de taller)*
 
 Esta sección se audita de forma separada porque **no constituye un taller comercial externo**. El chofer dispone de su botón dedicado en la aplicación: `🚌 Mi Rutina Chofer ($0)`:
 
-| # | Labor Propia de Patio | Frecuencia | ¿Cómo se realiza? | ¿Quién lo ejecuta? |
-|:-:|:---|:---:|:---|:---:|
-| 1 | **Calibración de Raches de Freno** | 800 km | Ajuste manual con llave en terminal | Conductor Titular |
-| 2 | **Engrase Rápido de Chasis** | 1,500 km | Grasera manual en fosa de cooperativa | Conductor Titular |
-| 3 | **Soplado Filtro de Aire** | 5,000 km | Manguera de aire en vulcanizadora | Conductor Titular |
-| 4 | **Lavado Malla Aire Pasillo** | 5,000 km | Lavado manual con agua y detergente | Conductor / Ayudante |
-| 5 | **Rotación Mensual Baterías** | 8,600 km | Intercambio de posición física y bornes | Conductor Titular |
+| # | Labor Propia de Patio | Frecuencia en Km | Frecuencia Temporal (a 309 km/día) | ¿Cómo se realiza? | ¿Quién lo ejecuta? |
+|:-:|:---|:---:|:---:|:---|:---:|
+| 1 | **Calibración de Raches de Freno** | 800 km | **Cada 3 Días** | Ajuste manual con llave en terminal | Conductor Titular |
+| 2 | **Engrase Rápido de Chasis** | 1,500 km | **Cada 5 Días** | Grasera manual en fosa de cooperativa | Conductor Titular |
+| 3 | **Soplado Filtro de Aire** | 5,000 km | **Cada 16 Días** | Manguera de aire en vulcanizadora | Conductor Titular |
+| 4 | **Lavado Malla Aire Pasillo** | 5,000 km | **Cada 16 Días** | Lavado manual con agua y detergente | Conductor / Ayudante |
+| 5 | **Rotación Mensual Baterías** | 8,600 km | **Cada Mes (28 días)** | Intercambio de posición física y bornes | Conductor Titular |
 
 ---
 
-## 📊 7. Matriz de Síntesis y Calibración Inmediata
+## 📊 8. Matriz de Síntesis y Calibración Inmediata
 
 | Taller / Estación de Servicio | Proveedor / Taller Acordado | Kilometraje Próximo Estimado | ¿Quién Paga Habitualmente? |
 |:---|:---|:---:|:---:|
@@ -289,7 +340,7 @@ Esta sección se audita de forma separada porque **no constituye un taller comer
 
 ---
 
-## 📝 8. Observaciones Particulares y Novedades Mecánicas Detectadas
+## 📝 9. Observaciones Particulares y Novedades Mecánicas Detectadas
 
 Describa cualquier ruido, holgura, fuga o trabajo pendiente que la unidad arrastre a la fecha de la entrevista:
 
@@ -300,7 +351,7 @@ Describa cualquier ruido, holgura, fuga o trabajo pendiente que la unidad arrast
 
 ---
 
-## ✍️ 9. Acta de Conformidad y Asignación de Responsabilidades
+## ✍️ 10. Acta de Conformidad y Asignación de Responsabilidades
 
 Habiendo revisado conjuntamente el estado mecánico de la **Unidad N° [ ______ ]**, el Socio Propietario y el Conductor Titular declaran su conformidad con los kilometrajes base y las políticas de mantenimiento preventivo acordadas, comprometiéndose a registrar oportunamente cada parada técnica en la aplicación **RutaGo**.
 

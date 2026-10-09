@@ -3727,3 +3727,27 @@ bun test tests/manual-socio.test.ts
 - **`docs/GUIA_ENTREVISTA_Y_CONTROL_MANTENIMIENTO.md`**: Actualizado a la arquitectura de 7 talleres comerciales + 1 rutina de patio ($0).
 - **`package.json`**: Versión incrementada a `3.61.18`.
 - **`download/RutaGo_Contexto_Maestro_v3.61.18.md`**: Respaldo contextual generado para asegurar continuidad multiplataforma.
+
+---
+
+## 🏛️ v3.61.19 - INTEGRACIÓN DE KILOMETRAJE REAL HISTÓRICO: 309 KM/DÍA Y MATRIZ DE CICLOS DE 15 VTS (2026-10-09)
+> **ESTADO:** 🟢 COMPLETADO, VERIFICADO Y DESPLEGADO A PRODUCCIÓN  
+> **FECHA DE REGISTRO:** 2026-10-09 | **SISTEMA:** RutaGo - Motor de Mantenimiento Preventivo Multi-Tenant  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Calibración oficial con datos históricos inmutables del tacómetro (5 años / 1,779 días = 309.15 km/día) y matriz temporal de 15 VTs.
+
+### 📍 1. Auditoría Matemática con Kilometraje Real del Autobús:
+- **Punto 1:** 24/Nov/2021 -> 349,218 km
+- **Punto 2:** 20/Abr/2024 -> 620,414 km (271,196 km en 878 días = **308.88 km/día**)
+- **Punto 3:** 08/Oct/2026 -> 899,198 km (278,784 km en 901 días = **309.42 km/día**)
+- **Período Total Acumulado:** 549,980 km en 1,779 días = **309.15 km/día** (Exactamente 309 km/día).
+
+### 📍 2. Dinámica del Ciclo de Rol Rotativo (VT01 al VT15):
+- **Suma de 1 Ciclo Completo (15 VTs):** **4,635 km** ($309 	imes 15$).
+- **Suma de 2 Ciclos Completos (30 días / 1 mes):** **9,270 km** ($4,635 	imes 2$).
+- **Hallazgo Crítico Operativo:** El cambio de aceite de motor y filtros (5,000 km) **NO es mensual**: a 309 km/día se cumple en **16 DÍAS** (1 ciclo de 15 VTs). Si el chofer espera a fin de mes, el autobús rueda 9,270 km con aceite sobrepasado.
+
+### 📍 3. Artefactos Modificados y Sincronizados:
+- **`docs/GUIA_ENTREVISTA_Y_CONTROL_MANTENIMIENTO.md`**: Incorporada la Sección 6 con la Matriz Maestra de Equivalencia Temporal (Días, Semanas, Meses, Ciclos de VTs vs. Kilómetros) de 1 día a 3 años.
+- **`package.json`**: Versión incrementada a `3.61.19`.
+- **`download/RutaGo_Contexto_Maestro_v3.61.19.md`**: Respaldo contextual generado.
