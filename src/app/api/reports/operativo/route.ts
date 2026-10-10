@@ -25,11 +25,14 @@ export async function GET(req: NextRequest) {
       date: { gte: startDate, lte: endDate },
     };
 
-    // Aislamiento Multi-Tenant por Socio Propietario o Unidad Fisiológica
+    // Aislamiento Multi-Tenant por Socio Propietario o Unidad Física
     let effectiveSocioId = socioId;
+    const cleanBusNum = busId && busId !== 'TODOS'
+      ? busId.replace(/^BUS-/i, '').replace(/\D/g, '').padStart(2, '0')
+      : '';
+
     if ((!effectiveSocioId || effectiveSocioId === 'TODOS') && busId && busId !== 'TODOS') {
       try {
-        const cleanBusNum = busId.replace(/^BUS-/i, '');
         const busFound = await db.bus.findFirst({
           where: {
             OR: [
@@ -48,23 +51,42 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
+    const orFilters: Array<Record<string, unknown>> = [];
+
+    if (cleanBusNum) {
+      const busConductorTags = [
+        `BUS-${cleanBusNum}`,
+        `Bus ${cleanBusNum}`,
+        cleanBusNum,
+        String(parseInt(cleanBusNum, 10)),
+      ];
+      orFilters.push({ conductor: { in: busConductorTags } });
+      orFilters.push({ conductor: { startsWith: `BUS-${cleanBusNum}` } });
+    }
+
+    // Solo incluir filtro por nombres de tripulación del socio si NO se está consultando otra unidad distinta a la 01
+    if (effectiveSocioId && effectiveSocioId !== 'TODOS' && (!cleanBusNum || cleanBusNum === '01')) {
       const socioPersonas = await db.persona.findMany({
         where: { socioId: effectiveSocioId },
         select: { nombre: true },
       });
       const crewNames = socioPersonas.map((p) => p.nombre).filter(Boolean);
       if (crewNames.length > 0) {
-        where.OR = [
-          { ayudanteNombre: { in: crewNames } },
-          { conductor: { in: crewNames } },
-        ];
-      } else {
-        // Socio recién suscrito o sin tripulación asignada: iniciar limpio en 0 registros
-        where.id = 'NO_RECORDS_YET';
+        orFilters.push({
+          AND: [
+            { OR: [{ ayudanteNombre: { in: crewNames } }, { conductor: { in: crewNames } }] },
+            { NOT: { conductor: { startsWith: 'BUS-' } } },
+          ],
+        });
       }
-    } else if (busId && busId !== 'TODOS' && busId !== 'BUS-01' && busId !== '01') {
-      // Unidad específica sin tripulación vinculada: 0 registros limpios
+    }
+
+    if (orFilters.length > 0) {
+      where.OR = orFilters;
+    } else if (
+      (effectiveSocioId && effectiveSocioId !== 'TODOS') ||
+      (busId && busId !== 'TODOS' && cleanBusNum !== '01')
+    ) {
       where.id = 'NO_RECORDS_YET';
     }
 

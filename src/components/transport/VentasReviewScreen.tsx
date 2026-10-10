@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { deleteVentasByVT, updateVentasFrecuencia } from '@/lib/indexeddb';
 import { VT_DATA } from '@/lib/seed-vts';
+import { type UserSession } from '@/components/transport/types';
+import { getAllBuses, getActiveBusId, type BusItem } from '@/lib/fleet-storage';
 import {
   ChevronLeft,
   Search,
@@ -33,6 +35,8 @@ import {
 
 interface VentasReviewScreenProps {
   onBack: () => void;
+  currentUser?: UserSession | null;
+  activeBusId?: string;
 }
 
 interface FrecuenciaRel {
@@ -175,7 +179,39 @@ function calcularCoincidencia(
 }
 
 
-export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
+export function VentasReviewScreen({ onBack, currentUser, activeBusId: propActiveBusId }: VentasReviewScreenProps) {
+  const isSuperAdmin = currentUser?.rol === 'ADMIN' || currentUser?.rol === 'SUPERADMIN_SAAS' || currentUser?.subRol === 'SUPERADMIN_SAAS';
+  const isSocio = !isSuperAdmin && (currentUser?.rol === 'SOCIO' || currentUser?.subRol === 'SOCIO');
+
+  const [availableBuses, setAvailableBuses] = useState<BusItem[]>(() => getAllBuses());
+  const [selectedBusId, setSelectedBusId] = useState<string>(() => {
+    if (isSuperAdmin) return 'TODOS';
+    if (currentUser?.busId) return currentUser.busId;
+    if (propActiveBusId) return propActiveBusId;
+    return getActiveBusId() || 'BUS-01';
+  });
+
+  const effectiveSocioId = useMemo(() => {
+    if (isSocio) return currentUser?.socioId || currentUser?.id || '';
+    if (isSuperAdmin && selectedBusId !== 'TODOS') {
+      const found = availableBuses.find(b => b.id === selectedBusId);
+      return (found as any)?.socioId || '';
+    }
+    return '';
+  }, [isSocio, currentUser?.socioId, currentUser?.id, isSuperAdmin, selectedBusId, availableBuses]);
+
+  useEffect(() => {
+    fetch('/api/buses')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const list = d?.data || d;
+        if (Array.isArray(list) && list.length > 0) {
+          setAvailableBuses(list);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const [selectedFecha, setSelectedFecha] = useState(todayStr);
   const [ventas, setVentas] = useState<Venta[]>([]);
@@ -301,12 +337,21 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
     }
   };
 
-  // Cargar ventas de la fecha de operación
+  // Cargar ventas de la fecha de operación (aisladas por unidad y socio)
   const loadVentas = useCallback(async (fecha: string) => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`/api/ventas?fecha=${fecha}`);
+      const params = new URLSearchParams();
+      params.set('fecha', fecha);
+      if (selectedBusId && selectedBusId !== 'TODOS') {
+        params.set('busId', selectedBusId);
+      }
+      if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
+        params.set('socioId', effectiveSocioId);
+      }
+
+      const res = await fetch(`/api/ventas?${params.toString()}`);
       if (!res.ok) throw new Error('Error al obtener las ventas del servidor');
       const data: Venta[] = await res.json();
       setVentas(data);
@@ -320,7 +365,7 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedBusId, effectiveSocioId]);
 
   useEffect(() => {
     loadVentas(selectedFecha);
@@ -674,6 +719,49 @@ export function VentasReviewScreen({ onBack }: VentasReviewScreenProps) {
 
       {/* ─── Panel Principal de Control (Estilo Arqueo General) ─── */}
       <div className="p-3 sm:p-4 space-y-3 max-w-4xl mx-auto w-full flex-1">
+        {/* Selector de Unidad / Filtro Multi-Tenant */}
+        <div className="bg-white p-3 rounded-2xl border border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700">
+              <Bus className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Unidad en Auditoría de Boletos</p>
+              <p className="text-xs font-semibold text-gray-800">
+                {isSuperAdmin
+                  ? selectedBusId === 'TODOS' ? 'Toda la Cooperativa (Consolidado)' : `Bus ${availableBuses.find(b => b.id === selectedBusId)?.numeroDisco || selectedBusId}`
+                  : `Bus ${availableBuses.find(b => b.id === selectedBusId)?.numeroDisco || (selectedBusId ? selectedBusId.replace(/^BUS-/i, '') : '') || currentUser?.busNumero || '01'} • ${currentUser?.nombre || 'Socio Propietario'}`}
+              </p>
+            </div>
+          </div>
+          {isSuperAdmin ? (
+            <select
+              value={selectedBusId}
+              onChange={(e) => setSelectedBusId(e.target.value)}
+              className="w-full sm:w-auto h-9 text-xs font-medium bg-gray-50 border border-gray-200 rounded-xl px-3 text-gray-800 focus:outline-none focus:border-blue-600"
+            >
+              <option value="TODOS">🚌 Toda la Cooperativa (Consolidado Global)</option>
+              {availableBuses.map((b) => (
+                <option key={b.id} value={b.id}>
+                  Bus {b.numeroDisco} ({b.placa} • {b.propietario || 'Socio'})
+                </option>
+              ))}
+            </select>
+          ) : currentUser?.buses && currentUser.buses.length > 1 ? (
+            <select
+              value={selectedBusId}
+              onChange={(e) => setSelectedBusId(e.target.value)}
+              className="w-full sm:w-auto h-9 text-xs font-medium bg-gray-50 border border-gray-200 rounded-xl px-3 text-gray-800 focus:outline-none focus:border-blue-600"
+            >
+              {currentUser.buses.map((b) => (
+                <option key={b.id} value={b.id}>
+                  Bus {b.numeroDisco} ({b.placa})
+                </option>
+              ))}
+            </select>
+          ) : null}
+        </div>
+
         {/* Selector de Fecha de Operación */}
         <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">

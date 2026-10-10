@@ -3973,3 +3973,51 @@ bun test tests/manual-socio.test.ts
 - **`tests/bloque2-aislamiento.test.ts`**: Nueva suite unitaria aprobada al 100%.
 - **`docs/PLAN_AUDITORIA_AISLAMIENTO_SOCIO.md`**: Actualizado con Bloques 1 y 2 certificados.
 - **Suite de Pruebas:** 42/42 tests aprobados (100%).
+
+---
+
+## 🏛️ v3.61.31 - AISLAMIENTO Y CERTIFICACIÓN DEL BLOQUE 3 (REPORTES, AUDITORÍA OPERATIVA Y RENDIMIENTO) (2026-10-10)
+
+> **ESTADO:** 🟢 COMPLETADO, VERIFICADO Y SINCRONIZADO EN GITHUB  
+> **FECHA DE REGISTRO:** 2026-10-10 | **SISTEMA:** RutaGo - Motor de Reportes, Inteligencia Operativa y Rendimiento Multi-Tenant  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Blindar el aislamiento estricto por unidad física en toda la suite de reportes, comparativas, auditoría operativa y revisión de boletos (Bloque 3).
+
+### 📍 1. Diagnóstico y Certificación del Bloque 3:
+- [x] **3.1 Reportes e Informes Generales (`ReportsScreen.tsx` / `/api/reports`):**
+  - Corrección de raíz en `/api/reports`: Se erradicó la dependencia exclusiva de `persona.socioId`, inyectando la resolución canónica de `cleanBusNum` y tags de conductor (`BUS-XX`).
+  - Reportes Diario, Semanal, Mensual y Caja Común filtran de forma estricta por `busId`. Las unidades suscriptoras no ven datos ni arqueos del Bus 01 ni de otros socios.
+  - Corrección visual en `ReportsScreen.tsx`: La tarjeta y el selector reflejan con prioridad el número de disco del autobús activo consultado (`availableBuses.numeroDisco`).
+- [x] **3.2 Cumplimiento de Frecuencias (`ReporteOperativoScreen.tsx` / `/api/reports/operativo`):**
+  - Segregación estricta por `cleanBusNum` y `busId` en `/api/reports/operativo`.
+  - Conteo y desglose de vueltas realizadas, no realizadas e ingresos especiales asociados estrictamente a la unidad consultada.
+  - Insignia de unidad activa en cabecera sincronizada.
+- [x] **3.3 Comparativa de Frecuencias (`CompareFrequenciesScreen.tsx` / `/api/reports/compare-frequencies`):**
+  - Soporte de `currentUser`, `activeBusId`, `selectedBusId` y `effectiveSocioId` añadido a `CompareFrequenciesScreen`.
+  - Carga de catálogo de frecuencias únicas filtrada con `busId` en `/api/records?include=trips`.
+  - Endpoint `/api/reports/compare-frequencies` blindado con aislamiento por `cleanBusNum` y `busId`.
+  - Selector y badge de unidad en cabecera de la comparativa.
+- [x] **3.4 Benchmark de Flota & IPF (`BenchmarkScreen.tsx`):**
+  - En `src/app/page.tsx`, inyección obligatoria de `activeBusId={user?.busId || getActiveBusId()}`.
+  - Preservación del protocolo de confidencialidad y anonimización de unidades de terceros para Socios.
+- [x] **3.5 Auditoría y Revisión de Boletos (`VentasReviewScreen.tsx` / `/api/ventas`):**
+  - `VentasReviewScreenProps` enriquecida con `currentUser` y `activeBusId`.
+  - `loadVentas(fecha)` inyecta `busId` y `socioId` hacia `/api/ventas`.
+  - En `/api/ventas` (GET): Filtrado multi-tenant por ayudante (`ayudanteNombre` / `ayudanteId`) pertenecientes a la unidad física/socio autenticado, devolviendo `[]` limpio si es una unidad nueva sin boletos.
+  - Selector de unidad e insignia visual agregados en cabecera.
+
+### 📍 2. Artefactos Modificados y Sincronizados:
+- **`src/app/api/reports/route.ts`**: Filtrado canónico por `cleanBusNum` y conductor `BUS-XX` en reportes generales y caja común.
+- **`src/app/api/reports/operativo/route.ts`**: Filtrado canónico por `cleanBusNum` y conductor `BUS-XX` en reporte operativo.
+- **`src/app/api/reports/compare-frequencies/route.ts`**: Soporte de `busId` y `socioId` en comparativa.
+- **`src/app/api/ventas/route.ts`**: Filtrado multi-tenant de boletos por `busId` y `socioId`.
+- **`src/components/transport/ReportsScreen.tsx`**: Prioridad de visualización de disco de unidad activa.
+- **`src/components/transport/ReporteOperativoScreen.tsx`**: Prioridad de visualización de disco de unidad activa.
+- **`src/components/transport/CompareFrequenciesScreen.tsx`**: Inyección multi-tenant, selector y badge de unidad.
+- **`src/components/transport/VentasReviewScreen.tsx`**: Inyección multi-tenant, selector y badge de unidad.
+- **`src/app/page.tsx`**: Propagación de `activeBusId` y `currentUser` a todas las pantallas del Bloque 3.
+- **`tests/bloque3-aislamiento.test.ts`**: Nueva suite unitaria para los 5 ítems de Bloque 3 (100% aprobada).
+- **`docs/PLAN_AUDITORIA_AISLAMIENTO_SOCIO.md`**: Actualizado a v3.61.31 con Bloque 3 certificado al 100%.
+- **`package.json`**: Versión incrementada a `3.61.31`.
+- **Suite de Pruebas:** 47/47 tests aprobados (100%).
+

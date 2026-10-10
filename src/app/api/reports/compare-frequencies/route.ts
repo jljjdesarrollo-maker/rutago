@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
     const freq2From = url.searchParams.get('freq2From');
     const freq2To = url.searchParams.get('freq2To');
     const freq2Time = url.searchParams.get('freq2Time');
+    const busId = url.searchParams.get('busId') || '';
+    const socioId = url.searchParams.get('socioId') || '';
 
     if (!freq1From || !freq1To || !freq1Time || !freq2From || !freq2To || !freq2Time) {
       return NextResponse.json({ error: 'Faltan parametros de frecuencia' }, { status: 400 });
@@ -34,8 +36,77 @@ export async function GET(req: NextRequest) {
     startDate.setDate(1);
     const startDateStr = startDate.toISOString().split('T')[0];
 
+    const where: Record<string, unknown> = {
+      date: { gte: startDateStr },
+    };
+
+    // Aislamiento Multi-Tenant por Socio Propietario o Unidad Física
+    let effectiveSocioId = socioId;
+    const cleanBusNum = busId && busId !== 'TODOS'
+      ? busId.replace(/^BUS-/i, '').replace(/\D/g, '').padStart(2, '0')
+      : '';
+
+    if ((!effectiveSocioId || effectiveSocioId === 'TODOS') && busId && busId !== 'TODOS') {
+      try {
+        const busFound = await db.bus.findFirst({
+          where: {
+            OR: [
+              { id: busId },
+              { numeroDisco: cleanBusNum },
+              { numeroDisco: busId },
+            ],
+          },
+          select: { socioId: true },
+        });
+        if (busFound?.socioId) {
+          effectiveSocioId = busFound.socioId;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const orFilters: Array<Record<string, unknown>> = [];
+
+    if (cleanBusNum) {
+      const busConductorTags = [
+        `BUS-${cleanBusNum}`,
+        `Bus ${cleanBusNum}`,
+        cleanBusNum,
+        String(parseInt(cleanBusNum, 10)),
+      ];
+      orFilters.push({ conductor: { in: busConductorTags } });
+      orFilters.push({ conductor: { startsWith: `BUS-${cleanBusNum}` } });
+    }
+
+    // Solo incluir filtro por nombres de tripulación del socio si NO se está consultando otra unidad distinta a la 01
+    if (effectiveSocioId && effectiveSocioId !== 'TODOS' && (!cleanBusNum || cleanBusNum === '01')) {
+      const socioPersonas = await db.persona.findMany({
+        where: { socioId: effectiveSocioId },
+        select: { nombre: true },
+      });
+      const crewNames = socioPersonas.map((p) => p.nombre).filter(Boolean);
+      if (crewNames.length > 0) {
+        orFilters.push({
+          AND: [
+            { OR: [{ ayudanteNombre: { in: crewNames } }, { conductor: { in: crewNames } }] },
+            { NOT: { conductor: { startsWith: 'BUS-' } } },
+          ],
+        });
+      }
+    }
+
+    if (orFilters.length > 0) {
+      where.OR = orFilters;
+    } else if (
+      (effectiveSocioId && effectiveSocioId !== 'TODOS') ||
+      (busId && busId !== 'TODOS' && cleanBusNum !== '01')
+    ) {
+      where.id = 'NO_RECORDS_YET';
+    }
+
     const records = await db.dailyRecord.findMany({
-      where: { date: { gte: startDateStr } },
+      where,
       include: {
         trips: { orderBy: { order: 'asc' } },
       },

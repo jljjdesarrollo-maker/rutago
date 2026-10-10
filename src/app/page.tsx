@@ -394,6 +394,7 @@ export default function Home() {
       <BenchmarkScreen
         onBack={() => setView('home')}
         currentUser={user}
+        activeBusId={user?.busId || getActiveBusId()}
       />
     );
   }
@@ -432,6 +433,8 @@ export default function Home() {
     return (
       <CompareFrequenciesScreen
         onBack={() => setView('home')}
+        currentUser={user}
+        activeBusId={user?.busId || getActiveBusId()}
       />
     );
   }
@@ -441,6 +444,8 @@ export default function Home() {
     return (
       <VentasReviewScreen
         onBack={() => setView('home')}
+        currentUser={user}
+        activeBusId={user?.busId || getActiveBusId()}
       />
     );
   }

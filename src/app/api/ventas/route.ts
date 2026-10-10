@@ -81,6 +81,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const vtCode = searchParams.get('vtCode');
     const fecha = searchParams.get('fecha');
+    const busId = searchParams.get('busId') || '';
+    const socioId = searchParams.get('socioId') || '';
 
     // Auto-sanar boletos huérfanos históricos de la fecha en segundo plano seguro
     try {
@@ -89,16 +91,67 @@ export async function GET(request: NextRequest) {
       console.error('Error auto-vinculando boletos huérfanos:', sanarErr);
     }
 
+    // Aislamiento Multi-Tenant por Socio Propietario o Unidad Física
+    let effectiveSocioId = socioId;
+    const cleanBusNum = busId && busId !== 'TODOS'
+      ? busId.replace(/^BUS-/i, '').replace(/\D/g, '').padStart(2, '0')
+      : '';
+
+    if ((!effectiveSocioId || effectiveSocioId === 'TODOS') && busId && busId !== 'TODOS') {
+      try {
+        const busFound = await prisma.bus.findFirst({
+          where: {
+            OR: [
+              { id: busId },
+              { numeroDisco: cleanBusNum },
+              { numeroDisco: busId },
+            ],
+          },
+          select: { socioId: true },
+        });
+        if (busFound?.socioId) {
+          effectiveSocioId = busFound.socioId;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const personaFilter: Array<Record<string, unknown>> = [];
+    if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
+      const socioPersonas = await prisma.persona.findMany({
+        where: { socioId: effectiveSocioId },
+        select: { id: true, nombre: true },
+      });
+      const crewNames = socioPersonas.map((p) => p.nombre).filter(Boolean);
+      const crewIds = socioPersonas.map((p) => p.id).filter(Boolean);
+      if (crewNames.length > 0) {
+        personaFilter.push({ ayudanteNombre: { in: crewNames } });
+        personaFilter.push({ ayudanteId: { in: crewIds } });
+      }
+    }
+
+    const where: Record<string, unknown> = {
+      ...(vtCode ? { vtCode } : {}),
+      ...(fecha ? {
+        OR: [
+          { fechaOperacion: fecha },
+          { fecha: fecha },
+        ],
+      } : {}),
+    };
+
+    if (personaFilter.length > 0) {
+      where.AND = [{ OR: personaFilter }];
+    } else if (
+      (effectiveSocioId && effectiveSocioId !== 'TODOS') ||
+      (busId && busId !== 'TODOS' && cleanBusNum !== '01')
+    ) {
+      where.id = 'NO_RECORDS_YET';
+    }
+
     const ventas = await prisma.ventaBoleto.findMany({
-      where: {
-        ...(vtCode ? { vtCode } : {}),
-        ...(fecha ? {
-          OR: [
-            { fechaOperacion: fecha },
-            { fecha: fecha },
-          ],
-        } : {}),
-      },
+      where,
       include: {
         frecuencia: true,
       },

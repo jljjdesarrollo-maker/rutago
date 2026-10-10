@@ -1,8 +1,8 @@
 # 🏛️ RutaGo - Plan Maestro de Auditoría Modular de Aislamiento por Unidad (Interfaz Socio)
 
-> **ESTADO:** 🟢 EN EJECUCIÓN (BLOQUES 1 Y 2 COMPLETADOS Y CERTIFICADOS)  
+> **ESTADO:** 🟢 EN EJECUCIÓN (BLOQUES 1, 2 Y 3 COMPLETADOS Y CERTIFICADOS)  
 > **FECHA DE INICIO:** 2026-10-10  
-> **VERSIÓN:** v3.61.30  
+> **VERSIÓN:** v3.61.31  
 > **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
 > **OBJETIVO:** Certificar de forma exhaustiva, código por código, que la interfaz del Socio Propietario cumpla con un aislamiento multi-tenant estricto del 100%. Cuando un socio ingresa con su unidad (ej. Unidad 10), todos los componentes, vistas, cálculos y llamadas a la API deben procesar única y exclusivamente la información de dicha unidad, sin filtraciones del Bus 01 ni de otros suscriptores.
 
@@ -39,21 +39,24 @@
 
 ---
 
-### 🧱 Bloque 3: Reportes, Auditoría Operativa y Rendimiento (⏳ SIGUIENTE PASO)
-- [ ] **3.1 Reportes e Informes Generales (`ReportsScreen.tsx` / `/api/reports`):**
-  - Reportes Diario, Semanal, Mensual y Caja Común filtrados por `busId`.
-- [ ] **3.2 Cumplimiento de Frecuencias (`OperativoScreen.tsx`):**
-  - Vueltas efectivas vs. turnos caídos exclusivos de la unidad.
-- [ ] **3.3 Comparativa de Frecuencias (`CompareScreen.tsx`):**
-  - Análisis de rentabilidad por horario y ruta de la unidad.
-- [ ] **3.4 Benchmark de Flota & IPF (`BenchmarkScreen.tsx`):**
-  - Comparativa simétrica contra promedio general sin exponer secretos de terceros.
-- [ ] **3.5 Auditoría y Revisión de Boletos (`VentasReviewScreen.tsx`):**
-  - Boletos emitidos digitalmente filtrados por `vtCode` y fecha de la unidad.
+### 🧱 Bloque 3: Reportes, Auditoría Operativa y Rendimiento (🟢 COMPLETADO AL 100%)
+- [x] **3.1 Reportes e Informes Generales (`ReportsScreen.tsx` / `/api/reports`):**
+  - Reportes Diario, Semanal, Mensual y Caja Común filtrados estrictamente por `cleanBusNum` y tags de conductor (`BUS-XX`).
+  - Cabecera y badge de unidad en consulta priorizan el disco activo.
+- [x] **3.2 Cumplimiento de Frecuencias (`ReporteOperativoScreen.tsx` / `/api/reports/operativo`):**
+  - Vueltas realizadas, no realizadas e ingresos especiales segregados por unidad sin fugas entre buses.
+- [x] **3.3 Comparativa de Frecuencias (`CompareFrequenciesScreen.tsx` / `/api/reports/compare-frequencies`):**
+  - Aislamiento de catálogo de frecuencias y estadísticas por `busId` y `socioId`.
+  - Selector y badge de unidad en comparativa integrados.
+- [x] **3.4 Benchmark de Flota & IPF (`BenchmarkScreen.tsx`):**
+  - Propagación de `activeBusId` desde `page.tsx` con protocolo de anonimización activa para socios.
+- [x] **3.5 Auditoría y Revisión de Boletos (`VentasReviewScreen.tsx` / `/api/ventas`):**
+  - Filtro multi-tenant por ayudante y unidad en `/api/ventas`.
+  - Badge y selector de unidad en auditoría de boletos integrado.
 
 ---
 
-### 🧱 Bloque 4: Personal, Ficha de Unidad, Respaldo y Cierre
+### 🧱 Bloque 4: Personal, Ficha de Unidad, Respaldo y Cierre (⏳ SIGUIENTE PASO)
 - [ ] **4.1 Gestión de Personal (`PersonalScreen.tsx`):**
   - Listado de choferes y ayudantes, turnos y PINs del socio propietario.
 - [ ] **4.2 Ficha de Mi Autobús (`FlotaScreen.tsx`):**
@@ -65,4 +68,4 @@
 ---
 
 ## 🔒 Protocolo de Continuidad por Cuotas
-Bloques 1 y 2 completados y verificados. Para continuar desde cualquier sesión, retomar en **Bloque 3 (3.1 ReportsScreen.tsx / /api/reports)**.
+Bloques 1, 2 y 3 completados y verificados. Para continuar desde cualquier sesión, retomar en **Bloque 4 (4.1 PersonalScreen.tsx / Gestión de Personal)**.

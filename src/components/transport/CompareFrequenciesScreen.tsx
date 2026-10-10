@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, ArrowLeftRight, Calendar, Loader2, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowLeftRight, Calendar, Loader2, TrendingUp, TrendingDown, Minus, AlertTriangle, Bus as BusIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { type UserSession } from '@/components/transport/types';
+import { getAllBuses, getActiveBusId, type BusItem } from '@/lib/fleet-storage';
 
 const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
 
@@ -39,9 +41,11 @@ interface CompareResult {
 
 interface CompareFrequenciesScreenProps {
   onBack: () => void;
+  currentUser?: UserSession | null;
+  activeBusId?: string;
 }
 
-export function CompareFrequenciesScreen({ onBack }: CompareFrequenciesScreenProps) {
+export function CompareFrequenciesScreen({ onBack, currentUser, activeBusId: propActiveBusId }: CompareFrequenciesScreenProps) {
   const today = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState(today);
   const [freq1, setFreq1] = useState('');
@@ -50,14 +54,51 @@ export function CompareFrequenciesScreen({ onBack }: CompareFrequenciesScreenPro
   const [result, setResult] = useState<CompareResult | null>(null);
   const [frecuencias, setFrecuencias] = useState<FrecOption[]>([]);
 
+  const isSuperAdmin = currentUser?.rol === 'ADMIN' || currentUser?.rol === 'SUPERADMIN_SAAS' || currentUser?.subRol === 'SUPERADMIN_SAAS';
+  const isSocio = !isSuperAdmin && (currentUser?.rol === 'SOCIO' || currentUser?.subRol === 'SOCIO');
+
+  const [availableBuses, setAvailableBuses] = useState<BusItem[]>(() => getAllBuses());
+  const [selectedBusId, setSelectedBusId] = useState<string>(() => {
+    if (isSuperAdmin) return 'TODOS';
+    if (currentUser?.busId) return currentUser.busId;
+    if (propActiveBusId) return propActiveBusId;
+    return getActiveBusId() || 'BUS-01';
+  });
+
+  const effectiveSocioId = useMemo(() => {
+    if (isSocio) return currentUser?.socioId || currentUser?.id || '';
+    if (isSuperAdmin && selectedBusId !== 'TODOS') {
+      const found = availableBuses.find(b => b.id === selectedBusId);
+      return (found as any)?.socioId || '';
+    }
+    return '';
+  }, [isSocio, currentUser?.socioId, currentUser?.id, isSuperAdmin, selectedBusId, availableBuses]);
+
+  useEffect(() => {
+    fetch('/api/buses')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const list = d?.data || d;
+        if (Array.isArray(list) && list.length > 0) {
+          setAvailableBuses(list);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const dayName = useMemo(() => {
     const d = new Date(date + 'T12:00:00');
     return DAY_NAMES[d.getDay()];
   }, [date]);
 
-  // Load unique frequencies from records
+  // Load unique frequencies from records (aisladas por unidad y socio)
   useEffect(() => {
-    fetch('/api/records?include=trips').then(r => r.json()).then(data => {
+    const params = new URLSearchParams();
+    params.set('include', 'trips');
+    if (selectedBusId && selectedBusId !== 'TODOS') params.set('busId', selectedBusId);
+    if (effectiveSocioId && effectiveSocioId !== 'TODOS') params.set('socioId', effectiveSocioId);
+
+    fetch(`/api/records?${params.toString()}`).then(r => r.json()).then(data => {
       if (!Array.isArray(data)) return;
       const freqMap = new Map<string, FrecOption>();
       for (const record of data) {
@@ -81,7 +122,7 @@ export function CompareFrequenciesScreen({ onBack }: CompareFrequenciesScreenPro
       const sorted = Array.from(freqMap.values()).sort((a, b) => a.time.localeCompare(b.time));
       setFrecuencias(sorted);
     }).catch(() => {});
-  }, []);
+  }, [selectedBusId, effectiveSocioId]);
 
   const handleCompare = async () => {
     if (!freq1 || !freq2) return;
@@ -101,6 +142,13 @@ export function CompareFrequenciesScreen({ onBack }: CompareFrequenciesScreenPro
         freq2To: f2.to,
         freq2Time: f2.time,
       });
+
+      if (selectedBusId && selectedBusId !== 'TODOS') {
+        params.set('busId', selectedBusId);
+      }
+      if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
+        params.set('socioId', effectiveSocioId);
+      }
 
       const res = await fetch(`/api/reports/compare-frequencies?${params}`);
       const data = await res.json();
@@ -128,6 +176,49 @@ export function CompareFrequenciesScreen({ onBack }: CompareFrequenciesScreenPro
       </header>
 
       <main className="flex-1 overflow-y-auto pb-8 px-4 py-4 space-y-4">
+        {/* Selector de Unidad / Filtro Multi-Tenant */}
+        <div className="bg-white p-3 rounded-2xl border border-[#D6D6D6] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-[#912D26]/10 flex items-center justify-center text-[#912D26]">
+              <BusIcon className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-[#3A3A3A]/40 uppercase tracking-wider">Unidad en Comparativa</p>
+              <p className="text-xs font-semibold text-[#3A3A3A]">
+                {isSuperAdmin
+                  ? selectedBusId === 'TODOS' ? 'Toda la Cooperativa (Consolidado)' : `Bus ${availableBuses.find(b => b.id === selectedBusId)?.numeroDisco || selectedBusId}`
+                  : `Bus ${availableBuses.find(b => b.id === selectedBusId)?.numeroDisco || (selectedBusId ? selectedBusId.replace(/^BUS-/i, '') : '') || currentUser?.busNumero || '01'} • ${currentUser?.nombre || 'Socio Propietario'}`}
+              </p>
+            </div>
+          </div>
+          {isSuperAdmin ? (
+            <select
+              value={selectedBusId}
+              onChange={(e) => setSelectedBusId(e.target.value)}
+              className="w-full sm:w-auto h-9 text-xs font-medium bg-[#FAFAFA] border border-[#D6D6D6] rounded-xl px-3 text-[#3A3A3A] focus:outline-none focus:border-[#912D26]"
+            >
+              <option value="TODOS">🚌 Toda la Cooperativa (Consolidado Global)</option>
+              {availableBuses.map((b) => (
+                <option key={b.id} value={b.id}>
+                  Bus {b.numeroDisco} ({b.placa} • {b.propietario || 'Socio'})
+                </option>
+              ))}
+            </select>
+          ) : currentUser?.buses && currentUser.buses.length > 1 ? (
+            <select
+              value={selectedBusId}
+              onChange={(e) => setSelectedBusId(e.target.value)}
+              className="w-full sm:w-auto h-9 text-xs font-medium bg-[#FAFAFA] border border-[#D6D6D6] rounded-xl px-3 text-[#3A3A3A] focus:outline-none focus:border-[#912D26]"
+            >
+              {currentUser.buses.map((b) => (
+                <option key={b.id} value={b.id}>
+                  Bus {b.numeroDisco} ({b.placa})
+                </option>
+              ))}
+            </select>
+          ) : null}
+        </div>
+
         {/* Date and day */}
         <Card className="rounded-2xl border border-[#D6D6D6] bg-white">
           <CardContent className="p-4">

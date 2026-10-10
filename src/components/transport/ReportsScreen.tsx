@@ -478,7 +478,7 @@ export function ReportsScreen({ onBack, currentUser, activeBusId: propActiveBusI
               <p className="text-xs font-semibold text-[#3A3A3A]">
                 {isSuperAdmin
                   ? selectedBusId === 'TODOS' ? 'Toda la Cooperativa (Consolidado Global)' : `Bus ${availableBuses.find(b => b.id === selectedBusId)?.numeroDisco || selectedBusId}`
-                  : `Bus ${currentUser?.busNumero || availableBuses.find(b => b.id === selectedBusId)?.numeroDisco || '01'} • ${currentUser?.nombre || 'Socio Propietario'}`}
+                  : `Bus ${availableBuses.find(b => b.id === selectedBusId)?.numeroDisco || (selectedBusId ? selectedBusId.replace(/^BUS-/i, '') : '') || currentUser?.busNumero || '01'} • ${currentUser?.nombre || 'Socio Propietario'}`}
               </p>
             </div>
           </div>
