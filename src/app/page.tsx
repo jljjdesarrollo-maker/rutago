@@ -529,6 +529,7 @@ export default function Home() {
     case 'carga_historica':
       return (
         <CargaHistoricaScreen
+          currentUser={user}
           onBack={() => setView('home')}
           onSuccess={() => {
             fetchCount();

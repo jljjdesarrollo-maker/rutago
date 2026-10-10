@@ -114,6 +114,11 @@
    - Auto-saneamiento silencioso en `/api/records/route.ts` para normalizar registros históricos (como `04/10/2026` y `05/10/2026`).
    - Commit: `feat(records): v3.61.25 - embudo canonico unificado para arqueo y carga historica con saneamiento retroactivo`
 
+21. **v3.61.26 (Orden Secuencial de Frecuencias con Pernocta y Aislamiento de Tripulación por Unidad en Carga Histórica):** ✅ COMPLETADA
+   - Corrección del orden de frecuencias en `CargaHistoricaScreen.tsx` (`getOrderedVtFrecuencias`): eliminación del `.sort()` alfabético por hora que colocaba al inicio el turno de madrugada cuando el bus "duerme afuera" (ej. `VT1`, `VT3`, `VT4`, `VT5`, `VT8`, `VT10`, `VT11`, `VT12`, `VT14`, `P1`, `P2`). Ahora respeta 100% la secuencia programada del VT.
+   - Aislamiento de tripulación por autobús/socio: filtra exclusivamente los choferes (`CONDUCTOR`) y ayudantes (`AYUDANTE`) pertenecientes a la unidad activa (`Bus #01`, `Bus #10`, `Bus #15`, etc.), preseleccionando a quienes están en turno (`esActual`).
+   - Commit: `fix(carga-historica): v3.61.26 - orden secuencial de frecuencias con pernocta y aislamiento de tripulacion por bus`
+
 ---
 
 ### 🏛️ REGLAS DE ARQUITECTURA OFICIAL IMPLEMENTADAS:

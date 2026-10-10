@@ -30,8 +30,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { num } from './types';
-import { getActiveBus, saveBusOdometer, getLatestBusOdometer } from '@/lib/fleet-storage';
+import { num, type UserSession } from './types';
+import { isSuperAdmin as checkIsSuperAdmin } from '@/lib/roles';
+import { getActiveBus, setActiveBus, saveBusOdometer, getLatestBusOdometer } from '@/lib/fleet-storage';
 import { obtenerUltimosArqueosBus } from '@/lib/turno-secuencia-tracker';
 import { VT_DATA } from '@/lib/seed-vts';
 import { buildCanonicalRecordPayload } from '@/lib/canonical-record-payload';
@@ -79,11 +80,51 @@ function sortVtsNatural(list: BusVTItem[]): BusVTItem[] {
   });
 }
 
+/**
+ * Garantiza que las frecuencias de un VT conserven estrictamente el orden programado de la jornada
+ * (1ra salida desde Loja primero y el retorno de pernocta/"duerme afuera" al final),
+ * sin desordenarlas alfabéticamente por hora.
+ */
+function getOrderedVtFrecuencias(
+  vtCodigo: string,
+  rawFrecuencias: BusVTItem['frecuencias']
+): BusVTItem['frecuencias'] {
+  if (!Array.isArray(rawFrecuencias) || rawFrecuencias.length === 0) return [];
+  const list = [...rawFrecuencias];
+
+  // Si por algún dato antiguo en BD la primera frecuencia no sale de Loja (ej. retorno de madrugada puesto primero),
+  // verificar contra el catálogo oficial VT_DATA o rotar el retorno de madrugada al final.
+  const firstFrom = (list[0]?.routeFrom || '').trim().toLowerCase();
+  if (list.length > 1 && firstFrom !== 'loja') {
+    const canonicalVt = VT_DATA.find(
+      v => v.codigo.toUpperCase() === vtCodigo.trim().toUpperCase()
+    );
+    if (canonicalVt && canonicalVt.frecuencias.length === list.length) {
+      return canonicalVt.frecuencias.map((f, idx) => ({
+        ...f,
+        order: idx + 1,
+      }));
+    }
+    const firstLojaIdx = list.findIndex(
+      f => (f.routeFrom || '').trim().toLowerCase() === 'loja'
+    );
+    if (firstLojaIdx > 0) {
+      const rotated = [...list.slice(firstLojaIdx), ...list.slice(0, firstLojaIdx)];
+      return rotated.map((f, idx) => ({ ...f, order: idx + 1 }));
+    }
+  }
+
+  return list.map((f, idx) => ({
+    ...f,
+    order: idx + 1,
+  }));
+}
+
 function formatVtOptionLabel(v: BusVTItem): string {
-  const frecs = Array.isArray(v.frecuencias) ? v.frecuencias : [];
+  const frecs = getOrderedVtFrecuencias(v.codigo, v.frecuencias);
   if (frecs.length === 0) return `${v.codigo} (${v.nombre})`;
 
-  const primera = frecs.find(f => f.order === 1) || frecs[0];
+  const primera = frecs[0];
   const horaInicio = primera?.time || '';
 
   const destinos = frecs.flatMap(f => [f.routeTo || '', f.routeFrom || '']);
@@ -110,17 +151,49 @@ interface SystemFrecuencia {
 
 interface PersonaItem {
   id: string;
+  socioId?: string | null;
   nombre: string;
   rol: 'CONDUCTOR' | 'AYUDANTE' | string;
   esActual: boolean;
+  activo?: boolean;
+}
+
+interface AvailableBusOption {
+  id: string;
+  numeroDisco: string;
+  placa: string;
+  propietario?: string;
+  socioId?: string | null;
 }
 
 interface CargaHistoricaScreenProps {
+  currentUser?: UserSession | null;
   onBack: () => void;
   onSuccess: () => void;
 }
 
-export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreenProps) {
+export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHistoricaScreenProps) {
+  const effectiveUser = useMemo<UserSession | null>(() => {
+    if (currentUser) return currentUser;
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('ct_session');
+        if (raw) return JSON.parse(raw) as UserSession;
+      } catch {}
+    }
+    return null;
+  }, [currentUser]);
+
+  const isSuperAdmin = checkIsSuperAdmin(effectiveUser);
+  const isSocio = !isSuperAdmin;
+  const socioIdSesion = effectiveUser?.socioId || (isSocio ? effectiveUser?.id : null);
+
+  const [availableBuses, setAvailableBuses] = useState<AvailableBusOption[]>([]);
+  const [selectedBusDisco, setSelectedBusDisco] = useState<string>(() => {
+    const active = getActiveBus();
+    return String(active?.numeroDisco || '01').padStart(2, '0');
+  });
+
   const today = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState(today);
   const [kmInicial, setKmInicial] = useState('');
@@ -141,9 +214,8 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
     let cancelled = false;
     async function fetchPrevOdometro() {
       try {
-        const activeBus = getActiveBus();
-        const targetDisco = String(activeBus?.numeroDisco || '01').padStart(2, '0');
-        const targetBusId = String(activeBus?.id || `BUS-${targetDisco}`).toUpperCase();
+        const targetDisco = String(selectedBusDisco || getActiveBus()?.numeroDisco || '01').padStart(2, '0');
+        const targetBusId = `BUS-${targetDisco}`;
 
         const dedicated = getLatestBusOdometer(targetDisco);
         let dedicatedCandidate: any = null;
@@ -203,9 +275,10 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
     return () => {
       cancelled = true;
     };
-  }, [date]);
+  }, [date, selectedBusDisco]);
   
-  // Personas (Choferes y Ayudantes)
+  // Personas (Todos los registros activos y listas filtradas por la tripulación de la unidad)
+  const [allPersonas, setAllPersonas] = useState<PersonaItem[]>([]);
   const [conductoresList, setConductoresList] = useState<PersonaItem[]>([]);
   const [ayudantesList, setAyudantesList] = useState<PersonaItem[]>([]);
   const [selectedConductor, setSelectedConductor] = useState('');
@@ -219,10 +292,7 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
         id: vt.codigo,
         codigo: vt.codigo,
         nombre: vt.nombre,
-        frecuencias: vt.frecuencias.map((f, idx) => ({
-          ...f,
-          order: idx + 1,
-        })),
+        frecuencias: getOrderedVtFrecuencias(vt.codigo, vt.frecuencias),
       }))
     )
   );
@@ -257,37 +327,63 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Cargar VTs y Personal al montar
+  // Cargar VTs, Buses y Personal al montar
   useEffect(() => {
     (async () => {
       try {
-        const [resVts, resPersonas] = await Promise.all([
+        const busesUrl =
+          isSocio && socioIdSesion
+            ? `/api/buses?socioId=${encodeURIComponent(socioIdSesion)}`
+            : '/api/buses';
+        const personasUrl =
+          isSocio && socioIdSesion
+            ? `/api/personas?socioId=${encodeURIComponent(socioIdSesion)}`
+            : '/api/personas';
+
+        const [resVts, resBuses, resPersonas] = await Promise.all([
           fetch('/api/bus-vts'),
-          fetch('/api/personas'),
+          fetch(busesUrl),
+          fetch(personasUrl),
         ]);
 
         if (resVts.ok) {
           const dataVts = await resVts.json();
           if (Array.isArray(dataVts) && dataVts.length > 0) {
-            setVts(sortVtsNatural(dataVts));
+            const normalizedVts = dataVts.map((v: BusVTItem) => ({
+              ...v,
+              frecuencias: getOrderedVtFrecuencias(v.codigo, v.frecuencias || []),
+            }));
+            setVts(sortVtsNatural(normalizedVts));
+          }
+        }
+
+        if (resBuses.ok) {
+          const jsonBuses = await resBuses.json();
+          const listBuses: AvailableBusOption[] = Array.isArray(jsonBuses?.data)
+            ? jsonBuses.data
+            : Array.isArray(jsonBuses)
+            ? jsonBuses
+            : [];
+          if (listBuses.length > 0) {
+            setAvailableBuses(listBuses);
+            const activeDisco = String(getActiveBus()?.numeroDisco || '01').padStart(2, '0');
+            const existsInList = listBuses.some(
+              b => String(b.numeroDisco).padStart(2, '0') === activeDisco
+            );
+            if (!existsInList) {
+              const firstDisco = String(listBuses[0].numeroDisco).padStart(2, '0');
+              setSelectedBusDisco(firstDisco);
+              setActiveBus(`BUS-${firstDisco}`);
+            } else {
+              setSelectedBusDisco(activeDisco);
+            }
           }
         }
 
         if (resPersonas.ok) {
           const dataPersonas: PersonaItem[] = await resPersonas.json();
           if (Array.isArray(dataPersonas)) {
-            const conds = dataPersonas.filter(p => p.rol === 'CONDUCTOR');
-            const ayuds = dataPersonas.filter(p => p.rol === 'AYUDANTE');
-            setConductoresList(conds);
-            setAyudantesList(ayuds);
-
-            // Preseleccionar el conductor activo por defecto si existe
-            const activeCond = conds.find(p => p.esActual);
-            if (activeCond) setSelectedConductor(activeCond.nombre);
-
-            // Preseleccionar el ayudante activo por defecto si existe
-            const activeAyud = ayuds.find(p => p.esActual);
-            if (activeAyud) setSelectedAyudante(activeAyud.nombre);
+            setAllPersonas(dataPersonas);
           }
         }
       } catch (err) {
@@ -296,7 +392,44 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
         setVtsLoading(false);
       }
     })();
-  }, []);
+  }, [isSocio, socioIdSesion]);
+
+  // Filtrar Choferes y Ayudantes exclusivamente para la tripulación de la unidad activa
+  useEffect(() => {
+    const cleanDisco = String(selectedBusDisco || '01').padStart(2, '0');
+    const busObj = availableBuses.find(
+      b => String(b.numeroDisco).padStart(2, '0') === cleanDisco
+    );
+    const targetSocioId = busObj?.socioId || (isSocio ? socioIdSesion : null);
+
+    // Solo roles operativos de tripulación (CONDUCTOR y AYUDANTE), excluyendo socios/admins
+    const soloTripulacion = allPersonas.filter(
+      p => (p.rol === 'CONDUCTOR' || p.rol === 'AYUDANTE') && p.activo !== false
+    );
+
+    let scopedPersonas = soloTripulacion;
+    if (targetSocioId) {
+      const DelSocio = soloTripulacion.filter(p => p.socioId === targetSocioId);
+      // Si el socio/bus tiene su tripulación asignada, aislar estrictamente a esa tripulación
+      if (DelSocio.length > 0 || isSocio) {
+        scopedPersonas = DelSocio;
+      }
+    }
+
+    const conds = scopedPersonas.filter(p => p.rol === 'CONDUCTOR');
+    const ayuds = scopedPersonas.filter(p => p.rol === 'AYUDANTE');
+
+    setConductoresList(conds);
+    setAyudantesList(ayuds);
+
+    // Preseleccionar el chofer activo en turno de esa unidad
+    const activeCond = conds.find(p => p.esActual) || conds[0];
+    setSelectedConductor(activeCond ? activeCond.nombre : '');
+
+    // Preseleccionar el ayudante activo en turno de esa unidad
+    const activeAyud = ayuds.find(p => p.esActual) || ayuds[0];
+    setSelectedAyudante(activeAyud ? activeAyud.nombre : '');
+  }, [allPersonas, availableBuses, selectedBusDisco, isSocio, socioIdSesion]);
 
   // Cargar todas las frecuencias del sistema para reasignación
   const loadSystemFrecuencias = async () => {
@@ -312,13 +445,13 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
     }
   };
 
-  // Al seleccionar un VT, precargar sus frecuencias
+  // Al seleccionar un VT, precargar sus frecuencias respetando el orden programado de turno (sin ordenar por hora)
   const handleSelectVT = (code: string) => {
     setSelectedVtCode(code);
     const vt = vts.find(v => v.codigo === code);
     if (vt && Array.isArray(vt.frecuencias) && vt.frecuencias.length > 0) {
-      const sorted = [...vt.frecuencias].sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-      const items: FrecuenciaItem[] = sorted.map((f, idx) => ({
+      const ordered = getOrderedVtFrecuencias(vt.codigo, vt.frecuencias);
+      const items: FrecuenciaItem[] = ordered.map((f, idx) => ({
         order: idx + 1,
         routeFrom: f.routeFrom || 'Loja',
         routeTo: f.routeTo || 'Vilcabamba',
@@ -488,8 +621,12 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
     setSaving(true);
     try {
       const activeBus = getActiveBus();
-      const discoUnidad = String(activeBus?.numeroDisco || '01').padStart(2, '0');
-      const idUnidad = activeBus?.id || `BUS-${discoUnidad}`;
+      const discoUnidad = String(selectedBusDisco || activeBus?.numeroDisco || '01').padStart(2, '0');
+      const busObj = availableBuses.find(
+        b => String(b.numeroDisco).padStart(2, '0') === discoUnidad
+      );
+      const idUnidad = `BUS-${discoUnidad}`;
+      const placaUnidad = busObj?.placa || activeBus?.placa;
       const recorridoCalculado =
         kmRecorridos !== null && kmRecorridos >= 0 ? kmRecorridos.toString() : null;
 
@@ -500,7 +637,7 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
         km: recorridoCalculado,
         busId: idUnidad,
         numeroDisco: discoUnidad,
-        placaBus: activeBus?.placa,
+        placaBus: placaUnidad,
         conductorNombre: selectedConductor.trim() || null,
         ayudanteNombre: selectedAyudante.trim() || null,
         vtCode: selectedVtCode,
@@ -624,13 +761,51 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
 
         {/* 1. Datos Generales de la Hoja */}
         <Card className="rounded-2xl border border-gray-200 shadow-sm bg-white overflow-hidden">
-          <CardHeader className="py-3 px-4 bg-gray-50 border-b border-gray-100">
+          <CardHeader className="py-3 px-4 bg-gray-50 border-b border-gray-100 flex flex-row items-center justify-between">
             <CardTitle className="text-xs font-bold text-gray-700 uppercase tracking-wide flex items-center gap-1.5">
               <Calendar className="w-4 h-4 text-[#912D26]" />
               1. Identificación del Día y Unidad
             </CardTitle>
+            <span className="text-[11px] font-bold text-[#912D26] bg-[#912D26]/10 px-2.5 py-0.5 rounded-full">
+              Unidad #{String(selectedBusDisco || '01').padStart(2, '0')}
+            </span>
           </CardHeader>
           <CardContent className="p-4 space-y-3">
+            {availableBuses.length > 1 && (
+              <div>
+                <Label className="text-xs font-semibold text-gray-700 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Bus className="w-3.5 h-3.5 text-[#912D26]" />
+                    Autobús / Unidad a Igualar
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-normal">
+                    Filtra su tripulación automáticamente
+                  </span>
+                </Label>
+                <div className="relative mt-1">
+                  <select
+                    value={String(selectedBusDisco || '01').padStart(2, '0')}
+                    onChange={e => {
+                      const disco = String(e.target.value).padStart(2, '0');
+                      setSelectedBusDisco(disco);
+                      setActiveBus(`BUS-${disco}`);
+                    }}
+                    className="w-full h-11 px-3 pr-8 rounded-xl border border-gray-300 bg-white text-sm font-bold text-[#3A3A3A] focus:ring-2 focus:ring-[#912D26] outline-none appearance-none"
+                  >
+                    {availableBuses.map(b => {
+                      const disco = String(b.numeroDisco).padStart(2, '0');
+                      return (
+                        <option key={b.id || disco} value={disco}>
+                          Bus #{disco} — {b.placa} {b.propietario ? `(${b.propietario})` : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-3.5 pointer-events-none" />
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs font-semibold text-gray-700">Fecha del Cuaderno</Label>
@@ -661,15 +836,15 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
               </div>
             </div>
 
-            {/* Selector de Chofer (Conductor) con preselección del activo */}
+            {/* Selector de Chofer (Conductor) con preselección del activo de la unidad */}
             <div>
               <Label className="text-xs font-semibold text-gray-700 flex items-center justify-between">
                 <span className="flex items-center gap-1">
                   <User className="w-3.5 h-3.5 text-[#912D26]" />
-                  Chofer / Conductor
+                  Chofer / Conductor (Bus #{String(selectedBusDisco || '01').padStart(2, '0')})
                 </span>
                 <span className="text-[10px] text-gray-400 font-normal">
-                  {conductoresList.length} disponibles
+                  {conductoresList.length} en esta tripulación
                 </span>
               </Label>
               <div className="relative mt-1">
@@ -681,7 +856,7 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
                   <option value="">-- Seleccionar Chofer --</option>
                   {conductoresList.map(c => (
                     <option key={c.id} value={c.nombre}>
-                      {c.nombre} {c.esActual ? "(Activo Oficial)" : ""}
+                      {c.nombre} {c.esActual ? "(En Turno)" : ""}
                     </option>
                   ))}
                 </select>
@@ -689,15 +864,15 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
               </div>
             </div>
 
-            {/* Selector de Ayudante con preselección del activo */}
+            {/* Selector de Ayudante con preselección del activo de la unidad */}
             <div>
               <Label className="text-xs font-semibold text-gray-700 flex items-center justify-between">
                 <span className="flex items-center gap-1">
                   <Users className="w-3.5 h-3.5 text-[#912D26]" />
-                  Ayudante
+                  Ayudante (Bus #{String(selectedBusDisco || '01').padStart(2, '0')})
                 </span>
                 <span className="text-[10px] text-gray-400 font-normal">
-                  {ayudantesList.length} disponibles
+                  {ayudantesList.length} en esta tripulación
                 </span>
               </Label>
               <div className="relative mt-1">
@@ -709,7 +884,7 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
                   <option value="">-- Seleccionar Ayudante --</option>
                   {ayudantesList.map(a => (
                     <option key={a.id} value={a.nombre}>
-                      {a.nombre} {a.esActual ? "(Activo Oficial)" : ""}
+                      {a.nombre} {a.esActual ? "(En Turno)" : ""}
                     </option>
                   ))}
                 </select>
