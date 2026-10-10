@@ -100,6 +100,11 @@
    - Solución: Emparejamiento prioritario por clave inmutable de ranura `s.estadoId === `${fecha}_${f.id}``, preservando la frecuencia reasignada (`07:45`) y su estado `abierta` (habilitando el botón "Arqueo").
    - Commit: `fix(frecuencias): v3.61.23 - preservar frecuencia reasignada y estado abierta por estadoId inmutable`
 
+19. **v3.61.24 (Selector Grupo VT con Hora de 1ra Salida y Destino Distintivo en Carga Histórica):** ✅ COMPLETADA
+   - En `CargaHistoricaScreen.tsx`, se actualizó el Combo Box de "Grupo VT" para mostrar el formato ergonómico `VT# — HH:MM (Destino)` (ej. `VT1 — 06:15 (Yangana)`, `VT3 — 05:40 (La Elvira)`, `VT10 — 06:40 (El Tambo)`).
+   - Ordenamiento numérico natural (`VT1` a `VT15`, `P1` a `P3`) y precarga inmediata desde el catálogo base oficial (`VT_DATA`).
+   - Commit: `feat(carga-historica): v3.61.24 - formato VT con hora de primer turno y destino distintivo en combo box`
+
 ---
 
 ### 🏛️ REGLAS DE ARQUITECTURA OFICIAL IMPLEMENTADAS:

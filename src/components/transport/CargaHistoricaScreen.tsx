@@ -33,6 +33,7 @@ import { Separator } from '@/components/ui/separator';
 import { num } from './types';
 import { getActiveBus, saveBusOdometer } from '@/lib/fleet-storage';
 import { obtenerUltimosArqueosBus } from '@/lib/turno-secuencia-tracker';
+import { VT_DATA } from '@/lib/seed-vts';
 
 interface FrecuenciaItem {
   order: number;
@@ -62,6 +63,40 @@ interface BusVTItem {
     time: string;
     order?: number;
   }>;
+}
+
+function sortVtsNatural(list: BusVTItem[]): BusVTItem[] {
+  return [...list].sort((a, b) => {
+    const isAVt = a.codigo.toUpperCase().startsWith('VT');
+    const isBVt = b.codigo.toUpperCase().startsWith('VT');
+    if (isAVt && !isBVt) return -1;
+    if (!isAVt && isBVt) return 1;
+    const numA = parseInt(a.codigo.replace(/\D/g, ''), 10) || 0;
+    const numB = parseInt(b.codigo.replace(/\D/g, ''), 10) || 0;
+    if (numA !== numB) return numA - numB;
+    return a.codigo.localeCompare(b.codigo);
+  });
+}
+
+function formatVtOptionLabel(v: BusVTItem): string {
+  const frecs = Array.isArray(v.frecuencias) ? v.frecuencias : [];
+  if (frecs.length === 0) return `${v.codigo} (${v.nombre})`;
+
+  const primera = frecs.find(f => f.order === 1) || frecs[0];
+  const horaInicio = primera?.time || '';
+
+  const destinos = frecs.flatMap(f => [f.routeTo || '', f.routeFrom || '']);
+  const parroquiasEspeciales = ['Yangana', 'La Elvira', 'El Tambo', 'Zahuayco'];
+  const destinoDistintivo =
+    parroquiasEspeciales.find(p =>
+      destinos.some(d => d.trim().toLowerCase() === p.toLowerCase())
+    ) ||
+    primera?.routeTo ||
+    'Vilcabamba';
+
+  return horaInicio
+    ? `${v.codigo} — ${horaInicio} (${destinoDistintivo})`
+    : `${v.codigo} (${destinoDistintivo})`;
 }
 
 interface SystemFrecuencia {
@@ -95,9 +130,21 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
   const [selectedConductor, setSelectedConductor] = useState('');
   const [selectedAyudante, setSelectedAyudante] = useState('');
 
-  // VTs
+  // VTs (precargados con catálogo base oficial y sincronizados con la API)
   const [selectedVtCode, setSelectedVtCode] = useState('');
-  const [vts, setVts] = useState<BusVTItem[]>([]);
+  const [vts, setVts] = useState<BusVTItem[]>(() =>
+    sortVtsNatural(
+      VT_DATA.map(vt => ({
+        id: vt.codigo,
+        codigo: vt.codigo,
+        nombre: vt.nombre,
+        frecuencias: vt.frecuencias.map((f, idx) => ({
+          ...f,
+          order: idx + 1,
+        })),
+      }))
+    )
+  );
   const [vtsLoading, setVtsLoading] = useState(true);
 
   // Frecuencias del día cargadas para el VT seleccionado
@@ -140,8 +187,8 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
 
         if (resVts.ok) {
           const dataVts = await resVts.json();
-          if (Array.isArray(dataVts)) {
-            setVts(dataVts);
+          if (Array.isArray(dataVts) && dataVts.length > 0) {
+            setVts(sortVtsNatural(dataVts));
           }
         }
 
@@ -519,7 +566,7 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
                     <option value="">-- Seleccionar VT --</option>
                     {vts.map(v => (
                       <option key={v.id} value={v.codigo}>
-                        {v.codigo} ({v.nombre})
+                        {formatVtOptionLabel(v)}
                       </option>
                     ))}
                   </select>

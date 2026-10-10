@@ -292,6 +292,24 @@
 - **UI del Socio:** Badge distintivo `[ 🛣️ Liquidado en Ruta ]` en el historial mensual con aclaración: *"Deducido en arqueo diario de ruta — No descuenta de su liquidación mensual"*.
 - **Commit Oficial:** `feat(contabilidad): v3.60.25 - segregacion anti-duplicidad de gastos en ruta y proteccion de ganancia real`.
 
+## 33. Switch Optativo de Déficit de Arrastre y Neutralidad Contable (v3.61.22)
+- **Hito:** Control optativo en `ArqueoGeneralScreen.tsx` para el Déficit de Arrastre del día anterior, desactivado por defecto (`OFF`).
+- **Principio Contable (Opción 2 - Neutralidad Patrimonial):** Cuando el ayudante activa el switch para cobrarse de la caja de hoy un saldo a su favor del día anterior, disminuye el efectivo físico a entregar hoy pero se registra como ajuste informativo (`[REEMBOLSO_ARRASTRE_CAJA]`) sin duplicar gasto operativo en el Estado de Resultados del socio.
+- **Commit Oficial:** `feat(arqueo): v3.61.22 - switch optativo de deficit de arrastre OFF por defecto y neutralidad contable`.
+
+## 34. Persistencia de Frecuencia Reasignada al Retornar de Venta/Fuera de Horario (v3.61.23)
+- **Hito:** Corrección en `FrecuenciaSelector.tsx` (`loadFrecuencias`) para conservar la frecuencia reasignada (ej. `05:50` -> `07:45`) y su estado `abierta` al volver desde `TicketScreen`.
+- **Solución:** Emparejamiento prioritario por clave inmutable de ranura `s.estadoId === `${fecha}_${f.id}`` antes de comparar `frecuenciaId`.
+- **Commit Oficial:** `fix(frecuencias): v3.61.23 - preservar frecuencia reasignada y estado abierta por estadoId inmutable`.
+
+## 35. Formato Ergonómico de Grupo VT en Carga Histórica de Cuaderno (v3.61.24)
+- **Hito:** Mejora visual y operativa del Combo Box `Grupo VT` en `CargaHistoricaScreen.tsx`.
+- **Implementación:**
+  * Formato `VT# — HH:MM (Destino)` (ej. `VT1 — 06:15 (Yangana)`, `VT3 — 05:40 (La Elvira)`, `VT10 — 06:40 (El Tambo)`), tomando la hora del 1er turno y detectando automáticamente parroquias distintivas.
+  * Ordenamiento numérico natural (`VT1` a `VT15`, `P1` a `P3`) y precarga inmediata desde el catálogo base oficial (`VT_DATA`).
+- **Commit Oficial:** `feat(carga-historica): v3.61.24 - formato VT con hora de primer turno y destino distintivo en combo box`.
+
+
 
 
 
