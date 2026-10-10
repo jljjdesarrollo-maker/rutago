@@ -44,12 +44,12 @@ export interface ResultadoProyeccionTurno {
 
 /**
  * Historial semilla oficial auditado para la Unidad 01 de la cooperativa.
- * Base operativa: 27 de Septiembre de 2026 con VT07 cerrado por despacho.
+ * Base operativa auditada con cierres verificados en producción.
  */
 export const HISTORIAL_SEMILLA_AUDITADO_UNIDAD_01: ArqueoResumenTurno[] = [
-  { date: '2026-09-25', vtCode: 'VT05', conductor: '01', numeroDisco: '01' },
-  { date: '2026-09-26', vtCode: 'VT06', conductor: '01', numeroDisco: '01' },
-  { date: '2026-09-27', vtCode: 'VT07', conductor: '01', numeroDisco: '01', kmFinal: '893485' },
+  { date: '2026-09-27', vtCode: 'VT07', conductor: 'BUS-01', numeroDisco: '01', kmFinal: '894947' },
+  { date: '2026-09-30', vtCode: 'VT10', conductor: 'BUS-01', numeroDisco: '01', kmFinal: '895241' },
+  { date: '2026-10-01', vtCode: 'VT11', conductor: 'BUS-01', numeroDisco: '01', kmFinal: '895514' },
 ];
 
 /**
@@ -70,10 +70,32 @@ export function formatearCodigoVT(num: number): string {
 }
 
 /**
- * Normaliza el código de disco a dos dígitos (ej: "1" -> "01", "01" -> "01")
+ * Normaliza el código de disco a dos dígitos (ej: "1" -> "01", "01" -> "01").
+ * Si el texto no contiene dígitos (ej: nombre de chofer "Juan Pérez"), retorna ''.
  */
 export function normalizarDisco(disco: string): string {
-  return (disco || '').replace(/\D/g, '').padStart(2, '0');
+  const raw = (disco || '').trim();
+  const busMatch = raw.match(/BUS[-\s]*(\d+)/i);
+  if (busMatch && busMatch[1]) {
+    return busMatch[1].padStart(2, '0');
+  }
+  const firstDigits = raw.match(/\d+/);
+  if (!firstDigits || !firstDigits[0]) return '';
+  return firstDigits[0].padStart(2, '0');
+}
+
+/**
+ * Resuelve de forma segura el número de disco a partir de disco y/o busId
+ * evitando que un bus distinto (ej. BUS-10) caiga por error en '01'.
+ */
+export function resolverDiscoPorUnidad(disco?: string, busId?: string): string {
+  const fromBusId = normalizarDisco(busId || '');
+  const fromDisco = normalizarDisco(disco || '');
+  // Si busId especifica explícitamente otra unidad (ej. BUS-10) y disco cayó en fallback '01', priorizar busId
+  if (fromBusId && fromDisco === '01' && fromBusId !== '01') {
+    return fromBusId;
+  }
+  return fromDisco || fromBusId || '01';
 }
 
 /**
@@ -112,36 +134,65 @@ export function obtenerFechaHoyLocal(): string {
 
 /**
  * Recupera la Ficha de Calibración Local del almacenamiento del dispositivo
+ * garantizando aislamiento estricto por unidad (cada autobús tiene su propia ficha).
  */
 export function obtenerCalibracionLocalBus(
   disco: string,
   busId?: string
 ): FichaCalibracionBus | null {
   if (typeof window === 'undefined') return null;
-  const discoLimpio = normalizarDisco(disco);
+  const discoLimpio = resolverDiscoPorUnidad(disco, busId);
   const keyDisco = `rg_calibracion_bus_${discoLimpio}`;
   const keyBusId = busId ? `rg_calibracion_bus_${busId}` : null;
 
   try {
-    const raw = localStorage.getItem(keyDisco) || (keyBusId ? localStorage.getItem(keyBusId) : null);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.ultimoTurnoAuditado && Array.isArray(parsed.historial3Arqueos)) {
+    const rawDisco = localStorage.getItem(keyDisco);
+    if (rawDisco) {
+      const parsed = JSON.parse(rawDisco);
+      if (
+        parsed &&
+        parsed.ultimoTurnoAuditado &&
+        Array.isArray(parsed.historial3Arqueos) &&
+        resolverDiscoPorUnidad(parsed.disco, parsed.busId) === discoLimpio
+      ) {
         return parsed as FichaCalibracionBus;
+      } else {
+        localStorage.removeItem(keyDisco);
+      }
+    }
+
+    if (keyBusId) {
+      const rawBusId = localStorage.getItem(keyBusId);
+      if (rawBusId) {
+        const parsed = JSON.parse(rawBusId);
+        if (
+          parsed &&
+          parsed.ultimoTurnoAuditado &&
+          Array.isArray(parsed.historial3Arqueos) &&
+          resolverDiscoPorUnidad(parsed.disco, parsed.busId) === discoLimpio
+        ) {
+          return parsed as FichaCalibracionBus;
+        } else {
+          // Purgar posible contaminación cruzada previa
+          localStorage.removeItem(keyBusId);
+        }
       }
     }
   } catch (err) {
     console.warn('[turno-secuencia-tracker] Error al leer calibración local:', err);
   }
 
-  // Inicialización auditada para la Unidad 01 si es la primera vez que abre
-  if (discoLimpio === '01') {
+  // Inicialización auditada EXCLUSIVA para la Unidad 01 (nunca para otras unidades como Bus 10)
+  const esUnidad01Genuina =
+    discoLimpio === '01' && (!busId || busId === 'BUS-01' || busId === '01');
+
+  if (esUnidad01Genuina) {
     const fichaSemilla: FichaCalibracionBus = {
-      busId: busId || '01',
+      busId: 'BUS-01',
       disco: '01',
       calibrada: true,
-      ultimoTurnoAuditado: 'VT07',
-      fechaUltimoTurno: '2026-09-27',
+      ultimoTurnoAuditado: 'VT11',
+      fechaUltimoTurno: '2026-10-01',
       historial3Arqueos: [...HISTORIAL_SEMILLA_AUDITADO_UNIDAD_01],
       ultimaSincronizacion: new Date().toISOString(),
       fuente: 'AUDITADA_LOCAL',
@@ -159,10 +210,15 @@ export function obtenerCalibracionLocalBus(
 export function guardarCalibracionLocalBus(ficha: FichaCalibracionBus): void {
   if (typeof window === 'undefined' || !ficha) return;
   try {
-    const discoLimpio = normalizarDisco(ficha.disco);
-    localStorage.setItem(`rg_calibracion_bus_${discoLimpio}`, JSON.stringify(ficha));
-    if (ficha.busId) {
-      localStorage.setItem(`rg_calibracion_bus_${ficha.busId}`, JSON.stringify(ficha));
+    const discoLimpio = resolverDiscoPorUnidad(ficha.disco, ficha.busId);
+    const fichaSanitizada: FichaCalibracionBus = {
+      ...ficha,
+      disco: discoLimpio,
+      busId: ficha.busId || `BUS-${discoLimpio}`,
+    };
+    localStorage.setItem(`rg_calibracion_bus_${discoLimpio}`, JSON.stringify(fichaSanitizada));
+    if (fichaSanitizada.busId) {
+      localStorage.setItem(`rg_calibracion_bus_${fichaSanitizada.busId}`, JSON.stringify(fichaSanitizada));
     }
   } catch (err) {
     console.warn('[turno-secuencia-tracker] Error al guardar calibración local:', err);
@@ -170,26 +226,30 @@ export function guardarCalibracionLocalBus(ficha: FichaCalibracionBus): void {
 }
 
 /**
- * Obtiene los últimos arqueos registrados para un bus con soporte Offline-First.
- * Consulta primero la Ficha de Calibración Local y el localStorage. Si hay red,
- * sincroniza con /api/records y actualiza automáticamente el odómetro del bus.
+ * Obtiene los últimos arqueos registrados para un bus con soporte Offline-First y aislamiento por unidad.
+ * Consulta primero la Ficha de Calibración Local y el localStorage de esa unidad. Si hay red,
+ * sincroniza con /api/records?busId=... y actualiza automáticamente el odómetro del bus.
  */
 export async function obtenerUltimosArqueosBus(
   disco: string,
   busId?: string
 ): Promise<ArqueoResumenTurno[]> {
-  const discoLimpio = normalizarDisco(disco);
+  const discoLimpio = resolverDiscoPorUnidad(disco, busId);
+  const effectiveBusId = busId || `BUS-${discoLimpio}`;
   const registrosEncontrados: ArqueoResumenTurno[] = [];
 
-  // 1. Cargar Ficha de Calibración Local persistida en el dispositivo
-  const fichaLocal = obtenerCalibracionLocalBus(discoLimpio, busId);
+  // 1. Cargar Ficha de Calibración Local persistida en el dispositivo para ESTA unidad
+  const fichaLocal = obtenerCalibracionLocalBus(discoLimpio, effectiveBusId);
   if (fichaLocal && fichaLocal.historial3Arqueos && fichaLocal.historial3Arqueos.length > 0) {
     for (const item of fichaLocal.historial3Arqueos) {
-      registrosEncontrados.push(item);
+      const itemDisco = resolverDiscoPorUnidad(item.numeroDisco || item.conductor, effectiveBusId);
+      if (itemDisco === discoLimpio) {
+        registrosEncontrados.push(item);
+      }
     }
   }
 
-  // 2. Consultar arqueos adicionales guardados en localStorage
+  // 2. Consultar arqueos adicionales guardados en localStorage para ESTA unidad
   if (typeof window !== 'undefined') {
     try {
       for (let i = 0; i < localStorage.length; i++) {
@@ -199,8 +259,10 @@ export async function obtenerUltimosArqueosBus(
           if (raw) {
             const parsed = JSON.parse(raw);
             const rDisco = normalizarDisco(parsed.numeroDisco || parsed.conductor || '');
-            const matchBus = (rDisco && rDisco === discoLimpio) || (busId && parsed.busId === busId);
-            
+            const matchBus =
+              (rDisco && rDisco === discoLimpio) ||
+              (parsed.busId && String(parsed.busId).toUpperCase() === effectiveBusId.toUpperCase());
+
             if (matchBus && parsed.vtCode && parsed.date) {
               const existe = registrosEncontrados.some(
                 (re) => re.date === parsed.date && re.vtCode === parsed.vtCode
@@ -210,7 +272,7 @@ export async function obtenerUltimosArqueosBus(
                   date: parsed.date,
                   vtCode: String(parsed.vtCode).toUpperCase().trim(),
                   conductor: parsed.conductor,
-                  numeroDisco: rDisco,
+                  numeroDisco: discoLimpio,
                   kmFinal: parsed.kmFinal,
                 });
               }
@@ -221,22 +283,30 @@ export async function obtenerUltimosArqueosBus(
     } catch {}
   }
 
-  // 3. Si hay conexión a internet, intentar sincronizar con /api/records
+  // 3. Si hay conexión a internet, sincronizar con /api/records aislado por busId
   if (typeof window !== 'undefined' && navigator.onLine) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
-      const res = await fetch('/api/records?limit=60', { signal: controller.signal });
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(
+        `/api/records?limit=60&busId=${encodeURIComponent(effectiveBusId)}`,
+        { signal: controller.signal }
+      );
       clearTimeout(timeoutId);
 
       if (res.ok) {
         const records = await res.json();
         if (Array.isArray(records)) {
           for (const r of records) {
-            const rDisco = normalizarDisco(r.numeroDisco || r.conductor || '');
-            const rBusId = r.busId || '';
-            const matchBus = (rDisco && rDisco === discoLimpio) || (busId && rBusId === busId);
-            
+            const explicitDisco = normalizarDisco(r.numeroDisco || r.conductor || '');
+            const rBusId = r.busId ? String(r.busId).toUpperCase() : '';
+            // Si el registro trae un número de disco explícito, debe coincidir con discoLimpio.
+            // Si no trae dígitos (porque conductor tiene el nombre propio del chofer de este bus devuelto por el filtro busId del backend), es válido para este bus.
+            const matchBus =
+              (explicitDisco && explicitDisco === discoLimpio) ||
+              (rBusId && rBusId === effectiveBusId.toUpperCase()) ||
+              (!explicitDisco && !rBusId);
+
             if (matchBus && r.vtCode && typeof r.vtCode === 'string') {
               const existe = registrosEncontrados.some(
                 (re) => re.date === r.date && re.vtCode === r.vtCode
@@ -246,31 +316,12 @@ export async function obtenerUltimosArqueosBus(
                   date: r.date,
                   vtCode: r.vtCode.toUpperCase().trim(),
                   conductor: r.conductor,
-                  numeroDisco: rDisco,
+                  numeroDisco: discoLimpio,
                   kmFinal: r.kmFinal,
                   id: r.id,
                 });
               }
             }
-          }
-
-          // Si obtuvimos registros remotos y son válidos, actualizamos la ficha local
-          if (registrosEncontrados.length >= 3) {
-            const ordenados = [...registrosEncontrados].sort(
-              (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-            );
-            const ultimos3 = ordenados.slice(-3);
-            const ultimo = ultimos3[2];
-            guardarCalibracionLocalBus({
-              busId: busId || discoLimpio,
-              disco: discoLimpio,
-              calibrada: true,
-              ultimoTurnoAuditado: ultimo.vtCode,
-              fechaUltimoTurno: ultimo.date,
-              historial3Arqueos: ultimos3,
-              ultimaSincronizacion: new Date().toISOString(),
-              fuente: 'SERVIDOR_SINCRONIZADO',
-            });
           }
         }
       }
@@ -290,6 +341,22 @@ export async function obtenerUltimosArqueosBus(
   const listaFinal = Array.from(mapaFechas.values()).sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
+
+  // Si la unidad ya alcanzó 3 o más arqueos de fechas distintas, persistir su ficha de calibración local propia
+  if (listaFinal.length >= 3) {
+    const ultimos3 = listaFinal.slice(-3);
+    const ultimo = ultimos3[2];
+    guardarCalibracionLocalBus({
+      busId: effectiveBusId,
+      disco: discoLimpio,
+      calibrada: true,
+      ultimoTurnoAuditado: ultimo.vtCode,
+      fechaUltimoTurno: ultimo.date,
+      historial3Arqueos: ultimos3,
+      ultimaSincronizacion: new Date().toISOString(),
+      fuente: 'SERVIDOR_SINCRONIZADO',
+    });
+  }
 
   // 5. BLINDAJE DE ODÓMETRO: Si el último registro tiene kmFinal, persistir en saveBusOdometer
   // PRESERVACIÓN: Respetar si el socio realizó una calibración manual más reciente o con kilometraje superior

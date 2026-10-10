@@ -31,6 +31,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { num } from './types';
+import { getActiveBus, saveBusOdometer } from '@/lib/fleet-storage';
+import { obtenerUltimosArqueosBus } from '@/lib/turno-secuencia-tracker';
 
 interface FrecuenciaItem {
   order: number;
@@ -370,13 +372,19 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
         motivo: f.noRealizada ? f.motivoNoRealizada || 'otro' : null,
       }));
 
+      const activeBus = getActiveBus();
+      const discoUnidad = activeBus?.numeroDisco || '01';
+      const idUnidad = activeBus?.id || `BUS-${discoUnidad}`;
+
       const body = {
         date,
         km: km || null,
         kmFinal: km || null,
-        conductor: selectedConductor.trim() || null,
+        conductor: selectedConductor.trim() || `BUS-${discoUnidad}`,
         ayudanteNombre: selectedAyudante.trim() || null,
         vtCode: selectedVtCode,
+        busId: idUnidad,
+        numeroDisco: discoUnidad,
         trips,
         expenses: expenses.filter(e => e.description.trim() !== '').map(e => ({
           description: e.description.trim(),
@@ -397,6 +405,19 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
       if (!res.ok) {
         const errData = await res.json().catch(() => ({ error: 'Error del servidor' }));
         throw new Error(errData.error || 'Error al guardar el registro histórico');
+      }
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(
+            `arqueo_general_${discoUnidad}_${selectedVtCode}_${date}`,
+            JSON.stringify(body)
+          );
+          if (km && km.trim()) {
+            saveBusOdometer(discoUnidad, km.trim(), date);
+          }
+          obtenerUltimosArqueosBus(discoUnidad, idUnidad).catch(() => {});
+        } catch {}
       }
 
       setSavedSuccess(true);

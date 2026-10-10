@@ -3774,3 +3774,44 @@ bun test tests/manual-socio.test.ts
 - **`package.json`**: Versión incrementada a `3.61.20`.
 - **`download/RutaGo_Contexto_Maestro_v3.61.20.md`**: Respaldo contextual generado.
 - **Suite de Pruebas:** 32/32 tests aprobados (100%).
+
+---
+
+## 🏛️ v3.61.21 - AISLAMIENTO ESTRICTO DE VT POR UNIDAD Y ACTIVACIÓN AUTOMÁTICA AL 3ER ARQUEO (2026-10-09)
+> **ESTADO:** 🟢 COMPLETADO, VERIFICADO Y DESPLEGADO A PRODUCCIÓN  
+> **FECHA DE REGISTRO:** 2026-10-09 | **SISTEMA:** RutaGo - Motor de Turnos Rotativos Multi-Unidad  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Garantizar que cada unidad física (ej. Bus 01 vs Bus 10) tenga su propio cálculo de turno VT 100% independiente, mostrando estado de calibración cuando tiene menos de 3 registros y habilitando automáticamente su proyección al completar los 3 primeros arqueos.
+
+### 📍 1. Diagnóstico y Regla de Negocio Confirmada:
+- **Requerimiento del Socio:**
+  1. **Independencia por Autobús:** Cada autobús opera un VT distinto cada día (ej. hoy 09/Oct/2026 el Bus 01 trabaja el `VT04`, mientras que el Bus 10 trabaja otro VT).
+  2. **Estado Previo a los 3 Registros (`< 3` arqueos):** Mientras un bus nuevo o adicional (ej. Bus 10) aún no tenga sus 3 registros de arqueo, el sistema **no puede adivinar ni heredar el VT de otro bus**. Debe mostrar explícitamente que está **`En calibración (X/3 registros de arqueo)`** (permitiendo inspección manual opcional).
+  3. **Habilitación Automática al 3er Registro:** Tan pronto como el Bus 10 (o cualquier unidad) acumule sus 3 arqueos cerrados de fechas distintas (vía `ArqueoGeneralScreen` o `CargaHistoricaScreen`), se guarda su propia `FichaCalibracionBus` (`rg_calibracion_bus_10` / `rg_calibracion_bus_BUS-10`) y se habilita automáticamente el cálculo de su propio VT diario.
+
+### 📍 2. Soluciones Técnicas Implementadas:
+- **`src/lib/turno-secuencia-tracker.ts`**:
+  - Corrección de `normalizarDisco()` para priorizar el prefijo explícito `BUS-XX` y retornar `''` cuando el texto es el nombre de un chofer sin dígitos (evitando el falso `'00'` que descartaba los cierres del 30/Sep `VT10` y 01/Oct `VT11` en `BUS-01`).
+  - Nueva función `resolverDiscoPorUnidad(disco, busId)` que impide que una unidad como `BUS-10` caiga por fallback en `'01'`.
+  - Restricción de `HISTORIAL_SEMILLA_AUDITADO_UNIDAD_01` (`2026-09-27 VT07`, `2026-09-30 VT10`, `2026-10-01 VT11` -> `VT04` el `2026-10-09`) exclusivamente a `BUS-01`.
+  - Consulta a `/api/records?limit=60&busId=${effectiveBusId}` con timeout de 8000ms para soportar arranque en frío de base de datos serverless y persistencia inmediata de `FichaCalibracionBus` al alcanzar 3 fechas distintas (`listaFinal.length >= 3`).
+- **`src/app/api/records/route.ts`**:
+  - Aislamiento estricto en `GET /api/records`: cuando se consulta una unidad distinta de la `01` (ej. `busId=BUS-10`), filtra exclusivamente por registros etiquetados con `BUS-10`, impidiendo que los registros históricos del mismo socio en el `Bus 01` contaminen al `Bus 10`.
+  - Etiquetado automático en `POST /api/records`: todo registro nuevo que reciba `numeroDisco` o `busId` normaliza el campo `conductor` con el prefijo `BUS-XX`.
+- **`src/components/transport/SocioMantenimientoWidget.tsx` y `ChoferDisponibilidadCard.tsx`**:
+  - Sincronización en `0ms` de la ficha local propia al cambiar de autobús en el selector superior.
+  - Visualización explícita de **`En calibración (X/3 registros de arqueo)`** cuando la unidad aún no cuenta con sus 3 cierres, habilitando automáticamente la vista `Hoy en ruta (VTXX)` al completar el 3er registro.
+- **`src/components/transport/ArqueoGeneralScreen.tsx` y `CargaHistoricaScreen.tsx`**:
+  - Clave local aislada por unidad (`arqueo_general_${disco}_${vtCode}_${fecha}`) y disparo automático de calibración al guardar un arqueo.
+
+### 📍 3. Artefactos Modificados y Sincronizados:
+- **`src/lib/turno-secuencia-tracker.ts`**
+- **`src/app/api/records/route.ts`**
+- **`src/components/transport/SocioMantenimientoWidget.tsx`**
+- **`src/components/transport/ChoferDisponibilidadCard.tsx`**
+- **`src/components/transport/ArqueoGeneralScreen.tsx`**
+- **`src/components/transport/CargaHistoricaScreen.tsx`**
+- **`tests/regression-v3.61.21.ts`**: 19/19 aserciones aprobadas (100%).
+- **`package.json`**: Versión incrementada a `3.61.21`.
+- **`download/RutaGo_Contexto_Maestro_v3.61.21.md`**: Respaldo contextual generado.
+

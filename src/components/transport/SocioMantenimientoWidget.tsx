@@ -73,6 +73,7 @@ import {
   obtenerFechaHoyLocal,
   extraerNumeroVT,
   formatearCodigoVT,
+  resolverDiscoPorUnidad,
   type ResultadoProyeccionTurno,
   type ArqueoResumenTurno,
 } from '@/lib/turno-secuencia-tracker';
@@ -208,7 +209,7 @@ export function SocioMantenimientoWidget({
     if (typeof window !== 'undefined') {
       const busesList = getAllBuses();
       const current = busesList.find((b) => b.id === activeBusId);
-      const disco = current?.numeroDisco || '01';
+      const disco = resolverDiscoPorUnidad(current?.numeroDisco, activeBusId);
       const cal = obtenerCalibracionLocalBus(disco, activeBusId);
       if (cal && cal.historial3Arqueos && cal.historial3Arqueos.length > 0) {
         return cal.historial3Arqueos;
@@ -223,7 +224,7 @@ export function SocioMantenimientoWidget({
     if (typeof window === 'undefined') return 893485;
     const busesList = getAllBuses();
     const current = busesList.find((b) => b.id === bId);
-    const disco = current?.numeroDisco || '01';
+    const disco = resolverDiscoPorUnidad(current?.numeroDisco, bId);
     const audited = getLatestBusOdometer(disco);
     if (audited && audited.kmFinal) {
       const num = parseInt(audited.kmFinal, 10);
@@ -267,17 +268,20 @@ export function SocioMantenimientoWidget({
 
   const [items, setItems] = useState<MantenimientoBusItem[]>(() => cargarItems(activeBusId));
 
-  // Cargar arqueos
+  // Cargar arqueos aislados por unidad física
   const refrescarArqueos = useCallback(async (bId: string) => {
     setCargandoArqueos(true);
     const busesList = getAllBuses();
     const current = busesList.find((b) => b.id === bId);
-    const disco = current?.numeroDisco || '01';
+    const disco = resolverDiscoPorUnidad(current?.numeroDisco, bId);
+    // Sincronización inmediata en 0ms desde la ficha local de ESTA unidad (evita arrastrar el VT de otro bus al cambiar de pestaña)
+    const calLocal = obtenerCalibracionLocalBus(disco, bId);
+    setArqueosHistorial(calLocal?.historial3Arqueos || []);
     try {
       const data = await obtenerUltimosArqueosBus(disco, bId);
       setArqueosHistorial(data);
     } catch {
-      setArqueosHistorial([]);
+      setArqueosHistorial(calLocal?.historial3Arqueos || []);
     } finally {
       setCargandoArqueos(false);
     }
@@ -376,13 +380,14 @@ export function SocioMantenimientoWidget({
 
   const buses = getAllBuses();
   const currentBus = buses.find((b) => b.id === activeBusId);
-  const disco = currentBus?.numeroDisco || '01';
+  const disco = resolverDiscoPorUnidad(currentBus?.numeroDisco, activeBusId);
 
   // Proyección de turno inferido oficial de la cooperativa (pura y sin contaminación manual)
   const proyeccionTurno: ResultadoProyeccionTurno = useMemo(() => {
     return calcularProyeccionSecuencia(arqueosHistorial, null, obtenerFechaHoyLocal());
   }, [arqueosHistorial]);
 
+  const estaCalibradoAutomatico = proyeccionTurno.estado === 'CONFIRMADO';
   const turnoBaseCodigo = proyeccionTurno.turnoProyectado;
   const vtNumBase = proyeccionTurno.turnoBaseNumero;
 
@@ -746,40 +751,61 @@ export function SocioMantenimientoWidget({
 
           {/* Cuerpo Dividido en 2 Filas Claras: 1. Tiempo Hoy, 2. Estado Técnico */}
           <div className="space-y-2.5 my-1">
-            {/* Fila 1: Disponibilidad de Tiempos Hoy */}
+            {/* Fila 1: Disponibilidad de Tiempos Hoy (Anclada a cada Bus) */}
             <div className="space-y-0.5">
-              <p className="text-xs text-slate-300 font-semibold flex items-center gap-1.5 flex-wrap">
-                <span className="w-2 h-2 rounded-full bg-cyan-400" />
-                Hoy en ruta ({vtInspeccionCodigo}):
-                <span className="text-white font-bold ml-1">
-                  {periodosDiurnos.length > 0
-                    ? `${periodosDiurnos.length} ${periodosDiurnos.length === 1 ? 'período disponible' : 'períodos disponibles'} (${tiempoTotalDiurnoTexto} en total)`
-                    : `Sin períodos diurnos mayores a 45 min`}
-                </span>
-                {manualVT && (
-                  <span className="inline-flex items-center gap-1.5 ml-1">
-                    <span className="text-[10px] text-amber-300 font-bold bg-amber-950/70 px-1.5 py-0.2 rounded border border-amber-400/30">
-                      Manual ({manualVT})
+              {estaCalibradoAutomatico || manualVT ? (
+                <>
+                  <p className="text-xs text-slate-300 font-semibold flex items-center gap-1.5 flex-wrap">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                    Hoy en ruta ({vtInspeccionCodigo}):
+                    <span className="text-white font-bold ml-1">
+                      {periodosDiurnos.length > 0
+                        ? `${periodosDiurnos.length} ${periodosDiurnos.length === 1 ? 'período disponible' : 'períodos disponibles'} (${tiempoTotalDiurnoTexto} en total)`
+                        : `Sin períodos diurnos mayores a 45 min`}
                     </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRestaurarAutomatico();
-                      }}
-                      className="px-1.5 py-0.5 rounded bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-400/40 text-[10px] font-bold text-emerald-300 transition cursor-pointer flex items-center gap-0.5 active:scale-95"
-                      title={`Restablecer al turno oficial proyectado ${turnoBaseCodigo}`}
-                    >
-                      <RotateCcw className="w-2.5 h-2.5" />
-                      Usar {turnoBaseCodigo}
-                    </button>
-                  </span>
-                )}
-              </p>
-              {ventanaMayorLoja && (
-                <p className="text-[11px] text-cyan-200/90 font-medium pl-3.5">
-                  Ventana mayor en Loja: <strong>{ventanaMayorLoja.horaInicio} a {ventanaMayorLoja.horaFin}</strong> ({ventanaMayorLoja.duracionTexto})
-                </p>
+                    {manualVT && (
+                      <span className="inline-flex items-center gap-1.5 ml-1">
+                        <span className="text-[10px] text-amber-300 font-bold bg-amber-950/70 px-1.5 py-0.2 rounded border border-amber-400/30">
+                          Manual ({manualVT})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRestaurarAutomatico();
+                          }}
+                          className="px-1.5 py-0.5 rounded bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-400/40 text-[10px] font-bold text-emerald-300 transition cursor-pointer flex items-center gap-0.5 active:scale-95"
+                          title={
+                            estaCalibradoAutomatico
+                              ? `Restablecer al turno oficial proyectado ${turnoBaseCodigo}`
+                              : `Volver al estado de calibración automática (${proyeccionTurno.conteoArqueos}/3)`
+                          }
+                        >
+                          <RotateCcw className="w-2.5 h-2.5" />
+                          {estaCalibradoAutomatico ? `Usar ${turnoBaseCodigo}` : 'Modo Auto'}
+                        </button>
+                      </span>
+                    )}
+                  </p>
+                  {ventanaMayorLoja && (
+                    <p className="text-[11px] text-cyan-200/90 font-medium pl-3.5">
+                      Ventana mayor en Loja: <strong>{ventanaMayorLoja.horaInicio} a {ventanaMayorLoja.horaFin}</strong> ({ventanaMayorLoja.duracionTexto})
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="text-xs text-amber-300 font-semibold flex items-center gap-1.5 flex-wrap">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                    Turno de hoy (Bus {disco}):
+                    <span className="text-white font-bold ml-1">
+                      En calibración ({proyeccionTurno.conteoArqueos}/3 registros de arqueo)
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-slate-300 font-medium pl-3.5">
+                    El cálculo automático de VT propio se activará al completar los 3 primeros registros de Bus {disco} (toca para inspeccionar un VT manualmente).
+                  </p>
+                </>
               )}
             </div>
 
@@ -953,6 +979,13 @@ export function SocioMantenimientoWidget({
                 </button>
               )}
             </div>
+            {!estaCalibradoAutomatico && (
+              <div className="bg-amber-50 border-b border-amber-200 px-3.5 py-2 flex items-center justify-between gap-2 text-[11px] text-amber-900 shrink-0">
+                <span>
+                  🟡 <strong>Bus {disco} en calibración ({proyeccionTurno.conteoArqueos}/3 arqueos):</strong> El cálculo automático de su propio VT se habilitará al completar 3 cierres en esta unidad. Puedes elegir un VT manualmente arriba para consultar sus ventanas.
+                </span>
+              </div>
+            )}
 
             {/* 3. Cuerpo Desplazable con UN SOLO SCROLL FLUIDO */}
             <main className="flex-1 overflow-y-auto overscroll-contain p-3.5 sm:p-5 space-y-4">

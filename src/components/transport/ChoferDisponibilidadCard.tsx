@@ -30,6 +30,7 @@ import {
   obtenerCalibracionLocalBus,
   sincronizarArqueosYCalibracion,
   normalizarDisco,
+  resolverDiscoPorUnidad,
   obtenerFechaHoyLocal,
   type ResultadoProyeccionTurno,
 } from '@/lib/turno-secuencia-tracker';
@@ -66,7 +67,7 @@ export function ChoferDisponibilidadCard({
   // 1. Odómetro local reactivo y sincronizado
   const [kmActualLocal, setKmActualLocal] = useState<number>(() => {
     if (typeof window !== 'undefined') {
-      const dLimpio = normalizarDisco(disco);
+      const dLimpio = resolverDiscoPorUnidad(disco, busId);
       const odo = getLatestBusOdometer(dLimpio);
       if (odo && odo.kmFinal) {
         const num = parseInt(odo.kmFinal, 10);
@@ -85,7 +86,7 @@ export function ChoferDisponibilidadCard({
   // Suscripción reactiva en tiempo real al odómetro
   useEffect(() => {
     const unsubOdo = subscribeToBusOdometer((data) => {
-      const dLimpio = normalizarDisco(disco);
+      const dLimpio = resolverDiscoPorUnidad(disco, busId);
       if (data.numeroDisco === dLimpio || data.busId === busId) {
         const num = parseInt(data.kmFinal, 10);
         if (!isNaN(num) && num > 0) {
@@ -99,6 +100,7 @@ export function ChoferDisponibilidadCard({
   // 2. Inicialización inteligente de turno con caducidad diaria de overrides
   const [selectedVTCode, setSelectedVTCode] = useState<string>(() => {
     const hoyStr = obtenerFechaHoyLocal();
+    const dLimpio = resolverDiscoPorUnidad(disco, busId);
     if (typeof window !== 'undefined') {
       const savedRaw = localStorage.getItem(`rg_chofer_selected_vt_${busId}`);
       if (savedRaw) {
@@ -112,18 +114,13 @@ export function ChoferDisponibilidadCard({
           // Si era formato antiguo string simple sin fecha, se descartará al sincronizar
         }
       }
-      const cal = obtenerCalibracionLocalBus(disco, busId);
+      const cal = obtenerCalibracionLocalBus(dLimpio, busId);
       if (cal && cal.historial3Arqueos && cal.historial3Arqueos.length > 0) {
         const proy = calcularProyeccionSecuencia(cal.historial3Arqueos, null, hoyStr);
         if (proy?.turnoProyectado) return proy.turnoProyectado;
       }
     }
 
-    // Default auditado para la Unidad 01 si es nueva apertura: VT11
-    const dLimpio = (disco || busId || '').replace(/\D/g, '').padStart(2, '0');
-    if (dLimpio === '01') {
-      return 'VT11';
-    }
     return 'VT01';
   });
 
@@ -423,8 +420,17 @@ export function ChoferDisponibilidadCard({
           </div>
         </div>
 
+        {/* Banner de Unidad en Calibración (< 3 arqueos) */}
+        {proyeccion?.estado === 'CALIBRANDO' && (
+          <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl bg-amber-500/20 border border-amber-400/30 px-3 py-1.5 text-[11px] text-amber-200">
+            <span>
+              🟡 <strong>Bus {disco} en calibración ({proyeccion.conteoArqueos}/3 arqueos):</strong> El cálculo automático de su propio VT se activará al completar 3 registros. Puedes elegir el turno de hoy en <strong>Cambiar VT</strong>.
+            </span>
+          </div>
+        )}
+
         {/* Banner de Turno Manual Override (con opción a restablecer al proyectado) */}
-        {esTurnoManual && proyeccion?.turnoProyectado && (
+        {proyeccion?.estado === 'CONFIRMADO' && esTurnoManual && proyeccion?.turnoProyectado && (
           <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl bg-amber-500/20 border border-amber-400/30 px-3 py-1.5 text-xs text-amber-200">
             <div className="flex items-center gap-1.5 min-w-0">
               <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />

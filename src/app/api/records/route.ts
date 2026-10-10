@@ -19,11 +19,14 @@ export async function GET(req: NextRequest) {
       where.date = { gte: from, lte: to };
     }
 
-    // Aislamiento Multi-Tenant por Socio Propietario o Unidad Fisiológica
+    // Aislamiento Multi-Tenant por Socio Propietario o Unidad Física
     let effectiveSocioId = socioId;
+    const cleanBusNum = busId && busId !== 'TODOS'
+      ? busId.replace(/^BUS-/i, '').replace(/\D/g, '').padStart(2, '0')
+      : '';
+
     if ((!effectiveSocioId || effectiveSocioId === 'TODOS') && busId && busId !== 'TODOS') {
       try {
-        const cleanBusNum = busId.replace(/^BUS-/i, '');
         const busFound = await db.bus.findFirst({
           where: {
             OR: [
@@ -42,21 +45,43 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
+    const orFilters: Array<Record<string, unknown>> = [];
+
+    if (cleanBusNum) {
+      const busConductorTags = [
+        `BUS-${cleanBusNum}`,
+        `Bus ${cleanBusNum}`,
+        cleanBusNum,
+        String(parseInt(cleanBusNum, 10)),
+      ];
+      orFilters.push({ conductor: { in: busConductorTags } });
+      orFilters.push({ conductor: { startsWith: `BUS-${cleanBusNum}` } });
+    }
+
+    // Solo incluir filtro por nombres de tripulación del socio si NO se está consultando otra unidad distinta a la 01
+    // (evita que los arqueos históricos de la Unidad 01 con conductor "José Luis" contaminen al Bus 10 u otras unidades del mismo socio)
+    if (effectiveSocioId && effectiveSocioId !== 'TODOS' && (!cleanBusNum || cleanBusNum === '01')) {
       const socioPersonas = await db.persona.findMany({
         where: { socioId: effectiveSocioId },
         select: { nombre: true },
       });
       const crewNames = socioPersonas.map((p) => p.nombre).filter(Boolean);
       if (crewNames.length > 0) {
-        where.OR = [
-          { ayudanteNombre: { in: crewNames } },
-          { conductor: { in: crewNames } },
-        ];
-      } else {
-        where.id = 'NO_RECORDS_YET';
+        orFilters.push({
+          AND: [
+            { OR: [{ ayudanteNombre: { in: crewNames } }, { conductor: { in: crewNames } }] },
+            { NOT: { conductor: { startsWith: 'BUS-' } } },
+          ],
+        });
       }
-    } else if (busId && busId !== 'TODOS' && busId !== 'BUS-01' && busId !== '01') {
+    }
+
+    if (orFilters.length > 0) {
+      where.OR = orFilters;
+    } else if (
+      (effectiveSocioId && effectiveSocioId !== 'TODOS') ||
+      (busId && busId !== 'TODOS' && cleanBusNum !== '01')
+    ) {
       where.id = 'NO_RECORDS_YET';
     }
 
@@ -96,7 +121,19 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { date, km, kmInicial, kmFinal, conductor, ayudanteNombre, vtCode, trips, expenses, tickets, cajaComun: cajaComunBody, sobrante, photoUrl } = body;
+    const { date, km, kmInicial, kmFinal, conductor, ayudanteNombre, vtCode, busId, numeroDisco, trips, expenses, tickets, cajaComun: cajaComunBody, sobrante, photoUrl } = body;
+
+    const rawBusDigits = String(numeroDisco || busId || '').replace(/^BUS-/i, '').replace(/\D/g, '');
+    const cleanDiscoPost = rawBusDigits ? rawBusDigits.padStart(2, '0') : '';
+    let conductorNormalizado = conductor ? String(conductor).trim() : null;
+    if (cleanDiscoPost) {
+      const busPrefix = `BUS-${cleanDiscoPost}`;
+      if (!conductorNormalizado) {
+        conductorNormalizado = busPrefix;
+      } else if (!conductorNormalizado.toUpperCase().startsWith('BUS-')) {
+        conductorNormalizado = `${busPrefix} - ${conductorNormalizado}`;
+      }
+    }
 
     // Validación server-side: valores financieros no negativos
     if (Array.isArray(trips)) {
@@ -145,7 +182,7 @@ export async function POST(req: NextRequest) {
         km: km || null,
         kmInicial: kmInicial || null,
         kmFinal: kmFinal || null,
-        conductor: conductor || null,
+        conductor: conductorNormalizado,
         ayudanteNombre: ayudanteNombre || null,
         vtCode: vtCode || null,
         production,

@@ -34,6 +34,7 @@ import {
   type ResultadoValidacionOdometro,
   MOTIVOS_DESFASE_ODOMETRO
 } from '@/lib/odometer-validator';
+import { obtenerUltimosArqueosBus } from '@/lib/turno-secuencia-tracker';
 
 interface Props {
   session: VTSession;
@@ -622,6 +623,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       }
 
       const isOnline = navigator.onLine;
+      const localArqueoKey = `arqueo_general_${currentBus.numeroDisco}_${session.vtCode}_${fechaTrabajo}`;
 
       if (isOnline) {
         const res = await fetch('/api/records', {
@@ -630,18 +632,22 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           body: JSON.stringify(body),
         });
         if (res.ok) {
+          localStorage.setItem(localArqueoKey, JSON.stringify(body));
+          obtenerUltimosArqueosBus(currentBus.numeroDisco, currentBus.id).catch(() => {});
           setSaved(true);
         } else {
           const result = await res.json().catch(() => ({ error: 'Error desconocido' }));
           console.error('Error guardando arqueo en servidor:', result.error);
           // Save offline if server fails
-          localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify(body));
+          localStorage.setItem(localArqueoKey, JSON.stringify(body));
+          obtenerUltimosArqueosBus(currentBus.numeroDisco, currentBus.id).catch(() => {});
           setGuardadoOffline(true);
           setSaved(true);
         }
       } else {
         // Save to localStorage for later sync
-        localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify(body));
+        localStorage.setItem(localArqueoKey, JSON.stringify(body));
+        obtenerUltimosArqueosBus(currentBus.numeroDisco, currentBus.id).catch(() => {});
         setGuardadoOffline(true);
         setSaved(true);
       }
