@@ -142,9 +142,11 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
 
         // Try loading saved estados from localStorage first
         const saved = loadEstadosFromLS(session.vtCode, fecha);
-                if (saved && saved.length === data.length) {
-          // Mantener el orden canónico del catálogo (por ID/creación), respetando los datos de cada estado guardado
-          const orderedSaved = data.map((f: FrecuenciaData) => saved.find(s => s.frecuenciaId === f.id || s.id === f.id) || {
+        if (saved && saved.length === data.length) {
+          // Mantener el orden canónico del catálogo (por ID/creación), respetando cada ranura por su estadoId inmutable (incluso si fue reasignada a otra hora)
+          const orderedSaved = data.map((f: FrecuenciaData) =>
+            saved.find(s => s.estadoId === `${fecha}_${f.id}`) ||
+            saved.find(s => !s.estadoId && (s.frecuenciaId === f.id || s.id === f.id)) || {
             id: f.id,
             estadoId: `${fecha}_${f.id}`,
             frecuenciaId: f.id,

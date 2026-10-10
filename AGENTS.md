@@ -95,6 +95,11 @@
    - Preservación 100% inmutable de la botonera 2x2, semáforo de 4 chips y modales operativos existentes.
    - Commit: `feat(chofer): v3.60.29 - copiloto de ruta proyeccion temporal en dias y consejos preventivos`
 
+18. **v3.61.23 (Persistencia de Frecuencia Reasignada al Retornar de Venta/Fuera de Horario):** ✅ COMPLETADA
+   - Diagnóstico: En `FrecuenciaSelector.tsx` (`loadFrecuencias`), la hidratación de `orderedSaved` desde `localStorage` buscaba coincidencias solo por `s.frecuenciaId === f.id || s.id === f.id`. Al reasignar un turno (ej. `05:50` -> `07:45`), `id` y `frecuenciaId` cambiaban al ID de `07:45` mientras `estadoId` conservaba `${fecha}_${f.idOriginal}`. Al regresar desde `TicketScreen` (botón "Continuar"), no encontraba coincidencia y reiniciaba la ranura a `05:50` en estado `pendiente` (botón "Vender" en lugar de "Arqueo").
+   - Solución: Emparejamiento prioritario por clave inmutable de ranura `s.estadoId === `${fecha}_${f.id}``, preservando la frecuencia reasignada (`07:45`) y su estado `abierta` (habilitando el botón "Arqueo").
+   - Commit: `fix(frecuencias): v3.61.23 - preservar frecuencia reasignada y estado abierta por estadoId inmutable`
+
 ---
 
 ### 🏛️ REGLAS DE ARQUITECTURA OFICIAL IMPLEMENTADAS:
