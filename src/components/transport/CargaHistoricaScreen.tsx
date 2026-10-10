@@ -24,6 +24,13 @@ import {
   Info,
   Clock,
   Sparkles,
+  Truck,
+  Wrench,
+  Droplets,
+  UserX,
+  Ban,
+  FileText,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +44,17 @@ import { obtenerUltimosArqueosBus } from '@/lib/turno-secuencia-tracker';
 import { VT_DATA } from '@/lib/seed-vts';
 import { buildCanonicalRecordPayload } from '@/lib/canonical-record-payload';
 
+const MOTIVOS_NO_REALIZADA = [
+  { id: 'daño_unidad', label: 'Daño en la unidad', icon: <Truck className="w-4 h-4" />, color: 'text-red-500' },
+  { id: 'mantenimiento', label: 'Mantenimiento', icon: <Wrench className="w-4 h-4" />, color: 'text-blue-500' },
+  { id: 'clima', label: 'Clima / Lluvia', icon: <Droplets className="w-4 h-4" />, color: 'text-cyan-500' },
+  { id: 'sin_pasajeros', label: 'Sin pasajeros', icon: <UserX className="w-4 h-4" />, color: 'text-purple-500' },
+  { id: 'problema_ruta', label: 'Problema en la ruta', icon: <AlertTriangle className="w-4 h-4" />, color: 'text-yellow-500' },
+  { id: 'orden_superior', label: 'Orden superior', icon: <Ban className="w-4 h-4" />, color: 'text-gray-600' },
+  { id: 'ingreso_especial', label: 'Ingreso especial', icon: <Sparkles className="w-4 h-4" />, color: 'text-amber-500' },
+  { id: 'otro', label: 'Otro motivo', icon: <FileText className="w-4 h-4" />, color: 'text-gray-500' },
+];
+
 interface FrecuenciaItem {
   order: number;
   routeFrom: string;
@@ -47,6 +65,9 @@ interface FrecuenciaItem {
   cajaComunPasajeros: string;
   noRealizada: boolean;
   motivoNoRealizada?: string;
+  isIngresoEspecial?: boolean;
+  ingresoEspecialNota?: string;
+  ingresoEspecialMonto?: string;
 }
 
 interface ExpenseItem {
@@ -305,6 +326,13 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
   const [allSystemFrecuencias, setAllSystemFrecuencias] = useState<SystemFrecuencia[]>([]);
   const [reassigningOrder, setReassigningOrder] = useState<number | null>(null);
 
+  // Modal de No Realizada / Ingreso Especial
+  const [noRealizadaModalOrder, setNoRealizadaModalOrder] = useState<number | null>(null);
+  const [motivoSeleccionado, setMotivoSeleccionado] = useState<string>('');
+  const [motivoPersonalizado, setMotivoPersonalizado] = useState<string>('');
+  const [ingresoEspecialNota, setIngresoEspecialNota] = useState<string>('');
+  const [ingresoEspecialMonto, setIngresoEspecialMonto] = useState<string>('');
+
   // Gastos
   const [expenses, setExpenses] = useState<ExpenseItem[]>([
     { description: 'Chofer', amount: '30' },
@@ -509,6 +537,75 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
     setReassigningOrder(null);
   };
 
+  // Helper para etiqueta de motivo
+  const getMotivoLabel = (motivo?: string) => {
+    if (!motivo) return 'No realizada';
+    const found = MOTIVOS_NO_REALIZADA.find(m => m.id === motivo);
+    if (found) return found.label;
+    return motivo;
+  };
+
+  // Abrir modal de No Realizada / Ingreso Especial
+  const handleOpenNoRealizadaModal = (f: FrecuenciaItem) => {
+    setNoRealizadaModalOrder(f.order);
+    if (f.noRealizada) {
+      if (f.isIngresoEspecial) {
+        setMotivoSeleccionado('ingreso_especial');
+        setIngresoEspecialNota(f.ingresoEspecialNota || '');
+        setIngresoEspecialMonto(f.ingresoEspecialMonto || f.efectivoReal || '');
+        setMotivoPersonalizado('');
+      } else {
+        const known = MOTIVOS_NO_REALIZADA.find(m => m.id === f.motivoNoRealizada);
+        if (known && known.id !== 'otro') {
+          setMotivoSeleccionado(known.id);
+          setMotivoPersonalizado('');
+        } else {
+          setMotivoSeleccionado('otro');
+          setMotivoPersonalizado(f.motivoNoRealizada || '');
+        }
+        setIngresoEspecialNota('');
+        setIngresoEspecialMonto('');
+      }
+    } else {
+      setMotivoSeleccionado('');
+      setMotivoPersonalizado('');
+      setIngresoEspecialNota('');
+      setIngresoEspecialMonto('');
+    }
+  };
+
+  // Confirmar acción del modal No Realizada / Ingreso Especial
+  const handleConfirmNoRealizada = () => {
+    if (noRealizadaModalOrder === null) return;
+    const isEspecial = motivoSeleccionado === 'ingreso_especial';
+    const finalMotivo = isEspecial
+      ? 'ingreso_especial'
+      : (motivoSeleccionado === 'otro' ? (motivoPersonalizado.trim() || 'otro') : motivoSeleccionado);
+
+    updateFrecuencia(noRealizadaModalOrder, {
+      noRealizada: true,
+      motivoNoRealizada: finalMotivo,
+      isIngresoEspecial: isEspecial,
+      ingresoEspecialNota: isEspecial ? ingresoEspecialNota.trim() : undefined,
+      ingresoEspecialMonto: isEspecial ? ingresoEspecialMonto.trim() : undefined,
+      efectivoReal: isEspecial ? (ingresoEspecialMonto.trim() || '0') : '',
+      cajaComunMonto: '',
+      cajaComunPasajeros: '',
+    });
+    setNoRealizadaModalOrder(null);
+  };
+
+  // Reactivar frecuencia anulada o especial como frecuencia regular
+  const handleReactivarFrecuencia = (order: number) => {
+    updateFrecuencia(order, {
+      noRealizada: false,
+      motivoNoRealizada: undefined,
+      isIngresoEspecial: false,
+      ingresoEspecialNota: undefined,
+      ingresoEspecialMonto: undefined,
+    });
+  };
+
   // Manejo de gastos
   const addExpense = () => {
     setExpenses(prev => [...prev, { description: '', amount: '' }]);
@@ -570,7 +667,11 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
   // Cálculos de totales (idénticos a la regla de negocio y /api/records)
   const totals = useMemo(() => {
     const totalEfectivoReal = frecuencias.reduce(
-      (sum, f) => (f.noRealizada ? sum : sum + num(f.efectivoReal)),
+      (sum, f) => {
+        if (!f.noRealizada) return sum + num(f.efectivoReal);
+        if (f.isIngresoEspecial) return sum + num(f.ingresoEspecialMonto || f.efectivoReal);
+        return sum;
+      },
       0
     );
     const totalCajaComun = frecuencias.reduce(
@@ -641,19 +742,26 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
         conductorNombre: selectedConductor.trim() || null,
         ayudanteNombre: selectedAyudante.trim() || null,
         vtCode: selectedVtCode,
-        trips: frecuencias.map(f => ({
-          routeFrom: f.noRealizada ? '-' : f.routeFrom,
-          routeTo: f.noRealizada ? '-' : f.routeTo,
-          time: f.time || null,
-          income: f.noRealizada ? 0 : num(f.efectivoReal),
-          efectivoReal: f.noRealizada ? 0 : num(f.efectivoReal),
-          boletos: 0,
-          cajaComunPasajeros: f.noRealizada ? 0 : parseInt(f.cajaComunPasajeros, 10) || 0,
-          cajaComunMonto: f.noRealizada ? 0 : num(f.cajaComunMonto),
-          tipo: f.noRealizada ? 'no_realizada' : 'frecuencia',
-          motivo: f.noRealizada ? f.motivoNoRealizada || 'otro' : null,
-          isNoRealizada: f.noRealizada,
-        })),
+        trips: frecuencias.map(f => {
+          const isEsp = Boolean(f.isIngresoEspecial);
+          const isNoReal = Boolean(f.noRealizada) && !isEsp;
+          const montoEspecial = isEsp ? num(f.ingresoEspecialMonto || f.efectivoReal) : 0;
+          return {
+            routeFrom: isNoReal ? '-' : f.routeFrom,
+            routeTo: isNoReal ? '-' : f.routeTo,
+            time: f.time || null,
+            income: isEsp ? montoEspecial : (isNoReal ? 0 : num(f.efectivoReal)),
+            efectivoReal: isEsp ? montoEspecial : (isNoReal ? 0 : num(f.efectivoReal)),
+            boletos: 0,
+            cajaComunPasajeros: isNoReal || isEsp ? 0 : parseInt(f.cajaComunPasajeros, 10) || 0,
+            cajaComunMonto: isNoReal || isEsp ? 0 : num(f.cajaComunMonto),
+            tipo: isEsp ? 'ingreso_especial' : (isNoReal ? 'no_realizada' : 'frecuencia'),
+            motivo: isEsp ? 'ingreso_especial' : (isNoReal ? f.motivoNoRealizada || 'otro' : null),
+            notaEspecial: isEsp ? f.ingresoEspecialNota || 'Viaje especial' : null,
+            isNoRealizada: isNoReal,
+            isIngresoEspecial: isEsp,
+          };
+        }),
         expenses: expenses
           .filter(e => e.description.trim() !== '')
           .map(e => ({
@@ -968,9 +1076,11 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
             <Card
               key={f.order}
               className={`rounded-2xl border transition-all ${
-                f.noRealizada
-                  ? "bg-gray-100 border-gray-300 opacity-60"
-                  : "bg-white border-gray-200 shadow-sm"
+                !f.noRealizada
+                  ? "bg-white border-gray-200 shadow-sm"
+                  : f.isIngresoEspecial
+                  ? "bg-amber-50/40 border-amber-300 shadow-sm"
+                  : "bg-gray-100 border-gray-300 opacity-75"
               }`}
             >
               <CardContent className="p-3.5 space-y-2.5">
@@ -1003,22 +1113,43 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
                       <RotateCcw className="w-3.5 h-3.5 text-[#912D26]" />
                       <span>Cambiar</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => updateFrecuencia(f.order, { noRealizada: !f.noRealizada })}
-                      className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                        f.noRealizada
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-gray-100 hover:bg-red-50 text-gray-400 hover:text-red-600"
-                      }`}
-                      title={f.noRealizada ? "Marcar como realizada" : "Marcar no realizada"}
-                    >
-                      {f.noRealizada ? "No se dio" : "Anular"}
-                    </button>
+                    {f.noRealizada ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenNoRealizadaModal(f)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${
+                            f.isIngresoEspecial
+                              ? "bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300"
+                              : "bg-orange-100 hover:bg-orange-200 text-orange-900 border border-orange-300"
+                          }`}
+                          title="Editar motivo o detalle especial"
+                        >
+                          <span>{f.isIngresoEspecial ? "Editar Especial" : "Editar Motivo"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleReactivarFrecuencia(f.order)}
+                          className="px-2 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-xs font-bold transition-colors"
+                          title="Reactivar frecuencia normal"
+                        >
+                          Reactivar
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenNoRealizadaModal(f)}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gray-100 hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors"
+                        title="Anular vuelta o registrar ingreso especial"
+                      >
+                        Anular
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* Campos de captura rápida: Efectivo y Caja Común */}
+                {/* Campos de captura rápida: Efectivo y Caja Común / Ingreso Especial / No Realizada */}
                 {!f.noRealizada ? (
                   <div className="grid grid-cols-2 gap-2.5 pt-1">
                     <div className="bg-emerald-50/60 p-2 rounded-xl border border-emerald-200/60">
@@ -1050,10 +1181,62 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
                       />
                     </div>
                   </div>
+                ) : f.isIngresoEspecial ? (
+                  <div className="bg-amber-50/90 p-3 rounded-xl border border-amber-300 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
+                        <Sparkles className="w-4 h-4 text-amber-600" />
+                        <span>Ingreso Especial / Contratación</span>
+                      </div>
+                      <span className="text-xs font-black text-amber-950 bg-amber-200/80 px-2.5 py-0.5 rounded-full border border-amber-300">
+                        +${num(f.ingresoEspecialMonto || f.efectivoReal).toFixed(2)}
+                      </span>
+                    </div>
+                    {f.ingresoEspecialNota && (
+                      <p className="text-xs text-amber-900 font-semibold italic">
+                        &ldquo;{f.ingresoEspecialNota}&rdquo;
+                      </p>
+                    )}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <Label className="text-[10px] font-bold text-amber-900">Nota / Motivo</Label>
+                        <Input
+                          type="text"
+                          value={f.ingresoEspecialNota || ''}
+                          onChange={e => updateFrecuencia(f.order, { ingresoEspecialNota: e.target.value })}
+                          placeholder="Ej: Viaje al Cisne"
+                          className="mt-0.5 h-8 text-xs bg-white border-amber-300"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-bold text-amber-900">Monto Cobrado ($)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={f.ingresoEspecialMonto || f.efectivoReal || ''}
+                          onChange={e => updateFrecuencia(f.order, {
+                            ingresoEspecialMonto: e.target.value,
+                            efectivoReal: e.target.value,
+                          })}
+                          placeholder="0.00"
+                          className="mt-0.5 h-8 text-xs font-black text-amber-950 bg-white border-amber-300"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-amber-800 italic">
+                      * Este valor suma al total de Producción y al Efectivo Contado del cuaderno.
+                    </p>
+                  </div>
                 ) : (
-                  <p className="text-xs text-amber-700 italic pt-1">
-                    Esta frecuencia fue marcada como no realizada. No sumará ingresos.
-                  </p>
+                  <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-200 text-xs text-gray-600 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-orange-800">🚫 No realizada:</span>{' '}
+                      <span className="font-semibold text-gray-800">{getMotivoLabel(f.motivoNoRealizada)}</span>
+                      <p className="text-[11px] text-gray-500 italic mt-0.5">
+                        Esta frecuencia fue marcada como no realizada. No sumará ingresos ($0.00).
+                      </p>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -1279,6 +1462,151 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
           )}
         </Button>
       </div>
+
+      {/* Modal Bottom-Sheet de No Realizada / Ingreso Especial */}
+      {noRealizadaModalOrder !== null && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-3">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md p-5 max-h-[85vh] overflow-y-auto shadow-2xl animate-in slide-in-from-bottom duration-200">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#3A3A3A]">
+                    Anular Vuelta / Ingreso Especial
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Vuelta #{noRealizadaModalOrder} — {frecuencias.find(f => f.order === noRealizadaModalOrder)?.time || '--:--'} (
+                    {frecuencias.find(f => f.order === noRealizadaModalOrder)?.routeFrom} → {frecuencias.find(f => f.order === noRealizadaModalOrder)?.routeTo})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNoRealizadaModalOrder(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-600 mb-3 font-medium">
+              Selecciona el motivo por el cual no se cubrió el turno normal o si se realizó un ingreso especial:
+            </p>
+
+            <div className="space-y-1.5">
+              {MOTIVOS_NO_REALIZADA.map(m => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    setMotivoSeleccionado(m.id);
+                    if (m.id !== 'otro') setMotivoPersonalizado('');
+                  }}
+                  className={`w-full p-2.5 rounded-xl border-2 text-left flex items-center gap-3 transition-all active:scale-[0.98] ${
+                    motivoSeleccionado === m.id
+                      ? m.id === 'ingreso_especial'
+                        ? 'border-amber-500 bg-amber-50'
+                        : 'border-orange-500 bg-orange-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className={m.color}>{m.icon}</span>
+                  <span className="text-xs font-bold text-[#3A3A3A]">{m.label}</span>
+                  {motivoSeleccionado === m.id && (
+                    <span className={`ml-auto font-bold text-xs ${m.id === 'ingreso_especial' ? 'text-amber-600' : 'text-orange-600'}`}>✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Campo personalizado (Otro) */}
+            {motivoSeleccionado === 'otro' && (
+              <div className="mt-3">
+                <Input
+                  type="text"
+                  placeholder="Escribe el motivo exacto..."
+                  value={motivoPersonalizado}
+                  onChange={e => setMotivoPersonalizado(e.target.value)}
+                  className="w-full text-xs"
+                  autoFocus
+                />
+              </div>
+            )}
+
+            {/* Campos Ingreso Especial */}
+            {motivoSeleccionado === 'ingreso_especial' && (
+              <div className="mt-3 space-y-2.5 p-3 bg-amber-50 rounded-xl border border-amber-300">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <span>Registrar detalle del ingreso especial</span>
+                </div>
+                <div>
+                  <Label className="text-[11px] font-bold text-amber-900">Nota / Contrato</Label>
+                  <Input
+                    type="text"
+                    placeholder="Ej: Viaje al Cisne, Contratación colegial..."
+                    value={ingresoEspecialNota}
+                    onChange={e => setIngresoEspecialNota(e.target.value)}
+                    className="mt-1 h-9 bg-white text-xs border-amber-300"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <Label className="text-[11px] font-bold text-amber-900">Monto en Dólares ($)</Label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-black text-sm">$</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={ingresoEspecialMonto}
+                      onChange={e => setIngresoEspecialMonto(e.target.value)}
+                      className="pl-7 h-9 text-base font-black text-amber-950 bg-white border-amber-300"
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-amber-700 italic">
+                  * Este monto sumará a la Producción y al Efectivo Contado de la hoja de cuaderno.
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setNoRealizadaModalOrder(null)}
+                className="flex-1 h-10 rounded-xl border-gray-300 text-gray-600 font-semibold text-xs"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirmNoRealizada}
+                disabled={
+                  !motivoSeleccionado ||
+                  (motivoSeleccionado === 'otro' && !motivoPersonalizado.trim()) ||
+                  (motivoSeleccionado === 'ingreso_especial' && !ingresoEspecialNota.trim())
+                }
+                className={`flex-1 h-10 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 ${
+                  motivoSeleccionado &&
+                  (motivoSeleccionado !== 'otro' || motivoPersonalizado.trim()) &&
+                  (motivoSeleccionado !== 'ingreso_especial' || ingresoEspecialNota.trim())
+                    ? motivoSeleccionado === 'ingreso_especial'
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                      : 'bg-orange-600 hover:bg-orange-700 text-white'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Bottom-Sheet de Reasignación de Frecuencia */}
       {reassigningOrder !== null && (

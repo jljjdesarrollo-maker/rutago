@@ -3847,4 +3847,42 @@ bun test tests/manual-socio.test.ts
 - **`package.json`**: Versión incrementada a `3.61.22`.
 - **`download/RutaGo_Contexto_Maestro_v3.61.22.md`**: Respaldo contextual generado.
 
+---
+
+## 🏛️ v3.61.27 - HOMOLOGACIÓN DE ANULACIÓN DE FRECUENCIAS E INGRESO ESPECIAL EN CARGA HISTÓRICA (2026-10-10)
+
+> **ESTADO:** 🟢 COMPLETADO, VERIFICADO Y DESPLEGADO A PRODUCCIÓN  
+> **FECHA DE REGISTRO:** 2026-10-10 | **SISTEMA:** RutaGo - Módulo de Carga Histórica de Cuadernos  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Replicar en la pantalla de Carga Histórica de Cuadernos (`CargaHistoricaScreen.tsx`) el mismo flujo táctil, modal de motivos oficiales y soporte de Ingresos Especiales (fletes, viajes al Cisne, contratos colegiales) que posee el ayudante en `FrecuenciaSelector.tsx`.
+
+### 📍 1. Diagnóstico y Problema Resuelto:
+- **Estado Anterior en Carga Histórica:**
+  - El botón "Anular" actuaba como un interruptor binario directo (`noRealizada: !f.noRealizada`) sin abrir modal ni registrar el motivo operativo.
+  - Al anular una vuelta, asignaba por defecto `motivo: 'otro'` y forzaba ingresos en $0.00.
+  - No existía soporte para registrar **Ingresos Especiales** (contratos/fletes) realizados durante el horario de esa frecuencia, lo cual rompía la conciliación con las anotaciones físicas del cuaderno del socio.
+
+### 📍 2. Solución Técnica Implementada:
+1. **Extensión del Modelo `FrecuenciaItem`:**
+   - Incorporación de `isIngresoEspecial?: boolean`, `ingresoEspecialNota?: string` e `ingresoEspecialMonto?: string`.
+2. **Modal Táctil Homologado (`MOTIVOS_NO_REALIZADA`):**
+   - 8 motivos oficiales con íconos y códigos canónicos: Daño en la unidad (`daño_unidad`), Mantenimiento (`mantenimiento`), Clima / Lluvia (`clima`), Sin pasajeros (`sin_pasajeros`), Problema en la ruta (`problema_ruta`), Orden superior (`orden_superior`), Ingreso especial (`ingreso_especial`) y Otro motivo (`otro`).
+   - Soporte para motivo personalizado en 'otro' y campos de Nota + Monto ($) en 'ingreso_especial'.
+3. **Cálculos Financieros en Vivo (`totals`):**
+   - Si una vuelta tiene `noRealizada = true` pero `isIngresoEspecial = true`, su monto se suma automáticamente a `totalEfectivoReal`, a la `PRODUCCIÓN TOTAL` y a la `Entrega Ayudante`.
+   - Si es anulación por motivo operativo, suma $0.00 a ingresos y caja común.
+4. **Embudo Canónico Unificado (`buildCanonicalRecordPayload`):**
+   - Vueltas con ingreso especial se persisten con `tipo: 'ingreso_especial'`, `motivo: 'ingreso_especial'`, `notaEspecial`, `income` y `efectivoReal` conservando el origen y destino.
+   - Vueltas anuladas regulares se persisten con `tipo: 'no_realizada'`, `motivo`, `routeFrom: '-'`, `routeTo: '-'`, y montos en 0.
+5. **UI Reactiva de Tarjetas:**
+   - Tarjetas anuladas operativas en gris con badge naranja y botones directos "Editar Motivo" y "Reactivar".
+   - Tarjetas con Ingreso Especial destacadas en ámbar con ícono `Sparkles`, desglose de nota, monto y campos editables en vivo.
+
+### 📍 3. Artefactos Modificados y Sincronizados:
+- **`src/components/transport/CargaHistoricaScreen.tsx`**: Integración del modal con 8 motivos, soporte táctil de ingreso especial, recálculo de totales y conexión al embudo canónico.
+- **`package.json`**: Versión incrementada a `3.61.27`.
+- **`tests/carga-historica-no-realizada.test.ts`**: Nueva suite unitaria que valida la anulación operativa, persistencia de ingreso especial y cálculo exacto de la mezcla de frecuencias.
+- **Suite de Pruebas:** 35/35 tests aprobados (100%).
+
+
 

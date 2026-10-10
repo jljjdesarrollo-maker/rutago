@@ -1,6 +1,6 @@
 {
   "name": "rutago",
-  "version": "3.61.22",
+  "version": "3.61.27",
   "private": true,
   "description": "RutaGo - Control de transporte y venta de boletos",
   "scripts": {
