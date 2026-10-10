@@ -31,9 +31,10 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { num } from './types';
-import { getActiveBus, saveBusOdometer } from '@/lib/fleet-storage';
+import { getActiveBus, saveBusOdometer, getLatestBusOdometer } from '@/lib/fleet-storage';
 import { obtenerUltimosArqueosBus } from '@/lib/turno-secuencia-tracker';
 import { VT_DATA } from '@/lib/seed-vts';
+import { buildCanonicalRecordPayload } from '@/lib/canonical-record-payload';
 
 interface FrecuenciaItem {
   order: number;
@@ -122,7 +123,87 @@ interface CargaHistoricaScreenProps {
 export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreenProps) {
   const today = new Date().toISOString().split('T')[0];
   const [date, setDate] = useState(today);
+  const [kmInicial, setKmInicial] = useState('');
   const [km, setKm] = useState('');
+  const [kmInicialOrigen, setKmInicialOrigen] = useState<string | null>(null);
+
+  // Cálculo en vivo del recorrido del día (idéntico a ArqueoGeneralScreen)
+  const kmRecorridos = useMemo(() => {
+    if (!km.trim() || !kmInicial.trim()) return null;
+    const fin = parseFloat(km.replace(/,/g, ''));
+    const ini = parseFloat(kmInicial.replace(/,/g, ''));
+    if (isNaN(fin) || isNaN(ini)) return null;
+    return Math.round((fin - ini) * 10) / 10;
+  }, [kmInicial, km]);
+
+  // Precarga automática del tacómetro inicial según la fecha seleccionada y la unidad física activa
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchPrevOdometro() {
+      try {
+        const activeBus = getActiveBus();
+        const targetDisco = String(activeBus?.numeroDisco || '01').padStart(2, '0');
+        const targetBusId = String(activeBus?.id || `BUS-${targetDisco}`).toUpperCase();
+
+        const dedicated = getLatestBusOdometer(targetDisco);
+        let dedicatedCandidate: any = null;
+        if (dedicated && dedicated.date && dedicated.date < date && dedicated.kmFinal) {
+          dedicatedCandidate = {
+            date: dedicated.date,
+            kmFinal: dedicated.kmFinal,
+            busId: targetBusId,
+            numeroDisco: targetDisco,
+          };
+        }
+
+        let serverRecords: any[] = [];
+        try {
+          const res = await fetch('/api/records?limit=90');
+          if (res.ok) {
+            serverRecords = await res.json();
+          }
+        } catch {}
+
+        const allCandidates = [
+          ...(dedicatedCandidate ? [dedicatedCandidate] : []),
+          ...serverRecords,
+        ];
+
+        const prevCandidates = allCandidates
+          .filter((r) => {
+            if (!r.date || r.date >= date || (!r.kmFinal && !r.km)) return false;
+            const rBusId = String(r.busId || '').toUpperCase();
+            const rDisco = String(r.numeroDisco || '').padStart(2, '0');
+            const rConductor = String(r.conductor || '').toUpperCase();
+            if (rBusId === targetBusId || rBusId === `BUS-${targetDisco}` || rDisco === targetDisco) {
+              return true;
+            }
+            if (rConductor.startsWith(`BUS-${targetDisco}`) || rConductor === targetDisco) {
+              return true;
+            }
+            if (!r.busId && !r.numeroDisco && (!r.conductor || !r.conductor.startsWith('BUS-'))) {
+              return targetDisco === '01';
+            }
+            return false;
+          })
+          .sort((a, b) => b.date.localeCompare(a.date));
+
+        const prev = prevCandidates[0];
+        if (prev && !cancelled) {
+          const valor = prev.kmFinal ? prev.kmFinal : prev.km;
+          setKmInicial(String(valor));
+          setKmInicialOrigen(`Cierre del ${prev.date}`);
+        } else if (!cancelled) {
+          setKmInicial('');
+          setKmInicialOrigen(null);
+        }
+      } catch {}
+    }
+    fetchPrevOdometro();
+    return () => {
+      cancelled = true;
+    };
+  }, [date]);
   
   // Personas (Choferes y Ayudantes)
   const [conductoresList, setConductoresList] = useState<PersonaItem[]>([]);
@@ -406,47 +487,52 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
 
     setSaving(true);
     try {
-      const trips = frecuencias.map(f => ({
-        routeFrom: f.noRealizada ? '-' : f.routeFrom,
-        routeTo: f.noRealizada ? '-' : f.routeTo,
-        time: f.time || null,
-        income: f.noRealizada ? 0 : num(f.efectivoReal),
-        efectivoReal: f.noRealizada ? 0 : num(f.efectivoReal),
-        boletos: 0,
-        cajaComunPasajeros: f.noRealizada ? 0 : parseInt(f.cajaComunPasajeros, 10) || 0,
-        cajaComunMonto: f.noRealizada ? 0 : num(f.cajaComunMonto),
-        tipo: f.noRealizada ? 'no_realizada' : 'frecuencia',
-        motivo: f.noRealizada ? f.motivoNoRealizada || 'otro' : null,
-      }));
-
       const activeBus = getActiveBus();
-      const discoUnidad = activeBus?.numeroDisco || '01';
+      const discoUnidad = String(activeBus?.numeroDisco || '01').padStart(2, '0');
       const idUnidad = activeBus?.id || `BUS-${discoUnidad}`;
+      const recorridoCalculado =
+        kmRecorridos !== null && kmRecorridos >= 0 ? kmRecorridos.toString() : null;
 
-      const body = {
+      const canonicalBody = buildCanonicalRecordPayload({
         date,
-        km: km || null,
-        kmFinal: km || null,
-        conductor: selectedConductor.trim() || `BUS-${discoUnidad}`,
-        ayudanteNombre: selectedAyudante.trim() || null,
-        vtCode: selectedVtCode,
+        kmInicial: kmInicial.trim() || null,
+        kmFinal: km.trim() || null,
+        km: recorridoCalculado,
         busId: idUnidad,
         numeroDisco: discoUnidad,
-        trips,
-        expenses: expenses.filter(e => e.description.trim() !== '').map(e => ({
-          description: e.description.trim(),
-          amount: num(e.amount),
+        placaBus: activeBus?.placa,
+        conductorNombre: selectedConductor.trim() || null,
+        ayudanteNombre: selectedAyudante.trim() || null,
+        vtCode: selectedVtCode,
+        trips: frecuencias.map(f => ({
+          routeFrom: f.noRealizada ? '-' : f.routeFrom,
+          routeTo: f.noRealizada ? '-' : f.routeTo,
+          time: f.time || null,
+          income: f.noRealizada ? 0 : num(f.efectivoReal),
+          efectivoReal: f.noRealizada ? 0 : num(f.efectivoReal),
+          boletos: 0,
+          cajaComunPasajeros: f.noRealizada ? 0 : parseInt(f.cajaComunPasajeros, 10) || 0,
+          cajaComunMonto: f.noRealizada ? 0 : num(f.cajaComunMonto),
+          tipo: f.noRealizada ? 'no_realizada' : 'frecuencia',
+          motivo: f.noRealizada ? f.motivoNoRealizada || 'otro' : null,
+          isNoRealizada: f.noRealizada,
         })),
+        expenses: expenses
+          .filter(e => e.description.trim() !== '')
+          .map(e => ({
+            description: e.description.trim(),
+            amount: num(e.amount),
+          })),
         tickets: num(tickets),
         cajaComun: totals.totalCajaComun,
         sobrante: num(sobrante),
         photoUrl: photoPreview || null,
-      };
+      });
 
       const res = await fetch('/api/records', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(canonicalBody),
       });
 
       if (!res.ok) {
@@ -458,7 +544,7 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
         try {
           localStorage.setItem(
             `arqueo_general_${discoUnidad}_${selectedVtCode}_${date}`,
-            JSON.stringify(body)
+            JSON.stringify(canonicalBody)
           );
           if (km && km.trim()) {
             saveBusOdometer(discoUnidad, km.trim(), date);
@@ -631,14 +717,50 @@ export function CargaHistoricaScreen({ onBack, onSuccess }: CargaHistoricaScreen
               </div>
             </div>
 
-            <div>
-              <Label className="text-xs font-medium text-gray-600">Kilometraje Final (Opcional)</Label>
-              <Input
-                placeholder="Ej: 345200"
-                value={km}
-                onChange={e => setKm(e.target.value)}
-                className="mt-1 h-10 rounded-xl text-xs"
-              />
+            <div className="space-y-2 pt-1 border-t border-gray-100">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-medium text-gray-600 flex items-center justify-between">
+                    <span>Km Inicial (Salida)</span>
+                    {kmInicialOrigen && (
+                      <span className="text-[10px] text-emerald-700 font-semibold">
+                        {kmInicialOrigen}
+                      </span>
+                    )}
+                  </Label>
+                  <Input
+                    placeholder="Ej: 897300"
+                    value={kmInicial}
+                    onChange={e => setKmInicial(e.target.value)}
+                    className="mt-1 h-10 rounded-xl text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-gray-600">
+                    Km Final (Llegada)
+                  </Label>
+                  <Input
+                    placeholder="Ej: 897818"
+                    value={km}
+                    onChange={e => setKm(e.target.value)}
+                    className="mt-1 h-10 rounded-xl text-xs font-mono font-bold"
+                  />
+                </div>
+              </div>
+              {kmRecorridos !== null && (
+                <div
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between ${
+                    kmRecorridos >= 0
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : 'bg-red-50 text-red-700 border border-red-200'
+                  }`}
+                >
+                  <span>Recorrido calculado del día:</span>
+                  <span className="font-mono">
+                    {kmRecorridos >= 0 ? `+${kmRecorridos} km` : `${kmRecorridos} km (revisar)`}
+                  </span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

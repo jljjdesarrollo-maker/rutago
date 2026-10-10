@@ -105,6 +105,15 @@
    - Ordenamiento numérico natural (`VT1` a `VT15`, `P1` a `P3`) y precarga inmediata desde el catálogo base oficial (`VT_DATA`).
    - Commit: `feat(carga-historica): v3.61.24 - formato VT con hora de primer turno y destino distintivo en combo box`
 
+20. **v3.61.25 (Embudo Único Canónico para Arqueo General y Carga Histórica + Auto-Saneamiento Retroactivo):** ✅ COMPLETADA
+   - Creación de `src/lib/canonical-record-payload.ts` (`buildCanonicalRecordPayload`, `resolveCanonicalOdometro`, `formatCanonicalConductor`).
+   - Homologación total entre `ArqueoGeneralScreen.tsx` y `CargaHistoricaScreen.tsx`:
+     * Odómetro: `kmInicial` (precargado desde el cierre anterior), `kmFinal` y `km` (siempre calculado como recorrido diario `kmFinal - kmInicial`, nunca guardando el tacómetro total en `km`).
+     * Conductor: formato unificado `BUS-XX - Nombre Conductor` (con resolución automática del chofer activo en cliente y servidor).
+     * Viajes (`trips`): paridad `income = efectivoReal` cuando no hubo timbrado digital (`income === 0`).
+   - Auto-saneamiento silencioso en `/api/records/route.ts` para normalizar registros históricos (como `04/10/2026` y `05/10/2026`).
+   - Commit: `feat(records): v3.61.25 - embudo canonico unificado para arqueo y carga historica con saneamiento retroactivo`
+
 ---
 
 ### 🏛️ REGLAS DE ARQUITECTURA OFICIAL IMPLEMENTADAS:

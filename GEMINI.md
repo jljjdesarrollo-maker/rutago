@@ -309,6 +309,15 @@
   * Ordenamiento numérico natural (`VT1` a `VT15`, `P1` a `P3`) y precarga inmediata desde el catálogo base oficial (`VT_DATA`).
 - **Commit Oficial:** `feat(carga-historica): v3.61.24 - formato VT con hora de primer turno y destino distintivo en combo box`.
 
+## 36. Embudo Único Canónico para Arqueo General y Carga Histórica + Auto-Saneamiento Retroactivo (v3.61.25)
+- **Hito:** Unificación estructural del guardado en `DailyRecord`, `Trip` y `Expense` entre `ArqueoGeneralScreen.tsx` y `CargaHistoricaScreen.tsx`.
+- **Implementación:**
+  * Constructor compartido `buildCanonicalRecordPayload` en `src/lib/canonical-record-payload.ts`.
+  * En `CargaHistoricaScreen.tsx`: precarga automática de `kmInicial` desde el cierre previo de la unidad y cálculo en vivo de `kmRecorridos` (`kmFinal - kmInicial`).
+  * En `ArqueoGeneralScreen.tsx`: resolución automática del conductor activo (`BUS-01 - Nombre Conductor`) y homologación de `trip.income = efectivoContado` cuando no hubo venta digital.
+  * En `/api/records/route.ts`: normalización server-side en `POST` y auto-saneamiento retroactivo en `GET` para registros históricos (`04/10/2026` y `05/10/2026`).
+- **Commit Oficial:** `feat(records): v3.61.25 - embudo canonico unificado para arqueo y carga historica con saneamiento retroactivo`.
+
 
 
 

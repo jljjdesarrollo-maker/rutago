@@ -32,6 +32,8 @@ import {
   MOTIVOS_DESFASE_ODOMETRO
 } from '@/lib/odometer-validator';
 import { obtenerUltimosArqueosBus } from '@/lib/turno-secuencia-tracker';
+import { buildCanonicalRecordPayload } from '@/lib/canonical-record-payload';
+import { getCurrentConductor } from './types';
 
 interface Props {
   session: VTSession;
@@ -142,12 +144,16 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const [buscandoKmPrevio, setBuscandoKmPrevio] = useState(false);
   const [motivoDesfaseKm, setMotivoDesfaseKm] = useState<string>('');
   const [rutasKmConfig, setRutasKmConfig] = useState(getLocalRutasKmConfig());
+  const [conductorActivo, setConductorActivo] = useState<string>('');
 
   useEffect(() => {
     setRutasKmConfig(getLocalRutasKmConfig());
     syncRutasKmConfig().then(cfg => {
       if (cfg) setRutasKmConfig(cfg);
     });
+    getCurrentConductor().then(nombre => {
+      if (nombre) setConductorActivo(nombre);
+    }).catch(() => {});
   }, []);
 
   const [gastos, setGastos] = useState<GastoItem[]>(GASTOS_DEFAULT);
@@ -543,57 +549,57 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     setSaving(true);
 
     const fechaTrabajo = workDate(session);
-    const recorridoCalculado = kmRecorridos !== null && kmRecorridos >= 0 ? kmRecorridos.toString() : kmFinal.trim();
-    try {
-      // Build trips from frecuencias (all: cerradas, ingresos especiales, no realizadas)
-      const trips = frecuencias.map((f, idx) => {
+    const recorridoCalculado = kmRecorridos !== null && kmRecorridos >= 0 ? kmRecorridos.toString() : undefined;
+    const paradasAprobadas = paradasTaller.filter(p => !paradasExcluidas[p.id]);
+    const expensesToSave = [
+      ...gastos,
+      ...paradasAprobadas.map(p => ({
+        description: 'Taller: ' + p.taller + ' (' + p.estacionNombre + ')',
+        amount: p.costoTotal.toString(),
+      })),
+    ];
+
+    const canonicalBody = buildCanonicalRecordPayload({
+      date: fechaTrabajo,
+      kmInicial: kmInicial.trim() || null,
+      kmFinal: kmFinal.trim() || null,
+      km: recorridoCalculado || null,
+      busId: currentBus.id,
+      numeroDisco: currentBus.numeroDisco,
+      placaBus: currentBus.placa,
+      conductorNombre: conductorActivo || null,
+      ayudanteNombre: session.ayudanteNombre,
+      vtCode: session.vtCode,
+      trips: frecuencias.map((f) => {
         const { routeFrom, routeTo } = resolverRutaTrip(f);
         return {
           routeFrom,
           routeTo,
           time: f.hora,
-          income: f.totalRecaudado.toString(),
-          efectivoReal: f.efectivoContado.toString(),
-          boletos: '0',
-          cajaComunPasajeros: f.boletosCaja.toString(),
-          cajaComunMonto: (f.cajaComunMonto || 0).toString(),
+          income: f.totalRecaudado,
+          efectivoReal: f.efectivoContado,
+          boletos: 0,
+          cajaComunPasajeros: f.boletosCaja,
+          cajaComunMonto: f.cajaComunMonto || 0,
           tipo: f.isIngresoEspecial ? 'ingreso_especial' : f.isNoRealizada ? 'no_realizada' : 'frecuencia',
-          motivo: f.motivoNoRealizada || undefined,
-          notaEspecial: f.ingresoEspecialNota || undefined,
+          motivo: f.motivoNoRealizada || null,
+          notaEspecial: f.ingresoEspecialNota || null,
+          isNoRealizada: f.isNoRealizada,
+          isIngresoEspecial: f.isIngresoEspecial,
         };
-      });
-      const paradasAprobadas = paradasTaller.filter(p => !paradasExcluidas[p.id]);
-      const expensesToSave = [
-        ...gastos,
-        ...paradasAprobadas.map(p => ({
-          description: 'Taller: ' + p.taller + ' (' + p.estacionNombre + ')',
-          amount: p.costoTotal.toString(),
-        })),
-      ];
+      }),
+      expenses: expensesToSave,
+      tickets: tickets || '0',
+      cajaComun: totalCajaComunMonto,
+      sobrante: sobrante || '0',
+      photoUrl: fotoPreview,
+      odometroEstado: validacionOdometro.estado,
+      odometroKmTeorico: validacionOdometro.kmTeorico,
+      odometroDesfaseKm: validacionOdometro.desfaseKm,
+      odometroMotivoDesfase: motivoDesfaseKm || undefined,
+    });
 
-      const body = {
-        date: workDate(session),
-        km: recorridoCalculado,
-        kmInicial: kmInicial.trim() || undefined,
-        kmFinal: kmFinal.trim(),
-        conductor: `BUS-${currentBus.numeroDisco}`,
-        ayudanteNombre: session.ayudanteNombre,
-        vtCode: session.vtCode,
-        busId: currentBus.id,
-        numeroDisco: currentBus.numeroDisco,
-        placaBus: currentBus.placa,
-        trips,
-        expenses: expensesToSave,
-        tickets: tickets || '0',
-        cajaComun: totalCajaComunMonto,
-        sobrante: sobrante || '0',
-        photoUrl: fotoPreview,
-        odometroEstado: validacionOdometro.estado,
-        odometroKmTeorico: validacionOdometro.kmTeorico,
-        odometroDesfaseKm: validacionOdometro.desfaseKm,
-        odometroMotivoDesfase: motivoDesfaseKm || undefined,
-      };
-
+    try {
       // Guardar odómetro dedicado de la unidad física (Fase 3.2)
       saveBusOdometer(currentBus.numeroDisco, kmFinal.trim(), fechaTrabajo);
 
@@ -612,24 +618,24 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         const res = await fetch('/api/records', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+          body: JSON.stringify(canonicalBody),
         });
         if (res.ok) {
-          localStorage.setItem(localArqueoKey, JSON.stringify(body));
+          localStorage.setItem(localArqueoKey, JSON.stringify(canonicalBody));
           obtenerUltimosArqueosBus(currentBus.numeroDisco, currentBus.id).catch(() => {});
           setSaved(true);
         } else {
           const result = await res.json().catch(() => ({ error: 'Error desconocido' }));
           console.error('Error guardando arqueo en servidor:', result.error);
           // Save offline if server fails
-          localStorage.setItem(localArqueoKey, JSON.stringify(body));
+          localStorage.setItem(localArqueoKey, JSON.stringify(canonicalBody));
           obtenerUltimosArqueosBus(currentBus.numeroDisco, currentBus.id).catch(() => {});
           setGuardadoOffline(true);
           setSaved(true);
         }
       } else {
         // Save to localStorage for later sync
-        localStorage.setItem(localArqueoKey, JSON.stringify(body));
+        localStorage.setItem(localArqueoKey, JSON.stringify(canonicalBody));
         obtenerUltimosArqueosBus(currentBus.numeroDisco, currentBus.id).catch(() => {});
         setGuardadoOffline(true);
         setSaved(true);
@@ -638,35 +644,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       console.error('Error guardando arqueo:', err);
       // Guardar odómetro dedicado de la unidad física ante fallback
       saveBusOdometer(currentBus.numeroDisco, kmFinal.trim(), fechaTrabajo);
-      localStorage.setItem(`arqueo_general_${session.vtCode}_${fechaTrabajo}`, JSON.stringify({
-        date: fechaTrabajo,
-        km: recorridoCalculado,
-        kmInicial: kmInicial.trim() || undefined,
-        kmFinal: kmFinal.trim(),
-        conductor: `BUS-${currentBus.numeroDisco}`,
-        vtCode: session.vtCode,
-        ayudanteNombre: session.ayudanteNombre,
-        busId: currentBus.id,
-        numeroDisco: currentBus.numeroDisco,
-        placaBus: currentBus.placa,
-        trips: frecuencias.map(f => {
-          const { routeFrom, routeTo } = resolverRutaTrip(f);
-          return {
-            routeFrom,
-            routeTo,
-            time: f.hora,
-            income: f.totalRecaudado.toString(),
-            efectivoReal: f.efectivoContado.toString(),
-            boletos: '0',
-            cajaComunPasajeros: f.boletosCaja.toString(),
-            cajaComunMonto: (f.cajaComunMonto || 0).toString(),
-            tipo: f.isIngresoEspecial ? 'ingreso_especial' : f.isNoRealizada ? 'no_realizada' : 'frecuencia',
-            motivo: f.motivoNoRealizada || undefined,
-            notaEspecial: f.ingresoEspecialNota || undefined,
-          };
-        }),
-        expenses: expensesToSave, tickets: tickets || '0', sobrante: sobrante || '0', photoUrl: fotoPreview,
-      }));
+      localStorage.setItem(`arqueo_general_${currentBus.numeroDisco}_${session.vtCode}_${fechaTrabajo}`, JSON.stringify(canonicalBody));
       setGuardadoOffline(true);
       setSaved(true);
     } finally {
