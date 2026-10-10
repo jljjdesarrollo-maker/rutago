@@ -3886,3 +3886,31 @@ bun test tests/manual-socio.test.ts
 
 
 
+
+---
+
+## 🏛️ v3.61.28 - PLAN MAESTRO DE AUDITORÍA MODULAR DE AISLAMIENTO POR UNIDAD (INTERFAZ SOCIO) (2026-10-10)
+
+> **ESTADO:** 🟢 APROBADO POR EL USUARIO Y EN EJECUCIÓN  
+> **FECHA DE REGISTRO:** 2026-10-10 | **SISTEMA:** RutaGo - Aislamiento Multi-Tenant y Seguridad de Flota  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Certificar de forma exhaustiva, código por código, que la interfaz completa del Socio Propietario procese única y exclusivamente la información de la unidad física activa (ej. Unidad 10), garantizando aislamiento hermético respecto a la Unidad 01 y a futuros suscriptores.
+
+### 📍 1. Diagnóstico Inicial y Auditoría en Vivo de la Unidad 10:
+- **Auditoría de 4 Registros de la Unidad 10 (2026-10-01 al 2026-10-04):**
+  - Registros de ruta verificados en producción: 4 días computados ($1.282,75 producción | $804,50 gastos | $395,50 entregas de ayudante | 1.162 km recorridos).
+  - Continuidad de tacómetro validada: 813.800 ➔ 814.035 ➔ 814.344 ➔ 814.653 ➔ 814.962 km.
+  - Aislamiento en Unidad 01: 0 registros de la Unidad 10 se filtran al Bus 01.
+  - Futuros suscriptores (Bus 02, 03, 05, 16, 18): devuelven 0 registros y balance en $0.00 limpio.
+  - Calibración de turnos: Unidad 10 superó el umbral de 3 registros y pasó a estado CONFIRMADO (4 arqueos), proyectando hoy de forma autónoma VT12 (mientras Bus 01 proyecta VT05).
+
+### 📍 2. Plan Maestro Aprobado por el Usuario (Estructura de 4 Bloques):
+- **Bloque 1:** Mando Principal y Finanzas en Vivo (Cabecera, Selector, Tarjeta Ejecutiva en Vivo, Liquidación de Hoy, Gastos del Bus).
+- **Bloque 2:** Mantenimiento, Tiempos y Operación (Mantenimiento Hino AK, Radar y Asesoría Patrimonial, Carga Histórica de Cuadernos).
+- **Bloque 3:** Reportes, Auditoría Operativa y Rendimiento (Reportes Diarios/Semanales/Mensuales/Caja Común, Cumplimiento de Frecuencias, Comparar Frecuencias, Benchmark & IPF, Auditoría de Boletos).
+- **Bloque 4:** Personal, Ficha de Unidad, Respaldo y Cierre (Personal, Mi Autobús, Copia de Seguridad JSON, Cerrar Sesión).
+
+### 📍 3. Artefactos Generados:
+- **`docs/PLAN_AUDITORIA_AISLAMIENTO_SOCIO.md`**: Plan maestro detallado y checklist por bloques.
+- **`download/RutaGo_Contexto_Maestro_v3.61.28.md`**: Respaldo contextual para continuidad entre sesiones.
+- **`REGISTRO_MAESTRO.md`**: Documentación actualizada al instante.
