@@ -1,8 +1,8 @@
 # 🏛️ RutaGo - Plan Maestro de Auditoría Modular de Aislamiento por Unidad (Interfaz Socio)
 
-> **ESTADO:** 🟢 EN EJECUCIÓN (BLOQUE 1 COMPLETADO Y CERTIFICADO)  
+> **ESTADO:** 🟢 EN EJECUCIÓN (BLOQUES 1 Y 2 COMPLETADOS Y CERTIFICADOS)  
 > **FECHA DE INICIO:** 2026-10-10  
-> **VERSIÓN:** v3.61.29  
+> **VERSIÓN:** v3.61.30  
 > **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
 > **OBJETIVO:** Certificar de forma exhaustiva, código por código, que la interfaz del Socio Propietario cumpla con un aislamiento multi-tenant estricto del 100%. Cuando un socio ingresa con su unidad (ej. Unidad 10), todos los componentes, vistas, cálculos y llamadas a la API deben procesar única y exclusivamente la información de dicha unidad, sin filtraciones del Bus 01 ni de otros suscriptores.
 
@@ -18,26 +18,28 @@
   - Entregas de ruta (`/api/reports?type=mensual&busId=...`) aisladas por bus.
   - Gastos directos del socio (`fetchOwnerExpensesFromApi`) sin herencia de otras unidades.
 - [x] **1.3 Liquidación de Hoy (`HistoryScreen.tsx`):**
-  - **Corregido y blindado:** Se incorporaron las propiedades `busId` y `socioId` a `HistoryScreenProps` e inyección de `busId` en `fetchRecords` (`/api/records?busId=...`).
-  - Badge visual de la unidad activa en cabecera (`Bus 10`).
+  - Propiedades `busId` y `socioId` integradas en `HistoryScreenProps` e inyección en `fetchRecords` (`/api/records?busId=...`).
+  - Badge visual de la unidad activa en cabecera (`Bus XX`).
 - [x] **1.4 Gastos del Bus y Cartera de Talleres (`OwnerExpensesScreen.tsx`):**
   - Facturas (contado/crédito), abonos y deudas en `OwnerExpense` con aislamiento estricto por `busId`.
 
 ---
 
-### 🧱 Bloque 2: Mantenimiento, Tiempos y Operación (⏳ SIGUIENTE PASO)
-- [ ] **2.1 Mantenimiento Preventivo Hino AK (`MantenimientoScreen.tsx`):**
-  - Odómetro acumulado oficial propio por bus.
-  - Semáforo y desgaste de los 31 ítems sin cruce con otras unidades.
-- [ ] **2.2 Radar y Asesoría Patrimonial (`SocioMantenimientoWidget.tsx`):**
+### 🧱 Bloque 2: Mantenimiento, Tiempos y Operación (🟢 COMPLETADO AL 100%)
+- [x] **2.1 Mantenimiento Preventivo Hino AK (`MantenimientoScreen.tsx`):**
+  - Odómetro acumulado oficial propio por bus (`resolverKmActual(busId)`).
+  - Almacenamiento local aislado (`rg_mantenimientos_v2_${busId}`) y configuración de los 31 ítems sin cruce entre unidades.
+- [x] **2.2 Radar y Asesoría Patrimonial (`SocioMantenimientoWidget.tsx`):**
   - Proyección de turnos VT autónoma (`obtenerUltimosArqueosBus(disco, busId)`).
+  - Claves de overrides manuales aisladas (`rg_socio_manual_vt_${busId}`).
   - Cronología táctica de ventanas de taller y cruce de tareas según el turno propio.
-- [ ] **2.3 Carga Histórica de Cuadernos (`CargaHistoricaScreen.tsx`):**
-  - Etiquetado canónico de `busId` y `numeroDisco` en persistencia y almacenamiento local.
+- [x] **2.3 Carga Histórica de Cuadernos (`CargaHistoricaScreen.tsx`):**
+  - Consulta de odómetros anteriores optimizada con `busId` en `/api/records`.
+  - Etiquetado canónico de `busId`, `numeroDisco` y conductor (`BUS-XX`) en persistencia y almacenamiento local (`arqueo_general_${disco}_${vt}_${fecha}`).
 
 ---
 
-### 🧱 Bloque 3: Reportes, Auditoría Operativa y Rendimiento
+### 🧱 Bloque 3: Reportes, Auditoría Operativa y Rendimiento (⏳ SIGUIENTE PASO)
 - [ ] **3.1 Reportes e Informes Generales (`ReportsScreen.tsx` / `/api/reports`):**
   - Reportes Diario, Semanal, Mensual y Caja Común filtrados por `busId`.
 - [ ] **3.2 Cumplimiento de Frecuencias (`OperativoScreen.tsx`):**
@@ -63,4 +65,4 @@
 ---
 
 ## 🔒 Protocolo de Continuidad por Cuotas
-Bloque 1 ha sido completado y verificado. Para continuar desde cualquier sesión, retomar en **Bloque 2 (2.1 MantenimientoScreen.tsx)**.
+Bloques 1 y 2 completados y verificados. Para continuar desde cualquier sesión, retomar en **Bloque 3 (3.1 ReportsScreen.tsx / /api/reports)**.

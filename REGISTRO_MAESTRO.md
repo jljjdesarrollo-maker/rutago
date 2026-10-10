@@ -3944,3 +3944,32 @@ bun test tests/manual-socio.test.ts
 - **`tests/bloque1-aislamiento.test.ts`**: Nueva suite unitaria aprobada al 100%.
 - **`docs/PLAN_AUDITORIA_AISLAMIENTO_SOCIO.md`**: Actualizado con Bloque 1 certificado.
 - **Suite de Pruebas:** 39/39 tests aprobados (100%).
+
+---
+
+## 🏛️ v3.61.30 - AISLAMIENTO Y CERTIFICACIÓN DEL BLOQUE 2 (MANTENIMIENTO, TIEMPOS Y OPERACIÓN) (2026-10-10)
+
+> **ESTADO:** 🟢 COMPLETADO, VERIFICADO Y SINCRONIZADO EN GITHUB  
+> **FECHA DE REGISTRO:** 2026-10-10 | **SISTEMA:** RutaGo - Mantenimiento Hino AK y Radar Operativo Multi-Tenant  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Certificar el aislamiento estricto por unidad física en Mantenimiento Preventivo Hino AK, Radar Patrimonial de Ventanas y Carga Histórica de Cuadernos (Bloque 2).
+
+### 📍 1. Diagnóstico y Certificación del Bloque 2:
+- [x] **2.1 Mantenimiento Preventivo Hino AK (`MantenimientoScreen.tsx`):**
+  - Aislamiento verificado de claves locales: `rg_mantenimientos_v2_${busId}`, impidiendo colisiones entre unidades.
+  - Odómetro acumulado oficial resuelto estrictamente por unidad (`resolverKmActual(busId)`). Para Unidad 10, lee sus propios 814.962 km sin tocar los 899.128 km del Bus 01.
+  - Los 31 componentes inician en regla (Verde / Al Día) para nuevas unidades sin falsos vencimientos.
+- [x] **2.2 Radar y Asesoría Patrimonial (`SocioMantenimientoWidget.tsx`):**
+  - Proyección de turnos VT autónoma mediante `obtenerUltimosArqueosBus(disco, busId)` y `obtenerCalibracionLocalBus(disco, busId)`.
+  - Overrides manuales aislados por unidad física (`rg_socio_manual_vt_${activeBusId}`).
+  - Cruce de ventanas tácticas de taller adaptadas en vivo al VT de la unidad.
+- [x] **2.3 Carga Histórica de Cuadernos (`CargaHistoricaScreen.tsx`):**
+  - Optimización server-side: Consulta de odómetros precedentes aislada mediante `/api/records?limit=90&busId=${targetBusId}`.
+  - Almacenamiento local aislado (`arqueo_general_${discoUnidad}_${selectedVtCode}_${date}`).
+  - Persistencia canónica garantizada con `busId`, `numeroDisco`, placa y conductor (`BUS-XX`).
+
+### 📍 2. Artefactos Modificados y Sincronizados:
+- **`src/components/transport/CargaHistoricaScreen.tsx`**: Inyección de `busId` en la precarga de odómetro anterior.
+- **`tests/bloque2-aislamiento.test.ts`**: Nueva suite unitaria aprobada al 100%.
+- **`docs/PLAN_AUDITORIA_AISLAMIENTO_SOCIO.md`**: Actualizado con Bloques 1 y 2 certificados.
+- **Suite de Pruebas:** 42/42 tests aprobados (100%).

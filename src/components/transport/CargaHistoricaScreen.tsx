@@ -251,7 +251,7 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
 
         let serverRecords: any[] = [];
         try {
-          const res = await fetch('/api/records?limit=90');
+          const res = await fetch(`/api/records?limit=90&busId=${encodeURIComponent(targetBusId)}`);
           if (res.ok) {
             serverRecords = await res.json();
           }
