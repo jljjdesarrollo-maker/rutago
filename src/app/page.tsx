@@ -551,6 +551,8 @@ export default function Home() {
         <HistoryScreen
           isAdmin={isAdmin}
           userRole={user?.rol}
+          busId={user?.busId || getActiveBusId()}
+          socioId={user?.socioId || user?.id}
           onBack={() => setView('home')}
           onViewRecord={handleViewRecord}
         />

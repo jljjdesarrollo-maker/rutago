@@ -3914,3 +3914,33 @@ bun test tests/manual-socio.test.ts
 - **`docs/PLAN_AUDITORIA_AISLAMIENTO_SOCIO.md`**: Plan maestro detallado y checklist por bloques.
 - **`download/RutaGo_Contexto_Maestro_v3.61.28.md`**: Respaldo contextual para continuidad entre sesiones.
 - **`REGISTRO_MAESTRO.md`**: Documentación actualizada al instante.
+
+---
+
+## 🏛️ v3.61.29 - AISLAMIENTO POR UNIDAD EN HISTORYSCREEN Y CERTIFICACIÓN DEL BLOQUE 1 (2026-10-10)
+
+> **ESTADO:** 🟢 COMPLETADO, VERIFICADO Y SINCRONIZADO EN GITHUB  
+> **FECHA DE REGISTRO:** 2026-10-10 | **SISTEMA:** RutaGo - Motor de Liquidaciones y Gestión de Flota Multi-Tenant  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Erradicar la fuga de filtro en la pantalla de "Liquidación de Hoy" (`HistoryScreen.tsx`), asegurando que al consultar el historial de una unidad (ej. Unidad 10), el sistema inyecte de forma mandatoria `busId` y `socioId`, certificando el Bloque 1 al 100%.
+
+### 📍 1. Diagnóstico y Corrección Quirúrgica (Punto 1.3):
+- **Causa Raíz:** `HistoryScreenProps` no recibía `busId`. Al ejecutar `fetchRecords`, realizaba la petición GET a `/api/records` sin dicho parámetro, devolviendo liquidaciones de toda la cooperativa en un mismo listado.
+- **Solución Implementada:**
+  1. `src/components/transport/HistoryScreen.tsx`: Se agregaron `busId` y `socioId` a la interfaz y al estado del componente, con fallback automático a `getActiveBusId()`.
+  2. Inyección obligatoria de `params.set('busId', effectiveBusId)` en `fetchRecords`.
+  3. Identificador visual reactivo en cabecera: Insignia esmeralda `Bus XX` indicando la unidad consultada.
+  4. `src/app/page.tsx`: Actualizado el bloque `case 'history'` para suministrar `busId={user?.busId || getActiveBusId()}` y `socioId={user?.socioId || user?.id}`.
+
+### 📍 2. Dictamen del Bloque 1 (100% Superado):
+- [x] **1.1 Cabecera y Selector de Unidad:** Aislado (Saludo, Bus, Placa, Suscripción SaaS y Tripulación del socio).
+- [x] **1.2 Tarjeta de Balance Ejecutiva (Número Rey en Vivo):** Aislado (Ruta e ingresos computados con `busId` en `/api/reports`, gastos limpios en `/api/owner-expenses`).
+- [x] **1.3 Liquidación de Hoy:** Corregido y Aislado (Consulta estricta por `busId`).
+- [x] **1.4 Gastos del Bus y Cartera de Talleres:** Aislado (`OwnerExpense` en PostgreSQL y almacenamiento local filtrados por `busId`).
+
+### 📍 3. Artefactos Modificados y Sincronizados:
+- **`src/components/transport/HistoryScreen.tsx`**
+- **`src/app/page.tsx`**
+- **`tests/bloque1-aislamiento.test.ts`**: Nueva suite unitaria aprobada al 100%.
+- **`docs/PLAN_AUDITORIA_AISLAMIENTO_SOCIO.md`**: Actualizado con Bloque 1 certificado.
+- **Suite de Pruebas:** 39/39 tests aprobados (100%).

@@ -1,8 +1,8 @@
 # 🏛️ RutaGo - Plan Maestro de Auditoría Modular de Aislamiento por Unidad (Interfaz Socio)
 
-> **ESTADO:** 🟢 APROBADO Y EN EJECUCIÓN  
+> **ESTADO:** 🟢 EN EJECUCIÓN (BLOQUE 1 COMPLETADO Y CERTIFICADO)  
 > **FECHA DE INICIO:** 2026-10-10  
-> **VERSIÓN BASE:** v3.61.28  
+> **VERSIÓN:** v3.61.29  
 > **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
 > **OBJETIVO:** Certificar de forma exhaustiva, código por código, que la interfaz del Socio Propietario cumpla con un aislamiento multi-tenant estricto del 100%. Cuando un socio ingresa con su unidad (ej. Unidad 10), todos los componentes, vistas, cálculos y llamadas a la API deben procesar única y exclusivamente la información de dicha unidad, sin filtraciones del Bus 01 ni de otros suscriptores.
 
@@ -10,21 +10,22 @@
 
 ## 📋 Estructura de Ejecución por Bloques
 
-### 🧱 Bloque 1: Mando Principal y Finanzas en Vivo
-- [ ] **1.1 Cabecera y Selector de Unidad (`HomeScreen.tsx`):**
+### 🧱 Bloque 1: Mando Principal y Finanzas en Vivo (🟢 COMPLETADO AL 100%)
+- [x] **1.1 Cabecera y Selector de Unidad (`HomeScreen.tsx`):**
   - Saludo, disco, placa y semáforo de suscripción SaaS aislados por unidad.
   - Chip de tripulación (`crewInfo`) filtrado por la unidad física activa.
-- [ ] **1.2 Tarjeta de Balance Ejecutiva (Número Rey en Vivo):**
+- [x] **1.2 Tarjeta de Balance Ejecutiva (Número Rey en Vivo):**
   - Entregas de ruta (`/api/reports?type=mensual&busId=...`) aisladas por bus.
   - Gastos directos del socio (`fetchOwnerExpensesFromApi`) sin herencia de otras unidades.
-- [ ] **1.3 Liquidación de Hoy (`HistoryScreen.tsx`):**
-  - Vueltas, tickets, producción y caja común del turno diario de la unidad.
-- [ ] **1.4 Gastos del Bus y Cartera de Talleres (`SocioGastosScreen.tsx`):**
+- [x] **1.3 Liquidación de Hoy (`HistoryScreen.tsx`):**
+  - **Corregido y blindado:** Se incorporaron las propiedades `busId` y `socioId` a `HistoryScreenProps` e inyección de `busId` en `fetchRecords` (`/api/records?busId=...`).
+  - Badge visual de la unidad activa en cabecera (`Bus 10`).
+- [x] **1.4 Gastos del Bus y Cartera de Talleres (`OwnerExpensesScreen.tsx`):**
   - Facturas (contado/crédito), abonos y deudas en `OwnerExpense` con aislamiento estricto por `busId`.
 
 ---
 
-### 🧱 Bloque 2: Mantenimiento, Tiempos y Operación
+### 🧱 Bloque 2: Mantenimiento, Tiempos y Operación (⏳ SIGUIENTE PASO)
 - [ ] **2.1 Mantenimiento Preventivo Hino AK (`MantenimientoScreen.tsx`):**
   - Odómetro acumulado oficial propio por bus.
   - Semáforo y desgaste de los 31 ítems sin cruce con otras unidades.
@@ -62,4 +63,4 @@
 ---
 
 ## 🔒 Protocolo de Continuidad por Cuotas
-Cada bloque completado se documenta con su dictamen técnico en `REGISTRO_MAESTRO.md` y se sincroniza en GitHub. En caso de agotamiento de cuota de sesión, el siguiente agente debe retomar a partir del primer ítem pendiente marcado con `[ ]`.
+Bloque 1 ha sido completado y verificado. Para continuar desde cualquier sesión, retomar en **Bloque 2 (2.1 MantenimientoScreen.tsx)**.

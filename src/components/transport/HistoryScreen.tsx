@@ -16,12 +16,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { getActiveBusId } from '@/lib/fleet-storage';
 
 type FilterType = 'todos' | 'hoy' | 'semana' | 'mes';
 
 interface HistoryScreenProps {
   isAdmin: boolean;
   userRole?: string;
+  busId?: string;
+  socioId?: string;
   onBack: () => void;
   onViewRecord: (record: SavedRecord) => void;
 }
@@ -79,8 +82,16 @@ function getDateRange(filter: FilterType, monthValue?: string): { from: string; 
   }
 }
 
-export function HistoryScreen({ isAdmin, userRole, onBack, onViewRecord }: HistoryScreenProps) {
+export function HistoryScreen({
+  isAdmin,
+  userRole,
+  busId: propBusId,
+  socioId: propSocioId,
+  onBack,
+  onViewRecord,
+}: HistoryScreenProps) {
   const isChofer = userRole === 'CONDUCTOR';
+  const effectiveBusId = propBusId || (typeof window !== 'undefined' ? getActiveBusId() : undefined);
   const [allRecords, setAllRecords] = useState<SavedRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -110,6 +121,14 @@ export function HistoryScreen({ isAdmin, userRole, onBack, onViewRecord }: Histo
       }
       params.set('include', 'trips');
 
+      // Aislamiento Multi-Tenant por Unidad y Socio
+      if (effectiveBusId && effectiveBusId !== 'TODOS') {
+        params.set('busId', effectiveBusId);
+      }
+      if (propSocioId && propSocioId !== 'TODOS') {
+        params.set('socioId', propSocioId);
+      }
+
       const query = params.toString() ? `?${params.toString()}` : '';
       const res = await fetch(`/api/records${query}`);
       const data = await res.json();
@@ -121,7 +140,9 @@ export function HistoryScreen({ isAdmin, userRole, onBack, onViewRecord }: Histo
     }
   };
 
-  useEffect(() => { fetchRecords(); }, [dateRange, isChofer]);
+  useEffect(() => {
+    fetchRecords();
+  }, [dateRange, isChofer, effectiveBusId, propSocioId]);
 
   const filteredRecords = useMemo(() => {
     return allRecords;
@@ -184,7 +205,16 @@ export function HistoryScreen({ isAdmin, userRole, onBack, onViewRecord }: Histo
           <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl text-[#3A3A3A]">
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-lg font-semibold text-[#3A3A3A]">{isAdmin ? 'Historial Completo' : isChofer ? 'Últimos Registros (Chofer)' : 'Mi Historial'}</h1>
+          <div className="flex-1 flex items-center justify-between min-w-0">
+            <h1 className="text-lg font-semibold text-[#3A3A3A] truncate">
+              {isAdmin && !effectiveBusId ? 'Historial Completo' : isChofer ? 'Últimos Registros (Chofer)' : 'Liquidaciones de Ruta'}
+            </h1>
+            {effectiveBusId && effectiveBusId !== 'TODOS' && (
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                Bus {effectiveBusId.replace(/^BUS-/i, '').padStart(2, '0')}
+              </span>
+            )}
+          </div>
         </header>
         <main className="flex-1 flex items-center justify-center">
           <Loader2 className="w-8 h-8 text-[#912D26] animate-spin" />
@@ -199,7 +229,16 @@ export function HistoryScreen({ isAdmin, userRole, onBack, onViewRecord }: Histo
         <Button variant="ghost" size="icon" onClick={onBack} className="rounded-xl text-[#3A3A3A]">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-lg font-semibold text-[#3A3A3A]">{isAdmin ? 'Historial Completo' : isChofer ? 'Últimos Registros (Chofer)' : 'Mi Historial'}</h1>
+        <div className="flex-1 flex items-center justify-between min-w-0">
+          <h1 className="text-lg font-semibold text-[#3A3A3A] truncate">
+            {isAdmin && !effectiveBusId ? 'Historial Completo' : isChofer ? 'Últimos Registros (Chofer)' : 'Liquidaciones de Ruta'}
+          </h1>
+          {effectiveBusId && effectiveBusId !== 'TODOS' && (
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+              Bus {effectiveBusId.replace(/^BUS-/i, '').padStart(2, '0')}
+            </span>
+          )}
+        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto pb-6">
