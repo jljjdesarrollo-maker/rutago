@@ -602,49 +602,33 @@ export function markParadasComoDescontadas(paradaIds: string[]): void {
 }
 
 /**
- * Obtiene el déficit operativo arrastrado de una unidad (si la recaudación no alcanzó a cubrir el taller)
+ * Obtiene el déficit operativo arrastrado de una unidad.
+ * A partir de v3.61.22 (Opción 2 - Independencia Contable Diaria):
+ * Cada arqueo diario cierra en su propio día sin arrastrar saldos al siguiente turno
+ * para evitar doble descuento en la contabilidad mensual del socio.
+ * Limpia automáticamente cualquier residuo previo en dispositivos de suscriptores actuales.
  */
 export function getDeficitArrastradoVT(busId: string): DeficitArrastradoVT | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(`${STORAGE_DEFICIT_PREFIX}${busId}`);
-    if (!raw) return null;
-    const data: DeficitArrastradoVT = JSON.parse(raw);
-    if (data.amount <= 0) return null;
-    return data;
+    localStorage.removeItem(`${STORAGE_DEFICIT_PREFIX}${busId}`);
   } catch {
-    return null;
+    // ignore
   }
+  return null;
 }
 
 /**
- * Guarda o actualiza el déficit operativo arrastrado para la siguiente VT
+ * Mantenida por compatibilidad de firma: limpia cualquier saldo previo sin arrastrar deuda al siguiente VT.
  */
 export function saveDeficitArrastradoVT(
   busId: string,
-  amount: number,
-  fechaOrigen: string,
-  descripcion: string,
-  tallerOrigen?: string
+  _amount?: number,
+  _fechaOrigen?: string,
+  _descripcion?: string,
+  _tallerOrigen?: string
 ): void {
-  if (typeof window === 'undefined') return;
-  try {
-    if (amount <= 0) {
-      clearDeficitArrastradoVT(busId);
-      return;
-    }
-    const data: DeficitArrastradoVT = {
-      busId,
-      amount: Math.round(amount * 100) / 100,
-      fechaOrigen,
-      descripcion,
-      tallerOrigen,
-      createdAt: new Date().toISOString(),
-    };
-    localStorage.setItem(`${STORAGE_DEFICIT_PREFIX}${busId}`, JSON.stringify(data));
-  } catch (err) {
-    console.error('Error guardando deficit arrastrado de VT:', err);
-  }
+  clearDeficitArrastradoVT(busId);
 }
 
 /**

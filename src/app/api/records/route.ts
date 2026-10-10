@@ -155,13 +155,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'tickets debe ser >= 0' }, { status: 400 });
     }
 
+    const expensesLimpias = Array.isArray(expenses)
+      ? expenses.filter((e: { description?: string }) => {
+          const desc = String(e?.description || '').trim().toLowerCase();
+          return !desc.startsWith('arrastre déficit') && !desc.startsWith('arrastre deficit');
+        })
+      : [];
+
     const tripIncome = (trips || []).reduce((s: number, t: { income: number | string }) => s + (Number(t.income) || 0), 0);
     const tripEfectivoReal = (trips || []).reduce((s: number, t: { efectivoReal: number | string }) => s + (Number(t.efectivoReal) || 0), 0);
     const cajaComun = Number(cajaComunBody) || 0;
     const sobranteNum = Number(sobrante) || 0;
     // PRODUCCION = efectivo real contado + caja comun + sobrante
     const production = tripEfectivoReal + cajaComun + sobranteNum;
-    const totalGastos = (expenses || []).reduce((s: number, e: { amount: number | string }) => s + (Number(e.amount) || 0), 0);
+    const totalGastos = expensesLimpias.reduce((s: number, e: { amount: number | string }) => s + (Number(e.amount) || 0), 0);
     const ticketsNum = Number(tickets) || 0;
 
     // ENTREGA AYUDANTE
@@ -210,7 +217,7 @@ export async function POST(req: NextRequest) {
           })),
         },
         expenses: {
-          create: (expenses || []).map((e: { description: string; amount: number | string }, i: number) => ({
+          create: expensesLimpias.map((e: { description: string; amount: number | string }, i: number) => ({
             order: i + 1,
             description: e.description || '',
             amount: Number(e.amount) || 0,

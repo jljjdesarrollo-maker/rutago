@@ -22,10 +22,7 @@ import { getLocalRutasKmConfig, syncRutasKmConfig } from '@/lib/rutas-km-storage
 import {
   getParadasAyudantePendientesArqueo,
   markParadasComoDescontadas,
-  getDeficitArrastradoVT,
-  saveDeficitArrastradoVT,
   clearDeficitArrastradoVT,
-  type DeficitArrastradoVT,
   type ParadaPagoRegistro,
 } from '@/lib/paradas-vt-storage';
 import {
@@ -163,26 +160,23 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const [errors, setErrors] = useState<string[]>([]);
   const [guardadoOffline, setGuardadoOffline] = useState(false);
 
-  // Sub-fase 3.2: Paradas de Taller cubiertas por Ayudante y Arrastre de Déficit de VT
+  // Sub-fase 3.2: Paradas de Taller cubiertas por Ayudante (Cierre contable diario independiente)
   const [paradasTaller, setParadasTaller] = useState<ParadaPagoRegistro[]>([]);
   const [paradasExcluidas, setParadasExcluidas] = useState<Record<string, boolean>>({});
-  const [deficitPrevio, setDeficitPrevio] = useState<DeficitArrastradoVT | null>(null);
-  const [deficitIncluidoEnGastos, setDeficitIncluidoEnGastos] = useState(false);
 
-  // Sub-fase 3.2: Carga automática de paradas pagadas por el ayudante y arrastre de déficit de VT
+  // Carga automática de paradas pagadas por el ayudante hoy y saneamiento de residuos de arrastre
   useEffect(() => {
     const fechaTrabajo = workDate(session);
     // 1. Paradas de taller que el ayudante pagó en ruta hoy
     const paradas = getParadasAyudantePendientesArqueo(currentBus.id, fechaTrabajo);
     if (paradas.length > 0) {
       setParadasTaller(paradas);
+    } else {
+      setParadasTaller([]);
     }
 
-    // 2. Saldo de déficit arrastrado de una jornada / VT anterior
-    const def = getDeficitArrastradoVT(currentBus.id);
-    if (def && def.amount > 0) {
-      setDeficitPrevio(def);
-    }
+    // 2. Limpiar cualquier residuo de déficit arrastrado en suscriptores actuales (Opción 2: Cierre diario independiente)
+    clearDeficitArrastradoVT(currentBus.id);
   }, [currentBus.id, session]);
 
   // Inline edit caja común
@@ -603,19 +597,8 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       // Guardar odómetro dedicado de la unidad física (Fase 3.2)
       saveBusOdometer(currentBus.numeroDisco, kmFinal.trim(), fechaTrabajo);
 
-      // Sub-fase 3.2: Tratamiento financiero de Déficit Operativo o Cancelación de Saldo Arrastrado
-      if (entregaAyudante < 0) {
-        saveDeficitArrastradoVT(
-          currentBus.id,
-          Math.abs(entregaAyudante),
-          fechaTrabajo,
-          'Déficit por parada de taller / gastos en VT ' + (session.vtCode || '')
-        );
-      } else {
-        if (deficitPrevio) {
-          clearDeficitArrastradoVT(currentBus.id);
-        }
-      }
+      // Independencia Contable Diaria (v3.61.22): cada arqueo cierra en su propio día sin arrastrar deuda al siguiente VT
+      clearDeficitArrastradoVT(currentBus.id);
 
       // Marcar paradas de taller del ayudante aprobadas como formalmente procesadas en el arqueo
       if (paradasAprobadas.length > 0) {
@@ -771,17 +754,17 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                   {totalCajaComunMonto === 0 && ticketsNum > 0 && <span className="text-xs text-amber-600 ml-1">(sin caja común)</span>}
                 </span>
                 <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-600' : 'text-amber-600'}`}>
-                  {entregaAyudante >= 0 ? '$' + entregaAyudante.toFixed(2) : '$0.00 (Efectivo en mano)'}
+                  {entregaAyudante >= 0 ? '$' + entregaAyudante.toFixed(2) : '-$' + Math.abs(entregaAyudante).toFixed(2)}
                 </span>
               </div>
               {entregaAyudante < 0 && (
                 <div className="flex justify-between text-xs text-amber-800 bg-amber-50 p-2 rounded-xl border border-amber-200">
                   <span className="font-bold flex items-center gap-1">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                    Déficit arrastrado a prox. VT:
+                    Efectivo físico en billetes hoy:
                   </span>
                   <span className="font-black">
-                    {'-$' + Math.abs(entregaAyudante).toFixed(2)}
+                    $0.00 (Saldo del día: -${Math.abs(entregaAyudante).toFixed(2)})
                   </span>
                 </div>
               )}
@@ -1268,38 +1251,6 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
 
         {/* 3. GASTOS */}
         <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
-          {/* Sub-fase 3.2: Banner de Déficit Arrastrado de VT Anterior */}
-          {deficitPrevio && (
-            <div className="mb-3 p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-center justify-between gap-2">
-              <div>
-                <span className="text-xs font-black text-amber-900 flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                  {'Déficit Arrastrado de VT Anterior: $' + deficitPrevio.amount.toFixed(2)}
-                </span>
-                <p className="text-[10px] text-amber-700 mt-0.5">
-                  {'Origen: ' + deficitPrevio.fechaOrigen + ' — ' + deficitPrevio.descripcion}
-                </p>
-              </div>
-              {!deficitIncluidoEnGastos ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const desc = 'Arrastre Déficit (' + deficitPrevio.fechaOrigen + ')';
-                    setGastos(prev => [...prev, { description: desc, amount: deficitPrevio.amount.toString() }]);
-                    setDeficitIncluidoEnGastos(true);
-                  }}
-                  className="text-[10px] bg-amber-600 hover:bg-amber-700 text-white font-black px-2.5 py-1.5 rounded-lg shrink-0 cursor-pointer shadow-xs"
-                >
-                  + Aplicar en Gastos
-                </button>
-              ) : (
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md">
-                  ✓ Aplicado
-                </span>
-              )}
-            </div>
-          )}
-
           {/* Sub-fase 3.2: Paradas de Taller / Mantenimientos con Switch de Inclusión */}
           {paradasTaller.length > 0 && (
             <div className="mb-4 space-y-2.5">
@@ -1535,7 +1486,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
               {totalCajaComunMonto === 0 && ticketsNum > 0 && <span className="text-[10px] text-amber-400 ml-1">(sin caja común)</span>}
             </span>
             <span className={`font-bold ${entregaAyudante >= 0 ? 'text-green-400' : 'text-amber-400'}`}>
-              {entregaAyudante >= 0 ? '$' + entregaAyudante.toFixed(2) : '$0.00 (Déficit)'}
+              {entregaAyudante >= 0 ? '$' + entregaAyudante.toFixed(2) : '-$' + Math.abs(entregaAyudante).toFixed(2)}
             </span>
           </div>
           {entregaAyudante < 0 && (
@@ -1543,14 +1494,14 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
               <div className="flex items-center justify-between text-xs font-black text-amber-300">
                 <span className="flex items-center gap-1">
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                  Déficit a arrastrar a siguiente VT:
+                  Saldo negativo del día:
                 </span>
                 <span className="text-amber-300 text-sm">
                   {'-$' + Math.abs(entregaAyudante).toFixed(2)}
                 </span>
               </div>
               <p className="text-[10px] text-amber-200/80 mt-0.5 leading-tight">
-                El taller/gastos superó la recaudación de hoy. Entrega al socio hoy: $0.00. El saldo se arrastra automáticamente.
+                Los gastos superaron el efectivo recaudado hoy (Entrega física en billetes: $0.00). Este saldo queda registrado únicamente en este día y no se arrastra al siguiente turno.
               </p>
             </div>
           )}

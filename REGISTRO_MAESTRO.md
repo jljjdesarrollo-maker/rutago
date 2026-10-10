@@ -3815,3 +3815,36 @@ bun test tests/manual-socio.test.ts
 - **`package.json`**: Versión incrementada a `3.61.21`.
 - **`download/RutaGo_Contexto_Maestro_v3.61.21.md`**: Respaldo contextual generado.
 
+---
+
+## 🏛️ v3.61.22 - INDEPENDENCIA CONTABLE DIARIA: ELIMINACIÓN DE ARRASTRE DE DÉFICIT ENTRE VTS Y PROTECCIÓN ANTI-DUPLICIDAD (2026-10-09)
+> **ESTADO:** 🟢 COMPLETADO, VERIFICADO Y DESPLEGADO A PRODUCCIÓN  
+> **FECHA DE REGISTRO:** 2026-10-09 | **SISTEMA:** RutaGo - Motor Contable de Arqueos y Liquidación Diaria  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Erradicar el arrastre de déficit entre arqueos diarios (Opción 2) para evitar la duplicidad de gastos y doble descuento en la contabilidad mensual del socio, aplicando tanto a suscriptores actuales como nuevos.
+
+### 📍 1. Diagnóstico Contable y Decisión de Arquitectura (Opción 2):
+- **Hallazgo Contable Crítico:**
+  - Cuando en un Día 1 los gastos superan la recaudación en efectivo (ej. `$266.50 - $316.00 = -$49.50`), en la base de datos (`DailyRecord`) ya se guarda `totalGastos = $316.00` y `entregaAyudante = -$49.50`.
+  - Si en el Día 2 se arrastraba ese saldo de `$49.50` y se insertaba nuevamente como gasto (`Arrastre Déficit`), los gastos mensuales se inflaban artificialmente y al socio se le descontaban los `$49.50` **dos veces** en el balance mensual (`-$49.50` del Día 1 + reducción de `+$49.50` en el Día 2).
+- **Solución Aprobada (Opción 2 — Cierre Diario 100% Independiente):**
+  1. Cada arqueo diario registra única y exclusivamente sus propios ingresos y gastos del día ("cuenta nueva cada turno").
+  2. La compensación mensual en los reportes y balance del socio ocurre de forma matemática y automática al sumar algebraicamente los días del mes (`-$49.50 + $150.00 = +$100.50`).
+  3. En `Liquidación del Día`, cuando `entregaAyudante < 0`, se informa con total transparencia:
+     - **`Entrega Ayudante: -$49.50`**
+     - **`⚠️ Saldo negativo del día: -$49.50`** — *"Los gastos superaron el efectivo recaudado hoy (Entrega física en billetes: $0.00). Este saldo queda registrado únicamente en este día y no se arrastra al siguiente turno."*
+
+### 📍 2. Cobertura para Suscriptores Actuales y Nuevos:
+- **`src/lib/paradas-vt-storage.ts`**: `getDeficitArrastradoVT(busId)` y `saveDeficitArrastradoVT(busId)` limpian automáticamente cualquier clave residual `rg_deficit_vt_${busId}` almacenada previamente en los teléfonos de los suscriptores actuales y retornan `null`.
+- **`src/components/transport/ArqueoGeneralScreen.tsx`**: Eliminado el banner de *"Déficit Arrastrado de VT Anterior"* en la sección de Gastos y actualizado el resumen de *"Liquidación del Día"* y el modal de confirmación.
+- **`src/app/api/records/route.ts`**: Blindaje server-side en `POST /api/records` (`expensesLimpias`) que descarta cualquier ítem residual `Arrastre Déficit` para impedir doble contabilidad en PostgreSQL.
+
+### 📍 3. Artefactos Modificados y Sincronizados:
+- **`src/lib/paradas-vt-storage.ts`**
+- **`src/components/transport/ArqueoGeneralScreen.tsx`**
+- **`src/app/api/records/route.ts`**
+- **`tests/regression-v3.61.22.ts`**: 9/9 aserciones aprobadas (100%).
+- **`package.json`**: Versión incrementada a `3.61.22`.
+- **`download/RutaGo_Contexto_Maestro_v3.61.22.md`**: Respaldo contextual generado.
+
+
