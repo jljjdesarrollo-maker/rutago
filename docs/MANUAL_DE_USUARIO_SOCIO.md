@@ -52,12 +52,20 @@ Esta tarjeta resume en 3 segundos la salud financiera de tu autobús:
 
 ### 2.4 Barra de Navegación Inferior (Thumb Zone)
 Ubicada fijamente en la parte inferior para manejo cómodo a una sola mano:
-* `[ 🏠 Inicio ]`: Regresa al dashboard principal.
+* `[ 🏠 Inicio ]`: Regresa al dashboard principal y permite descargar la **Copia de Seguridad JSON** exclusiva de tu unidad (`respaldo_BUS-XX_fecha.json`).
 * `[ 💰 Gastos y Negocio ]`: Acceso directo al libro contable, cartera de talleres y estado de resultados.
-* `[ 🔧 Mantenimiento ]`: Panel gerencial de desgaste mecánico y odómetro.
-* `[ 👥 Tripulación ]`: Directorio privado de tus choferes y ayudantes.
+* `[ 🔧 Mantenimiento ]`: Panel gerencial de desgaste mecánico y odómetro auditado.
+* `[ 👥 Tripulación ]`: Directorio privado de tus choferes y ayudantes (altas, bajas y turnos aislados).
+* `[ 🚌 Mi Autobús ]`: Ficha técnica de tu vehículo, odómetro base y configuración de aportes fijos (ej. cuota diaria de **Plan Renova**).
 
 ---
+
+## 🚌 ETAPA 2.5: FICHA TÉCNICA Y PARÁMETROS DE LA UNIDAD (`FlotaScreen`)
+
+Desde la sección **«Mi Autobús»** puedes consultar y afinar los datos oficiales de tu máquina:
+* **Datos Generales:** Número de disco (ej. Bus 01, Bus 10), placa, año, modelo y capacidad de asientos.
+* **Aporte Diario Plan Renova:** Cada autobús tiene un costo de amortización distinto según su año y financiamiento (ej. **$68.00** para Bus 01, **$30.00** para Bus 10, o **$0.00** si la cuota ya está saldada). Este valor se configura directamente en la ficha para que el ayudante no tenga que calcularlo manualmente en sus arqueos.
+* **Seguridad de Flota:** Los socios tienen permisos exclusivos de edición para sus propias unidades. La creación de nuevos discos o la eliminación de vehículos está reservada para el SuperAdministrador de la cooperativa.
 
 ## 💰 ETAPA 3: FINANZAS Y CARTERA DE TALLERES (`OwnerExpensesScreen`)
 

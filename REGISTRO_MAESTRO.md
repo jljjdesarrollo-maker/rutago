@@ -4057,4 +4057,80 @@ bun test tests/manual-socio.test.ts
 - **`package.json`**: Versión incrementada a `3.61.32`.
 - **Suite de Pruebas Total:** 50/50 tests aprobados (100%).
 
+---
+
+## 🏛️ v3.61.33 - ANÁLISIS DE ARQUITECTURA: GASTO FIJO "PLAN RENOVA" CONFIGURABLE POR UNIDAD (2026-10-10)
+
+> **ESTADO:** 📋 ANÁLISIS TÉCNICO Y ESPECIFICACIÓN ARQUITECTÓNICA LISTA PARA IMPLEMENTACIÓN  
+> **FECHA DE REGISTRO:** 2026-10-10 | **SISTEMA:** RutaGo - Finanzas y Arqueos Operativos  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Desacoplar el gasto fijo diario "Plan Renova" para que no sea un valor rígido global ($68), sino un parámetro específico e individual de cada autobús (ej. Bus 01 = $68, Bus 10 = $30, otras unidades = monto personalizado o $0).
+
+### 📍 1. Diagnóstico del Problema Actual
+- En la actualidad, el gasto diario "Plan Renova" se encuentra fijado con valor constante de **$68** en tres lugares del código:
+  1. `src/components/transport/types.ts`: en `createEmptyFormData()`, donde `expenses` inicializa con `{ description: 'Plan Renova', amount: '68' }`.
+  2. `src/components/transport/CargaHistoricaScreen.tsx`: estado inicial de `expenses` con `{ description: 'Plan Renova', amount: '68' }`.
+  3. `src/components/transport/ArqueoGeneralScreen.tsx`: constante `GASTOS_DEFAULT` con `{ description: 'Plan Renova', amount: '68' }`.
+- **Impacto Operativo:**
+  - El **Bus 01** del Socio Líder tiene un aporte de Plan Renova de **$68.00**.
+  - El **Bus 10** tiene una cuota de **$30.00**.
+  - Al registrar turnos en el cuaderno histórico o realizar el arqueo diario del ayudante, a la Unidad 10 se le asigna por error los $68 de la Unidad 01, distorsionando el arqueo de caja del ayudante y la liquidación contable del socio de la Unidad 10.
+  - Otras unidades de la cooperativa pueden tener valores diferentes ($45, $50, etc.) o incluso $0 si ya culminaron el financiamiento del Plan Renova.
+
+### 📍 2. Propuesta de Solución y Arquitectura Modular (Aislamiento por Unidad)
+
+#### A. Modelo de Datos y Ficha de Unidad (`BusItem` & `Prisma`):
+1. **Extensión del Modelo `Bus` / `BusItem`**:
+   - Agregar el campo opcional `planRenovaMonto?: number` (o `cuotaPlanRenova?: number`).
+   - Si no está definido para un bus histórico:
+     - Si es `numeroDisco === '01'` -> Fallback a **$68**.
+     - Si es `numeroDisco === '10'` -> Fallback a **$30**.
+     - Otras unidades -> Fallback a **$0** (o valor configurado por el socio).
+2. **Edición desde la Ficha de Mi Autobús (`FlotaScreen.tsx` / Modal de Parámetros)**:
+   - Permitir al Socio Propietario o Administrador ver y editar el campo:
+     `Cuota Diaria Plan Renova ($): [ 68.00 ]` (o `$30.00` para Bus 10).
+   - Se guarda en la BD (`/api/buses` PUT) y en `fleet-storage.ts`.
+
+#### B. Motor de Resolución Canónica (`getGastosFijosPorUnidad`):
+- Crear un helper centralizado en `src/lib/fleet-storage.ts` o `src/lib/canonical-record-payload.ts`:
+  ```ts
+  export function getGastosFijosPorUnidad(discoOBusId: string): ExpenseItem[] {
+    const bus = getBusByDiscoOrId(discoOBusId);
+    let cuotaRenova = '0';
+    if (bus?.planRenovaMonto !== undefined && bus?.planRenovaMonto !== null) {
+      cuotaRenova = String(bus.planRenovaMonto);
+    } else {
+      // Fallback retrocompatible
+      const disco = normalizarDisco(discoOBusId);
+      if (disco === '01' || disco === '1') cuotaRenova = '68';
+      else if (disco === '10') cuotaRenova = '30';
+      else cuotaRenova = '0';
+    }
+
+    return [
+      { description: 'Chofer', amount: '30' },
+      { description: 'Ayudante', amount: '20' },
+      { description: 'Diesel', amount: '0' },
+      { description: 'Plan Renova', amount: cuotaRenova },
+    ];
+  }
+  ```
+
+#### C. Reactividad en Pantallas Operativas:
+1. **En `CargaHistoricaScreen.tsx`**:
+   - Al cambiar el combo de "Autobús" (ej. de Bus 01 a Bus 10), un `useEffect` o manejador recalcula dinámicamente la fila de "Plan Renova" en `expenses` con la cuota de la unidad seleccionada, preservando cualquier otro gasto que el usuario ya haya digitado (Diesel, etc.).
+2. **En `ArqueoGeneralScreen.tsx`**:
+   - Al abrir el arqueo del día para el `activeBusId` de la tripulación en turno, inicializa los `expenses` con la cuota exacta de esa unidad física (evitando que el ayudante del Bus 10 vea $68).
+3. **En `src/components/transport/types.ts`**:
+   - Extender `createEmptyFormData(disco?: string)` para aceptar el parámetro de unidad y llamar al helper canónico.
+
+### 📍 3. Estado de los Tutoriales y Documentación de Apoyo
+- **`docs/MANUAL_DE_USUARIO_SOCIO.md`**:
+  - Requiere actualización con el módulo de Ficha de Unidad (dónde configurar la cuota de Plan Renova de su bus) y la explicación del respaldo JSON aislado.
+- **`docs/MANUAL_DE_USUARIO_AYUDANTE.md`**:
+  - Requiere aclaración de que los gastos fijos (Chofer, Ayudante, Plan Renova) se precargan automáticamente según el bus asignado al turno.
+- **`docs/PLAN_AUDITORIA_AISLAMIENTO_SOCIO.md`**:
+  - Los 4 bloques están 100% certificados. Este nuevo requerimiento entra como mejora operativa financiera dentro del módulo de gastos fijos por unidad.
+
+
 

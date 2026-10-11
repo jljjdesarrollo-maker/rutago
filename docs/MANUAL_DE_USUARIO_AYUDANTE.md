@@ -141,7 +141,7 @@ Revisa y ajusta los gastos operativos del día:
 - **Chofer:** Pago de jornal del conductor (ej. $30.00).
 - **Ayudante:** Tu pago de jornal del día (ej. $20.00).
 - **Diésel / Combustible:** Valor consumido si fue pagado de la caja del día.
-- **Plan Renova / Turno:** Retención estándar según estatutos de la cooperativa.
+- **Plan Renova / Turno:** Retención estándar del autobús. La aplicación **precarga automáticamente el valor exacto de la unidad que estás operando** (ej. $68.00 para la Unidad 01, $30.00 para la Unidad 10, o el valor fijado por el socio propietario de esa unidad), evitando errores de cálculo o cobros indebidos entre diferentes vehículos.
 - **Gastos Varios / Taller:** Si tuviste que comprar un repuesto rápido, pagar un peaje o pagar una reparación menor en ruta, pulsa *«Agregar Gasto»* e ingresa el concepto y valor.
 
 ### 6.3 Ajuste Final por Sobrantes / Faltantes
