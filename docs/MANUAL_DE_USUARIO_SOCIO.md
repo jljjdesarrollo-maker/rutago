@@ -254,6 +254,35 @@ Desde la pantalla de **Gastos y Negocio**, dispones de 4 herramientas ejecutivas
 
 ---
 
+## 🚌 ETAPA 7: FICHA TÉCNICA DE MI AUTOBÚS Y CUOTA "PLAN RENOVA" (v3.61.33)
+
+Como Socio Propietario, tienes control total sobre la ficha técnica de tu vehículo desde el módulo **«Mi Autobús»** (`FlotaScreen`):
+
+### 7.1 Visualización de Ficha Técnica
+* **Disco y Placa:** Identificación oficial de tu máquina en la cooperativa.
+* **Socio Titular:** Acreditación de propiedad vinculada a tu cuenta.
+* **Capacidad Homologada:** Número de asientos autorizados (ej. 45 pasajeros para buses grandes).
+* **Circuito Operativo:** Ruta Troncal General (VT01–VT15) o Circuito Alimentador.
+* **Estado Operativo:** Indicador en tiempo real (En Servicio vs. Taller / Reposo).
+
+### 7.2 Configuración de la Cuota Diaria "Plan Renova"
+Cada autobús físico en la cooperativa puede tener un esquema de financiamiento o aporte diferente:
+1. En la ficha de tu unidad, pulsa el botón **`[ ✏️ Editar Ficha ]`**.
+2. Localiza la sección destacada: **«Cuota Diaria Plan Renova ($)»**.
+3. Ingresa el valor exacto que corresponde aportar a tu autobús:
+   - **Bus 01 (Socio Líder):** `$68.00`
+   - **Bus 10:** `$30.00`
+   - **Otras unidades:** El valor pactado con la cooperativa o entidad financiera (ej. `$45.00`, `$50.00`).
+   - **Unidades con financiamiento concluido:** Puedes fijarlo en `$0.00` para que no se debite ninguna cuota diaria.
+4. Pulsa **`[ Guardar ]`**.
+
+> ⚡ **Efecto Inmediato en Arqueos y Cuaderno:** Al guardar, tanto el ayudante en su **Arqueo General de Fin de Turno** como tú al ingresar datos en el **Cuaderno Histórico** verán precargada automáticamente la cuota exacta de tu unidad, evitando que a un socio con cuota baja (o nula) se le descuente el valor de otra unidad.
+
+### 7.3 Copia de Seguridad JSON Aislada por Unidad
+Desde el botón de descarga en tu **Dashboard Principal** (`HomeScreen`), puedes generar un archivo de respaldo con el formato `respaldo_BUS-XX_fecha.json` (ej. `respaldo_BUS-10_2026-10-11.json`). Este archivo contiene de forma 100% privada tus registros operativos, gastos del socio y tripulación, garantizando portabilidad y resguardo patrimonial sin contaminación de datos de terceros.
+
+---
+
 ## ❓ PREGUNTAS FRECUENTES DEL SOCIO (FAQ)
 
 **1. ¿Por qué mi Utilidad Neta no coincide con lo que tengo en mi cuenta bancaria?**  
