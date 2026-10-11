@@ -4191,3 +4191,61 @@ bun test tests/manual-socio.test.ts
 
 
 
+
+  - Pruebas 8 y 9 agregadas para validar flujos integrados de arqueo ayudante y carga histórica con cuota específica de la unidad física (total: 59/59 tests aprobados).
+
+---
+
+## 🏛️ v3.61.34 - IMPLEMENTACIÓN Y CERTIFICACIÓN COMPLETA: MOTOR DE SINCRONIZACIÓN DE ARQUEOS GENERALES OFFLINE Y FUSIÓN HÍBRIDA EN HISTORIAL (2026-10-11)
+
+> **ESTADO:** 🟢 IMPLEMENTADO, VERIFICADO Y 100% CERTIFICADO (65/65 TESTS APROBADOS)  
+> **FECHA DE CIERRE:** 2026-10-11 | **SISTEMA:** RutaGo - Arqueos Operativos y Resiliencia Offline  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Erradicar la pérdida de visibilidad y congelamiento en el Arqueo General del Ayudante ante fallas o intermitencias de red celular en carretera, dotando a la aplicación de un motor canónico de encolado offline, auto-sincronización en reconexión, botón manual en el inicio (`HomeScreenVT`) y fusión híbrida (Local + Nube) en el Historial (`HistoryScreen`).
+
+### 📍 1. Diagnóstico de la Falla Operativa Auditada (Caso 5 de Octubre - Unidad 10)
+- **Congelamiento de la pantalla:** La petición `fetch('/api/records')` enviaba un payload JSON con foto Base64 (200 KB - 500 KB) sin un controlador de cancelación (`AbortSignal.timeout`), provocando bloqueos prolongados cuando la señal celular era inestable.
+- **Inexistencia de Cola de Sincronización:** Cuando la petición fallaba, el sistema guardaba el JSON en `localStorage` con la misma clave tanto en éxito como en error, pero carecía de una cola formal (`rutago_pending_arqueos_queue`) y de un despachador en segundo plano que subiera los datos a PostgreSQL una vez recuperada la conexión.
+- **Historial en Blanco:** `HistoryScreen.tsx` consultaba exclusivamente `/api/records`. Al fallar la red o no haberse subido el registro, la consulta retornaba un arreglo vacío `[]`, ignorando por completo el arqueo guardado localmente en el teléfono.
+- **Botón Manual Incompleto:** El botón de subida existente en `HomeScreenVT.tsx` únicamente sincronizaba boletos individuales de la ticketera en IndexedDB (`syncVentasSilencioso()`), sin procesar los arqueos generales del ayudante.
+
+### 📍 2. Arquitectura Implementada y Módulos Creados
+
+- [x] **1. Motor Centralizado de Sincronización Offline (`src/lib/arqueos-sync.ts`):**
+  - Cola persistente indexada `rutago_pending_arqueos_queue`.
+  - Funciones canónicas: `enqueuePendingArqueo`, `getPendingArqueos`, `countPendingArqueos`, `removePendingArqueo`, `markArqueoAsSynced`.
+  - Peticiones con `AbortController` (timeout estricto de 12 segundos) para prevenir cualquier bloqueo táctil en carretera.
+  - Conversor canónico `canonicalPayloadToSavedRecord`: genera una estructura `SavedRecord` idéntica a la respuesta de PostgreSQL, calculando producción, entrega de ayudante y gastos.
+  - Sincronizador secuencial `syncAllPendingArqueos` y auto-sincronización en reconexión vía `setupAutoSyncArqueos` (`window.addEventListener('online')`).
+  - Despacho de eventos reactivos (`rutago_pending_arqueos_changed`, `rutago_arqueos_synced`) para actualización en caliente de la UI.
+
+- [x] **2. Resiliencia y Encolado en Arqueo General (`src/components/transport/ArqueoGeneralScreen.tsx`):**
+  - Llamada a `/api/records` protegida con timeout seguro de 12s.
+  - Si la petición falla o no hay conexión a internet, se encola automáticamente en `enqueuePendingArqueo` y se informa al ayudante de forma tranquilizadora.
+  - Al recibir respuesta 200/201 del servidor, se retira inmediatamente de la cola de pendientes y se actualiza el estado sincronizado en el dispositivo.
+
+- [x] **3. Fusión Híbrida y Respaldo Visual en Historial (`src/components/transport/HistoryScreen.tsx`):**
+  - Enriquecimiento de `fetchRecords`: combina los registros remotos del servidor con los arqueos locales pendientes obtenidos de `getLocalPendingSavedRecords(effectiveBusId)`.
+  - Detección de duplicidad: si un registro ya fue registrado en la base de datos remota, se marca como sincronizado localmente.
+  - Banner interactivo superior cuando hay registros en cola con botón `[ ⬆️ Subir a la Nube ]`.
+  - Tarjetas de liquidación con diseño distinguido y etiqueta distintiva: `[ ⏳ Guardado en Teléfono (Pendiente) ]`.
+  - Compatibilidad completa con eliminación y reactividad en tiempo real ante eventos de sincronización.
+
+- [x] **4. Alerta Operativa y Subida Manual en Tablero Principal (`src/components/transport/HomeScreenVT.tsx`):**
+  - Banner fijo dedicado cuando existen arqueos generales pendientes de la jornada anterior.
+  - Botón táctil ergonómico: `[ ⬆️ SUBIR X ARQUEO(S) GENERAL(ES) A LA NUBE ]`.
+  - Listener automático de reconexión a WiFi/datos activado en el arranque de la pantalla.
+
+- [x] **5. Extensiones en Modelos de Tipos (`src/components/transport/types.ts` & `package.json`):**
+  - Interfaces actualizadas con `_isOfflinePending?: boolean` y `_offlineKey?: string`.
+  - Versión del sistema incrementada a `v3.61.34`.
+
+- [x] **6. Suite de Pruebas Unitarias (`tests/arqueos-sync-offline.test.ts`):**
+  - 6 pruebas unitarias nuevas que validan:
+    1. Encolado y persistencia en localStorage de arqueos offline.
+    2. Generación fidedigna de `SavedRecord` con cálculos financieros exactos.
+    3. Aislamiento por unidad física (`Bus 10` vs `Bus 01` sin contaminación cruzada).
+    4. Sincronización unitaria exitosa con actualización de estado y purga de cola.
+    5. Manejo de fallos con incremento de intentos y registro de errores sin perder datos.
+    6. Procesamiento secuencial masivo de cola con métricas de éxito y fallo.
+  - **Total de la Suite del Proyecto:** 65/65 tests aprobados (100%).

@@ -41,6 +41,8 @@ export interface SavedRecord {
   totalGastos: number;
   photoUrl: string | null;
   createdAt: string;
+  _isOfflinePending?: boolean;
+  _offlineKey?: string;
   trips: {
     id: string;
     order: number;

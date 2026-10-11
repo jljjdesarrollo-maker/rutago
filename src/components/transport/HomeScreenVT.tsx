@@ -4,15 +4,15 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { type VTSession } from './types-boletos';
 import type { UserSession } from './types';
 import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVentasPendientesByVT } from '@/lib/indexeddb';
-import { Bus, User, UserCheck, UserPlus, ArrowRight, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays, Clock, Moon } from 'lucide-react';
+import { countPendingArqueos, syncAllPendingArqueos, setupAutoSyncArqueos } from '@/lib/arqueos-sync';
+import { Bus, User, UserCheck, UserPlus, ArrowRight, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays, Clock, Moon, CloudOff, UploadCloud, ShieldCheck } from 'lucide-react';
 import { BusSelector } from './BusSelector';
 import { getActiveBus } from '@/lib/fleet-storage';
 import { getEcuadorDateString, getEcuadorYesterdayDateString } from '@/lib/date-helpers';
 import { getConfiguracionFlotaLocal, subscribeToVTConfig, verificarActualizacionFingerprint } from '@/lib/vt-ventanas-storage';
-import { ShieldCheck } from 'lucide-react';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.60.31';
+const APP_VERSION = 'v3.61.34';
 
 interface Props {
   currentUser?: UserSession;
@@ -146,10 +146,12 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
   const [historialReemplazos, setHistorialReemplazos] = useState<string[]>([]);
   const [reemplazoError, setReemplazoError] = useState("");
 
-  // ─── Bloqueo por ventas pendientes de VTs anteriores ───
+  // ─── Bloqueo por ventas y arqueos pendientes de VTs anteriores ───
   const [pendingVentasCount, setPendingVentasCount] = useState(0);
   const [syncingPending, setSyncingPending] = useState(false);
   const [pendingCheckDone, setPendingCheckDone] = useState(false);
+  const [pendingArqueosCount, setPendingArqueosCount] = useState(0);
+  const [syncingArqueos, setSyncingArqueos] = useState(false);
 
   // ─── Control de Autorización Operativa ───
   const isAuthorized = currentUser
@@ -231,6 +233,22 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
       } catch { /* ignore */ }
       setPendingCheckDone(true);
     })();
+
+    const updateArqueosCount = () => {
+      setPendingArqueosCount(countPendingArqueos());
+    };
+    updateArqueosCount();
+
+    // Activar listener de auto-sincronización con reconexión
+    const cleanupAutoSync = setupAutoSyncArqueos();
+
+    window.addEventListener('rutago_pending_arqueos_changed', updateArqueosCount);
+    window.addEventListener('rutago_arqueos_synced', updateArqueosCount);
+    return () => {
+      cleanupAutoSync();
+      window.removeEventListener('rutago_pending_arqueos_changed', updateArqueosCount);
+      window.removeEventListener('rutago_arqueos_synced', updateArqueosCount);
+    };
   }, []);
 
   const handleForceSync = async () => {
@@ -242,6 +260,16 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
       setPendingVentasCount(remaining);
     } catch { /* ignore */ }
     setSyncingPending(false);
+  };
+
+  const handleSyncArqueos = async () => {
+    if (!navigator.onLine) return;
+    setSyncingArqueos(true);
+    try {
+      await syncAllPendingArqueos();
+      setPendingArqueosCount(countPendingArqueos());
+    } catch { /* ignore */ }
+    setSyncingArqueos(false);
   };
 
   const handleSelectDate = (dateVal: string) => {
@@ -1017,9 +1045,39 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
         </div>
       )}
 
+      {/* Alerta de Arqueos Generales Pendientes */}
+      {pendingArqueosCount > 0 && (
+        <div className={`fixed ${pendingVentasCount > 0 ? 'bottom-28' : 'bottom-0'} left-0 right-0 bg-[#3F1612] text-white p-4 shadow-2xl z-40 border-t border-amber-600/60`}>
+          <div className="max-w-lg mx-auto">
+            <div className="flex items-center gap-2 mb-1">
+              <CloudOff className="w-5 h-5 text-amber-300" />
+              <p className="font-bold text-sm">Arqueo General pendiente de subir</p>
+            </div>
+            <p className="text-white/80 text-xs mb-3">
+              Tienes <strong>{pendingArqueosCount} arqueo(s) general(es)</strong> guardado(s) en este teléfono (sin conexión). Súbelo(s) a la nube para consolidar tu liquidación.
+            </p>
+            {navigator.onLine ? (
+              <button
+                type="button"
+                onClick={handleSyncArqueos}
+                disabled={syncingArqueos}
+                className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-60 transition-all shadow-md"
+              >
+                {syncingArqueos ? <RefreshCw className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                {syncingArqueos ? 'SINCRONIZANDO ARQUEO...' : `SUBIR ${pendingArqueosCount} ARQUEO(S) GENERAL(ES) A LA NUBE`}
+              </button>
+            ) : (
+              <div className="w-full py-2 rounded-xl bg-white/10 text-white/70 text-xs flex items-center justify-center gap-2">
+                <WifiOff className="w-4 h-4" /> SIN INTERNET — CONECTA A WIFI/DATOS
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Banner de Turno sin Terminar */}
       {existingUnfinished && existingSession && (
-        <div className={`fixed ${pendingVentasCount > 0 ? 'bottom-28' : 'bottom-0'} left-0 right-0 bg-[#053225] text-white p-4 shadow-2xl z-40 border-t border-emerald-800/60 transition-all`}>
+        <div className={`fixed ${pendingVentasCount > 0 || pendingArqueosCount > 0 ? 'bottom-28' : 'bottom-0'} left-0 right-0 bg-[#053225] text-white p-4 shadow-2xl z-40 border-t border-emerald-800/60 transition-all`}>
           <div className="max-w-lg mx-auto">
             <div className="flex items-center gap-2 mb-1">
               <Clock className="w-5 h-5 text-emerald-300" />

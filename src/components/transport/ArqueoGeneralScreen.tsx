@@ -34,6 +34,7 @@ import {
 } from '@/lib/odometer-validator';
 import { obtenerUltimosArqueosBus } from '@/lib/turno-secuencia-tracker';
 import { buildCanonicalRecordPayload } from '@/lib/canonical-record-payload';
+import { enqueuePendingArqueo, markArqueoAsSynced } from '@/lib/arqueos-sync';
 import { getCurrentConductor } from './types';
 
 interface Props {
@@ -633,31 +634,45 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
         markParadasComoDescontadas(paradasAprobadas.map(p => p.id));
       }
 
-      const isOnline = navigator.onLine;
+      let uploadedToCloud = false;
       const localArqueoKey = `arqueo_general_${currentBus.numeroDisco}_${session.vtCode}_${fechaTrabajo}`;
 
-      if (isOnline) {
-        const res = await fetch('/api/records', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(canonicalBody),
-        });
-        if (res.ok) {
-          localStorage.setItem(localArqueoKey, JSON.stringify(canonicalBody));
-          obtenerUltimosArqueosBus(currentBus.numeroDisco, currentBus.id).catch(() => {});
-          setSaved(true);
-        } else {
-          const result = await res.json().catch(() => ({ error: 'Error desconocido' }));
-          console.error('Error guardando arqueo en servidor:', result.error);
-          // Save offline if server fails
-          localStorage.setItem(localArqueoKey, JSON.stringify(canonicalBody));
-          obtenerUltimosArqueosBus(currentBus.numeroDisco, currentBus.id).catch(() => {});
-          setGuardadoOffline(true);
-          setSaved(true);
+      if (navigator.onLine) {
+        try {
+          const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+          const timeoutId = controller ? setTimeout(() => controller.abort(), 12000) : null;
+          const res = await fetch('/api/records', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(canonicalBody),
+            signal: controller ? controller.signal : undefined,
+          });
+          if (timeoutId) clearTimeout(timeoutId);
+
+          if (res.ok) {
+            uploadedToCloud = true;
+            markArqueoAsSynced(localArqueoKey);
+            localStorage.setItem(localArqueoKey, JSON.stringify({ ...canonicalBody, _offlinePending: false }));
+            obtenerUltimosArqueosBus(currentBus.numeroDisco, currentBus.id).catch(() => {});
+            setSaved(true);
+          } else {
+            const result = await res.json().catch(() => ({ error: 'Error desconocido' }));
+            console.error('Error guardando arqueo en servidor:', result.error);
+          }
+        } catch (fetchErr) {
+          console.warn('Falla o timeout de red al subir arqueo a /api/records:', fetchErr);
         }
-      } else {
-        // Save to localStorage for later sync
-        localStorage.setItem(localArqueoKey, JSON.stringify(canonicalBody));
+      }
+
+      if (!uploadedToCloud) {
+        // Encolar formalmente en el gestor de sincronización offline
+        enqueuePendingArqueo(
+          localArqueoKey,
+          currentBus.numeroDisco,
+          session.vtCode,
+          fechaTrabajo,
+          canonicalBody
+        );
         obtenerUltimosArqueosBus(currentBus.numeroDisco, currentBus.id).catch(() => {});
         setGuardadoOffline(true);
         setSaved(true);
@@ -666,7 +681,14 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       console.error('Error guardando arqueo:', err);
       // Guardar odómetro dedicado de la unidad física ante fallback
       saveBusOdometer(currentBus.numeroDisco, kmFinal.trim(), fechaTrabajo);
-      localStorage.setItem(`arqueo_general_${currentBus.numeroDisco}_${session.vtCode}_${fechaTrabajo}`, JSON.stringify(canonicalBody));
+      const localArqueoKey = `arqueo_general_${currentBus.numeroDisco}_${session.vtCode}_${fechaTrabajo}`;
+      enqueuePendingArqueo(
+        localArqueoKey,
+        currentBus.numeroDisco,
+        session.vtCode,
+        fechaTrabajo,
+        canonicalBody
+      );
       setGuardadoOffline(true);
       setSaved(true);
     } finally {

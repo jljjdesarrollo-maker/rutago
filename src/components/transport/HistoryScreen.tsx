@@ -1,11 +1,17 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Trash2, ChevronRight, Calendar, TrendingUp, TrendingDown, Loader2, Download } from 'lucide-react';
+import { ArrowLeft, Trash2, ChevronRight, Calendar, TrendingUp, TrendingDown, Loader2, Download, CloudOff, UploadCloud, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { type SavedRecord } from './types';
+import {
+  getLocalPendingSavedRecords,
+  syncAllPendingArqueos,
+  markArqueoAsSynced,
+  removePendingArqueo,
+} from '@/lib/arqueos-sync';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -99,6 +105,7 @@ export function HistoryScreen({
   const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const [monthValue, setMonthValue] = useState<string>(currentMonthStr);
   const [exporting, setExporting] = useState(false);
+  const [syncingOffline, setSyncingOffline] = useState(false);
 
   const dateRange = useMemo(() => {
     if (isChofer) {
@@ -110,6 +117,8 @@ export function HistoryScreen({
   const fetchRecords = async () => {
     setLoading(true);
     try {
+      const localPending = getLocalPendingSavedRecords(effectiveBusId);
+
       const params = new URLSearchParams();
       if (isChofer) {
         // En la interfaz del chofer: traer de inmediato los ultimos 7 turnos sin rangos ni filtros
@@ -130,11 +139,44 @@ export function HistoryScreen({
       }
 
       const query = params.toString() ? `?${params.toString()}` : '';
-      const res = await fetch(`/api/records${query}`);
-      const data = await res.json();
-      setAllRecords(Array.isArray(data) ? data : []);
+      let cloudRecords: SavedRecord[] = [];
+      try {
+        const res = await fetch(`/api/records${query}`);
+        if (res.ok) {
+          const data = await res.json();
+          cloudRecords = Array.isArray(data) ? data : [];
+        }
+      } catch (networkErr) {
+        console.warn('Sin conexión o error al consultar /api/records, usando datos locales:', networkErr);
+      }
+
+      // Fusión inteligente: Filtrar los locales pendientes que aún no existan en cloudRecords
+      const unmergedPending = localPending.filter(pendingItem => {
+        // Si el registro ya fue consolidado en la nube con la misma fecha y vtCode/conductor
+        const yaEnNube = cloudRecords.some(cr =>
+          cr.date === pendingItem.date &&
+          (cr.vtCode === pendingItem.vtCode || (!pendingItem.vtCode && cr.conductor === pendingItem.conductor))
+        );
+        if (yaEnNube && pendingItem._offlineKey) {
+          markArqueoAsSynced(pendingItem._offlineKey);
+          return false;
+        }
+
+        // Aplicar filtro de fecha activo
+        if (dateRange.from && dateRange.to) {
+          if (pendingItem.date < dateRange.from || pendingItem.date > dateRange.to) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      // Presentar primero los locales pendientes (más recientes) y luego los de la nube
+      setAllRecords([...unmergedPending, ...cloudRecords]);
     } catch {
       console.error('Error loading records');
+      const localPending = getLocalPendingSavedRecords(effectiveBusId);
+      setAllRecords(localPending);
     } finally {
       setLoading(false);
     }
@@ -144,14 +186,45 @@ export function HistoryScreen({
     fetchRecords();
   }, [dateRange, isChofer, effectiveBusId, propSocioId]);
 
+  // Escuchar eventos de sincronización para actualizar de forma reactiva
+  useEffect(() => {
+    const handleRefresh = () => fetchRecords();
+    window.addEventListener('rutago_arqueos_synced', handleRefresh);
+    window.addEventListener('rutago_pending_arqueos_changed', handleRefresh);
+    return () => {
+      window.removeEventListener('rutago_arqueos_synced', handleRefresh);
+      window.removeEventListener('rutago_pending_arqueos_changed', handleRefresh);
+    };
+  }, [effectiveBusId, dateRange, isChofer]);
+
+  const handleSyncOffline = async () => {
+    setSyncingOffline(true);
+    try {
+      await syncAllPendingArqueos();
+      await fetchRecords();
+    } catch (err) {
+      console.error('Error al sincronizar arqueos:', err);
+    } finally {
+      setSyncingOffline(false);
+    }
+  };
+
   const filteredRecords = useMemo(() => {
     return allRecords;
+  }, [allRecords]);
+
+  const pendingOfflineRecords = useMemo(() => {
+    return allRecords.filter(r => r._isOfflinePending);
   }, [allRecords]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await fetch(`/api/records/${deleteTarget}`, { method: 'DELETE' });
+      if (deleteTarget.startsWith('arqueo_general_') || deleteTarget.startsWith('offline_')) {
+        removePendingArqueo(deleteTarget);
+      } else {
+        await fetch(`/api/records/${deleteTarget}`, { method: 'DELETE' });
+      }
       fetchRecords();
     } catch {
       console.error('Error deleting record');
@@ -310,6 +383,38 @@ export function HistoryScreen({
           </div>
         )}
 
+        {/* Banner destacado de Arqueos Pendientes en este teléfono */}
+        {pendingOfflineRecords.length > 0 && (
+          <div className="mx-4 mb-3 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-300 shadow-2xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0">
+                <CloudOff className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-amber-950 truncate">
+                  {pendingOfflineRecords.length} arqueo(s) guardado(s) en el teléfono
+                </p>
+                <p className="text-[11px] text-amber-800/80">
+                  Pendiente de sincronizar a la nube de RutaGo
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={handleSyncOffline}
+              disabled={syncingOffline}
+              className="h-8 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all"
+            >
+              {syncingOffline ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <UploadCloud className="w-3.5 h-3.5" />
+              )}
+              {syncingOffline ? 'Subiendo...' : 'Subir a la Nube'}
+            </Button>
+          </div>
+        )}
+
         {/* Records list */}
         {filteredRecords.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 px-6">
@@ -322,15 +427,23 @@ export function HistoryScreen({
             {filteredRecords.map(record => (
               <Card
                 key={record.id}
-                className="rounded-2xl border border-[#D6D6D6] bg-white cursor-pointer hover:shadow-md transition-shadow"
+                className={`rounded-2xl border bg-white cursor-pointer hover:shadow-md transition-shadow ${
+                  record._isOfflinePending ? 'border-amber-300 ring-1 ring-amber-300/50 bg-amber-50/20' : 'border-[#D6D6D6]'
+                }`}
                 onClick={() => onViewRecord(record)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         <Calendar className="w-4 h-4 text-[#912D26]" />
                         <span className="font-semibold text-[#3A3A3A]">{formatDate(record.date)}</span>
+                        {record._isOfflinePending && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 shadow-2xs">
+                            <CloudOff className="w-3 h-3 text-amber-600" />
+                            Guardado en Teléfono (Pendiente)
+                          </span>
+                        )}
                         {record.km && (
                           <span className="text-xs text-[#3A3A3A]/40">• {record.km} km</span>
                         )}
@@ -338,14 +451,14 @@ export function HistoryScreen({
                       <div className="flex items-center gap-4 mt-2 text-sm">
                         <div className="flex items-center gap-1">
                           <TrendingUp className="w-3.5 h-3.5 text-[#3A3A3A]" />
-                          <span className="text-[#3A3A3A]/70">S/ {record.production.toFixed(2)}</span>
+                          <span className="text-[#3A3A3A]/70">${record.production.toFixed(2)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <TrendingDown className="w-3.5 h-3.5 text-red-500" />
-                          <span className="text-[#3A3A3A]/70">S/ {record.totalGastos.toFixed(2)}</span>
+                          <span className="text-[#3A3A3A]/70">${record.totalGastos.toFixed(2)}</span>
                         </div>
                         <span className={`font-bold ${record.entregaAyudante >= 0 ? 'text-[#912D26]' : 'text-red-600'}`}>
-                          {record.entregaAyudante >= 0 ? '+' : ''}{record.entregaAyudante.toFixed(2)}
+                          {record.entregaAyudante >= 0 ? '+' : ''}${record.entregaAyudante.toFixed(2)}
                         </span>
                       </div>
                       <p className="text-xs text-[#3A3A3A]/40 mt-1">
