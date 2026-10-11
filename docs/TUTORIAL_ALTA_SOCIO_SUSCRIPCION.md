@@ -1,20 +1,20 @@
 # 📖 Tutorial Oficial: Cómo dar de alta un Nuevo Socio y su Suscripción en RutaGo
 
-> **Versión del Sistema:** RutaGo SaaS v3.60.97+  
+> **Versión del Sistema:** RutaGo SaaS v3.61.35+  
 > **Destinatario:** SuperAdmin / Vendor Desarrollador  
 > **Entorno Oficial:** `https://rutago-jljjj.vercel.app`  
 
 ---
 
 ## 🎯 Objetivo
-Este tutorial detalla el procedimiento exacto paso a paso para incorporar un nuevo autobús (ej. **Unidad 10**), registrar a su socio propietario con autenticación criptográfica en PostgreSQL, activar su suscripción mensual recurrente de **$20.00 USD/mes** y habilitar a su tripulación (chofer y ayudante) sin fricciones.
+Este tutorial detalla el procedimiento exacto paso a paso para incorporar un nuevo autobús (ej. **Unidad 10**), registrar a su socio propietario con autenticación criptográfica en PostgreSQL, activar su suscripción mensual recurrente de **$20.00 USD/mes** y habilitar a su tripulación (chofer y ayudante) con **aislamiento físico estricto y resiliencia offline**.
 
 ---
 
 ## 📋 Requisitos Previos: Datos Solicitados al Socio
 Antes de iniciar en la plataforma, asegúrate de contar con la siguiente información:
 1. **Socio Propietario:** Nombres completos, Cédula de 10 dígitos, Celular con WhatsApp y PIN de 4 dígitos deseado.
-2. **Autobús:** Número de Disco, Placa oficial y **Kilometraje real del tablero hoy (Odómetro de inicio)**.
+2. **Autobús:** Número de Disco, Placa oficial, **Cuota diaria Plan Renova ($)** y **Kilometraje real del tablero hoy (Odómetro de inicio)**.
 3. **Tripulación:** Nombres, Cédula y Celular del Chofer y del Ayudante, con sus respectivos PINs de 4 dígitos.
 
 ---
@@ -38,6 +38,7 @@ Antes de iniciar en la plataforma, asegúrate de contar con la siguiente informa
    * **Placa Vehicular \*:** Verifica o escribe la placa real (ej. `HAA-3509`).
    * **Marca del Chasis y Modelo:** Confirma la carrocería (ej. `Hino AK`, modelo `AK`).
    * **Año de Fabricación:** (ej. `2019` o `2022`).
+   * **Cuota Diaria Plan Renova ($):** Digita el valor pactado de amortización de la unidad (ej. `$30.00` para Unidad 10, `$68.00` para Unidad 01, o `$0.00` si ya fue saldada). Este valor alimentará automáticamente el arqueo general del ayudante y la carga histórica.
    * **Odómetro Inicial / Kilometraje del Tablero (km) \*:** Digita el kilometraje que marca el velocímetro hoy (ej. `245680`). *(Dato indispensable como línea base para el asistente de mantenimiento preventivo).*
    * **Unidad Activa en Servicio:** Asegúrate de que el interruptor esté encendido en verde.
 4. Presiona el botón: **`Actualizar Ficha`**.  
@@ -128,4 +129,6 @@ Para que el personal que opera el bus diariamente pueda identificarse en la app:
   * **Auto-Enlace Multi-Tenant:** La aplicación asocia automáticamente su número de disco y placa (ej. *Bus 10 • TAA-3420*), su tripulación activa y su balance inicial limpio en **$0.00 EN LIMPIO** fijado en el mes actual en curso (ej. Octubre 2026), sin arrastrar datos de la unidad 01 ni gastos demo de prueba de la cooperativa.
   * **Aislamiento Universal de Reportes e Informes (v3.61.15):** Todos los módulos de reportería (`ReportsScreen`, `ReporteOperativoScreen`, y modales financieros) inician con $0.00 y 0 vueltas hasta que la tripulación asignada genere sus primeras liquidaciones. Jamás se filtran registros globales ni de otras unidades.
 * **Tripulación (PINs `1001` y `1002`):** Ingresan para abrir la jornada, registrar el odómetro y liquidar el arqueo nocturno de 2 minutos.
+  * **Aislamiento Físico por Unidad (v3.61.35):** Al ingresar, el chofer y el ayudante quedan enlazados exclusivamente al autobús de su socio (`busId`), bloqueando selectores y garantizando que cada boleto y arqueo se compute a favor de su vehículo.
+  * **Resiliencia Offline y Cero Pérdidas:** Si la jornada concluye en una parroquia sin cobertura celular, el arqueo queda respaldado de forma segura en la memoria del teléfono y se sube automáticamente cuando detecta internet, o mediante los botones de sincronización manual de la app.
 * **SuperAdmin (PIN `9999`):** Monitorea el MRR, las alertas técnicas de la flota y el cumplimiento de suscripciones de toda la cooperativa.

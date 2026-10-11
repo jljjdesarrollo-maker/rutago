@@ -1,27 +1,28 @@
 # 📘 MANUAL DE USUARIO OFICIAL: RUTINA OPERATIVA DEL AYUDANTE
 **Aplicación:** RutaGo • Cooperativa de Transportes VilcabambaTuris  
-**Versión:** v3.61.05 (Rotación Dinámica de Tripulación & Paridad Operativa)  
+**Versión:** v3.61.35 (Aislamiento Multi-Tenant por Unidad Física & Resiliencia Offline de Arqueos)  
 **Rol Destinatario:** Ayudante Oficial de Ruta  
 
 ---
 
 ## 🎯 OBJETIVO DEL MANUAL
-Este manual detalla paso a paso la rutina diaria que debe seguir el ayudante de bus en la aplicación RutaGo desde que recibe el dispositivo móvil al iniciar el turno hasta el cierre contable definitivo de la jornada (Arqueo General).
+Este manual detalla paso a paso la rutina diaria que debe seguir el ayudante de bus en la aplicación RutaGo desde que recibe el dispositivo móvil al iniciar el turno hasta el cierre contable definitivo de la jornada (Arqueo General), garantizando el **aislamiento total por unidad física** y la **operación continua sin señal celular**.
 
 ---
 
 ## 🏁 ETAPA 1: INICIO DE SESIÓN Y VERIFICACIÓN INICIAL
 
-### 1.1 Ingreso al Sistema mediante PIN
+### 1.1 Ingreso al Sistema mediante PIN y Enlace Automático de Unidad
 1. Enciende el teléfono móvil o abre la aplicación RutaGo en el navegador/PWA.
 2. En la pantalla de bienvenida aparecerá el teclado numérico de alta visibilidad solicitando tu PIN de 4 dígitos.
 3. Digita tu PIN personal asignado (ej. `5555`, `6666`, etc.).
 4. El sistema validará tu identidad contra la base de datos central:
+   - **Enlace Automático de Unidad Física:** El sistema detecta tu autobús asignado (ej. **Bus 10**) y bloquea toda la sesión a ese vehículo, eliminando cualquier residuo o turno previo de otra unidad (ej. Bus 01).
    - **Cuenta Activa:** Si tu usuario está activo, abrirá directamente el **Panel Principal del Ayudante**.
    - **Usuario Inactivo / Baja Lógica:** Si el socio propietario ha dado de baja o pausado tu cuenta, el sistema denegará el acceso mostrando: *«Usuario inactivo o dado de baja. Comuníquese con el socio propietario o administración»*.
    - **Vinculación de Dispositivo (Device Binding):** Si el control de dispositivo está activo, el acceso solo se permitirá desde el teléfono oficial asignado al bus para proteger la caja y emisión de boletos.
 
-> 💡 **Nota de Operación Offline:** Si te encuentras en un punto de la ruta sin cobertura celular (sin señal), la aplicación te permitirá ingresar automáticamente con tu sesión guardada en el dispositivo.
+> 💡 **Nota de Operación Offline:** Si te encuentras en un punto de la ruta sin cobertura celular (sin señal), la aplicación te permitirá ingresar automáticamente con tu sesión guardada en el dispositivo, conservando de forma estricta la unidad física asignada.
 > 💡 **Nota de Ascenso o Rotación:** Si eres promovido a Chofer/Conductor o rotas de puesto, ingresarás con tu mismo PIN personal y la aplicación adaptará tu pantalla de forma automática al panel de mantenimiento y tacómetro de la unidad.
 
 ---
@@ -53,6 +54,11 @@ A diferencia del panel del conductor o socio (que tiene opciones complejas de ta
 3. Toca la tarjeta correspondiente al turno asignado a tu unidad (ej. **VT 7**).
 4. Verifica que en el botón inferior aparezca:  
    `[ ▶ Iniciar Turno • VT 7 ]`. Pulsa el botón para comenzar.
+
+### 2.3 Unidad Física Bloqueada y Blindada
+En la esquina superior derecha de la cabecera observarás la pastilla fija con tu unidad (ej. **`Bus 10`**):
+- El sistema no permite alternar de autobús para evitar que se asienten vueltas en el carro equivocado.
+- Si previamente otro compañero usó el teléfono para otra unidad, el sistema purga automáticamente cualquier rastro para arrancar en limpio.
 
 ---
 
@@ -93,6 +99,9 @@ En la parte superior derecha de la cabecera tienes un indicador de alto contrast
    - El saldo acumulado en la cabecera sube automáticamente.
 4. Al llegar al final del recorrido o terminar de cobrar a los pasajeros, pulsa la flecha superior izquierda para regresar al **Tablero de Frecuencias**.
 
+### 4.3 Trazabilidad y Seguridad de Boletos
+Cada boleto emitido y guardado en la memoria local (IndexedDB) queda registrado de forma inmutable con el **`busId`** y **`numeroDisco`** de la unidad, garantizando que el dinero y las estadísticas correspondan al dueño de tu vehículo.
+
 ---
 
 ## 💰 ETAPA 5: ARQUEO INDIVIDUAL POR FRECUENCIA (POR VUELTA)
@@ -131,7 +140,7 @@ Una vez completadas y arqueadas todas las frecuencias programadas del grupo (ej.
 2. Pulsa sobre el botón para abrir la pantalla de liquidación definitiva (`ArqueoGeneralScreen`).
 
 ### 6.1 Lectura y Registro del Odómetro (Kilometraje del Bus)
-- El sistema te mostrará la **Unidad Física Asignada** (ej. Bus 01 - Placa TAA-5152).
+- El sistema te mostrará la **Unidad Física Asignada y Bloqueada** (ej. `Bus 10 • TAA-3420`) con una pastilla fija sin selector para evitar confusiones de unidad.
 - **Km Inicial:** El sistema precarga automáticamente el kilometraje con el que la máquina cerró el día anterior.
 - **Km Final:** Mira el odómetro en el tablero físico del autobús e introduce la lectura exacta con la que culminó la jornada.
 - La aplicación calculará automáticamente los kilómetros netos recorridos por la unidad.
@@ -158,4 +167,30 @@ El sistema te presentará el desglose definitivo:
 1. Presiona el botón grande:  
    `[ 💾 GUARDAR ARQUEO GENERAL ]`.
 2. Confirma la acción.
-3. El sistema sincronizará los datos con la nube y limpiará de forma segura la sesión del turno en el teléfono, dejándolo listo para la siguiente jornada.
+3. El sistema procesará el guardado con un tiempo máximo seguro de 12 segundos para que **la pantalla nunca se congele**. Si no hay señal de internet en ese momento, el registro quedará protegido en el teléfono y se encolará de inmediato para subirse a la nube.
+
+---
+
+## 📡 ETAPA 7: RESILIENCIA OFFLINE Y BOTONES DE SUBIDA MANUAL (v3.61.34 - v3.61.35)
+
+Si al finalizar la jornada te encuentras en un terminal rural, fosa o sector sin señal celular (ej. El Tambo, Yangana o Malacatos bajo sombra de antena):
+
+### 7.1 Protección Cero Pérdidas en Memoria Local
+* Tu liquidación se almacena de forma instantánea y segura en la memoria interna del teléfono (`rutago_pending_arqueos_queue`).
+* La aplicación muestra un aviso tranquilizador:  
+  *«Arqueo guardado en el teléfono. Se subirá automáticamente cuando haya conexión a internet»*.
+* En tu pantalla de **Historial** (`HistoryScreen`), el registro aparecerá destacado con una pastilla azul:  
+  `[ ⏳ Guardado en Teléfono (Pendiente) ]`.
+
+### 7.2 Botones de Sincronización Manual (Ergonomía Táctil)
+Para tu total tranquilidad, dispones de 4 puntos donde puedes forzar la subida a la nube apenas recuperes señal o te conectes al Wi-Fi de tu casa o del terminal:
+1. **En la Pantalla de Arqueo General:** Al guardar sin internet, aparecerá de inmediato el botón:  
+   `[ ⬆️ SUBIR ARQUEO A LA NUBE AHORA ]`.
+2. **En el Inicio de Turno (`HomeScreenVT`):** Si quedaron arqueos pendientes de días anteriores, verás un banner inferior fijo:  
+   `[ ⬆️ SUBIR X ARQUEO(S) GENERAL(ES) A LA NUBE ]`.
+3. **En el Tablero de Frecuencias (`FrecuenciaSelector`):** Dispones de una barra fija inferior de sincronización táctil.
+4. **En el Historial (`HistoryScreen`):** Un banner superior con el botón:  
+   `[ ⬆️ Subir a la Nube ]`.
+
+Al pulsar cualquiera de estos botones con señal disponible, el sistema subirá la liquidación a la base de datos de la cooperativa, actualizará el estado a sincronizado y liberará la cola sin duplicar valores.
+

@@ -1,7 +1,7 @@
 # 📘 MANUAL DE USUARIO OFICIAL: GUÍA GERENCIAL DEL SOCIO PROPIETARIO
 
 **Aplicación:** RutaGo • Cooperativa de Transportes VilcabambaTuris  
-**Versión del Sistema:** v3.61.04 (Gobernanza SaaS, Finanzas Reales & Control de Flota)  
+**Versión del Sistema:** v3.61.35 (Aislamiento Multi-Tenant Universal, Cuotas Plan Renova por Unidad & Resiliencia Offline)  
 **Rol Destinatario:** Socio Propietario (Dueño del Autobús)  
 
 ---
@@ -281,6 +281,11 @@ Cada autobús físico en la cooperativa puede tener un esquema de financiamiento
 ### 7.3 Copia de Seguridad JSON Aislada por Unidad
 Desde el botón de descarga en tu **Dashboard Principal** (`HomeScreen`), puedes generar un archivo de respaldo con el formato `respaldo_BUS-XX_fecha.json` (ej. `respaldo_BUS-10_2026-10-11.json`). Este archivo contiene de forma 100% privada tus registros operativos, gastos del socio y tripulación, garantizando portabilidad y resguardo patrimonial sin contaminación de datos de terceros.
 
+### 7.4 Fusión Híbrida de Historial y Verificación de Arqueos Pendientes
+En la pantalla de **Historial** (`HistoryScreen`), los arqueos cerrados por el ayudante en carretera sin cobertura celular se integran de forma automática e inmediata con la etiqueta distintiva `[ ⏳ Guardado en Teléfono (Pendiente) ]`:
+- Como socio, puedes ver en tiempo real la liquidación de la unidad incluso antes de que el ayudante llegue a un punto con Wi-Fi o datos.
+- En cuanto el dispositivo del ayudante se conecta o tú presionas `[ ⬆️ Subir a la Nube ]`, el arqueo se sincroniza con PostgreSQL sin duplicar montos y extingue la etiqueta de pendiente.
+
 ---
 
 ## ❓ PREGUNTAS FRECUENTES DEL SOCIO (FAQ)
@@ -296,6 +301,9 @@ El ayudante asienta ese gasto en su arqueo de jornada. Al registrarlo con pagado
 
 **4. ¿Puedo usar la aplicación si estoy fuera de la ciudad o sin internet en mi casa?**  
 Sí. Para consultar tus balances y reportes guardados puedes abrir la app en cualquier momento. Al reconectarte a internet móvil o Wi-Fi, la aplicación sincronizará automáticamente los últimos arqueos que tu tripulación haya cerrado en el terminal.
+
+**5. ¿Qué pasa si el ayudante cerró el turno en una zona sin cobertura celular?**  
+La aplicación encola la liquidación en la memoria del teléfono y la muestra en el historial con el sello `[ ⏳ Guardado en Teléfono (Pendiente) ]`. La pantalla nunca se cuelga (usa un límite de espera seguro de 12 segundos) y el arqueo se sube a la base de datos central automáticamente apenas el teléfono detecte señal o Wi-Fi, o mediante los botones de subida manual.
 
 ---
 
