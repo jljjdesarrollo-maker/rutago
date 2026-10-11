@@ -121,4 +121,76 @@ describe('🏛️ GASTO FIJO PLAN RENOVA: Configurable por Unidad Física (v3.61
     const gastosActivo01 = getGastosFijosPorUnidad();
     expect(gastosActivo01.find((g) => g.description === 'Plan Renova')?.amount).toBe('68');
   });
+
+  test('8. Flujo Arqueo General del Ayudante: Asigna cuota exacta de la unidad vinculada al turno', () => {
+    // Caso Ayudante Bus 10
+    const sessionAyudanteBus10 = {
+      vtCode: 'VT04',
+      fecha: '2026-10-11',
+      busId: 'BUS-10',
+      numeroDisco: '10',
+    };
+    const gastosTurnoBus10 = getGastosFijosPorUnidad(sessionAyudanteBus10.numeroDisco || sessionAyudanteBus10.busId);
+    expect(gastosTurnoBus10.find((g) => g.description === 'Plan Renova')?.amount).toBe('30');
+
+    // Caso Ayudante Bus 01
+    const sessionAyudanteBus01 = {
+      vtCode: 'VT01',
+      fecha: '2026-10-11',
+      busId: 'BUS-01',
+      numeroDisco: '01',
+    };
+    const gastosTurnoBus01 = getGastosFijosPorUnidad(sessionAyudanteBus01.numeroDisco || sessionAyudanteBus01.busId);
+    expect(gastosTurnoBus01.find((g) => g.description === 'Plan Renova')?.amount).toBe('68');
+
+    // Caso Ayudante Unidad con valor personalizado (ej. Bus 08 a $40)
+    saveBus({
+      id: 'BUS-08',
+      numeroDisco: '08',
+      placa: 'TAA-4808',
+      marca: 'Hino AK',
+      propietario: 'Socio Unidad 08',
+      tipoOperacion: 'TRONCAL_VT',
+      planRenovaMonto: 40,
+      capacidadAsientos: 45,
+      activo: true,
+    });
+    const sessionAyudanteBus08 = {
+      vtCode: 'VT05',
+      fecha: '2026-10-11',
+      busId: 'BUS-08',
+      numeroDisco: '08',
+    };
+    const gastosTurnoBus08 = getGastosFijosPorUnidad(sessionAyudanteBus08.numeroDisco);
+    expect(gastosTurnoBus08.find((g) => g.description === 'Plan Renova')?.amount).toBe('40');
+  });
+
+  test('9. Flujo Carga Histórica del Socio: Actualización reactiva al cambiar de unidad preservando otros gastos', () => {
+    // Estado inicial en Bus 01 con gastos ya digitados por el socio
+    let selectedBus = '01';
+    let expenses = [
+      { description: 'Chofer', amount: '30' },
+      { description: 'Ayudante', amount: '20' },
+      { description: 'Diesel', amount: '45' }, // Editado por el socio
+      { description: 'Plan Renova', amount: getGastosFijosPorUnidad(selectedBus).find(g => g.description === 'Plan Renova')!.amount },
+    ];
+    expect(expenses.find(g => g.description === 'Plan Renova')?.amount).toBe('68');
+    expect(expenses.find(g => g.description === 'Diesel')?.amount).toBe('45');
+
+    // Socio cambia el combo a Bus 10
+    selectedBus = '10';
+    const renovaNuevoBus10 = getGastosFijosPorUnidad(selectedBus).find(g => g.description === 'Plan Renova')!.amount;
+    expenses = expenses.map(g => g.description === 'Plan Renova' ? { ...g, amount: renovaNuevoBus10 } : g);
+
+    expect(expenses.find(g => g.description === 'Plan Renova')?.amount).toBe('30');
+    expect(expenses.find(g => g.description === 'Diesel')?.amount).toBe('45'); // Diésel intacto
+
+    // Socio cambia a Bus 16 (sin cuota Renova)
+    selectedBus = '16';
+    const renovaNuevoBus16 = getGastosFijosPorUnidad(selectedBus).find(g => g.description === 'Plan Renova')!.amount;
+    expenses = expenses.map(g => g.description === 'Plan Renova' ? { ...g, amount: renovaNuevoBus16 } : g);
+
+    expect(expenses.find(g => g.description === 'Plan Renova')?.amount).toBe('0');
+    expect(expenses.find(g => g.description === 'Diesel')?.amount).toBe('45'); // Diésel intacto
+  });
 });
