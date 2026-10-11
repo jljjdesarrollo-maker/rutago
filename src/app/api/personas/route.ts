@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
     const rol = url.searchParams.get('rol');
     const esActual = url.searchParams.get('esActual');
     const socioId = url.searchParams.get('socioId');
+    const busId = url.searchParams.get('busId');
     const activoParam = url.searchParams.get('activo');
     const incluirInactivos = url.searchParams.get('incluirInactivos') === 'true';
 
@@ -23,10 +24,34 @@ export async function GET(req: NextRequest) {
       where.activo = true;
     }
 
-    if (socioId === 'SIN_SOCIO') {
+    let effectiveSocioId = socioId;
+    if ((!effectiveSocioId || effectiveSocioId === 'TODOS') && busId && busId !== 'TODOS') {
+      try {
+        const cleanBusNum = busId.replace(/^BUS-/i, '');
+        const busFound = await db.bus.findFirst({
+          where: {
+            OR: [
+              { id: busId },
+              { numeroDisco: cleanBusNum },
+              { numeroDisco: busId },
+            ],
+          },
+          select: { socioId: true },
+        });
+        if (busFound?.socioId) {
+          effectiveSocioId = busFound.socioId;
+        } else if (busId !== 'BUS-01' && cleanBusNum !== '01') {
+          where.id = 'NO_RECORDS_YET';
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    if (effectiveSocioId === 'SIN_SOCIO') {
       where.socioId = null;
-    } else if (socioId && socioId !== 'TODOS') {
-      where.socioId = socioId;
+    } else if (effectiveSocioId && effectiveSocioId !== 'TODOS') {
+      where.socioId = effectiveSocioId;
     }
 
     const personas = await db.persona.findMany({
@@ -90,19 +115,35 @@ export async function POST(req: NextRequest) {
 
     const salt = generateSalt();
     const pinHash = hashPinWithSalt(cleanPin, salt);
-    // Validación defensiva de Foreign Key socioId para evitar fallo P2003
+    // Validación defensiva de Foreign Key socioId para evitar fallo P2003 y cross-tenant leaks
     let targetSocioId: string | null = null;
     if (socioId && socioId !== "SIN_SOCIO" && socioId !== "TODOS") {
       const socioExiste = await db.cuentaSocio.findUnique({ where: { id: socioId } });
       if (socioExiste) {
         targetSocioId = socioExiste.id;
-      } else {
-        const fallbackSocio = await db.cuentaSocio.findFirst({ where: { activo: true } });
-        targetSocioId = fallbackSocio?.id || null;
       }
-    } else {
-      const fallbackSocio = await db.cuentaSocio.findFirst({ where: { activo: true } });
-      targetSocioId = fallbackSocio?.id || null;
+    }
+
+    // Si no se encontró por ID directo, intentar deducir a través de busId
+    if (!targetSocioId && body.busId && body.busId !== 'TODOS') {
+      try {
+        const cleanBus = String(body.busId).replace(/^BUS-/i, '');
+        const busFound = await db.bus.findFirst({
+          where: {
+            OR: [
+              { id: body.busId },
+              { numeroDisco: cleanBus },
+              { numeroDisco: body.busId },
+            ],
+          },
+          select: { socioId: true },
+        });
+        if (busFound?.socioId) {
+          targetSocioId = busFound.socioId;
+        }
+      } catch {
+        /* ignore */
+      }
     }
 
     // Aislamiento Multi-Tenant: Si se activa, desactivar otros del mismo rol SOLO para este socio

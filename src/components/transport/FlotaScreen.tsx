@@ -55,7 +55,8 @@ import {
 } from '@/lib/fleet-storage';
 
 interface FlotaScreenProps {
-  currentUser?: { id: string; nombre: string; rol: string; subRol?: string } | null;
+  currentUser?: { id: string; nombre: string; rol: string; subRol?: string; socioId?: string; busId?: string; buses?: any[] } | null;
+  activeBusId?: string;
   onBack: () => void;
 }
 
@@ -74,10 +75,10 @@ const EMPTY_FORM: BusFormData = {
   promoConfig: { ...DEFAULT_PROMO_CONFIG },
 };
 
-export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
+export function FlotaScreen({ currentUser, activeBusId: propActiveBusId, onBack }: FlotaScreenProps) {
   // Detección estricta de Rol: SuperAdmin SaaS (9999) vs Socio Propietario (0101 / 2107)
   const isSuperAdmin = checkIsSuperAdmin(currentUser);
-  const activeBusId = getActiveBusId() || 'BUS-01';
+  const activeBusId = propActiveBusId || (currentUser as any)?.busId || getActiveBusId() || 'BUS-01';
 
   const [buses, setBuses] = useState<BusItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,13 +148,27 @@ export function FlotaScreen({ currentUser, onBack }: FlotaScreenProps) {
     if (isSuperAdmin) {
       return safeList;
     }
-    // Para el socio, buscar su bus activo (por id o por numeroDisco)
-    const myBus = safeList.find((b) => b.id === activeBusId || b.numeroDisco === activeBusId.replace('BUS-', ''))
-      || buses.find((b) => b.id === 'BUS-01')
-      || INITIAL_PILOT_BUS;
+    const cleanActiveDisco = activeBusId ? activeBusId.replace(/^BUS-/i, '') : '';
+    const myBus = safeList.find((b) => b.id === activeBusId || b.numeroDisco === cleanActiveDisco || (cleanActiveDisco && b.numeroDisco === cleanActiveDisco.padStart(2, '0')));
+    if (myBus) return [myBus];
 
-    return myBus ? [myBus] : [];
-  }, [buses, isSuperAdmin, activeBusId]);
+    // Si tiene lista de buses asignados en su sesión de socio, filtrar por ellos
+    const userBusIds = (currentUser as any)?.buses?.map((b: any) => b.id || b.numeroDisco) || [];
+    if (userBusIds.length > 0) {
+      const socioBuses = safeList.filter(b => userBusIds.includes(b.id) || userBusIds.includes(b.numeroDisco));
+      if (socioBuses.length > 0) return socioBuses;
+    }
+
+    // Si el socio tiene socioId, filtrar por buses de ese socioId
+    const socioId = (currentUser as any)?.socioId || currentUser?.id;
+    if (socioId) {
+      const socioBuses = safeList.filter(b => (b as any).socioId === socioId);
+      if (socioBuses.length > 0) return socioBuses;
+    }
+
+    // Jamás caer en Bus 01 por defecto para una unidad distinta
+    return [];
+  }, [buses, isSuperAdmin, activeBusId, currentUser]);
 
   // Filtrado reactivo en memoria (búsqueda de texto)
   const filteredBuses = useMemo(() => {

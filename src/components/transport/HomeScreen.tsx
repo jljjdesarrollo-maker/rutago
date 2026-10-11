@@ -379,7 +379,13 @@ export function HomeScreen({
   const handleBackup = async () => {
     setBackupLoading(true);
     try {
-      const res = await fetch('/api/backup');
+      const params = new URLSearchParams();
+      if (!isSuperAdmin) {
+        if (activeBusId && activeBusId !== 'TODOS') params.set('busId', activeBusId);
+        if (effectiveSocioId && effectiveSocioId !== 'TODOS') params.set('socioId', effectiveSocioId);
+      }
+      const q = params.toString() ? `?${params.toString()}` : '';
+      const res = await fetch(`/api/backup${q}`);
       if (!res.ok) throw new Error('Error al generar respaldo');
       const data = await res.json();
       const json = JSON.stringify(data, null, 2);
@@ -387,7 +393,9 @@ export function HomeScreen({
       const url = URL.createObjectURL(blob);
 
       const dateStr = new Date().toISOString().split('T')[0];
-      const filename = `respaldo_${dateStr}.json`;
+      const filename = isSuperAdmin
+        ? `respaldo_cooperativa_${dateStr}.json`
+        : `respaldo_${activeBusId || 'unidad'}_${dateStr}.json`;
 
       if (navigator.share) {
         try {

@@ -4021,3 +4021,40 @@ bun test tests/manual-socio.test.ts
 - **`package.json`**: Versión incrementada a `3.61.31`.
 - **Suite de Pruebas:** 47/47 tests aprobados (100%).
 
+---
+
+## 🏛️ v3.61.32 - AISLAMIENTO Y CERTIFICACIÓN DEL BLOQUE 4 (PERSONAL, FICHA DE UNIDAD, RESPALDO Y CIERRE) (2026-10-10)
+
+> **ESTADO:** 🟢 COMPLETADO, VERIFICADO Y SINCRONIZADO EN GITHUB  
+> **FECHA DE REGISTRO:** 2026-10-10 | **SISTEMA:** RutaGo - Gestión de Personal, Ficha Técnica, Respaldo y Cierre de Sesión Multi-Tenant  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Blindar el aislamiento estricto por unidad física y socio propietario en Personal, Mi Autobús, Respaldo JSON y cierre de sesión seguro (Bloque 4).
+
+### 📍 1. Diagnóstico y Certificación del Bloque 4:
+- [x] **4.1 Gestión de Personal (`PersonalScreen.tsx` / `/api/personas`):**
+  - Consultas en `fetchPersonas` inyectan obligatoriamente `socioId` y `busId` (`currentUser.busId || activeBusId`).
+  - Creación de tripulación (`handleAdd`): Se envía `busId` y `socioId` al endpoint POST, asociando la persona a su unidad física.
+  - En `/api/personas` (POST): Validación defensiva anti-leaks que deduce el `targetSocioId` si faltara y desactiva turnos (`esActual: true`) exclusivamente para el mismo socio y unidad, garantizando que el cambio de chofer en Bus 10 no afecte la tripulación activa de Bus 01.
+- [x] **4.2 Ficha de Mi Autobús (`FlotaScreen.tsx` / `/api/buses`):**
+  - Vista del Socio Propietario (`accessibleBuses`): Filtro estricto que muestra únicamente la unidad física activa o los buses vinculados al socio en sesión. Erradicada la caída accidental a Bus 01 por defecto.
+  - Gobernanza: Creación y eliminación de unidades bloqueadas con advertencia táctil (`isSuperAdmin === true` requerido).
+  - En `/api/buses` (GET): Condición de auto-semillado de Bus 01 blindada con `(!socioId || socioId === 'TODOS')`. Si un socio consulta sus unidades y no tiene buses en BD, devuelve `[]` limpio en lugar de semillarle Bus 01.
+- [x] **4.3 Copia de Seguridad y Cierre de Sesión (`handleBackup` / `onLogout`):**
+  - En `HomeScreen.tsx` (`handleBackup`): Se inyectan `busId` y `socioId` al endpoint `/api/backup`, garantizando que el socio solo descargue sus propios registros, gastos y tripulación.
+  - Nombre de archivo con aislamiento de unidad: `respaldo_${activeBusId}_${fecha}.json` (ej. `respaldo_BUS-10_2026-10-10.json`).
+  - Cierre de sesión seguro en `src/app/page.tsx` (`handleLogout`): Purga de `rg_active_bus_id_v1`, `ct_session`, `rg_active_view`, `rg_active_estado_id` y `rg_active_es_ultima`.
+
+### 📍 2. Artefactos Modificados y Sincronizados:
+- **`src/app/api/personas/route.ts`**: Deducción defensiva de socio por `busId` y aislamiento estricto de tripulación.
+- **`src/app/api/buses/route.ts`**: Blindaje anti-leak en auto-semillado de Bus 01.
+- **`src/app/api/backup/route.ts`**: Filtrado multi-tenant por `busId` y `socioId` en exportación JSON.
+- **`src/components/transport/PersonalScreen.tsx`**: Inyección de `activeBusId` en consulta y guardado de personal.
+- **`src/components/transport/FlotaScreen.tsx`**: Acceso restringido a la unidad activa sin fallbacks no deseados.
+- **`src/components/transport/HomeScreen.tsx`**: Petición de respaldo aislada y nombre de archivo con ID de bus.
+- **`src/app/page.tsx`**: Inyección de `activeBusId` a PersonalScreen y FlotaScreen, más purga de bus activo en logout.
+- **`tests/bloque4-aislamiento.test.ts`**: Nueva suite unitaria con 3 pruebas completas para Bloque 4 (100% aprobada).
+- **`docs/PLAN_AUDITORIA_AISLAMIENTO_SOCIO.md`**: Certificación global de la auditoría modular (Bloques 1 al 4 completados).
+- **`package.json`**: Versión incrementada a `3.61.32`.
+- **Suite de Pruebas Total:** 50/50 tests aprobados (100%).
+
+

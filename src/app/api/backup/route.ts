@@ -5,9 +5,127 @@ import { generateSalt, hashPinWithSalt } from '@/lib/pin-hash';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// GET /api/backup — Export full database backup
-export async function GET() {
+// GET /api/backup — Export full database backup (o aislado por unidad/socio)
+export async function GET(req: NextRequest) {
   try {
+    const url = new URL(req.url);
+    const busId = url.searchParams.get('busId');
+    const socioId = url.searchParams.get('socioId');
+
+    const isFiltered = Boolean((busId && busId !== 'TODOS') || (socioId && socioId !== 'TODOS'));
+
+    let effectiveSocioId = socioId && socioId !== 'TODOS' ? socioId : '';
+    const cleanBusNum = busId && busId !== 'TODOS'
+      ? busId.replace(/^BUS-/i, '').replace(/\D/g, '').padStart(2, '0')
+      : '';
+
+    if (!effectiveSocioId && busId && busId !== 'TODOS') {
+      try {
+        const busFound = await db.bus.findFirst({
+          where: {
+            OR: [
+              { id: busId },
+              { numeroDisco: cleanBusNum },
+              { numeroDisco: busId },
+            ],
+          },
+          select: { socioId: true },
+        });
+        if (busFound?.socioId) {
+          effectiveSocioId = busFound.socioId;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const recordsWhere: Record<string, unknown> = {};
+    const personasWhere: Record<string, unknown> = {};
+    const busesWhere: Record<string, unknown> = {};
+    const expensesWhere: Record<string, unknown> = {};
+    const ventasWhere: Record<string, unknown> = {};
+    const mntWhere: Record<string, unknown> = {};
+    const sociosWhere: Record<string, unknown> = {};
+
+    if (isFiltered) {
+      // 1. Records
+      const orFilters: any[] = [];
+      if (cleanBusNum) {
+        orFilters.push({ conductor: { startsWith: `BUS-${cleanBusNum}` } });
+        orFilters.push({ conductor: { in: [`BUS-${cleanBusNum}`, `Bus ${cleanBusNum}`, cleanBusNum] } });
+      }
+      if (effectiveSocioId && (!cleanBusNum || cleanBusNum === '01')) {
+        const socioPersonas = await db.persona.findMany({
+          where: { socioId: effectiveSocioId },
+          select: { nombre: true },
+        });
+        const crewNames = socioPersonas.map((p) => p.nombre).filter(Boolean);
+        if (crewNames.length > 0) {
+          orFilters.push({
+            AND: [
+              { OR: [{ ayudanteNombre: { in: crewNames } }, { conductor: { in: crewNames } }] },
+              { NOT: { conductor: { startsWith: 'BUS-' } } },
+            ],
+          });
+        }
+      }
+      if (orFilters.length > 0) {
+        recordsWhere.OR = orFilters;
+      } else {
+        recordsWhere.id = 'NO_RECORDS_YET';
+      }
+
+      // 2. Personas
+      if (effectiveSocioId) {
+        personasWhere.socioId = effectiveSocioId;
+      } else {
+        personasWhere.id = 'NO_RECORDS_YET';
+      }
+
+      // 3. Buses
+      busesWhere.OR = [
+        ...(busId ? [{ id: busId }, { numeroDisco: cleanBusNum }] : []),
+        ...(effectiveSocioId ? [{ socioId: effectiveSocioId }] : []),
+      ];
+
+      // 4. OwnerExpenses
+      const busVariants = [busId, `BUS-${cleanBusNum}`, cleanBusNum].filter(Boolean) as string[];
+      expensesWhere.OR = [
+        { busId: { in: busVariants } },
+        ...(effectiveSocioId ? [{ socioId: effectiveSocioId }] : []),
+      ];
+
+      // 5. VentasBoletos
+      if (effectiveSocioId) {
+        const socioPersonas = await db.persona.findMany({
+          where: { socioId: effectiveSocioId },
+          select: { id: true, nombre: true },
+        });
+        const crewNames = socioPersonas.map((p) => p.nombre).filter(Boolean);
+        const crewIds = socioPersonas.map((p) => p.id).filter(Boolean);
+        if (crewNames.length > 0) {
+          ventasWhere.OR = [
+            { ayudanteNombre: { in: crewNames } },
+            { ayudanteId: { in: crewIds } },
+          ];
+        } else {
+          ventasWhere.id = 'NO_RECORDS_YET';
+        }
+      } else {
+        ventasWhere.id = 'NO_RECORDS_YET';
+      }
+
+      // 6. Mantenimiento
+      mntWhere.busId = { in: busVariants };
+
+      // 7. Socios (solo perfil propio)
+      if (effectiveSocioId) {
+        sociosWhere.id = effectiveSocioId;
+      } else {
+        sociosWhere.id = 'NO_RECORDS_YET';
+      }
+    }
+
     const [
       records,
       personas,
@@ -25,6 +143,7 @@ export async function GET() {
       busMantenimientoConfigs,
     ] = await Promise.all([
       db.dailyRecord.findMany({
+        where: recordsWhere,
         orderBy: { date: 'desc' },
         include: {
           trips: { orderBy: { order: 'asc' } },
@@ -32,6 +151,7 @@ export async function GET() {
         },
       }),
       db.persona.findMany({
+        where: personasWhere,
         orderBy: { nombre: 'asc' },
         select: {
           id: true,
@@ -51,6 +171,7 @@ export async function GET() {
         },
       }),
       db.cuentaSocio.findMany({
+        where: sociosWhere,
         orderBy: { nombre: 'asc' },
         select: {
           id: true,
@@ -68,18 +189,21 @@ export async function GET() {
         },
       }),
       db.bus.findMany({
+        where: busesWhere,
         orderBy: { numeroDisco: 'asc' },
       }),
-      db.suscripcionBus.findMany({
-        orderBy: { createdAt: 'desc' },
-      }),
-      db.pagoSuscripcion.findMany({
-        orderBy: { fechaPago: 'desc' },
-      }),
+      isFiltered
+        ? Promise.resolve([])
+        : db.suscripcionBus.findMany({ orderBy: { createdAt: 'desc' } }),
+      isFiltered
+        ? Promise.resolve([])
+        : db.pagoSuscripcion.findMany({ orderBy: { fechaPago: 'desc' } }),
       db.ownerExpense.findMany({
+        where: expensesWhere,
         orderBy: { expenseDate: 'desc' },
       }),
       db.ventaBoleto.findMany({
+        where: ventasWhere,
         orderBy: { createdAt: 'desc' },
       }),
       db.busVT.findMany({
@@ -92,12 +216,15 @@ export async function GET() {
         orderBy: { codigo: 'asc' },
       }),
       db.busRecetaCombo.findMany({
+        where: isFiltered ? mntWhere : undefined,
         orderBy: { busId: 'asc' },
       }),
       db.busItemOverride.findMany({
+        where: isFiltered ? mntWhere : undefined,
         orderBy: { busId: 'asc' },
       }),
       db.busMantenimientoConfig.findMany({
+        where: isFiltered ? mntWhere : undefined,
         orderBy: { busId: 'asc' },
       }),
     ]);

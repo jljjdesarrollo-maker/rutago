@@ -199,6 +199,7 @@ export default function Home() {
     localStorage.removeItem('rg_active_view');
     localStorage.removeItem('rg_active_estado_id');
     localStorage.removeItem('rg_active_es_ultima');
+    localStorage.removeItem('rg_active_bus_id_v1');
     setUser(null);
     setView('home');
   };
@@ -316,6 +317,7 @@ export default function Home() {
     return (
       <PersonalScreen
         currentUser={user}
+        activeBusId={user?.busId || getActiveBusId()}
         onBack={() => setView('home')}
       />
     );
@@ -383,6 +385,7 @@ export default function Home() {
     return (
       <FlotaScreen
         currentUser={user}
+        activeBusId={user?.busId || getActiveBusId()}
         onBack={() => setView('home')}
       />
     );

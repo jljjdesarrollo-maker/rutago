@@ -45,8 +45,8 @@ export async function GET(req: NextRequest) {
         orderBy: { numeroDisco: 'asc' },
       });
 
-      // Auto-semillado en BD si está vacía: insertar la Unidad 01 oficial
-      if (buses.length === 0 && !disco && !tipoOperacion) {
+      // Auto-semillado en BD si está vacía: insertar la Unidad 01 oficial (solo si no se consulta por socio específico)
+      if (buses.length === 0 && !disco && !tipoOperacion && (!socioId || socioId === 'TODOS')) {
         try {
           const seeded = await (db as any).bus.upsert({
             where: { numeroDisco: INITIAL_PILOT_BUS.numeroDisco },
@@ -77,6 +77,9 @@ export async function GET(req: NextRequest) {
       buses = all.filter(b => {
         if (disco && b.numeroDisco !== disco) return false;
         if (tipoOperacion && b.tipoOperacion !== tipoOperacion) return false;
+        if (socioId && socioId !== 'TODOS') {
+          return (b as any).socioId === socioId;
+        }
         return true;
       });
     }

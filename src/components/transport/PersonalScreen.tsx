@@ -60,10 +60,11 @@ interface PersonaItem {
 
 interface PersonalScreenProps {
   currentUser: UserSession | null;
+  activeBusId?: string;
   onBack: () => void;
 }
 
-export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
+export function PersonalScreen({ currentUser, activeBusId, onBack }: PersonalScreenProps) {
   const [personas, setPersonas] = useState<PersonaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -84,6 +85,7 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
   const isSuperAdmin = checkIsSuperAdmin(currentUser);
   const isSocio = !isSuperAdmin;
   const socioIdActual = currentUser?.socioId || (isSocio ? currentUser?.id : null);
+  const effectiveBusId = currentUser?.busId || activeBusId || null;
 
   // Lista de socios para filtro y asignación en modo SuperAdmin
   const [socios, setSocios] = useState<SocioItem[]>([]);
@@ -106,8 +108,9 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
       const params = new URLSearchParams();
       params.set('incluirInactivos', 'true');
 
-      if (isSocio && socioIdActual) {
-        params.set('socioId', socioIdActual);
+      if (isSocio) {
+        if (socioIdActual) params.set('socioId', socioIdActual);
+        if (effectiveBusId && effectiveBusId !== 'TODOS') params.set('busId', effectiveBusId);
       } else if (isSuperAdmin) {
         if (filtroSocio === 'SIN_SOCIO') {
           params.set('socioId', 'SIN_SOCIO');
@@ -129,7 +132,7 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
     } finally {
       setLoading(false);
     }
-  }, [isSocio, isSuperAdmin, socioIdActual, filtroSocio]);
+  }, [isSocio, isSuperAdmin, socioIdActual, effectiveBusId, filtroSocio]);
 
   useEffect(() => {
     fetchPersonas();
@@ -208,6 +211,7 @@ export function PersonalScreen({ currentUser, onBack }: PersonalScreenProps) {
           rol,
           pin: formPin.trim(),
           socioId: targetSocioId,
+          busId: effectiveBusId,
           esActual: isFirst,
         }),
       });
