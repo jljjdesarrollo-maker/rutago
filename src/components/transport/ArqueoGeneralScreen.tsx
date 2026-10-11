@@ -34,7 +34,7 @@ import {
 } from '@/lib/odometer-validator';
 import { obtenerUltimosArqueosBus } from '@/lib/turno-secuencia-tracker';
 import { buildCanonicalRecordPayload } from '@/lib/canonical-record-payload';
-import { enqueuePendingArqueo, markArqueoAsSynced } from '@/lib/arqueos-sync';
+import { enqueuePendingArqueo, markArqueoAsSynced, syncAllPendingArqueos } from '@/lib/arqueos-sync';
 import { getCurrentConductor } from './types';
 
 interface Props {
@@ -188,6 +188,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const [saved, setSaved] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [guardadoOffline, setGuardadoOffline] = useState(false);
+  const [syncingArqueoNow, setSyncingArqueoNow] = useState(false);
 
   // Sub-fase 3.2: Paradas de Taller cubiertas por Ayudante (Cierre contable diario independiente)
   const [paradasTaller, setParadasTaller] = useState<ParadaPagoRegistro[]>([]);
@@ -696,6 +697,21 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     }
   };
 
+  const handleSyncArqueoNow = async () => {
+    if (syncingArqueoNow) return;
+    setSyncingArqueoNow(true);
+    try {
+      const res = await syncAllPendingArqueos();
+      if (res.synced > 0) {
+        setGuardadoOffline(false);
+      }
+    } catch (e) {
+      console.warn('Error subiendo arqueo manual:', e);
+    } finally {
+      setSyncingArqueoNow(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col min-h-[100dvh] bg-gray-50 items-center justify-center">
@@ -718,11 +734,26 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           {guardadoOffline && (
             <div className="bg-yellow-500/20 border border-yellow-400/30 rounded-2xl px-5 py-3 mb-6 text-center">
               <p className="text-yellow-200 text-sm font-bold">Guardado local (sin internet)</p>
-              <p className="text-yellow-200/70 text-xs mt-1">Se sincronizará cuando haya conexión</p>
+              <p className="text-yellow-200/70 text-xs mt-1">Se sincronizará cuando haya conexión o usando el botón inferior</p>
             </div>
           )}
 
           <div className="w-full max-w-xs space-y-3">
+            {guardadoOffline && (
+              <button
+                onClick={handleSyncArqueoNow}
+                disabled={syncingArqueoNow}
+                className="w-full py-4 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-base flex items-center justify-center gap-2 active:scale-95 shadow-md disabled:opacity-60 transition-all"
+              >
+                {syncingArqueoNow ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
+                {syncingArqueoNow ? 'SUBIENDO ARQUEO...' : 'SUBIR ARQUEO A LA NUBE AHORA'}
+              </button>
+            )}
+
             {connection.pendingCount > 0 && connection.status !== 'offline' && (
               <button onClick={onGoToSync}
                 className="w-full py-4 rounded-2xl bg-white text-[#912D26] font-black text-lg flex items-center justify-center gap-2 active:scale-95">

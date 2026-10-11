@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { type VTSession, type FrecuenciaEstado, type FrecuenciaData, loadPromoConfig } from './types-boletos';
 import { getActiveBusId } from '@/lib/fleet-storage';
 import { getVentasByFrecuencia, countVentasPendientes, syncVentasSilencioso, deleteVentasByEstadoId } from '@/lib/indexeddb';
+import { countPendingArqueos, syncAllPendingArqueos } from '@/lib/arqueos-sync';
 import { matchRuta } from '@/lib/tarifas-data';
 import { Clock, ChevronRight, ArrowLeft, RefreshCw, Play, CheckCircle2, XCircle, RotateCcw, Wifi, WifiOff, Send, DollarSign, Ticket, ClipboardCheck, AlertTriangle, Wrench, Droplets, UserX, Ban, FileText, Truck, CheckCircle, Sparkles } from 'lucide-react';
 
@@ -111,6 +112,8 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [syncingForArqueo, setSyncingForArqueo] = useState(false);
   const [syncDone, setSyncDone] = useState(false);
+  const [pendingArqueosCount, setPendingArqueosCount] = useState(0);
+  const [syncingArqueos, setSyncingArqueos] = useState(false);
   const [noRealizadaModal, setNoRealizadaModal] = useState<FrecuenciaEstado | null>(null);
   const [motivoSeleccionado, setMotivoSeleccionado] = useState('');
   const [motivoPersonalizado, setMotivoPersonalizado] = useState('');
@@ -129,8 +132,32 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     const handle = () => setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
     window.addEventListener('online', handle);
     window.addEventListener('offline', handle);
-    return () => { window.removeEventListener('online', handle); window.removeEventListener('offline', handle); };
+
+    const updateArqueos = () => setPendingArqueosCount(countPendingArqueos());
+    updateArqueos();
+    window.addEventListener('rutago_pending_arqueos_changed', updateArqueos);
+    window.addEventListener('rutago_arqueos_synced', updateArqueos);
+
+    return () => {
+      window.removeEventListener('online', handle);
+      window.removeEventListener('offline', handle);
+      window.removeEventListener('rutago_pending_arqueos_changed', updateArqueos);
+      window.removeEventListener('rutago_arqueos_synced', updateArqueos);
+    };
   }, []);
+
+  const handleSyncArqueos = async () => {
+    if (!isOnline || syncingArqueos) return;
+    setSyncingArqueos(true);
+    try {
+      await syncAllPendingArqueos();
+      setPendingArqueosCount(countPendingArqueos());
+    } catch (e) {
+      console.warn('Error sincronizando arqueos:', e);
+    } finally {
+      setSyncingArqueos(false);
+    }
+  };
 
   const loadFrecuencias = useCallback(async () => {
     try {
@@ -972,6 +999,22 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
             disabled={!isOnline}>
             <Send className="w-5 h-5" />
             {isOnline ? `SINCRONIZAR ${pendingCount} VENTAS` : `SIN INTERNET — ${pendingCount} VENTAS PENDIENTES`}
+          </button>
+        </div>
+      )}
+
+      {/* Sync button de Arqueos Generales Pendientes */}
+      {pendingArqueosCount > 0 && (
+        <div className="p-3 border-t border-amber-300 bg-amber-50">
+          <button
+            onClick={handleSyncArqueos}
+            disabled={syncingArqueos || !isOnline}
+            className={`w-full py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] shadow-md transition-all ${
+              isOnline ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-gray-200 text-gray-500'
+            }`}
+          >
+            {syncingArqueos ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            {syncingArqueos ? 'SINCRONIZANDO ARQUEO...' : isOnline ? `SUBIR ${pendingArqueosCount} ARQUEO(S) GENERAL(ES) A LA NUBE` : `SIN INTERNET — ${pendingArqueosCount} ARQUEO PENDIENTE`}
           </button>
         </div>
       )}
