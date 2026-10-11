@@ -1,3 +1,5 @@
+import { getGastosFijosPorUnidad } from '@/lib/fleet-storage';
+
 export interface TripData {
   routeFrom: string;
   routeTo: string;
@@ -122,7 +124,7 @@ export function getCurrentAyudante(socioId?: string | null): Promise<string | nu
   }).catch(() => null);
 }
 
-export function createEmptyFormData(): RecordFormData {
+export function createEmptyFormData(discoOBusId?: string): RecordFormData {
   return {
     date: new Date().toISOString().split('T')[0],
     km: '',
@@ -130,12 +132,7 @@ export function createEmptyFormData(): RecordFormData {
     ayudanteNombre: '',
     vtCode: '',
     trips: [],
-    expenses: [
-      { description: 'Chofer', amount: '30' },
-      { description: 'Ayudante', amount: '20' },
-      { description: 'Diesel', amount: '0' },
-      { description: 'Plan Renova', amount: '68' },
-    ],
+    expenses: getGastosFijosPorUnidad(discoOBusId),
     tickets: '',
     sobrante: '',
   };

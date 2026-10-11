@@ -71,6 +71,7 @@ const EMPTY_FORM: BusFormData = {
   tipoOperacion: 'TRONCAL_VT',
   activo: true,
   notas: '',
+  planRenovaMonto: '',
   odometroInicial: '',
   promoConfig: { ...DEFAULT_PROMO_CONFIG },
 };
@@ -235,6 +236,7 @@ export function FlotaScreen({ currentUser, activeBusId: propActiveBusId, onBack 
       capacidadAsientos: bus.capacidadAsientos || 45,
       propietario: bus.propietario,
       tipoOperacion: bus.tipoOperacion,
+      planRenovaMonto: bus.planRenovaMonto !== undefined && bus.planRenovaMonto !== null ? bus.planRenovaMonto : (bus.numeroDisco === '01' ? 68 : bus.numeroDisco === '10' ? 30 : 0),
       activo: bus.activo !== false,
       notas: bus.notas || '',
       odometroInicial: initialKm,
@@ -400,6 +402,7 @@ export function FlotaScreen({ currentUser, activeBusId: propActiveBusId, onBack 
       capacidadAsientos: Number(formData.capacidadAsientos) || 45,
       propietario: formData.propietario.trim(),
       tipoOperacion: tipoFinal,
+      planRenovaMonto: formData.planRenovaMonto === '' || formData.planRenovaMonto === undefined || formData.planRenovaMonto === null ? undefined : Number(formData.planRenovaMonto),
       activo: formData.activo,
       notas: formData.notas?.trim() || undefined,
       odometroInicial: busKm || undefined,
@@ -793,8 +796,8 @@ export function FlotaScreen({ currentUser, activeBusId: propActiveBusId, onBack 
                       </div>
                     </div>
 
-                    {/* Fila Media: Propietario y Capacidad */}
-                    <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-gray-100">
+                    {/* Fila Media: Propietario, Capacidad y Cuota Plan Renova */}
+                    <div className="grid grid-cols-3 gap-2 text-xs pt-2 border-t border-gray-100">
                       <div>
                         <span className="text-[10px] uppercase font-bold text-gray-400 block">Socio Propietario</span>
                         <span className="font-semibold text-gray-800 truncate block">
@@ -802,9 +805,15 @@ export function FlotaScreen({ currentUser, activeBusId: propActiveBusId, onBack 
                         </span>
                       </div>
                       <div>
-                        <span className="text-[10px] uppercase font-bold text-gray-400 block">Capacidad Homologada</span>
+                        <span className="text-[10px] uppercase font-bold text-gray-400 block">Capacidad</span>
                         <span className="font-semibold text-gray-800 block">
                           {bus.capacidadAsientos} Asientos
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-gray-400 block">Plan Renova</span>
+                        <span className="font-bold text-emerald-800 block">
+                          ${(bus.planRenovaMonto !== undefined && bus.planRenovaMonto !== null ? bus.planRenovaMonto : (bus.numeroDisco === '01' ? 68 : bus.numeroDisco === '10' ? 30 : 0)).toFixed(2)}/día
                         </span>
                       </div>
                     </div>
@@ -1168,6 +1177,35 @@ export function FlotaScreen({ currentUser, activeBusId: propActiveBusId, onBack 
                 />
                 <p className="text-[10px] text-slate-500">
                   Kilometraje real que marca el tacómetro hoy. Servirá como punto de partida para las alertas de cambio de aceite, filtros y lubricación.
+                </p>
+              </div>
+
+              {/* Cuota Diaria Plan Renova */}
+              <div className="space-y-1 p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                    <SlidersHorizontal className="w-4 h-4 text-emerald-700" />
+                    Cuota Diaria Plan Renova ($)
+                  </Label>
+                  <span className="text-[10px] text-emerald-700 font-semibold">Gasto Fijo por Vuelta/Turno</span>
+                </div>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder={formData.numeroDisco === '01' ? '68.00' : formData.numeroDisco === '10' ? '30.00' : '0.00'}
+                  value={formData.planRenovaMonto !== undefined && formData.planRenovaMonto !== null ? formData.planRenovaMonto : ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData((prev) => ({
+                      ...prev,
+                      planRenovaMonto: val === '' ? '' : parseFloat(val),
+                    }));
+                  }}
+                  className="h-11 rounded-xl text-sm font-mono font-bold bg-white text-center tracking-wider"
+                />
+                <p className="text-[10px] text-emerald-800">
+                  Monto diario asignado a esta unidad en los arqueos de caja y cuaderno histórico (ej. Bus 01 = $68, Bus 10 = $30). Déjalo en $0 si no aplica cuota.
                 </p>
               </div>
 

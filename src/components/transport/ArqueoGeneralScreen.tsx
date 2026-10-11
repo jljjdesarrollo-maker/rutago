@@ -11,6 +11,7 @@ import {
   subscribeToActiveBus,
   saveBusOdometer,
   getLatestBusOdometer,
+  getGastosFijosPorUnidad,
 } from '@/lib/fleet-storage';
 import { type BusItem } from '../types/fleet';
 import {
@@ -156,7 +157,28 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     }).catch(() => {});
   }, []);
 
-  const [gastos, setGastos] = useState<GastoItem[]>(GASTOS_DEFAULT);
+  const [gastos, setGastos] = useState<GastoItem[]>(() =>
+    getGastosFijosPorUnidad(currentBus.numeroDisco || currentBus.id)
+  );
+
+  // Sincronizar dinámicamente la cuota del Plan Renova según la unidad física activa
+  useEffect(() => {
+    const nuevosGastos = getGastosFijosPorUnidad(currentBus.numeroDisco || currentBus.id);
+    const renovaFijo = nuevosGastos.find(g => g.description === 'Plan Renova');
+    if (!renovaFijo) return;
+
+    setGastos(prev => {
+      const exists = prev.some(g => g.description === 'Plan Renova');
+      if (exists) {
+        return prev.map(g =>
+          g.description === 'Plan Renova'
+            ? { ...g, amount: renovaFijo.amount }
+            : g
+        );
+      }
+      return [...prev, renovaFijo];
+    });
+  }, [currentBus.id, currentBus.numeroDisco, currentBus.planRenovaMonto]);
   const [tickets, setTickets] = useState('');
   const [sobrante, setSobrante] = useState('');
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);

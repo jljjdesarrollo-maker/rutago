@@ -61,6 +61,7 @@ export async function GET(req: NextRequest) {
               capacidadAsientos: INITIAL_PILOT_BUS.capacidadAsientos,
               propietario: INITIAL_PILOT_BUS.propietario,
               tipoOperacion: INITIAL_PILOT_BUS.tipoOperacion,
+              planRenovaMonto: INITIAL_PILOT_BUS.planRenovaMonto,
               activo: INITIAL_PILOT_BUS.activo,
               notas: INITIAL_PILOT_BUS.notas,
             },
@@ -86,8 +87,12 @@ export async function GET(req: NextRequest) {
 
     const mappedBuses = buses.map((b: any) => {
       const odo = extractOdometerFromNotas(b.notas) || (b.numeroDisco === '01' ? '893485' : undefined);
+      const renova = b.planRenovaMonto !== undefined && b.planRenovaMonto !== null
+        ? b.planRenovaMonto
+        : (b.numeroDisco === '01' ? 68 : b.numeroDisco === '10' ? 30 : 0);
       return {
         ...b,
+        planRenovaMonto: renova,
         odometroInicial: odo,
       };
     });
@@ -123,6 +128,7 @@ export async function POST(req: NextRequest) {
       capacidadAsientos,
       propietario,
       tipoOperacion,
+      planRenovaMonto,
       activo,
       notas,
       odometroInicial,
@@ -142,6 +148,9 @@ export async function POST(req: NextRequest) {
     const cleanPlaca = String(placa).trim().toUpperCase();
     const safeTipoOperacion = tipoOperacion === 'ALIMENTADOR_P' ? 'ALIMENTADOR_P' : 'TRONCAL_VT';
     const safeCapacidad = Number(capacidadAsientos) > 0 ? Number(capacidadAsientos) : 45;
+    const safePlanRenova = planRenovaMonto !== undefined && planRenovaMonto !== '' && planRenovaMonto !== null
+      ? Number(planRenovaMonto)
+      : (cleanDisco === '01' ? 68 : cleanDisco === '10' ? 30 : null);
 
     let finalNotas = notas ? String(notas).trim() : '';
     if (odometroInicial) {
@@ -164,6 +173,7 @@ export async function POST(req: NextRequest) {
           capacidadAsientos: safeCapacidad,
           propietario: String(propietario).trim(),
           tipoOperacion: safeTipoOperacion,
+          planRenovaMonto: safePlanRenova,
           activo: activo !== false,
           notas: finalNotas || undefined,
         },
@@ -177,6 +187,7 @@ export async function POST(req: NextRequest) {
           capacidadAsientos: safeCapacidad,
           propietario: String(propietario).trim(),
           tipoOperacion: safeTipoOperacion,
+          planRenovaMonto: safePlanRenova,
           activo: activo !== false,
           notas: finalNotas || undefined,
         },
@@ -193,6 +204,7 @@ export async function POST(req: NextRequest) {
         capacidadAsientos: safeCapacidad,
         propietario: String(propietario).trim(),
         tipoOperacion: safeTipoOperacion,
+        planRenovaMonto: safePlanRenova,
         activo: activo !== false,
         notas: finalNotas || undefined,
         createdAt: new Date().toISOString(),
@@ -263,6 +275,9 @@ export async function PUT(req: NextRequest) {
     if (fields.capacidadAsientos !== undefined) cleanUpdateData.capacidadAsientos = Number(fields.capacidadAsientos) || 45;
     if (fields.propietario !== undefined) cleanUpdateData.propietario = String(fields.propietario).trim();
     if (fields.tipoOperacion !== undefined) cleanUpdateData.tipoOperacion = fields.tipoOperacion === "ALIMENTADOR_P" ? "ALIMENTADOR_P" : "TRONCAL_VT";
+    if (fields.planRenovaMonto !== undefined) {
+      cleanUpdateData.planRenovaMonto = fields.planRenovaMonto === '' || fields.planRenovaMonto === null ? null : Number(fields.planRenovaMonto);
+    }
     if (fields.activo !== undefined) cleanUpdateData.activo = fields.activo !== false;
     
     let notasVal = fields.notas !== undefined ? (fields.notas ? String(fields.notas).trim() : null) : undefined;
@@ -294,6 +309,9 @@ export async function PUT(req: NextRequest) {
           capacidadAsientos: Number(fields.capacidadAsientos) || 45,
           propietario: fields.propietario ? String(fields.propietario).trim() : "Socio",
           tipoOperacion: fields.tipoOperacion === "ALIMENTADOR_P" ? "ALIMENTADOR_P" : "TRONCAL_VT",
+          planRenovaMonto: fields.planRenovaMonto !== undefined && fields.planRenovaMonto !== '' && fields.planRenovaMonto !== null
+            ? Number(fields.planRenovaMonto)
+            : (cleanDisco === '01' ? 68 : cleanDisco === '10' ? 30 : null),
           activo: fields.activo !== false,
           notas: notasVal ?? (fields.notas ? String(fields.notas).trim() : null),
         },

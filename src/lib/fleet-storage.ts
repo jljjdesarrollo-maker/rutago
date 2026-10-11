@@ -15,6 +15,7 @@ export const INITIAL_PILOT_BUS: BusItem = {
   capacidadAsientos: 45,
   propietario: 'José Leonardo Jaya Jaramillo',
   tipoOperacion: 'TRONCAL_VT',
+  planRenovaMonto: 68,
   odometroInicial: '893485',
   activo: true,
   notas: 'Unidad Piloto del Socio Líder • Circuito Troncal General (VT01 - VT15)',
@@ -69,6 +70,7 @@ export const BENCHMARK_FLEET_BUSES: BusItem[] = [
     capacidadAsientos: 45,
     propietario: 'Socio VilcabambaTuris',
     tipoOperacion: 'TRONCAL_VT',
+    planRenovaMonto: 30,
     activo: true,
     notas: 'Unidad Troncal de Alta Capacidad • VT01 - VT15',
   },
@@ -145,14 +147,14 @@ export const BENCHMARK_FLEET_BUSES: BusItem[] = [
  * respetando a la Unidad 01 del Socio Líder en primer lugar.
  */
 export function getAllBuses(): BusItem[] {
-  if (typeof window === 'undefined') return BENCHMARK_FLEET_BUSES;
+  if (typeof window === 'undefined') return BENCHMARK_FLEET_BUSES.map((b) => ({ ...b }));
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       // Primera inicialización automática con la flota oficial
       localStorage.setItem(STORAGE_KEY, JSON.stringify(BENCHMARK_FLEET_BUSES));
       localStorage.setItem(INITIALIZED_KEY, 'true');
-      return BENCHMARK_FLEET_BUSES;
+      return BENCHMARK_FLEET_BUSES.map((b) => ({ ...b }));
     }
     const list: BusItem[] = JSON.parse(raw);
     let modified = false;
@@ -163,7 +165,7 @@ export function getAllBuses(): BusItem[] {
         (item) => item.numeroDisco === b.numeroDisco || item.id === b.id
       );
       if (!exists) {
-        list.push(b);
+        list.push({ ...b });
         modified = true;
       }
     });
@@ -171,7 +173,7 @@ export function getAllBuses(): BusItem[] {
     // Garantizar que la Unidad 01 siempre exista con los datos oficiales del Socio Líder
     const bus01Index = list.findIndex((b) => b.numeroDisco === '01' || b.id === 'BUS-01');
     if (bus01Index < 0) {
-      list.unshift(INITIAL_PILOT_BUS);
+      list.unshift({ ...INITIAL_PILOT_BUS });
       modified = true;
     }
 
@@ -184,7 +186,7 @@ export function getAllBuses(): BusItem[] {
     return list;
   } catch (err) {
     console.error('Error cargando catálogo de flota:', err);
-    return BENCHMARK_FLEET_BUSES;
+    return BENCHMARK_FLEET_BUSES.map((b) => ({ ...b }));
   }
 }
 
@@ -610,6 +612,52 @@ export async function syncBusOdometerWithServer(busIdOrDisco: string): Promise<n
     console.warn('[syncBusOdometerWithServer] Error descargando odómetro:', err);
   }
   return null;
+}
+
+/**
+ * ─── MOTOR DE RESOLUCIÓN CANÓNICA DE GASTOS FIJOS POR UNIDAD (v3.61.33) ───
+ * Resuelve los gastos fijos diarios de una jornada/vuelta.
+ * Desacopla la cuota diaria del "Plan Renova" para que cada unidad física aporte
+ * su valor exacto (ej. Bus 01 = $68, Bus 10 = $30, otras unidades = monto personalizado o $0).
+ */
+export interface GastoFijoItem {
+  description: string;
+  amount: string;
+}
+
+export function getGastosFijosPorUnidad(discoOBusId?: string | null): GastoFijoItem[] {
+  let cuotaRenova = '0';
+
+  if (discoOBusId) {
+    const bus = getBusByDisco(discoOBusId);
+    if (bus?.planRenovaMonto !== undefined && bus?.planRenovaMonto !== null) {
+      cuotaRenova = String(bus.planRenovaMonto);
+    } else {
+      // Fallback retrocompatible canónico por número de disco
+      const cleanDisco = String(discoOBusId).replace(/[^0-9]/g, '').padStart(2, '0');
+      if (cleanDisco === '01') cuotaRenova = '68';
+      else if (cleanDisco === '10') cuotaRenova = '30';
+      else cuotaRenova = '0';
+    }
+  } else {
+    // Si no se especifica disco, usar la unidad activa
+    const active = getActiveBus();
+    if (active?.planRenovaMonto !== undefined && active?.planRenovaMonto !== null) {
+      cuotaRenova = String(active.planRenovaMonto);
+    } else {
+      const cleanDisco = String(active?.numeroDisco || '01').replace(/[^0-9]/g, '').padStart(2, '0');
+      if (cleanDisco === '01') cuotaRenova = '68';
+      else if (cleanDisco === '10') cuotaRenova = '30';
+      else cuotaRenova = '0';
+    }
+  }
+
+  return [
+    { description: 'Chofer', amount: '30' },
+    { description: 'Ayudante', amount: '20' },
+    { description: 'Diesel', amount: '0' },
+    { description: 'Plan Renova', amount: cuotaRenova },
+  ];
 }
 
 

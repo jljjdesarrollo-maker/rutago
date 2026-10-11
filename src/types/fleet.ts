@@ -12,6 +12,7 @@ export interface BusItem {
   capacidadAsientos: number; // 45 para buses grandes, 25-30 para microbuses
   propietario: string; // "José Leonardo Jaya Jaramillo" o "VilcabambaTuris Cía. Ltda."
   tipoOperacion: TipoOperacionBus; // TRONCAL_VT (VT01-VT15) vs ALIMENTADOR_P (P1-P3)
+  planRenovaMonto?: number; // Cuota diaria Plan Renova ($) configurable por unidad (ej. Bus 01 = 68, Bus 10 = 30)
   activo: boolean;
   notas?: string;
   promoConfig?: PromoViajeGratisConfig;
@@ -30,6 +31,7 @@ export interface BusFormData {
   capacidadAsientos: number;
   propietario: string;
   tipoOperacion: TipoOperacionBus;
+  planRenovaMonto?: number | '';
   activo: boolean;
   notas?: string;
   promoConfig?: PromoViajeGratisConfig;

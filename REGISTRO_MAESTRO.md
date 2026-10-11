@@ -4132,5 +4132,62 @@ bun test tests/manual-socio.test.ts
 - **`docs/PLAN_AUDITORIA_AISLAMIENTO_SOCIO.md`**:
   - Los 4 bloques están 100% certificados. Este nuevo requerimiento entra como mejora operativa financiera dentro del módulo de gastos fijos por unidad.
 
+---
+
+## 🏛️ v3.61.33 - IMPLEMENTACIÓN Y CERTIFICACIÓN COMPLETA: GASTO FIJO "PLAN RENOVA" CONFIGURABLE POR UNIDAD (2026-10-11)
+
+> **ESTADO:** 🟢 IMPLEMENTADO, VERIFICADO Y 100% CERTIFICADO (57/57 TESTS APROBADOS)  
+> **FECHA DE CIERRE:** 2026-10-11 | **SISTEMA:** RutaGo - Finanzas y Arqueos Operativos  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Desacoplar el gasto fijo diario "Plan Renova" para que cada unidad física aporte su valor exacto (ej. Bus 01 = $68, Bus 10 = $30, otras unidades = monto personalizado o $0), erradicando distorsiones en arqueos y cuadernos contables.
+
+### 📍 1. Diagnóstico e Implementación Ejecutada:
+
+- [x] **1. Modelo de Datos y Esquema Prisma (`prisma/schema.prisma` & `src/types/fleet.ts`):**
+  - Modelo `Bus` extendido con el campo opcional `planRenovaMonto Float?`.
+  - Interfaces `BusItem` y `BusFormData` actualizadas con `planRenovaMonto?: number` / `number | ''`.
+  - Regenerado Prisma Client con `bunx prisma generate`.
+
+- [x] **2. Motor de Resolución Canónica (`getGastosFijosPorUnidad` en `src/lib/fleet-storage.ts`):**
+  - Creado y exportado helper `getGastosFijosPorUnidad(discoOBusId?: string | null)`.
+  - Fallback canónico retrocompatible inteligente:
+    - Bus 01 -> **$68.00**
+    - Bus 10 -> **$30.00**
+    - Otras unidades sin cuota -> **$0.00**
+    - Unidades con cuota configurada (ej. $45 o $0 explícito) -> Respeta estrictamente el valor configurado.
+  - Inmutabilidad de referencias garantizada en `getAllBuses()` y `getActiveBus()` para evitar mutaciones en memoria.
+
+- [x] **3. Endpoints de la API Central (`/api/buses/route.ts`):**
+  - **GET**: Mapeo retrocompatible que inyecta `planRenovaMonto` canónico si fuera nulo en BD histórica.
+  - **POST / PUT**: Sanitización, persistencia en Postgres y soporte para creación/edición de la cuota diaria del bus.
+
+- [x] **4. Ficha de Mi Autobús y Gestión de Flota (`src/components/transport/FlotaScreen.tsx`):**
+  - Ficha de visualización: Nueva columna en la tarjeta técnica mostrando `Plan Renova: $XX.XX/día`.
+  - Modal de edición: Campo ergonómico con icono dedicado para editar `Cuota Diaria Plan Renova ($)`.
+  - Persistencia offline-first y sincronización en la nube hacia `/api/buses`.
+
+- [x] **5. Reactividad Operativa en Cuaderno Histórico (`CargaHistoricaScreen.tsx`):**
+  - Estado inicial de `expenses` hidratado con `getGastosFijosPorUnidad(selectedBusDisco)`.
+  - `useEffect` reactivo que recalcula dinámicamente la fila de "Plan Renova" al alternar entre autobuses (ej. de Bus 01 a Bus 10), preservando cualquier otro gasto ya digitado por el usuario (Diesel, etc.).
+
+- [x] **6. Reactividad Operativa en Arqueo General del Ayudante (`ArqueoGeneralScreen.tsx`):**
+  - Eliminado el valor estático de $68 en `GASTOS_DEFAULT`.
+  - Inicialización reactiva con `getGastosFijosPorUnidad(currentBus.numeroDisco || currentBus.id)`.
+  - Suscripción y sincronización automática ante cambios de la unidad física activa.
+
+- [x] **7. Suite de Pruebas Unitarias (`tests/plan-renova-unidad.test.ts`):**
+  - 7 pruebas unitarias nuevas cubriendo:
+    1. Fallback retrocompatible canónico para Bus 01 ($68.00).
+    2. Fallback retrocompatible canónico para Bus 10 ($30.00).
+    3. Fallback canónico para otras unidades ($0.00).
+    4. Cuota personalizada asignada en catálogo (ej. $45.00 para Bus 05).
+    5. Unidad con financiamiento concluido ($0.00 explícito sin saltos).
+    6. `createEmptyFormData` inicializado según el disco.
+    7. Resolución por bus activo sin parámetro explícito.
+  - **Total de la Suite del Proyecto:** 57/57 tests aprobados (100%).
+
+---
+
+
 
 

@@ -39,7 +39,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { num, type UserSession } from './types';
 import { isSuperAdmin as checkIsSuperAdmin } from '@/lib/roles';
-import { getActiveBus, setActiveBus, saveBusOdometer, getLatestBusOdometer } from '@/lib/fleet-storage';
+import { getActiveBus, setActiveBus, saveBusOdometer, getLatestBusOdometer, getGastosFijosPorUnidad } from '@/lib/fleet-storage';
 import { obtenerUltimosArqueosBus } from '@/lib/turno-secuencia-tracker';
 import { VT_DATA } from '@/lib/seed-vts';
 import { buildCanonicalRecordPayload } from '@/lib/canonical-record-payload';
@@ -333,13 +333,30 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
   const [ingresoEspecialNota, setIngresoEspecialNota] = useState<string>('');
   const [ingresoEspecialMonto, setIngresoEspecialMonto] = useState<string>('');
 
-  // Gastos
-  const [expenses, setExpenses] = useState<ExpenseItem[]>([
-    { description: 'Chofer', amount: '30' },
-    { description: 'Ayudante', amount: '20' },
-    { description: 'Diesel', amount: '0' },
-    { description: 'Plan Renova', amount: '68' },
-  ]);
+  // Gastos (inicializados y sincronizados canónicamente según la unidad física)
+  const [expenses, setExpenses] = useState<ExpenseItem[]>(() =>
+    getGastosFijosPorUnidad(selectedBusDisco)
+  );
+
+  // Recalcular dinámicamente la fila de "Plan Renova" según la unidad física seleccionada,
+  // preservando cualquier otro gasto ya digitado por el usuario (Diesel, etc.).
+  useEffect(() => {
+    const nuevosGastosFijos = getGastosFijosPorUnidad(selectedBusDisco);
+    const renovaFijo = nuevosGastosFijos.find(g => g.description === 'Plan Renova');
+    if (!renovaFijo) return;
+
+    setExpenses(prev => {
+      const exists = prev.some(g => g.description === 'Plan Renova');
+      if (exists) {
+        return prev.map(g =>
+          g.description === 'Plan Renova'
+            ? { ...g, amount: renovaFijo.amount }
+            : g
+        );
+      }
+      return [...prev, renovaFijo];
+    });
+  }, [selectedBusDisco]);
 
   // Otros valores
   const [tickets, setTickets] = useState('');

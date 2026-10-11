@@ -188,6 +188,7 @@ model Bus {
   capacidadAsientos Int             @default(45)
   propietario       String          // "José Leonardo Jaya Jaramillo"
   tipoOperacion     String          @default("TRONCAL_VT") // "TRONCAL_VT" | "ALIMENTADOR_P"
+  planRenovaMonto   Float?          // Cuota diaria Plan Renova ($) por unidad (ej. Bus 01 = 68.0, Bus 10 = 30.0)
   activo            Boolean         @default(true)
   notas             String?
   createdAt         DateTime        @default(now())
