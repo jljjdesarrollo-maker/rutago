@@ -89,6 +89,15 @@ export default function Home() {
         const saved: VTSession & { timestamp: number } = JSON.parse(stored);
         if (!saved.vtCode || !saved.fecha) return;
 
+        // Blindaje Multi-Tenant: Si el ayudante tiene bus asignado y la sesión previa pertenece a otra unidad, descartar
+        if (user.busId && saved.busId && user.busId !== saved.busId) {
+          localStorage.removeItem('rg_vt_session');
+          localStorage.removeItem('rg_active_view');
+          localStorage.removeItem('rg_active_estado_id');
+          localStorage.removeItem('rg_active_es_ultima');
+          return;
+        }
+
         const estadosKey = `rg_estados_${saved.vtCode}_${saved.fecha}`;
         const estadosRaw = localStorage.getItem(estadosKey);
         let estados: FrecuenciaEstado[] = [];

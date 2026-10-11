@@ -130,13 +130,14 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
     };
   });
 
-  // Suscribirse a cambios reactivos de la unidad física
+  // Suscribirse a cambios reactivos solo si la sesión no define unidad fija (Blindaje Multi-Tenant)
   useEffect(() => {
+    if (session.busId) return;
     const unsub = subscribeToActiveBus((bus) => {
       setCurrentBus(bus);
     });
     return () => unsub();
-  }, []);
+  }, [session.busId]);
 
   const [frecuencias, setFrecuencias] = useState<FrecuenciaResumen[]>([]);
   const [loading, setLoading] = useState(true);
@@ -929,7 +930,10 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
             </div>
           </div>
           <div className="flex-shrink-0">
-            <BusSelector compact />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200">
+              <Bus className="w-3.5 h-3.5 text-slate-500" />
+              <span>Bus {currentBus.numeroDisco}</span>
+            </div>
           </div>
         </div>
         {/* Errores */}

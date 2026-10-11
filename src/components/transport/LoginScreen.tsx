@@ -63,6 +63,9 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         if (cached) {
           const session = JSON.parse(cached);
           if (session && session.id && session.nombre) {
+            if (session.busId) {
+              setActiveBus(session.busId);
+            }
             triggerBackgroundSyncMantenimiento(session);
             onLogin(session);
             return;

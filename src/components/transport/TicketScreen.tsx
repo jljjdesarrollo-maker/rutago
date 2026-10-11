@@ -231,6 +231,8 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
         createdAt: fechaEmisionStr,
         ayudanteId: session.ayudanteId,
         ayudanteNombre: session.ayudanteNombre,
+        busId: session.busId,
+        numeroDisco: session.numeroDisco,
         syncStatus: 'pending' as const,
       };
       await saveVenta(venta);

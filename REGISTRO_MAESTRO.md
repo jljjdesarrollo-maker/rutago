@@ -4255,3 +4255,49 @@ bun test tests/manual-socio.test.ts
   - **En `ArqueoGeneralScreen.tsx`:** Botón destacado inmediato tras guardar offline (`[ ⬆️ SUBIR ARQUEO A LA NUBE AHORA ]`) para reintentar la subida sin salir de la pantalla si ya regresó la señal.
   - **En `FrecuenciaSelector.tsx`:** Barra inferior destacada de sincronización para que el ayudante pueda subir arqueos anteriores en cualquier momento durante su jornada de turnos.
   - **En `HistoryScreen.tsx`:** Banner superior interactivo con botón `[ ⬆️ Subir a la Nube ]` y tarjetas marcadas con `[ ⏳ Guardado en Teléfono (Pendiente) ]`.
+
+---
+
+## 🏛️ v3.61.35 - IMPLEMENTACIÓN Y CERTIFICACIÓN COMPLETA: BLINDAJE Y AISLAMIENTO MULTI-TENANT DEL AYUDANTE POR UNIDAD FÍSICA (2026-10-11)
+
+> **ESTADO:** 🟢 IMPLEMENTADO, VERIFICADO Y 100% CERTIFICADO (71/71 TESTS APROBADOS)  
+> **FECHA DE CIERRE:** 2026-10-11 | **SISTEMA:** RutaGo - Aislamiento Multi-Tenant del Ayudante en Ruta  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Blindar el rol AYUDANTE para garantizar que opere única y exclusivamente sobre la unidad física asignada a su perfil (`user.busId`), erradicando cualquier residuo o contaminación de otras unidades en inicio de turno, grilla de frecuencias, boletaje digital, arqueo general, cola de sincronización e historial de liquidaciones.
+
+### 📍 1. Diagnóstico de Puntos de Fuga Auditados
+- **Sesión VT Inicial:** `HomeScreenVT.tsx` utilizaba `getActiveBus()` sin priorizar `currentUser.busId`. Si un ayudante del Bus 10 ingresaba en un dispositivo que previamente operó Bus 01, la sesión arrancaba asignada a Bus 01.
+- **Auto-restauración de Sesión VT Obsoleta:** En `page.tsx` y `HomeScreenVT.tsx`, al restaurar `rg_vt_session`, no se comparaba `saved.busId === user.busId`. Se restauraba cualquier sesión remanente en el teléfono sin importar a qué unidad pertenecía.
+- **Selector de Bus en Arqueo General:** `ArqueoGeneralScreen.tsx` renderizaba `<BusSelector compact />` de forma incondicional, permitiendo que el ayudante alterara la unidad física durante el cuadre de caja.
+- **Trazabilidad en Boletos IndexedDB:** En `TicketScreen.tsx`, el objeto de venta no incluía explícitamente `busId` ni `numeroDisco`, dificultando la trazabilidad por vehículo en la ticketera local.
+- **Sincronización Offline en Login:** En `LoginScreen.tsx`, el camino sin internet no llamaba a `setActiveBus(session.busId)`.
+
+### 📍 2. Arquitectura Implementada y Blindajes Quirúrgicos
+- [x] **1. Priorización Estricta de Unidad en `HomeScreenVT.tsx`:**
+  - Sincronización reactiva con `setActiveBus(currentUser.busId)` al montar la pantalla.
+  - Al iniciar sesión con `startSession()`, se asigna de forma inmutable la unidad física del usuario (`currentActiveBus`).
+  - Badge de cabecera cerrado: muestra de forma reactiva y fija `Bus {activeBus.numeroDisco}` para el ayudante, sin selector desplegable.
+- [x] **2. Purga Automática de Sesiones Remanentes en `page.tsx` y `HomeScreenVT.tsx`:**
+  - Si `user.busId && saved.busId && user.busId !== saved.busId`, la sesión antigua se elimina automáticamente de `localStorage` (`rg_vt_session`, `rg_active_view`, etc.) evitando contaminación cruzada.
+- [x] **3. Bloqueo Inmutable de Unidad en `ArqueoGeneralScreen.tsx`:**
+  - Reemplazo de `BusSelector` por una pastilla estática y bloqueada `Bus {currentBus.numeroDisco}`.
+  - Desconexión del listener de cambio de bus cuando la sesión ya tiene una unidad fija asignada.
+- [x] **4. Trazabilidad de Boletos por Unidad (`TicketScreen.tsx` e `indexeddb.ts`):**
+  - Interfaces y modelo `VentaLocal` extendidos con `busId?: string` y `numeroDisco?: string`.
+  - Inyección obligatoria de `session.busId` y `session.numeroDisco` en cada boleto emitido y en los endpoints `/api/ventas` y `/api/ventas/batch`.
+- [x] **5. Resolución Dinámica de Promoción en `FrecuenciaSelector.tsx`:**
+  - Priorización de `session.busId || getActiveBusId()` para cargar los parámetros de promoción y sorteo específicos de la unidad física.
+- [x] **6. Sincronización en Login Offline (`LoginScreen.tsx`):**
+  - Invocación de `setActiveBus(session.busId)` al restaurar sesión cacheada sin conexión.
+- [x] **7. Filtro Defensivo en Historial (`HistoryScreen.tsx`):**
+  - Filtrado estricto por unidad activa (`effectiveBusId`) tanto en arqueos locales pendientes como en registros devueltos por la API para los roles de tripulación (`AYUDANTE` y `CONDUCTOR`).
+- [x] **8. Suite de Pruebas Unitarias Automatizadas (`tests/ayudante-bus-isolation.test.ts`):**
+  - 6 pruebas unitarias nuevas cubriendo:
+    1. Inicio forzado en Bus 10 y descarte de sesión obsoleta de Bus 01.
+    2. Asignación exacta de Plan Renova por unidad ($30 para Bus 10 vs $68 para Bus 01).
+    3. Cola de sincronización aislada: arqueos pendientes de Bus 10 no se cruzan con Bus 01.
+    4. Historial filtrado para Ayudante en Bus 10.
+    5. Bloqueo estricto de vistas reservadas (`personal`, `reports`, `socio_gastos`, `flota_gestion`, `vtconfig`, `saas_admin`).
+    6. Trazabilidad de boletos con `busId` y `numeroDisco`.
+  - **Total de la Suite del Proyecto:** 71/71 tests aprobados (100%).
+

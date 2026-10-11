@@ -19,6 +19,8 @@ export interface VentaLocal {
   createdAt: string;
   ayudanteId: string;
   ayudanteNombre: string;
+  busId?: string;              // Unidad física vinculada (Aislamiento Multi-Tenant)
+  numeroDisco?: string;        // Disco oficial del autobús
   lat?: number;
   lng?: number;
   syncStatus: 'pending' | 'synced' | 'error';
@@ -463,6 +465,8 @@ export async function syncVentasSilencioso(): Promise<{ synced: number; failed: 
               tarifaOficial: v.tarifaOficial, cobrado: v.cobrado,
               hora: v.hora, ayudanteId: v.ayudanteId, ayudanteNombre: v.ayudanteNombre,
               createdAt: v.createdAt, localId: v.id,
+              ...(v.busId ? { busId: v.busId } : {}),
+              ...(v.numeroDisco ? { numeroDisco: v.numeroDisco } : {}),
               ...(v.lat != null ? { lat: v.lat } : {}),
               ...(v.lng != null ? { lng: v.lng } : {}),
             })),
@@ -497,6 +501,8 @@ export async function syncVentasSilencioso(): Promise<{ synced: number; failed: 
                   tarifaOficial: venta.tarifaOficial, cobrado: venta.cobrado,
                   hora: venta.hora, ayudanteId: venta.ayudanteId, ayudanteNombre: venta.ayudanteNombre,
                   createdAt: venta.createdAt, localId: venta.id,
+                  ...(venta.busId ? { busId: venta.busId } : {}),
+                  ...(venta.numeroDisco ? { numeroDisco: venta.numeroDisco } : {}),
                   ...(venta.lat != null ? { lat: venta.lat } : {}),
                   ...(venta.lng != null ? { lng: venta.lng } : {}),
                 }),

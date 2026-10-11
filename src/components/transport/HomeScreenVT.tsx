@@ -7,12 +7,12 @@ import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVen
 import { countPendingArqueos, syncAllPendingArqueos, setupAutoSyncArqueos } from '@/lib/arqueos-sync';
 import { Bus, User, UserCheck, UserPlus, ArrowRight, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays, Clock, Moon, CloudOff, UploadCloud, ShieldCheck } from 'lucide-react';
 import { BusSelector } from './BusSelector';
-import { getActiveBus } from '@/lib/fleet-storage';
+import { getActiveBus, setActiveBus, subscribeToActiveBus } from '@/lib/fleet-storage';
 import { getEcuadorDateString, getEcuadorYesterdayDateString } from '@/lib/date-helpers';
 import { getConfiguracionFlotaLocal, subscribeToVTConfig, verificarActualizacionFingerprint } from '@/lib/vt-ventanas-storage';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.61.34';
+const APP_VERSION = 'v3.61.35';
 
 interface Props {
   currentUser?: UserSession;
@@ -115,6 +115,25 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
   const [existingUnfinished, setExistingUnfinished] = useState(false);
   const [confirmNewSession, setConfirmNewSession] = useState(false);
 
+  // Unidad física activa vinculada al ayudante o seleccionada (Aislamiento Multi-Tenant)
+  const [activeBus, setActiveBusState] = useState(() => {
+    if (currentUser?.busId) {
+      return setActiveBus(currentUser.busId);
+    }
+    return getActiveBus();
+  });
+
+  useEffect(() => {
+    if (currentUser?.busId) {
+      const b = setActiveBus(currentUser.busId);
+      setActiveBusState(b);
+    }
+    const unsub = subscribeToActiveBus((bus) => {
+      setActiveBusState(bus);
+    });
+    return () => unsub();
+  }, [currentUser?.busId]);
+
 
 
   // Printer state
@@ -195,23 +214,31 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
       if (stored) {
         const saved: VTSession & { timestamp: number } = JSON.parse(stored);
         if (saved.vtCode && saved.fecha) {
-          const estadosKey = `rg_estados_${saved.vtCode}_${saved.fecha}`;
-          const estadosRaw = localStorage.getItem(estadosKey);
-          if (estadosRaw) {
-            const estados: { estado: string }[] = JSON.parse(estadosRaw);
-            if (estados.length > 0) {
-              setExistingSession(saved);
-              setExistingUnfinished(true);
-              if (saved.esReemplazo && saved.nombreReemplazo) {
-                setEsReemplazo(true);
-                setNombreReemplazo(saved.nombreReemplazo);
+          // Descartar si el ayudante tiene unidad asignada y la sesión pertenece a otro bus
+          if (currentUser?.busId && saved.busId && currentUser.busId !== saved.busId) {
+            localStorage.removeItem('rg_vt_session');
+            localStorage.removeItem('rg_active_view');
+            localStorage.removeItem('rg_active_estado_id');
+            localStorage.removeItem('rg_active_es_ultima');
+          } else {
+            const estadosKey = `rg_estados_${saved.vtCode}_${saved.fecha}`;
+            const estadosRaw = localStorage.getItem(estadosKey);
+            if (estadosRaw) {
+              const estados: { estado: string }[] = JSON.parse(estadosRaw);
+              if (estados.length > 0) {
+                setExistingSession(saved);
+                setExistingUnfinished(true);
+                if (saved.esReemplazo && saved.nombreReemplazo) {
+                  setEsReemplazo(true);
+                  setNombreReemplazo(saved.nombreReemplazo);
+                }
               }
             }
           }
         }
       }
     } catch { /* ignore */ }
-  }, []);
+  }, [currentUser?.busId]);
 
   useEffect(() => {
     try {
@@ -346,7 +373,8 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
       }
     }
 
-    const currentActiveBus = getActiveBus();
+    // Blindaje Multi-Tenant: Priorizar estrictamente la unidad asignada al usuario
+    const currentActiveBus = currentUser?.busId ? setActiveBus(currentUser.busId) : (activeBus || getActiveBus());
 
     const newSession: VTSession = {
       vtCode: vt.codigo,
@@ -580,7 +608,7 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
             ) : (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 text-emerald-200 text-xs font-bold border border-emerald-500/20">
                 <Bus className="w-3.5 h-3.5 text-emerald-300" />
-                <span>Bus {getActiveBus().numeroDisco}</span>
+                <span>Bus {activeBus.numeroDisco}</span>
               </div>
             )}
             {onBack && (

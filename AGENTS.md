@@ -119,6 +119,14 @@
    - Aislamiento de tripulación por autobús/socio: filtra exclusivamente los choferes (`CONDUCTOR`) y ayudantes (`AYUDANTE`) pertenecientes a la unidad activa (`Bus #01`, `Bus #10`, `Bus #15`, etc.), preseleccionando a quienes están en turno (`esActual`).
    - Commit: `fix(carga-historica): v3.61.26 - orden secuencial de frecuencias con pernocta y aislamiento de tripulacion por bus`
 
+22. **v3.61.35 (Blindaje y Aislamiento Multi-Tenant del Ayudante por Unidad Física):** ✅ COMPLETADA
+   - Aislamiento estricto de la unidad física en la operación del Ayudante: `HomeScreenVT.tsx` sincroniza y fuerza `setActiveBus(currentUser.busId)`, eliminando arrastre de unidades residuales.
+   - Purga automática de sesiones obsoletas en `page.tsx` y `HomeScreenVT.tsx` ante cambio de unidad física.
+   - Bloqueo inmutable de la unidad en `ArqueoGeneralScreen.tsx` (reemplazo de `BusSelector` por pastilla fija).
+   - Trazabilidad integral de boletos: inyección de `busId` y `numeroDisco` en IndexedDB y endpoints de sincronización batch.
+   - Suite de 6 pruebas unitarias específicas en `tests/ayudante-bus-isolation.test.ts` (71/71 tests aprobados al 100%).
+   - Commit: `feat(ayudante): v3.61.35 - blindaje y aislamiento multi-tenant del ayudante por unidad fisica`
+
 ---
 
 ### 🏛️ REGLAS DE ARQUITECTURA OFICIAL IMPLEMENTADAS:

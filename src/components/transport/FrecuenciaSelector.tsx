@@ -284,7 +284,7 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     const gps = await getGPSPosition();
 
     // Generate random winner position for Viaje Gratis
-    const busId = getActiveBusId();
+    const busId = session.busId || getActiveBusId();
     const promoConfig = loadPromoConfig(busId);
     let ganadorPosicion: number | null = null;
     if (promoConfig.activa) {

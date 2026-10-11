@@ -318,6 +318,19 @@
   * En `/api/records/route.ts`: normalización server-side en `POST` y auto-saneamiento retroactivo en `GET` para registros históricos (`04/10/2026` y `05/10/2026`).
 - **Commit Oficial:** `feat(records): v3.61.25 - embudo canonico unificado para arqueo y carga historica con saneamiento retroactivo`.
 
+## 37. Blindaje y Aislamiento Multi-Tenant del Ayudante por Unidad Física (v3.61.35)
+- **Hito:** Aislamiento total de la unidad asignada al rol `AYUDANTE`, erradicando cualquier residuo o fuga de unidades cruzadas en carretera.
+- **Implementación:**
+  * En `HomeScreenVT.tsx`: sincronización automática de `setActiveBus(currentUser.busId)` al montar la pantalla y forzado inmutable en `startSession()`. Badge de cabecera cerrado mostrando `Bus {activeBus.numeroDisco}` sin menú de cambio.
+  * En `page.tsx` y `HomeScreenVT.tsx`: purga y descarte automático de sesiones `rg_vt_session` si pertenecen a otro autobús físico.
+  * En `ArqueoGeneralScreen.tsx`: sustitución de `BusSelector` por pastilla fija `Bus {currentBus.numeroDisco}` y desvinculación reactiva si la sesión tiene unidad asignada.
+  * En `TicketScreen.tsx` e `indexeddb.ts`: inyección de `busId` y `numeroDisco` en cada ticket local y sincronización batch.
+  * En `FrecuenciaSelector.tsx`: carga de `promoConfig` con `session.busId || getActiveBusId()`.
+  * En `HistoryScreen.tsx`: filtrado defensivo por unidad para los roles de tripulación.
+  * Suite de 6 pruebas en `tests/ayudante-bus-isolation.test.ts` (71/71 tests aprobados al 100%).
+- **Commit Oficial:** `feat(ayudante): v3.61.35 - blindaje y aislamiento multi-tenant del ayudante por unidad fisica`.
+
+
 
 
 

@@ -144,7 +144,15 @@ export function HistoryScreen({
         const res = await fetch(`/api/records${query}`);
         if (res.ok) {
           const data = await res.json();
-          cloudRecords = Array.isArray(data) ? data : [];
+          let recordsList: SavedRecord[] = Array.isArray(data) ? data : [];
+          if ((userRole === 'AYUDANTE' || isChofer) && effectiveBusId && effectiveBusId !== 'TODOS') {
+            const cleanDisco = effectiveBusId.replace(/^BUS-/i, '').replace(/\D/g, '').padStart(2, '0');
+            recordsList = recordsList.filter(r => {
+              const rDisco = (r.numeroDisco || (r.conductor?.match(/BUS-(\d+)/i)?.[1]) || '').padStart(2, '0');
+              return !rDisco || rDisco === cleanDisco || r.busId === effectiveBusId;
+            });
+          }
+          cloudRecords = recordsList;
         }
       } catch (networkErr) {
         console.warn('Sin conexión o error al consultar /api/records, usando datos locales:', networkErr);
