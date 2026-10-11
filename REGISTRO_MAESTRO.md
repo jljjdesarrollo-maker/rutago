@@ -4249,3 +4249,9 @@ bun test tests/manual-socio.test.ts
     5. Manejo de fallos con incremento de intentos y registro de errores sin perder datos.
     6. Procesamiento secuencial masivo de cola con métricas de éxito y fallo.
   - **Total de la Suite del Proyecto:** 65/65 tests aprobados (100%).
+
+- [x] **7. Ergonomía Táctil Universal del Ayudante (Botones de Sincronización Manual):**
+  - **En `HomeScreenVT.tsx`:** Banner fijo inferior cuando hay arqueos pendientes (`[ ⬆️ SUBIR X ARQUEO(S) GENERAL(ES) A LA NUBE ]`).
+  - **En `ArqueoGeneralScreen.tsx`:** Botón destacado inmediato tras guardar offline (`[ ⬆️ SUBIR ARQUEO A LA NUBE AHORA ]`) para reintentar la subida sin salir de la pantalla si ya regresó la señal.
+  - **En `FrecuenciaSelector.tsx`:** Barra inferior destacada de sincronización para que el ayudante pueda subir arqueos anteriores en cualquier momento durante su jornada de turnos.
+  - **En `HistoryScreen.tsx`:** Banner superior interactivo con botón `[ ⬆️ Subir a la Nube ]` y tarjetas marcadas con `[ ⏳ Guardado en Teléfono (Pendiente) ]`.
