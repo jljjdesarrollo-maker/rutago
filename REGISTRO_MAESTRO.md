@@ -4440,3 +4440,8 @@ bun test tests/manual-socio.test.ts
   5. **Tabla Detallada de Gastos de Ruta:** Desglose categorizado de salarios de chofer, ayudante, diésel, Plan Renova ($68.00) y gastos mecánicos menores en ruta.
   6. **Certificación y Margen Operativo:** Rentabilidad porcentual de la jornada.
 - **Índice Maestro (`INDICE_ARQUEOS_UNIDAD_01.md`):** Tabla cronológica integral con los 190 registros y enlaces directos a cada expediente individual.
+
+### 📍 4. Sincronización Remota y Despliegue en GitHub:
+- **Token de Autenticación (PAT):** Proporcionado por el usuario en el chat, utilizado exclusivamente en memoria para la sesión y nunca persistido en archivos ni variables del repositorio.
+- **Ramas Sincronizadas:** Push exitoso a las ramas `main` y `staging` de `https://github.com/jljjdesarrollo-maker/rutago`.
+- **Despliegue Vercel:** Disparado automáticamente por Vercel para Producción y Staging con los 190 expedientes y el índice maestro integrados en `docs/arqueos_unidad_01/`.
