@@ -15,6 +15,24 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isStaging, setIsStaging] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      const envVar = process.env.NEXT_PUBLIC_APP_ENV;
+      if (
+        envVar === "staging" ||
+        envVar === "preview" ||
+        host.includes("staging") ||
+        host.includes("preview") ||
+        host.includes("-git-staging") ||
+        localStorage.getItem("rg_training_mode") === "true"
+      ) {
+        setIsStaging(true);
+      }
+    }
+  }, []);
 
   const handleDigit = (digit: string) => {
     if (pin.length >= 4) return;
@@ -137,7 +155,13 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
     <div className="flex flex-col min-h-[100dvh] bg-white">
       {/* Header */}
       <header className="pt-16 pb-8 px-6 text-center">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-[#1E40AF] mb-4 shadow-lg shadow-[#1E40AF]/25">
+        <div
+          className={`inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-4 shadow-lg ${
+            isStaging
+              ? "bg-[#1E40AF] shadow-[#1E40AF]/25"
+              : "bg-[#912D26] shadow-[#912D26]/20"
+          }`}
+        >
           <Truck className="w-10 h-10 text-white" />
         </div>
         <h1 className="text-2xl font-bold text-[#3A3A3A]">RutaGo</h1>
@@ -152,8 +176,10 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               key={i}
               className={`w-4 h-4 rounded-full transition-all duration-150 ${
                 i < pin.length
-                  ? 'bg-[#1E40AF] scale-110'
-                  : 'bg-[#D6D6D6]'
+                  ? isStaging
+                    ? "bg-[#1E40AF] scale-110"
+                    : "bg-[#912D26] scale-110"
+                  : "bg-[#D6D6D6]"
               }`}
             />
           ))}

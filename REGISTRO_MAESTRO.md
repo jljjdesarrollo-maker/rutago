@@ -4567,3 +4567,28 @@ bun test tests/manual-socio.test.ts
   - 4. Turno e Inicio de Sesión VT: Asignación inmutable de disco 08 y placa HAA5619.
   - 5. Protección Anti-Fuga: Rechazo categórico de fallback huérfano a BUS-01 cuando usuario posee socioId ajeno.
 * **Resultado Global del Proyecto:** 88/88 tests aprobados (100% verde).
+
+
+---
+
+## 🏛️ v3.61.41 - DIFERENCIACIÓN VISUAL DE ENTORNOS: MAIN = VINO INSTITUCIONAL / STAGING = AZUL TRANSPORTE (2026-10-12)
+
+> **ESTADO:** 🟢 APLICADO, VERIFICADO Y SINCRONIZADO EN `main` Y `staging`  
+> **FECHA DE REGISTRO:** 2026-10-12 | **SISTEMA:** RutaGo - UI/UX y Gobernanza de Entornos  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Requerimiento del Usuario:
+- **Producción (`main`):** El logotipo del camión y los indicadores del PIN deben mostrarse en el color **Vino/Rojo Institucional (`#912D26`)**.
+- **Pruebas / Capacitación (`staging`):** El logotipo del camión y los indicadores del PIN deben mostrarse en el color **Azul Transporte Moderno (`#1E40AF`)**.
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. **Detección Dinámica de Entorno en `LoginScreen.tsx`:**
+   - Se incorpora detección híbrida:
+     * Por variable de entorno `process.env.NEXT_PUBLIC_APP_ENV` (`staging`, `preview`).
+     * Por nombre de host (`hostname.includes("staging")`, `hostname.includes("-git-staging")`, `hostname.includes("preview")`).
+     * Por bandera de simulador `rg_training_mode`.
+   - Si el entorno es `staging`: Aplica dinámicamente `bg-[#1E40AF]` y sombra `shadow-[#1E40AF]/25`.
+   - Si el entorno es `main` (Producción): Aplica dinámicamente `bg-[#912D26]` y sombra `shadow-[#912D26]/20`.
+2. **Garantía en Ramas:**
+   - La rama `main` despliega por defecto con el tema Vino Institucional.
+   - La rama `staging` despliega con el tema Azul Transporte.
