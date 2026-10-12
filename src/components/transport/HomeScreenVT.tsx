@@ -127,12 +127,39 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
     if (currentUser?.busId) {
       const b = setActiveBus(currentUser.busId);
       setActiveBusState(b);
+      return;
+    }
+    // Auto-resolución defensiva multi-tenant si el ayudante no tiene busId pero sí socioId
+    if (currentUser?.socioId && typeof window !== "undefined" && navigator.onLine) {
+      fetch(`/api/buses?socioId=${currentUser.socioId}`)
+        .then(res => res.json())
+        .then(data => {
+          const busList = data?.data || data;
+          if (Array.isArray(busList) && busList.length > 0) {
+            const miBus = busList[0];
+            if (miBus?.id || miBus?.numeroDisco) {
+              const assigned = setActiveBus(miBus.id || miBus.numeroDisco);
+              setActiveBusState(assigned);
+              const stored = localStorage.getItem("ct_session");
+              if (stored) {
+                try {
+                  const parsed = JSON.parse(stored);
+                  parsed.busId = assigned.id;
+                  parsed.busNumero = assigned.numeroDisco;
+                  parsed.busPlaca = assigned.placa;
+                  localStorage.setItem("ct_session", JSON.stringify(parsed));
+                } catch {}
+              }
+            }
+          }
+        })
+        .catch(() => {});
     }
     const unsub = subscribeToActiveBus((bus) => {
       setActiveBusState(bus);
     });
     return () => unsub();
-  }, [currentUser?.busId]);
+  }, [currentUser?.busId, currentUser?.socioId]);
 
 
 

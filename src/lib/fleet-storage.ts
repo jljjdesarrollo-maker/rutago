@@ -25,6 +25,22 @@ export const INITIAL_PILOT_BUS: BusItem = {
 export const BENCHMARK_FLEET_BUSES: BusItem[] = [
   INITIAL_PILOT_BUS,
   {
+    id: 'BUS-08',
+    numeroDisco: '08',
+    placa: 'HAA5619',
+    marca: 'Hino AK',
+    modelo: 'AK',
+    anio: 2025,
+    capacidadAsientos: 45,
+    propietario: 'Robert Leonardo Ordóñez Moreno',
+    tipoOperacion: 'TRONCAL_VT',
+    planRenovaMonto: 23,
+    odometroInicial: '179440',
+    activo: true,
+    notas: 'Unidad Troncal • Socio Robert Leonardo Ordóñez Moreno',
+  },
+
+  {
     id: 'BUS-02',
     numeroDisco: '02',
     placa: 'TAA-4102',
@@ -197,12 +213,34 @@ export function getBusByDisco(discoOrId: string): BusItem | undefined {
   if (!discoOrId) return undefined;
   const buses = getAllBuses();
   const normalized = String(discoOrId).trim().toUpperCase();
-  return buses.find(
+  const found = buses.find(
     (b) =>
       String(b.id || '').toUpperCase() === normalized ||
       String(b.numeroDisco || '').toUpperCase() === normalized ||
       `BUS-${String(b.numeroDisco || '').padStart(2, '0')}`.toUpperCase() === normalized
   );
+  if (found) return found;
+
+  // Auto-registro dinámico para cualquier nueva unidad de socio que no esté en el benchmark inicial
+  const rawDigits = String(discoOrId).replace(/^BUS-/i, '').replace(/\D/g, '');
+  if (rawDigits) {
+    const cleanDisco = rawDigits.padStart(2, '0');
+    const dynamicBus: BusItem = {
+      id: `BUS-${cleanDisco}`,
+      numeroDisco: cleanDisco,
+      placa: cleanDisco === '08' ? 'HAA5619' : 'PENDIENTE',
+      marca: 'Hino AK',
+      modelo: 'AK',
+      propietario: cleanDisco === '08' ? 'Robert Leonardo Ordóñez Moreno' : 'Socio Propietario',
+      tipoOperacion: 'TRONCAL_VT',
+      planRenovaMonto: cleanDisco === '08' ? 23 : 0,
+      activo: true,
+    };
+    saveBus(dynamicBus);
+    return dynamicBus;
+  }
+
+  return undefined;
 }
 
 /**
@@ -378,6 +416,20 @@ export function getActiveBus(): BusItem {
     if (savedId) {
       const found = getBusByDisco(savedId);
       if (found) return found;
+    }
+    // Verificar si hay sesión activa en ct_session con busId asignado
+    const sessionRaw = localStorage.getItem('ct_session');
+    if (sessionRaw) {
+      try {
+        const session = JSON.parse(sessionRaw);
+        if (session.busId) {
+          const found = getBusByDisco(session.busId);
+          if (found) {
+            localStorage.setItem(ACTIVE_BUS_KEY, found.id);
+            return found;
+          }
+        }
+      } catch {}
     }
     // Fallback prioritario: Unidad 01
     const bus01 = getBusByDisco('01');

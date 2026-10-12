@@ -59,13 +59,29 @@ export default function Home() {
         const session = JSON.parse(stored) as UserSession;
         if (session.id && session.rol) {
           setUser(session);
-          // Si es ayudante y está en línea, refrescar estado de actividad (esActual)
-          if (typeof window !== 'undefined' && navigator.onLine && session.rol === 'AYUDANTE') {
+          // Si es personal operativo (ayudante o chofer) y está en línea, refrescar estado y auto-enlace de bus
+          if (typeof window !== 'undefined' && navigator.onLine && (session.rol === 'AYUDANTE' || session.rol === 'CONDUCTOR')) {
             fetch(`/api/personas/${session.id}`)
               .then(res => res.json())
               .then(data => {
-                if (data && typeof data.esActual === 'boolean') {
-                  setUser(prev => prev ? { ...prev, esActual: data.esActual } : prev);
+                if (data) {
+                  setUser(prev => {
+                    if (!prev) return prev;
+                    const resolvedBusId = data.busId || prev.busId;
+                    const updated = {
+                      ...prev,
+                      esActual: typeof data.esActual === 'boolean' ? data.esActual : prev.esActual,
+                      busId: resolvedBusId,
+                      busNumero: data.busNumero || prev.busNumero,
+                      busPlaca: data.busPlaca || prev.busPlaca,
+                      buses: data.buses || prev.buses,
+                    };
+                    if (resolvedBusId) {
+                      setActiveBus(resolvedBusId);
+                    }
+                    localStorage.setItem('ct_session', JSON.stringify(updated));
+                    return updated;
+                  });
                 }
               })
               .catch(() => {});

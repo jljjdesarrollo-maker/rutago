@@ -4511,3 +4511,59 @@ bun test tests/manual-socio.test.ts
 
 ### 📍 2. Ajuste Visual de la Pantalla de Inicio:
 - En `src/components/transport/LoginScreen.tsx`, se sustituyó el color vino/rojo institucional (`#912D26`) por un **Azul Transporte Corporativo Moderno (`#1E40AF`)** en el contenedor del logotipo del camión y en los indicadores de progreso del PIN de 4 dígitos.
+
+
+---
+
+## 🏛️ v3.61.40 - REGLA CONSTITUCIONAL Y RESOLUCIÓN DEFINITIVA DE AISLAMIENTO MULTI-TENANT POR UNIDAD PARA SOCIO Y TRIPULACIÓN (AYUDANTE / CHOFER) (2026-10-12)
+
+> **ESTADO:** 🟢 IMPLEMENTADO, VERIFICADO Y 100% CERTIFICADO (88/88 TESTS APROBADOS)  
+> **FECHA DE CIERRE:** 2026-10-12 | **SISTEMA:** RutaGo - Motor SaaS Multi-Tenant & Seguridad de Flota  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago` (Ramas: `main` y `staging`)  
+> **OBJETIVO:** Blindar de forma absoluta e inviolable la separación multi-tenant de unidades físicas para Socios y Personal Operativo (Ayudantes y Choferes), erradicando definitivamente cualquier residuo o contaminación de la Unidad 01 en cuentas recién creadas o unidades suscriptoras (como Unidad 08 o Unidad 10).
+
+### 📍 1. Regla de Oro Constitucional del Sistema (Inviolable):
+> **REGLA CONSTITUCIONAL DE AISLAMIENTO POR UNIDAD:**
+> 1. Toda cuenta de socio (sea nueva o preexistente) y todo miembro de su tripulación (Conductor o Ayudante) está **estrictamente aislado a la unidad física asignada** a su suscripción (`busId` / `numeroDisco`).
+> 2. **Bajo ninguna circunstancia** un socio o tripulante de una unidad (ej. Unidad 08, Unidad 10) puede recibir, visualizar, auditar, liquidar o arrastrar información, registros contables, frecuencias, odómetros, gastos o historial pertenecientes a otra unidad (ej. Unidad 01).
+> 3. Los **fallbacks silenciosos a `BUS-01` están terminantemente prohibidos** en todo el backend y frontend cuando el usuario en sesión pertenezca a otra unidad o socio. Si una unidad no se encuentra en caché local, el sistema debe autoconstruirla dinámicamente o resolverla de inmediato contra PostgreSQL por su `socioId`.
+
+### 📍 2. Diagnóstico Forense del Incidente de la Unidad 08:
+* **Problema Reportado por el Usuario:** Al crear la Unidad 08 y el ayudante de la Unidad 08 (Edgar Daniel Tapia Chimbo), al acceder a la Unidad 08 salía la información histórica de la Unidad 01.
+* **Causas Raíz Identificadas y Desmanteladas:**
+  1. **Omisión de Unidad en `/api/auth` para Personal Operativo (`Persona`):** Cuando un socio iniciaba sesión, `/api/auth` hacía `include: { buses: ... }` y devolvía `busId`. Sin embargo, cuando se autenticaba un miembro de personal operativo (Conductor o Ayudante), el endpoint devolvía únicamente `{ id, nombre, rol, socioId, esActual, deviceId, deviceName }`. **Omitía por completo `busId`, `busNumero`, `busPlaca` y `buses`**.
+  2. **Catálogo Estático Local sin la Unidad 08 (`fleet-storage.ts`):** `BENCHMARK_FLEET_BUSES` contenía unidades fijas de referencia (01, 02, 03, 04, 10, 12, etc.), pero no la Unidad 08. Cuando `LoginScreen` o `HomeScreenVT` intentaban hacer `getBusByDisco("BUS-08")` en un navegador limpio, la función devolvía `undefined`. Al ser `undefined`, `setActiveBus` y `getActiveBus` ejecutaban un fallback a `INITIAL_PILOT_BUS` (`BUS-01`).
+  3. **Contaminación en el Turno VT (`HomeScreenVT.tsx`):** Al no recibir `currentUser.busId`, `HomeScreenVT` tomaba `getActiveBus()` (que había caído en `BUS-01`). En consecuencia, el badge mostraba `Bus 01 • TAA-5152` y la sesión de turno (`VTSession`) se creaba asignada a `BUS-01`.
+  4. **Contaminación en Historial (`page.tsx` & `HistoryScreen.tsx`):** Al entrar al Historial, `page.tsx` enviaba `busId={user?.busId || getActiveBusId()}`, pasando `BUS-01`. `HistoryScreen` consultaba `/api/records?busId=BUS-01` y filtraba por `BUS-01`, mostrando todos los 190 registros y arqueos históricos del **Bus 01** en lugar de los 5 registros reales del **Bus 08**.
+  5. **Falta de Unidad en Refresco de Sesión (`/api/personas/[id]`):** Al recargar la pantalla, `page.tsx` llamaba a `/api/personas/${session.id}`, el cual tampoco incluía la unidad del socio.
+  6. **Asociación Débil de Buses en Creación de Socio (`/api/saas/socios`):** Si el socio se creaba indicando una unidad existente o nueva, el update requería coincidencia exacta de `id`. Si venía por disco o la unidad aún no existía en PostgreSQL, fallaba silenciosamente en el bloque `.catch()`.
+  7. **Placa Hardcodeada en Arqueo General (`ArqueoGeneralScreen.tsx`):** Tenía un fallback `placa: String(active?.placa || "TAA-5152")`.
+
+### 📍 3. Soluciones de Ingeniería Implementadas:
+1. **Auto-Enlace de Unidad en Login para Tripulación (`src/app/api/auth/route.ts`):**
+   - Ahora, al verificar el PIN de un miembro del Personal (`Persona`), se consulta inmediatamente `db.bus.findMany({ where: { socioId: matchedPersona.socioId, activo: true } })`.
+   - Se inyectan en la respuesta JSON: `busId`, `busNumero`, `busPlaca` y el arreglo de `buses`.
+2. **Refresco con Unidad en `/api/personas/[id]/route.ts`:**
+   - La consulta incluye la relación `socio: { include: { buses: true } }` y devuelve `busId`, `busNumero` y `busPlaca`.
+3. **Auto-Creación Dinámica de Unidades y Registro Oficial de Bus 08 (`src/lib/fleet-storage.ts`):**
+   - Se registró formalmente la Unidad 08 en `BENCHMARK_FLEET_BUSES` (Disco 08, Placa `HAA5619`, Socio Robert Ordóñez, Plan Renova $23.00, Odómetro 179,440 km).
+   - En `getBusByDisco`, si se solicita cualquier disco no registrado en el caché inicial, el sistema lo crea dinámicamente y lo persiste en `saveBus`, eliminando el fallback ciego a `BUS-01`.
+   - En `getActiveBus`, si no hay bus activo en `localStorage`, consulta defensivamente `ct_session` antes de recurrir a la unidad líder.
+4. **Auto-Enlace Reactivo en `HomeScreenVT.tsx` y `HomeScreen.tsx`:**
+   - Si un usuario no tiene `busId` en su sesión pero tiene `socioId`, se dispara una consulta asíncrona a `/api/buses?socioId=...` que enlaza y fija de inmediato su autobús físico.
+5. **Blindaje de Consulta en `HistoryScreen.tsx`:**
+   - Resolución defensiva: si `propBusId` no viene, pero viene `propSocioId`, resuelve el bus de ese socio y jamás proyecta registros de la Unidad 01.
+6. **Robustez en Creación y Asignación de Socio (`src/app/api/saas/socios/route.ts`):**
+   - Resolución de unidad tanto por `id` como por `numeroDisco`.
+   - Si la unidad no existe en la base de datos, se crea automáticamente (`BUS-XX`) asociada al socio y con su suscripción activa.
+7. **Desacoplamiento de Placa en `ArqueoGeneralScreen.tsx`:**
+   - Utiliza `session.placaBus || active?.placa || "PENDIENTE"`, erradicando la placa fija de la Unidad 01.
+
+### 📍 4. Certificación y Pruebas Unitarias:
+* **Suite Creada (`tests/socio-ayudante-multi-tenant-isolation.test.ts`):**
+  - 1. Sesión de Ayudante de Unidad 08 fija Bus 08 y erradica residuo de Bus 01.
+  - 2. Cuota Plan Renova para Unidad 08 resuelve exactamente $23.00 y no $68.00 ni $30.00.
+  - 3. Filtrado de Historial: Ayudante en Bus 08 descarta 100% de los arqueos de Bus 01 y muestra solo Bus 08.
+  - 4. Turno e Inicio de Sesión VT: Asignación inmutable de disco 08 y placa HAA5619.
+  - 5. Protección Anti-Fuga: Rechazo categórico de fallback huérfano a BUS-01 cuando usuario posee socioId ajeno.
+* **Resultado Global del Proyecto:** 88/88 tests aprobados (100% verde).

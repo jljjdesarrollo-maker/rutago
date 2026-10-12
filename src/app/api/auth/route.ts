@@ -225,6 +225,10 @@ export async function POST(req: NextRequest) {
                        personal.find(p => p.activo !== false);
       if (ayudante) {
         recordSuccess(ip);
+        let fbBus: any = null;
+        if (ayudante.socioId) {
+          fbBus = await db.bus.findFirst({ where: { socioId: ayudante.socioId, activo: true }, orderBy: { numeroDisco: 'asc' } }).catch(() => null);
+        }
         return NextResponse.json({
           id: ayudante.id,
           nombre: ayudante.nombre,
@@ -233,6 +237,9 @@ export async function POST(req: NextRequest) {
           esActual: true,
           deviceId: ayudante.deviceId || null,
           deviceName: ayudante.deviceName || null,
+          busId: fbBus ? fbBus.id : undefined,
+          busNumero: fbBus ? fbBus.numeroDisco : undefined,
+          busPlaca: fbBus ? fbBus.placa : undefined,
         });
       }
     }
@@ -244,6 +251,10 @@ export async function POST(req: NextRequest) {
                         personal.find(p => p.activo !== false);
       if (conductor) {
         recordSuccess(ip);
+        let fbBus: any = null;
+        if (conductor.socioId) {
+          fbBus = await db.bus.findFirst({ where: { socioId: conductor.socioId, activo: true }, orderBy: { numeroDisco: 'asc' } }).catch(() => null);
+        }
         return NextResponse.json({
           id: conductor.id,
           nombre: conductor.nombre,
@@ -252,6 +263,9 @@ export async function POST(req: NextRequest) {
           esActual: true,
           deviceId: conductor.deviceId || null,
           deviceName: conductor.deviceName || null,
+          busId: fbBus ? fbBus.id : undefined,
+          busNumero: fbBus ? fbBus.numeroDisco : undefined,
+          busPlaca: fbBus ? fbBus.placa : undefined,
         });
       }
     }
@@ -293,6 +307,24 @@ export async function POST(req: NextRequest) {
     }
 
     recordSuccess(ip);
+    // ─── Aislamiento Multi-Tenant Estricto: Auto-Enlace de Unidad Física para Personal Operativo ───
+    let crewBus: any = null;
+    let crewBuses: any[] = [];
+    if (matchedPersona.socioId) {
+      try {
+        const foundBuses = await db.bus.findMany({
+          where: { socioId: matchedPersona.socioId, activo: true },
+          orderBy: { numeroDisco: "asc" },
+        });
+        if (foundBuses.length > 0) {
+          crewBus = foundBuses[0];
+          crewBuses = foundBuses;
+        }
+      } catch (err) {
+        console.warn("Error resolviendo autobús para personal operativo:", err);
+      }
+    }
+
     return NextResponse.json({
       id: matchedPersona.id,
       nombre: matchedPersona.nombre,
@@ -301,6 +333,16 @@ export async function POST(req: NextRequest) {
       esActual: matchedPersona.esActual,
       deviceId: matchedPersona.deviceId || null,
       deviceName: matchedPersona.deviceName || null,
+      busId: crewBus ? crewBus.id : undefined,
+      busNumero: crewBus ? crewBus.numeroDisco : undefined,
+      busPlaca: crewBus ? crewBus.placa : undefined,
+      buses: crewBuses.map((b) => ({
+        id: b.id,
+        numeroDisco: b.numeroDisco,
+        placa: b.placa,
+        marca: b.marca,
+        modelo: b.modelo,
+      })),
     });
   } catch (error) {
     console.error('Error authenticating:', error);

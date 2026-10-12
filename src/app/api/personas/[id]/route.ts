@@ -28,6 +28,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             id: true,
             nombre: true,
             cedula: true,
+            buses: {
+              where: { activo: true },
+              orderBy: { numeroDisco: "asc" },
+            },
           },
         },
       },
@@ -35,7 +39,22 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (!persona) {
       return NextResponse.json({ error: 'No encontrado' }, { status: 404 });
     }
-    return NextResponse.json(persona);
+    const primerBus = (persona as any)?.socio?.buses && (persona as any).socio.buses.length > 0
+      ? (persona as any).socio.buses[0]
+      : null;
+    return NextResponse.json({
+      ...persona,
+      busId: primerBus ? primerBus.id : undefined,
+      busNumero: primerBus ? primerBus.numeroDisco : undefined,
+      busPlaca: primerBus ? primerBus.placa : undefined,
+      buses: ((persona as any)?.socio?.buses || []).map((b: any) => ({
+        id: b.id,
+        numeroDisco: b.numeroDisco,
+        placa: b.placa,
+        marca: b.marca,
+        modelo: b.modelo,
+      })),
+    });
   } catch (error) {
     console.error('Error fetching persona:', error);
     return NextResponse.json({ error: 'Error al obtener personal' }, { status: 500 });

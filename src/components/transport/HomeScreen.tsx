@@ -117,7 +117,7 @@ export function HomeScreen({
       }
     });
 
-    if (!isSocioOwner || !user) return unsub;
+    if (!user) return unsub;
 
     const resolveSocioBus = async () => {
       if (user.busId) {

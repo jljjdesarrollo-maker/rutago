@@ -97,7 +97,28 @@ export function HistoryScreen({
   onViewRecord,
 }: HistoryScreenProps) {
   const isChofer = userRole === 'CONDUCTOR';
-  const effectiveBusId = propBusId || (typeof window !== 'undefined' ? getActiveBusId() : undefined);
+  const [resolvedBusId, setResolvedBusId] = useState<string | undefined>(propBusId);
+
+  useEffect(() => {
+    if (propBusId) {
+      setResolvedBusId(propBusId);
+      return;
+    }
+    // Blindaje Multi-Tenant Defensivo: Si no vino busId pero sí socioId, resolver unidad del socio
+    if (propSocioId && propSocioId !== "TODOS" && typeof window !== "undefined" && navigator.onLine) {
+      fetch(`/api/buses?socioId=${propSocioId}`)
+        .then((r) => r.json())
+        .then((d) => {
+          const list = d?.data || d;
+          if (Array.isArray(list) && list.length > 0) {
+            setResolvedBusId(list[0].id || list[0].numeroDisco);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [propBusId, propSocioId]);
+
+  const effectiveBusId = resolvedBusId || propBusId || (typeof window !== 'undefined' ? getActiveBusId() : undefined);
   const [allRecords, setAllRecords] = useState<SavedRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);

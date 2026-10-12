@@ -88,28 +88,63 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Si se especificó un bus a vincular
+    // Si se especificó un bus a vincular (nueva o existente unidad)
     if (busId) {
-      const bus = await db.bus.update({
-        where: { id: busId },
-        data: { socioId: nuevoSocio.id },
-      }).catch(err => console.error('Error asociando bus:', err));
+      const cleanDisco = String(busId).replace(/^BUS-/i, "").replace(/\D/g, "").padStart(2, "0");
+      let busFound = await db.bus.findFirst({
+        where: {
+          OR: [
+            { id: busId },
+            { numeroDisco: cleanDisco },
+            { numeroDisco: busId },
+          ],
+        },
+      }).catch(() => null);
+
+      let bus: any = null;
+      if (busFound) {
+        bus = await db.bus.update({
+          where: { id: busFound.id },
+          data: { socioId: nuevoSocio.id, propietario: nuevoSocio.nombre },
+        }).catch(err => console.error("Error asociando bus existente:", err));
+      } else {
+        bus = await db.bus.create({
+          data: {
+            id: `BUS-${cleanDisco}`,
+            numeroDisco: cleanDisco,
+            placa: "PENDIENTE",
+            marca: "Hino AK",
+            modelo: "AK",
+            anio: 2022,
+            capacidadAsientos: 45,
+            propietario: nuevoSocio.nombre,
+            tipoOperacion: "TRONCAL_VT",
+            socioId: nuevoSocio.id,
+            activo: true,
+          },
+        }).catch(err => console.error("Error creando bus enlazado al nuevo socio:", err));
+      }
 
       if (bus) {
-        // Crear suscripción activa para la nueva unidad
+        // Crear o actualizar suscripción activa para la nueva unidad
         const hoy = new Date();
         const proximoCorte = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 5);
-        await db.suscripcionBus.create({
-          data: {
+        await db.suscripcionBus.upsert({
+          where: { busId: bus.id },
+          update: {
+            socioId: nuevoSocio.id,
+            estado: "ACTIVA",
+          },
+          create: {
             busId: bus.id,
             socioId: nuevoSocio.id,
             montoMensual: 20.00,
             diaCorteMensual: 5,
             fechaInicio: hoy,
             fechaProximoCorte: proximoCorte,
-            estado: 'ACTIVA',
+            estado: "ACTIVA",
           },
-        }).catch(err => console.error('Error creando suscripcion inicial:', err));
+        }).catch(err => console.error("Error creando/actualizando suscripcion inicial:", err));
       }
     }
 
@@ -170,12 +205,60 @@ export async function PUT(req: NextRequest) {
       data: dataToUpdate,
     });
 
-    // Vincular bus
+    // Vincular bus (existente o nuevo)
     if (busIdAsignar) {
-      await db.bus.update({
-        where: { id: busIdAsignar },
-        data: { socioId: id },
-      }).catch(err => console.error('Error asociando bus:', err));
+      const cleanDisco = String(busIdAsignar).replace(/^BUS-/i, "").replace(/\D/g, "").padStart(2, "0");
+      const busFound = await db.bus.findFirst({
+        where: {
+          OR: [
+            { id: busIdAsignar },
+            { numeroDisco: cleanDisco },
+            { numeroDisco: busIdAsignar },
+          ],
+        },
+      }).catch(() => null);
+
+      let busVinculado: any = null;
+      if (busFound) {
+        busVinculado = await db.bus.update({
+          where: { id: busFound.id },
+          data: { socioId: id, propietario: socioActualizado.nombre },
+        }).catch(err => console.error("Error asociando bus existente:", err));
+      } else {
+        busVinculado = await db.bus.create({
+          data: {
+            id: `BUS-${cleanDisco}`,
+            numeroDisco: cleanDisco,
+            placa: "PENDIENTE",
+            marca: "Hino AK",
+            modelo: "AK",
+            anio: 2022,
+            capacidadAsientos: 45,
+            propietario: socioActualizado.nombre,
+            tipoOperacion: "TRONCAL_VT",
+            socioId: id,
+            activo: true,
+          },
+        }).catch(err => console.error("Error creando bus:", err));
+      }
+
+      if (busVinculado) {
+        const hoy = new Date();
+        const proximoCorte = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 5);
+        await db.suscripcionBus.upsert({
+          where: { busId: busVinculado.id },
+          update: { socioId: id, estado: "ACTIVA" },
+          create: {
+            busId: busVinculado.id,
+            socioId: id,
+            montoMensual: 20.00,
+            diaCorteMensual: 5,
+            fechaInicio: hoy,
+            fechaProximoCorte: proximoCorte,
+            estado: "ACTIVA",
+          },
+        }).catch(err => console.error("Error asegurando suscripcion al vincular:", err));
+      }
     }
 
     // Desvincular bus

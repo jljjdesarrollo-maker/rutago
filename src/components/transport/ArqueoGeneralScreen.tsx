@@ -122,11 +122,13 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
   const [currentBus, setCurrentBus] = useState<BusItem>(() => {
     const rawBus = session.busId ? getBusByDisco(session.busId) : getActiveBus();
     const active = rawBus || getActiveBus();
+    const disco = active?.numeroDisco || (session.busId ? session.busId.replace(/^BUS-/i, "") : "01");
+    const cleanDisco = disco.padStart(2, "0");
     return {
       ...active,
-      id: String(active?.id || `BUS-${active?.numeroDisco || '01'}`),
-      numeroDisco: String(active?.numeroDisco || '01').padStart(2, '0'),
-      placa: String(active?.placa || 'TAA-5152'),
+      id: String(active?.id || `BUS-${cleanDisco}`),
+      numeroDisco: cleanDisco,
+      placa: String(session.placaBus || active?.placa || "PENDIENTE"),
     };
   });
 
