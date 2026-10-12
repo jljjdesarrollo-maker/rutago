@@ -156,6 +156,26 @@ export async function GET(req: NextRequest) {
           updates.conductor = healedCond;
         }
 
+        // 3. Regularizar cuadre histórico del 05 de octubre en Unidad 08 (faltante en cuaderno -$6.00)
+        if (
+          r.date === "2026-10-05" &&
+          String(r.conductor || "").includes("BUS-08") &&
+          r.sobrante === 0 &&
+          r.entregaAyudante === 14
+        ) {
+          r.sobrante = -6;
+          r.entregaAyudante = 8;
+          r.production = 188.75;
+          await db.dailyRecord.update({
+            where: { id: r.id },
+            data: {
+              sobrante: -6,
+              entregaAyudante: 8,
+              production: 188.75,
+            },
+          }).catch(() => {});
+        }
+
         if (Object.keys(updates).length > 0) {
           await db.dailyRecord.update({
             where: { id: r.id },
@@ -389,7 +409,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, date, km, kmInicial, kmFinal, conductor, ayudanteNombre, vtCode } = body;
+    const { id, date, km, kmInicial, kmFinal, conductor, ayudanteNombre, vtCode, sobrante, production, entregaAyudante, cajaComun, tickets, totalGastos } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Falta id del registro' }, { status: 400 });
@@ -403,6 +423,12 @@ export async function PATCH(req: NextRequest) {
     if (conductor !== undefined) updateData.conductor = conductor;
     if (ayudanteNombre !== undefined) updateData.ayudanteNombre = ayudanteNombre;
     if (vtCode !== undefined) updateData.vtCode = vtCode;
+    if (sobrante !== undefined) updateData.sobrante = Number(sobrante);
+    if (production !== undefined) updateData.production = Number(production);
+    if (entregaAyudante !== undefined) updateData.entregaAyudante = Number(entregaAyudante);
+    if (cajaComun !== undefined) updateData.cajaComun = Number(cajaComun);
+    if (tickets !== undefined) updateData.tickets = Number(tickets);
+    if (totalGastos !== undefined) updateData.totalGastos = Number(totalGastos);
 
     const record = await db.dailyRecord.update({
       where: { id },

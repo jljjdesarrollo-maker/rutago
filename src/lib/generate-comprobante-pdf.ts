@@ -142,9 +142,13 @@ export async function generateComprobantePDF(record: SavedRecord): Promise<Blob>
     { label: 'Caja Comun', value: record.cajaComun.toFixed(2), color: COLORS.white },
   ];
 
-  // Show sobrante only if non-zero
+  // Show sobrante / faltante only if non-zero
   if (record.sobrante !== undefined && record.sobrante !== 0) {
-    summaryItems.push({ label: 'Sobrante', value: record.sobrante.toFixed(2), color: COLORS.green });
+    summaryItems.push({
+      label: record.sobrante > 0 ? 'Sobrante' : 'Faltante',
+      value: (record.sobrante > 0 ? '+' : '') + record.sobrante.toFixed(2),
+      color: record.sobrante > 0 ? COLORS.green : COLORS.red,
+    });
   }
 
   summaryItems.push(
