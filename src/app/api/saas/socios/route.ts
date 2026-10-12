@@ -122,9 +122,15 @@ export async function POST(req: NextRequest) {
         rol: nuevoSocio.rol,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating socio:', error);
-    return NextResponse.json({ error: 'Error al registrar el socio' }, { status: 500 });
+    if (error?.message?.includes('connection pool') || error?.message?.includes('Timed out fetching') || error?.message?.includes('timeout') || error?.code === 'P1008' || error?.code === 'P1001') {
+      return NextResponse.json(
+        { error: 'La base de datos estaba en reposo y se está reconectando. Por favor, pulsa Guardar Socio una vez más.' },
+        { status: 503 }
+      );
+    }
+    return NextResponse.json({ error: error?.message || 'Error al registrar el socio' }, { status: 500 });
   }
 }
 

@@ -4454,3 +4454,17 @@ bun test tests/manual-socio.test.ts
   2. `docs/arqueos_unidad_01/ARQUEOS_DETALLE_VUELTAS_UNIDAD_01.csv` (1,216 filas, 17 columnas):
      * Fila por cada frecuencia/vuelta individual: `Numero_Jornada`, `Fecha`, `Turno_VT`, `Unidad_Disco`, `Conductor`, `Ayudante`, `Orden_Vuelta`, `Hora_Programada`, `Ruta_Origen`, `Ruta_Destino`, `Sentido`, `Tipo_Frecuencia`, `Ingreso_Boletos_USD`, `Ingreso_Efectivo_USD`, `Pasajeros_Caja_Comun`, `Monto_Caja_Comun_USD`, `Total_Vuelta_USD`.
 - **Compatibilidad Universal:** Incluye cabecera BOM (`\uFEFF`) para apertura directa e inmediata en Microsoft Excel, LibreOffice y Google Sheets sin problemas de codificación.
+
+---
+
+## 🏛️ v3.61.38 - RESOLUCIÓN DE TIMEOUT (30s) EN POST /api/saas/socios Y OPTIMIZACIÓN DE POOL POSTGRESQL (2026-10-12)
+> **ESTADO:** 🟢 BLINDAJE DE TIMEOUT IMPLEMENTADO Y DESPLEGADO EN `main` Y `staging`  
+> **FECHA DE REGISTRO:** 2026-10-12 | **SISTEMA:** RutaGo - Motor SaaS Multi-Tenant  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Diagnóstico del Error 500 Reportado por el Usuario:
+- **Error:** `POST /api/saas/socios` devolvió `Status: 500` con `Execution Duration: 30.08s` en Vercel (`dpl_FWiP3853t5iMRgK8P2rCRYGjKc5V`).
+- **Causa Raíz:** Vercel impone un límite estricto de timeout de 30.00 segundos por invocación de función serverless. La base de datos de producción (PostgreSQL serverless con scale-to-zero) se encontraba en reposo (cold start). En `src/lib/db.ts`, los parámetros `pool_timeout=30` y `connect_timeout=30` provocaban que Prisma esperara 30 segundos exactos, haciendo que Vercel abortara la función con `500 FUNCTION_INVOCATION_TIMEOUT` antes de que Prisma pudiera responder.
+- **Acción Correctiva:**
+  1. **Reducción de Timeouts en `src/lib/db.ts`:** Se ajustaron `pool_timeout` y `connect_timeout` de 30s a **15s** para que Prisma resuelva o reintente muy por debajo del umbral de corte de Vercel.
+  2. **Manejo Defensivo en `POST /api/saas/socios` (`src/app/api/saas/socios/route.ts`):** Captura de excepciones de conexión y timeout devolviendo código HTTP `503` con mensaje amigable: *"La base de datos estaba en reposo y se está reconectando. Por favor, pulsa Guardar Socio una vez más."*

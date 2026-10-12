@@ -21,17 +21,17 @@ function formatPoolUrl(url?: string): string | undefined {
   try {
     const parsed = new URL(url);
     if (!parsed.searchParams.has("pool_timeout")) {
-      parsed.searchParams.set("pool_timeout", "30");
+      parsed.searchParams.set("pool_timeout", "15");
     }
     if (!parsed.searchParams.has("connect_timeout")) {
-      parsed.searchParams.set("connect_timeout", "30");
+      parsed.searchParams.set("connect_timeout", "15");
     }
     return parsed.toString();
   } catch {
     const sep = url.includes("?") ? "&" : "?";
     let params = "";
-    if (!url.includes("pool_timeout=")) params += "pool_timeout=30&";
-    if (!url.includes("connect_timeout=")) params += "connect_timeout=30";
+    if (!url.includes("pool_timeout=")) params += "pool_timeout=15&";
+    if (!url.includes("connect_timeout=")) params += "connect_timeout=15";
     params = params.replace(/&$/, "");
     return params ? `${url}${sep}${params}` : url;
   }
