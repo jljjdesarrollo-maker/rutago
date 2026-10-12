@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Delete, Truck, Loader2, ShieldAlert } from 'lucide-react';
 import { getDeviceInfo } from '@/lib/device-storage';
 import { syncMantenimientoConfigConServidor } from '@/lib/mantenimiento-estaciones';
