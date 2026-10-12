@@ -4474,3 +4474,9 @@ bun test tests/manual-socio.test.ts
 - **Autobús Disco 08:** 🟢 VINCULADO Y ACTIVO en Producción (`BUS-08`, Placa: `HAA5619`, Odómetro: `179,440 km`, Plan Renova: `$23.00`).
 - **Suscripción SaaS:** 🟢 ACTIVA (`cmv5tmhon0002le062g38mer1`, $20.00/mes, Próximo corte: `2026-11-05`).
 - **Tripulación (Personal):** ⚠️ Pendiente de alta en la pantalla de Personal para asignar PINs al Conductor Jhony Bolívar Sánchez y al Ayudante Edgar Daniel Tapia.
+
+### 📍 3. Certificación de Alta Completa de Tripulación en Producción (2026-10-12 22:42 UTC):
+- **Conductor:** 🟢 **JHONY BOLÍVAR SÁNCHEZ SALINAS** (`cmv5u0t8h0001gx06pbev95fu`, Cédula: `1105753212`, Tel: `0967626373`, Rol: `CONDUCTOR`, `esActual: true`, `activo: true`).
+- **Ayudante:** 🟢 **EDGAR DANIEL TAPIA CHIMBO** (`cmv5u73ew0003gx06v69blmkg`, Cédula: `1724638547`, Tel: `0968256569`, Rol: `AYUDANTE`, `esActual: true`, `activo: true`).
+- **Vinculación Multi-Tenant:** Ambos tripulantes quedaron vinculados formalmente a la cuenta de socio de **Robert Leonardo Ordóñez Moreno** y la **Unidad 08 (Placa HAA5619)**.
+- **Acceso Móvil Habilitado:** Credenciales listas y activas para inicio de sesión inmediato desde el teléfono móvil en `https://rutago-jljjj.vercel.app`.
