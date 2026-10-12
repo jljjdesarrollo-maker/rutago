@@ -15,7 +15,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isStaging, setIsStaging] = useState(false);
+  const [isStaging, setIsStaging] = useState(true); // Rama Staging: Azul Corporativo (#1E40AF) por defecto
 
   useEffect(() => {
     if (typeof window !== "undefined") {
