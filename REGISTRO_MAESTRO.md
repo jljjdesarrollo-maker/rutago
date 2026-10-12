@@ -4592,3 +4592,23 @@ bun test tests/manual-socio.test.ts
 2. **Garantía en Ramas:**
    - La rama `main` despliega por defecto con el tema Vino Institucional.
    - La rama `staging` despliega con el tema Azul Transporte.
+
+
+---
+
+## 🏛️ v3.61.42 - CORRECCIÓN DE IMPORT EN REACT: `useEffect` EN `LoginScreen.tsx` (2026-10-12)
+
+> **ESTADO:** 🟢 ERROR RESUELTO, COMPILADO Y SINCRONIZADO EN `main` Y `staging`  
+> **FECHA DE REGISTRO:** 2026-10-12 | **SISTEMA:** RutaGo - UI/UX y Estabilidad de Arranque  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Incidente Reportado:
+- Al cargar la pantalla de login aparecía el error: `¡Algo salió mal! useEffect is not defined`.
+- **Causa Raíz:** En `src/components/transport/LoginScreen.tsx`, se había invocado `useEffect` para la detección dinámica de entorno sin haberlo importado de `react` (la cabecera solo importaba `import { useState } from 'react';`).
+
+### 📍 2. Solución Aplicada:
+- Se corrigió la cabecera a: `import { useState, useEffect } from 'react';`.
+- Se validaron las pruebas unitarias (88/88 aprobadas).
+- Se sincronizaron los cambios y se desplegaron en:
+  * Rama `main` (`41fc129`).
+  * Rama `staging` (`cc6c47e`).
