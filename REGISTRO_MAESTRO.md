@@ -4301,3 +4301,111 @@ bun test tests/manual-socio.test.ts
     6. Trazabilidad de boletos con `busId` y `numeroDisco`.
   - **Total de la Suite del Proyecto:** 71/71 tests aprobados (100%).
 
+---
+
+## 🏛️ v3.61.36 - EN ANÁLISIS Y PLANIFICACIÓN: COMPARATIVA ESTADÍSTICA JUSTA DE PRODUCCIÓN BRUTA Y BENCHMARK DE FLOTA
+
+> **ESTADO:** 🟡 EN ANÁLISIS Y PLANIFICACIÓN ARQUITECTÓNICA (SIN CAMBIOS DE CÓDIGO)  
+> **FECHA DE INICIO:** 2026-10-11 | **SISTEMA:** RutaGo - Motor de Benchmark de Flota & IPF  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **OBJETIVO:** Diseñar la comparativa matemáticamente justa y estadísticamente validada de Producción e Ingresos Brutos Totales entre unidades, incorporando el umbral de representatividad muestral (15 jornadas por ciclo de VT), normalizando la divisa oficial en dólares ($) y habilitando la carga híbrida y conmutador multi-unidad.
+
+### 📍 1. Diagnóstico del Estado Actual de Cálculo (`benchmark-metrics.ts` y `BenchmarkScreen.tsx`)
+1. **Comparación Actual de Producción Bruta:**
+   - La función `calculateBusMetrics` acumula directamente `produccionTotal = sum(record.production)` para el período seleccionado (`HOY`, `7_DIAS`, `ESTE_MES`, `MES_ANTERIOR`, `HISTORICO`).
+   - El ranking se ordena de forma primaria por **IPF** (`ipf = produccionTotal / vueltasEfectivas`), que mide el ingreso medio por vuelta.
+   - En las micro-tarjetas se muestran: `Producción Total ($)`, `Vueltas Efectivas` y `Jornadas Operadas (días)`.
+2. **El Problema de Justicia Estadística:**
+   - Si se compara la **Producción Bruta Total** pura (ej. `$5,800.00` del Bus 01 con 28 días trabajados frente a `$450.00` del Bus 10 con solo 2 días trabajados), la comparación en valor monetario acumulado es asimétrica y no representativa del rendimiento real.
+   - Si una unidad recién suscrita tiene solo 1 o 2 días registrados, un día con alta demanda en fin de semana puede inflar artificialmente su IPF, o un día de lluvia/avería puede hundirlo, generando conclusiones sesgadas.
+3. **¿Cómo puede saberlo el socio actualmente en la interfaz?**
+   - Actualmente, la pantalla muestra los días operados (`X días`) y el total acumulado, pero **no advierte si la muestra es estadísticamente suficiente** ni desglosa el ingreso medio diario normalizado por jornada laborada (`ingresoPorDia`).
+
+### 📍 2. Propuesta Arquitectónica: Comparativa Justa y Validación Muestral (Umbral de 15 Jornadas)
+1. **Fundamento Técnico del Umbral de 15 Jornadas:**
+   - La cooperativa cuenta con **15 turnos troncales oficiales (VT01 al VT15)** en rotación rotativa diaria.
+   - 15 jornadas de arqueo representan exactamente **1 ciclo rotacional completo** en el que un autobús ha cubierto todos los horarios (madrugadas, horas pico escolares, turnos nocturnos, días hábiles y fines de semana).
+   - Por tanto, **15 jornadas** es la muestra estadística científicamente perfecta para neutralizar la variabilidad horaria de los turnos.
+2. **Escala de Madurez Estadística por Unidad:**
+   - `🌱 Calibración Temprana (1 a 4 jornadas)`: Badge *"En Calibración"* — Alerta sutil: *"Datos preliminares en rodaje muestral"*.
+   - `🟡 Tendencia en Formación (5 a 14 jornadas)`: Badge *"Muestra Parcial (X/15)"* — Comparativa orientativa de tendencia.
+   - `🟢 Muestra Certificada (15+ jornadas)`: Badge *"Ciclo VT Certificado"* — Comparativa consolidada de alta precisión estadística.
+3. **Métricas de Comparación Justa a Visualizar:**
+   - **Métrica A - IPF por Frecuencia ($ / vuelta):** Permite comparar la eficiencia por viaje sin importar cuántos días descansó la unidad.
+   - **Métrica B - Ingreso Medio Diario ($ / jornada):** `Producción Total / Días Trabajados`. Permite comparar la capacidad de facturación diaria en igualdad de condiciones.
+   - **Métrica C - Proyección de Mes Completo (Normalizada):** Proyecta la producción mensual esperada (`Ingreso Medio Diario × Días del Período`) para que un bus que lleva 5 días pueda compararse en escala mensual contra uno que lleva 28 días.
+
+### 📍 3. Diagnóstico de Evolución Temporal de la Tripulación (Cómo Sabe el Socio si su Unidad Mejoró en el Tiempo)
+1. **La Realidad de la Estacionalidad del Transporte Interprovincial/Cantonal:**
+   - En el transporte de pasajeros (Loja - Vilcabamba y circuitos sur), el mercado tiene patrones estacionales universales:
+     * **Agosto:** Pico máximo anual de demanda (Romería de El Cisne, vacaciones de régimen Sierra, turismo en Vilcabamba, festivales).
+     * **Septiembre y Octubre:** Descenso generalizado y constante (inicio de clases, fin de vacaciones, lluvias).
+   - Como toda la flota opera en la misma carretera y enfrenta exactamente la misma fluctuación, **la comparación absoluta de dinero entre meses (Agosto vs Septiembre) es engañosa**.
+   - Sin embargo, **la comparación relativa de un autobús frente a la media de la flota en un mismo período de 15 días (o un mes) es el patrón de medida perfecto**: todas las unidades rotan por los mismos 15 turnos (VT01 al VT15).
+2. **Limitaciones del Estado Actual en `BenchmarkScreen.tsx`:**
+   - El sistema actual calcula el `IPF` y la `comparativaMediaIPF` (diferencia monetaria y porcentual respecto a la media de la cooperativa), pero es una **foto estática de un único período**.
+   - No almacena ni muestra la **evolución de la brecha relativa inter-ciclos** (ej. si hace 15 días la tripulación estaba 12% por debajo de la flota y en estos 15 días cerró la brecha al 3% por debajo).
+   - Sin este delta relativo, el socio no tiene forma de saber de un vistazo si el trabajo de su tripulación mejoró o empeoró respecto a sus colegas.
+3. **Propuesta del Experto: El «Índice de Eficiencia Relativa (IER)» y Comparativa de Ciclos:**
+   - **Métrica 1 - IER (Índice de Eficiencia Relativa % Base 100):**
+     $$\text{IER} = \left(\frac{\text{IPF del Bus}}{\text{IPF Promedio de la Flota}}\right) \times 100\%$$
+     * Si la flota hace $20/vuelta y el bus hace $20: $\text{IER} = 100\%$ (Paridad perfecta).
+     * Si el bus hace $18/vuelta: $\text{IER} = 90\%$ (Déficit de 10%).
+   - **Métrica 2 - Delta de Rendimiento Inter-Ciclo (Evolución de 15 Días):**
+     * **Ciclo 1 (15 días previos):** IER = 88% (Tripulación producía 12% menos que el promedio).
+     * **Ciclo 2 (15 días actuales):** IER = 97% (Tripulación produce solo 3% menos que el promedio).
+     * **Veredicto Estadísticamente Demostrado:**  
+       🟢 **¡Mejora comprobada de +9.0 puntos porcentuales frente a la cooperativa!**
+     * Aunque por estacionalidad el efectivo absoluto en septiembre sea menor que en agosto, el socio **demuestra matemáticamente que su tripulación aprendió la ruta, mejoró su captura de pasaje y redujo la fuga de ingresos**.
+   - **Métrica 3 - Impacto Económico Estimado en Dólares:**
+     * Traducir el delta relativo a dólares directos: *"Esta mejora representa aprox. +$X.XX adicionales por jornada para el socio"*.
+   - **Métrica 4 - Filtro Ergonómico de Ciclo de 15 Días:**
+     * Incorporar la pastilla `[ Ciclo 15 Días ]` y el interruptor `[ 🔄 Comparar con Ciclo Anterior (15d) ]`.
+
+### 📍 4. Comparativa Directa de Ingreso Bruto ($5,000 vs $6,500 vs $6,300) y Brecha en Efectivo
+1. **Requerimiento Clave del Socio:**
+   - Además de las tasas de eficiencia abstractas (IPF e IER), el socio necesita ver los **dólares reales acumulados en el período**:
+     * *"¿Cuánto cobró mi bus en estos 15 días ($5,000) y cuánto cobraron los otros buses ($6,500 y $6,300)?"*
+2. **Compatibilidad con el Protocolo de Privacidad Gremial:**
+   - La **Producción Bruta Total de la unidad** sí se muestra en la comparativa de la cooperativa.
+   - Lo que permanece estrictamente **oculto y privado** para los demás buses son los libros internos:
+     * Gastos particulares de taller/diésel.
+     * Retenciones de caja común.
+     * Utilidad neta de bolsillo del dueño.
+     * Placa y nombre del propietario (se muestra como `#T-01`, `#T-02`).
+   - Tu propia unidad muestra el 100% de sus datos (Placa real, dueño real, libros completos).
+3. **Visualización en Pantalla (Podio de Producción Bruta y Brecha en Dólares):**
+   - **Podio de Ingresos del Período:**
+     * 🥇 `Unidad Troncal #T-01`: **$6,500.00** *(15 días • 90 vtas • IPF $72.22)*
+     * 🥈 `Unidad Troncal #T-02`: **$6,300.00** *(15 días • 88 vtas • IPF $71.59)*
+     * 🥉 `⭐ Bus 10 (Tu Unidad)`: **$5,000.00** *(15 días • 85 vtas • IPF $58.82)*
+   - **Tarjeta de Brecha de Captura (Dinero en la Calle):**
+     * **Media de la Flota:** $5,933.33.
+     * **Brecha en Efectivo de Tu Unidad:** `-$933.33` *(Hay ~$930.00 que se quedaron sobre la mesa en estos 15 días)*.
+   - **En la Siguiente Quincena (Evaluación de Mejora):**
+     * Si la tripulación ajusta tiempos y cobranza:
+       * `Unidad #T-01`: $6,450.00
+       * `Unidad #T-02`: $6,350.00
+       * `⭐ Bus 10 (Tu Unidad)`: **$6,100.00**
+     * **Veredicto:**  
+       * Brecha reducida de `-$933.33` a solo `-$200.00`.
+       * ¡La tripulación **recuperó +$1,100.00 de recaudación** y se puso a tiro de la media!
+
+### 📍 5. Plan de Acción Integral (Roadmap de Implementación):
+- [ ] **Fase 1: Corrección de Divisa en `BenchmarkScreen.tsx`:**
+  - Sustituir todas las cadenas hardcodeadas de soles (`S/`) por dólares americanos (`$`) en toda la interfaz, gráficos y generador de WhatsApp.
+- [ ] **Fase 2: Carga Híbrida de Flota desde `/api/buses`:**
+  - `loadData()` consultará la API remota `/api/buses` con fallback offline a `getAllBuses()` de `localStorage`.
+- [ ] **Fase 3: Selector Multi-Unidad para Socios con más de un Autobús:**
+  - Conmutador táctil ergonómico para seleccionar cuál de sus buses suscritos actúa como *"Tu Unidad"*.
+- [ ] **Fase 4: Semáforo de Representatividad Muestral (Mínimo 15 Jornadas / Ciclo VT):**
+  - Indicadores visuales de rodaje: `🌱 Calibración (1-4)`, `🟡 En Progreso (5-14)`, `🟢 Certificado (15+)`.
+- [ ] **Fase 5: Podio Comparativo de Ingreso Bruto Total y Brecha en Efectivo:**
+  - Comparativa directa de dinero ($5,000 vs $6,500 vs $6,300) y tarjeta de *"Brecha de Captura vs Media"*.
+- [ ] **Fase 6: Módulo de Evolución Temporal de Tripulación (IER Inter-Ciclos):**
+  - Filtro quincenal de 15 días y comparativa automática con la quincena anterior (Delta de IER y dólares ganados).
+- [ ] **Fase 7: Pruebas Automatizadas Unitarias (100% de Cobertura) y Documentación:**
+  - Nuevos tests en `tests/benchmark-eficiencia-temporal.test.ts` asegurando paridad matemática y cero regresiones.
+
+
+
