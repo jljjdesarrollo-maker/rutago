@@ -544,8 +544,10 @@ export function RecordForm({ saving, error, onBack, onSave }: RecordFormProps) {
               </div>
               {totals.sobrante !== 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/60">Sobrante</span>
-                  <span className="font-semibold text-[#4ADE80]">S/ {totals.sobrante.toFixed(2)}</span>
+                  <span className="text-white/60">{totals.sobrante > 0 ? "Sobrante" : "Faltante"}</span>
+                  <span className={`font-semibold ${totals.sobrante > 0 ? "text-[#4ADE80]" : "text-amber-400"}`}>
+                    ${totals.sobrante > 0 ? "+" : ""}{totals.sobrante.toFixed(2)}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between text-sm">

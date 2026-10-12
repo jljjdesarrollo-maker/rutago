@@ -296,7 +296,7 @@ export function buildCanonicalRecordPayload(
     expenses: normalizedExpenses,
     tickets: Math.max(0, toCleanNumber(input.tickets)),
     cajaComun,
-    sobrante: Math.max(0, toCleanNumber(input.sobrante)),
+    sobrante: toCleanNumber(input.sobrante), // Permite valores negativos (faltante de caja en cuaderno)
     photoUrl: input.photoUrl || null,
     ...(input.odometroEstado ? { odometroEstado: input.odometroEstado } : {}),
     ...(input.odometroKmTeorico !== undefined

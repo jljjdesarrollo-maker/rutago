@@ -507,7 +507,7 @@ export async function generateReportPDF(data: ReportData): Promise<Blob> {
         y += 5;
 
         if (record.sobrante && record.sobrante !== 0) {
-          addText(`Sobrante: ${formatMoney(record.sobrante)}`, ml, y + 0.5, { size: 7, color: COLORS.green, bold: true });
+          addText(`${record.sobrante > 0 ? "Sobrante" : "Faltante"}: ${record.sobrante > 0 ? "+" : ""}${formatMoney(record.sobrante)}`, ml, y + 0.5, { size: 7, color: record.sobrante > 0 ? COLORS.green : COLORS.red, bold: true });
           y += 6;
         }
       }

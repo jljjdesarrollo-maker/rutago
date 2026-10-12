@@ -228,7 +228,15 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
                 <span className="text-white/60">Produccion (Real)</span>
                 <span className="font-bold text-lg">S/ {rec.production.toFixed(2)}</span>
               </div>
-              <p className="text-[10px] text-white/30">Efectivo contado + Sobrante</p>
+              <p className="text-[10px] text-white/30">Efectivo contado + Sobrante/Faltante</p>
+              {rec.sobrante !== 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/60">Sobrante / Faltante</span>
+                  <span className={`font-semibold ${rec.sobrante > 0 ? "text-[#4ADE80]" : "text-amber-400"}`}>
+                    ${rec.sobrante > 0 ? "+" : ""}{rec.sobrante.toFixed(2)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-white/60">Caja Comun</span>
                 <span className="font-semibold">S/ {rec.cajaComun.toFixed(2)}</span>

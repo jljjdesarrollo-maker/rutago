@@ -1330,15 +1330,16 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
                 />
               </div>
               <div>
-                <Label className="text-xs font-semibold text-gray-700">Sobrante ($)</Label>
+                <Label className="text-xs font-semibold text-gray-700">Sobrante / Faltante ($)</Label>
                 <Input
                   type="number"
                   step="0.01"
-                  placeholder="0.00"
+                  placeholder="0.00 (- si faltó)"
                   value={sobrante}
                   onChange={e => setSobrante(e.target.value)}
                   className="mt-1 h-10 rounded-xl text-xs font-bold"
                 />
+                <p className="text-[10px] text-gray-400 mt-0.5">Negativo si faltó dinero (ej: -6.00)</p>
               </div>
             </div>
 
@@ -1442,6 +1443,14 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
               <span>Total Gastos:</span>
               <span className="font-bold text-red-600">-${totals.totalGastos.toFixed(2)}</span>
             </div>
+            {totals.sobranteNum !== 0 && (
+              <div className="flex justify-between text-xs text-gray-600">
+                <span>{totals.sobranteNum > 0 ? 'Sobrante:' : 'Faltante:'}</span>
+                <span className={`font-bold ${totals.sobranteNum > 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  {totals.sobranteNum > 0 ? '+' : ''}${totals.sobranteNum.toFixed(2)}
+                </span>
+              </div>
+            )}
             <Separator className="my-1" />
             <div className="flex justify-between text-sm font-extrabold text-[#912D26]">
               <span>PRODUCCIÓN TOTAL:</span>

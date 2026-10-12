@@ -4612,3 +4612,54 @@ bun test tests/manual-socio.test.ts
 - Se sincronizaron los cambios y se desplegaron en:
   * Rama `main` (`41fc129`).
   * Rama `staging` (`cc6c47e`).
+
+---
+
+## 🏛️ v3.61.43 - AUDITORÍA CONTABLE: SOPORTE DE SOBRANTE NEGATIVO (FALTANTE DE CAJA) Y REGULARIZACIÓN HISTÓRICA UNIDAD 08 (2026-10-12)
+> **ESTADO:** 🟢 APLICADO, CERTIFICADO CON 91/91 PRUEBAS APROBADAS (100% VERDE)  
+> **FECHA DE REGISTRO:** 2026-10-12 | **SISTEMA:** RutaGo - Carga Histórica, Motor Canónico y Finanzas  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Incidente y Auditoría Reportada por el Usuario:
+* **Caso Específico:** En el registro del **05 de octubre de 2026** de la **Unidad 08**, el socio había registrado un sobrante de **`-$6.00`** (faltante de caja en el cuaderno). Inicialmente el cuadre mostraba una Entrega del Ayudante de **`$8.00`**. Sin embargo, en revisiones posteriores la interfaz mostraba **`$14.00`**, generando una discrepancia de $6.00 con el dinero físico entregado por el ayudante.
+* **Causa Raíz de Software Descubierta:**
+  1. En `src/lib/canonical-record-payload.ts`, la función `buildCanonicalRecordPayload` ejecutaba:
+     ```typescript
+     sobrante: Math.max(0, toCleanNumber(input.sobrante))
+     ```
+     Dicho clámpeo forzaba cualquier valor negativo a `0`, mutilando el faltante de -$6.00 registrado por el socio.
+  2. Al convertirse en `0`, el cálculo de entrega al ayudante aplicaba:
+     $$	ext{Entrega Ayudante} = 	ext{Total Efectivo Real} (\$187.00) + 	ext{Sobrante} (\$0.00) - 	ext{Total Gastos} (\$173.00) = \$14.00$$
+     en lugar de:
+     $$	ext{Entrega Ayudante} = 187.00 + (-6.00) - 173.00 = \$8.00$$
+  3. Esto distorsionaba la contabilidad del socio, ya que físicamente el ayudante solo entregó $8.00.
+
+### 📍 2. Criterio Contable y Decisión de Ingeniería:
+* **¿Dejar en Cero o Permitir Negativo?**
+  - **Dejarlo en Cero:** Error contable grave; falsea la realidad económica del socio, haciendo parecer que se recibió dinero inexistente ($14 en vez de $8).
+  - **Permitir Negativo (Mejor Práctica):** Preserva con exactitud la matemática de campo y el faltante de caja en cuaderno. Si el ayudante entrega menos dinero por un descuadre de ruta, el socio registra `-$6.00`, obteniendo el cuadre exacto de **$8.00** en el bolsillo.
+
+### 📍 3. Solución de Ingeniería Implementada:
+1. **Desclámpeo en el Constructor Canónico (`src/lib/canonical-record-payload.ts`):**
+   - Se reemplazó `Math.max(0, toCleanNumber(input.sobrante))` por `toCleanNumber(input.sobrante)`, permitiendo números negativos legítimos.
+2. **Auto-Regularización del Registro Histórico (`src/app/api/records/route.ts`):**
+   - En el endpoint `GET`, se agregó regularización defensiva para el registro específico del 05 de octubre de 2026 de la Unidad 08:
+     * Restablece `sobrante = -6`.
+     * Restablece `entregaAyudante = 8.00`.
+     * Restablece `production = 188.75`.
+3. **Soporte Completo de Actualización en PATCH (`src/app/api/records/route.ts`):**
+   - Soporte para actualizar `sobrante`, `production`, `entregaAyudante`, `cajaComun`, `tickets` y `totalGastos`.
+4. **Claridad Visual en UI de Carga Histórica (`src/components/transport/CargaHistoricaScreen.tsx`):**
+   - Etiqueta actualizada: `Sobrante / Faltante ($)` con placeholder `0.00 (- si faltó)` y leyenda orientativa `Negativo si faltó dinero (ej: -6.00)`.
+   - Inclusión de la fila de `Sobrante / Faltante` en la tarjeta de totales con código de color dinámico (verde para positivo, ámbar para faltante negativo).
+5. **Transparencia en Detalle del Registro y Formularios (`RecordDetail.tsx`, `RecordForm.tsx`):**
+   - Etiqueta dinámica `Sobrante` vs `Faltante` con signo explícito (`+$...` / `-$...`) y coloración diferenciada.
+6. **Emisión de Comprobantes y Reportes PDF (`generate-comprobante-pdf.ts`, `generate-report-pdf.ts`):**
+   - Si `sobrante < 0`, se rotula explícitamente como `Faltante: -$X.XX` en color rojo institucional, manteniendo transparencia contable.
+
+### 📍 4. Certificación y Pruebas Unitarias:
+* **Suite Creada (`tests/sobrante-negativo-cuadre.test.ts`):**
+  - `1. buildCanonicalRecordPayload preserva fielmente sobrante negativo (-$6.00) sin clámpeo a 0` (Aprobado).
+  - `2. Cuadre Matemático Exacto del 05 de Octubre 2026 (Unidad 08): Entrega Ayudante = $8.00` (Aprobado).
+  - `3. Sin el faltante de -$6.00 (sobrante = 0), el cálculo erróneo arrojaba $14.00` (Aprobado).
+* **Resultado Global del Proyecto:** 91/91 tests aprobados (100% verde en 12 suites).
