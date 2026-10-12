@@ -4468,3 +4468,9 @@ bun test tests/manual-socio.test.ts
 - **Acción Correctiva:**
   1. **Reducción de Timeouts en `src/lib/db.ts`:** Se ajustaron `pool_timeout` y `connect_timeout` de 30s a **15s** para que Prisma resuelva o reintente muy por debajo del umbral de corte de Vercel.
   2. **Manejo Defensivo en `POST /api/saas/socios` (`src/app/api/saas/socios/route.ts`):** Captura de excepciones de conexión y timeout devolviendo código HTTP `503` con mensaje amigable: *"La base de datos estaba en reposo y se está reconectando. Por favor, pulsa Guardar Socio una vez más."*
+
+### 📍 2. Auditoría Forense de Alta en Producción (2026-10-12 22:32 UTC):
+- **Socio Robert Leonardo Ordóñez Moreno:** 🟢 CREADO EXITOSAMENTE en Producción (`id: cmv5tmhn30000le063isqsx8b`, Cédula: `1103487193`, Teléfono: `0984609657`).
+- **Autobús Disco 08:** 🟢 VINCULADO Y ACTIVO en Producción (`BUS-08`, Placa: `HAA5619`, Odómetro: `179,440 km`, Plan Renova: `$23.00`).
+- **Suscripción SaaS:** 🟢 ACTIVA (`cmv5tmhon0002le062g38mer1`, $20.00/mes, Próximo corte: `2026-11-05`).
+- **Tripulación (Personal):** ⚠️ Pendiente de alta en la pantalla de Personal para asignar PINs al Conductor Jhony Bolívar Sánchez y al Ayudante Edgar Daniel Tapia.
