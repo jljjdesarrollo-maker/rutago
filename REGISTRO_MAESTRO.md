@@ -4495,3 +4495,19 @@ bun test tests/manual-socio.test.ts
   * **Líquido Entregado al Socio Robert Ordóñez:** `$473.00`
   * **Retención de Caja Común Total:** `$103.70`
 - **Estado de Auditoría:** 🟢 100% de vueltas, frecuencias y comprobantes de gasto verificados e indexados en Producción (`https://rutago-jljjj.vercel.app`).
+
+---
+
+## 🏛️ v3.61.39 - PERSONALIZACIÓN DE TEMA AZUL EN INICIO Y GESTIÓN DE DESPLIEGUES MANUALES (2026-10-12)
+> **ESTADO:** 🟢 TEMA AZUL APLICADO EN LOGIN Y PROTOCOLO DE DESPLIEGUE CONTROLADO DEFINIDO  
+> **FECHA DE REGISTRO:** 2026-10-12 | **SISTEMA:** RutaGo - UI/UX y DevOps  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Diagnóstico de Almacenamiento y Despliegues en Vercel:
+- **Functions Storage:** En Vercel, el almacenamiento de funciones corresponde al tamaño empaquetado de las Serverless Functions (.next/server). Vercel aplica políticas de retención automática que limpian builds antiguos. Sin embargo, cada despliegue automático consume minutos de compilación (límite de 6,000 min/mes en plan Hobby) y ejecuciones de frío en PostgreSQL.
+- **Control de Despliegue Manual:** Se implementa la estrategia de control selectivo:
+  * Convención `[skip ci]` / `[skip vercel]` en commits intermedios para respaldar en GitHub sin disparar builds en Vercel.
+  * Opcionalmente configurar en Vercel *Ignored Build Step* (`git log -1 --pretty=%B | grep -q "\[deploy\]"`).
+
+### 📍 2. Ajuste Visual de la Pantalla de Inicio:
+- En `src/components/transport/LoginScreen.tsx`, se sustituyó el color vino/rojo institucional (`#912D26`) por un **Azul Transporte Corporativo Moderno (`#1E40AF`)** en el contenedor del logotipo del camión y en los indicadores de progreso del PIN de 4 dígitos.

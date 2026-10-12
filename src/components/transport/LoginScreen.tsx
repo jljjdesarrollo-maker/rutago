@@ -137,7 +137,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
     <div className="flex flex-col min-h-[100dvh] bg-white">
       {/* Header */}
       <header className="pt-16 pb-8 px-6 text-center">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-[#912D26] mb-4 shadow-lg shadow-[#912D26]/20">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-[#1E40AF] mb-4 shadow-lg shadow-[#1E40AF]/25">
           <Truck className="w-10 h-10 text-white" />
         </div>
         <h1 className="text-2xl font-bold text-[#3A3A3A]">RutaGo</h1>
@@ -152,7 +152,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               key={i}
               className={`w-4 h-4 rounded-full transition-all duration-150 ${
                 i < pin.length
-                  ? 'bg-[#912D26] scale-110'
+                  ? 'bg-[#1E40AF] scale-110'
                   : 'bg-[#D6D6D6]'
               }`}
             />
