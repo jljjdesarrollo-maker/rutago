@@ -4480,3 +4480,18 @@ bun test tests/manual-socio.test.ts
 - **Ayudante:** 🟢 **EDGAR DANIEL TAPIA CHIMBO** (`cmv5u73ew0003gx06v69blmkg`, Cédula: `1724638547`, Tel: `0968256569`, Rol: `AYUDANTE`, `esActual: true`, `activo: true`).
 - **Vinculación Multi-Tenant:** Ambos tripulantes quedaron vinculados formalmente a la cuenta de socio de **Robert Leonardo Ordóñez Moreno** y la **Unidad 08 (Placa HAA5619)**.
 - **Acceso Móvil Habilitado:** Credenciales listas y activas para inicio de sesión inmediato desde el teléfono móvil en `https://rutago-jljjj.vercel.app`.
+
+### 📍 4. Migración Automatizada de Historial Real de Unidad 08 a Producción (2026-10-12 22:48 UTC):
+- **Registros Migrados desde Staging a Producción:** 5 jornadas completas de operación (01/10/2026 al 05/10/2026).
+- **Detalle de las Jornadas Migradas:**
+  1. `2026-10-01` (VT4) -> ID Producción: `cmv5uetu40000jq06s2huau08` | Prod: `$333.20` | Gastos: `$181.00` | Líquido Socio: `$129.00` | Km: 308 (Odómetro: 176,660 a 176,968).
+  2. `2026-10-02` (VT5) -> ID Producción: `cmv5ug1t8000bjq06axy8fmk8` | Prod: `$263.30` | Gastos: `$173.00` | Líquido Socio: `$49.00` | Km: 308.
+  3. `2026-10-03` (VT6) -> ID Producción: `cmv5ug1wi000njq06ip4ful38` | Prod: `$270.40` | Gastos: `$163.00` | Líquido Socio: `$86.00` | Km: 252.
+  4. `2026-10-04` (VT7) -> ID Producción: `cmv5ug1zn000yjq06h41luzbf` | Prod: `$433.95` | Gastos: `$195.00` | Líquido Socio: `$195.00` | Km: 252.
+  5. `2026-10-05` (VT8) -> ID Producción: `cmv5ug23h001bjq06d8icsl6b` | Prod: `$194.75` | Gastos: `$173.00` | Líquido Socio: `$14.00` | Km: 234.
+- **Totales Acumulados Oficiales Migrados:**
+  * **Producción Total:** `$1,495.60`
+  * **Gastos Totales:** `$885.00`
+  * **Líquido Entregado al Socio Robert Ordóñez:** `$473.00`
+  * **Retención de Caja Común Total:** `$103.70`
+- **Estado de Auditoría:** 🟢 100% de vueltas, frecuencias y comprobantes de gasto verificados e indexados en Producción (`https://rutago-jljjj.vercel.app`).
