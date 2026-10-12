@@ -1,6 +1,6 @@
 # 📖 Tutorial Oficial: Cómo dar de alta un Nuevo Socio y su Suscripción en RutaGo
 
-> **Versión del Sistema:** RutaGo SaaS v3.61.35+  
+> **Versión del Sistema:** RutaGo SaaS v3.61.36+  
 > **Destinatario:** SuperAdmin / Vendor Desarrollador  
 > **Entorno Oficial:** `https://rutago-jljjj.vercel.app`  
 
