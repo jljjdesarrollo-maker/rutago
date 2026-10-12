@@ -100,7 +100,7 @@ export function BenchmarkChart({
         <div className="space-y-1 pt-0.5">
           <div className="flex justify-between items-center text-[11px]">
             <span className="text-gray-400">IPF / Vuelta:</span>
-            <strong className="text-white text-xs">S/ {data.ipf.toFixed(2)}</strong>
+            <strong className="text-white text-xs">$ {data.ipf.toFixed(2)}</strong>
           </div>
 
           <div className="flex justify-between items-center text-[11px]">
@@ -114,13 +114,13 @@ export function BenchmarkChart({
                   : 'text-gray-300'
               }`}
             >
-              {data.diferencia > 0 ? `+S/ ${data.diferencia.toFixed(2)}` : `S/ ${data.diferencia.toFixed(2)}`} ({data.porcentajeDiferencia}%)
+              {data.diferencia > 0 ? `+$ ${data.diferencia.toFixed(2)}` : `$ ${data.diferencia.toFixed(2)}`} ({data.porcentajeDiferencia}%)
             </span>
           </div>
 
           <div className="flex justify-between items-center text-[11px]">
             <span className="text-gray-400">Producción Total:</span>
-            <strong className="text-gray-200">S/ {data.produccionTotal.toFixed(2)}</strong>
+            <strong className="text-gray-200">$ {data.produccionTotal.toFixed(2)}</strong>
           </div>
 
           <div className="flex justify-between items-center text-[11px]">
@@ -162,9 +162,9 @@ export function BenchmarkChart({
           </div>
           <p className="text-[11px] text-gray-500">
             {metric === 'IPF'
-              ? 'Ingreso Promedio por Frecuencia (S/ por vuelta)'
+              ? 'Ingreso Promedio por Frecuencia ($ por vuelta)'
               : metric === 'PRODUCCION'
-              ? 'Facturación Bruta Acumulada (S/)'
+              ? 'Facturación Bruta Acumulada ($)'
               : 'Vueltas Operadas vs Faltantes'}
           </p>
         </div>
@@ -226,7 +226,7 @@ export function BenchmarkChart({
             <YAxis
               tick={{ fontSize: 10, fill: '#6B7280' }}
               tickFormatter={(val) =>
-                metric === 'VUELTAS' ? `${val}` : `S/ ${val}`
+                metric === 'VUELTAS' ? `${val}` : `$ ${val}`
               }
             />
             <Tooltip content={<CustomTooltip />} />
@@ -239,7 +239,7 @@ export function BenchmarkChart({
                 strokeDasharray="4 4"
                 strokeWidth={2}
                 label={{
-                  value: `Media S/ ${ipfPromedioGrupo.toFixed(1)}`,
+                  value: `Media $ ${ipfPromedioGrupo.toFixed(1)}`,
                   position: 'insideTopRight',
                   fill: '#065F46',
                   fontSize: 10,

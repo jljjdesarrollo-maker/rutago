@@ -288,6 +288,71 @@ En la pantalla de **Historial** (`HistoryScreen`), los arqueos cerrados por el a
 
 ---
 
+## 📊 ETAPA 8: AUDITORÍA Y BENCHMARK DE FLOTA (v3.61.36)
+
+El módulo de **Benchmark de Flota** es tu centro de inteligencia competitiva. Su objetivo es responder con precisión matemática dos preguntas fundamentales:
+- ¿Mi autobús está recaudando lo que verdaderamente debería en la carretera?
+- ¿Mi tripulación está cobrando con agilidad y honradez o se está quedando dinero en el camino?
+
+### 🔒 8.1 Tu Privacidad está 100% Protegida (Protocolo Gremial)
+Para evitar celos o fricciones entre compañeros de la cooperativa:
+- **⭐ Tu Unidad:** Aparece identificada con tu número de disco (ej. Bus 01 o Bus 10), tu nombre y muestra el 100% de tus libros contables privados (efectivo de ruta, retenciones de caja común, gastos de diésel y utilidad líquida).
+- **🛡️ Unidades de los demás socios:** Aparecen estrictamente anonimizadas con códigos secuenciales (`#T-01`, `#T-02` para troncales y `#A-01`, `#A-02` para alimentadores). Sus placas dicen «Privada», el dueño aparece como «Socio de Cooperativa» y sus libros contables están sellados bajo candado (🔒 *Libros Contables Privados*).
+
+### 🕹️ 8.2 Cómo Utilizar la Pantalla (Paso a Paso)
+- **Paso 1: Selector Multi-Unidad (Si tienes más de un bus):** Si eres dueño de dos o más vehículos (ej. Bus 01 y Bus 10), en la parte superior verás la barra `Analizar como Tu Unidad: [ Bus 01 ] [ Bus 10 ]`. Al presionar cualquiera de los dos botones, la pantalla se recalcula al instante, analizando las brechas y podios desde la perspectiva de la unidad seleccionada.
+- **Paso 2: Selección Simétrica de Circuito:**
+  - `[ 🚌 Troncal (45 Pax) ]`: Selecciona este botón si tu vehículo es un bus grande que cubre el circuito principal Loja – Vilcabamba – Malacatos – Quinara – Yangana (turnos programados VT01 a VT15).
+  - `[ 🚐 Alimentador (28 Pax) ]`: Selecciona este botón si tu vehículo es un microbús de ramales especiales (turnos P1 a P3 hacia La Elvira, etc.).
+- **Paso 3: Selección de Períodos Temporales:**
+  - `[ Hoy ]`: Para auditar el turno en caliente del día.
+  - `[ 7 Días ]`: Para balances de la última semana.
+  - `[ Ciclo 15D (VT) ] (⭐ Recomendado)`: Audita exactamente 15 días continuos, lo que equivale a una rotación completa de los 15 cuadernos de turnos (VT1 al VT15) de la cooperativa. Este filtro neutraliza la suerte de turnos "buenos" o "malos".
+  - `[ Este Mes ]`: Facturación acumulada del mes en curso.
+  - `[ Mes Ant. ]`: Histórico consolidado del mes cerrado.
+- **Paso 4: Alternar entre Unidades y Ayudantes:**
+  - Pestaña **Ranking de Unidades**: Evalúa el rendimiento de los vehículos.
+  - Pestaña **Auditoría Ayudantes**: Evalúa la recaudación generada individualmente por cada cobrador según las vueltas y jornadas operadas.
+- **Paso 5: Compartir Resumen por WhatsApp:** Pulsa el botón verde `[ Compartir ]` en la cabecera para generar un reporte ejecutivo listo para enviar al grupo gremial o a tus socios, mostrando las medias del circuito sin revelar datos privados.
+
+### 💡 8.3 Cómo Interpretar la Información y los Indicadores
+1. **IPF (Ingreso Promedio por Frecuencia / Vuelta en $) — La Métrica Reina:**
+   - ¿Qué significa? Es el promedio en dólares recaudado por cada vuelta efectiva realizada: $\text{IPF} = \frac{\text{Producción Total}}{\text{Vueltas Efectivas}}$.
+   - ¿Por qué es superior al ingreso total? Porque el ingreso bruto total puede engañar: un bus que hizo $3,000 con 120 vueltas promedió solo **$25.00/vuelta**, mientras que un bus que hizo $2,880 con 80 vueltas promedió **$36.00/vuelta**. El segundo bus es mucho más eficiente.
+   - Semáforo frente a la media de la cooperativa:
+     - 🟢 `+$X.XX (+X%)`: Tu tripulación cobra por encima del promedio del grupo. Cobran con diligencia.
+     - ⚪ `En media`: Tu autobús rinde a la par de la cooperativa.
+     - 🔴 `-$X.XX (-X%)`: Tu unidad está rindiendo por debajo de la media. Alerta gerencial: Puede existir fuga de pasajes en horas punta o pérdida de pasajeros en carretera.
+2. **Podio de Ingresos Brutos ($) y Brecha en Efectivo (Dinero en la Calle):**
+   - El Podio (🥇, 🥈, 🥉): Muestra los 3 primeros lugares en dinero bruto acumulado (ej. 🥇 #T-01: $6,500.00 | 🥈 #T-02: $6,300.00 | 🥉 Tu Unidad: $5,000.00).
+   - La Tarjeta de Brecha en Efectivo:
+     - **Media del Grupo:** El promedio en dólares recaudado por bus en el período (ej. $5,933.33).
+     - **Brecha en Efectivo frente a la Media:** Te indica exactamente cuántos dólares físicos se quedaron en la calle: $\text{Brecha} = \text{Producción de Tu Bus} - \text{Media del Grupo}$ (ej. $5,000.00 - $5,933.33 = -$933.33).
+     - Diagnóstico: En las mismas 15 jornadas y en el mismo circuito, a tu autobús le faltaron **$933.33** para alcanzar el promedio (aprox. **$62.00 diarios**).
+     - **Diferencia vs Líder (#1):** Cuánto te separa del autobús más productivo de la flota (ej. -$1,500.00).
+3. **Semáforo de Madurez Estadística (Ciclo de 15 Jornadas VT):**
+   - `🌱 Calibración (1 a 4 días)`: Muestra inicial. Tu autobús recién empezó a rodar; los promedios aún pueden oscilar.
+   - `🟡 En Progreso (5 a 14 días)`: Muestra en formación de ciclo.
+   - `🟢 Ciclo VT Certificado (15+ días)`: Muestra científicamente válida. Tu autobús ya rodó los 15 cuadernos de turnos de la cooperativa. Nadie puede argumentar que le tocaron turnos difíciles; el resultado refleja 100% la calidad de cobro de tu tripulación.
+4. **IER (Índice de Eficiencia Relativa — Base 100):**
+   - ¿Qué es? Expresa tu rendimiento en porcentaje relativo sobre 100 frente a toda la flota (donde 100% es exactamente la media de la cooperativa): $\text{IER} = \left(\frac{\text{IPF del Bus}}{\text{IPF Promedio de la Flota}}\right) \times 100\%$.
+   - ¿Por qué es indispensable? Porque es inmune a temporadas altas o bajas:
+     - Si en temporada de vacaciones toda la ruta cae un 20%, pero tu IER marca 102%, sabes que tu tripulación está haciendo un gran trabajo y la caída se debe a la temporada.
+     - Si tu IER marca 84%, significa que estás rindiendo un 16% por debajo de tus compañeros, alertándote para tomar correctivos.
+5. **Evolución Temporal de Tripulación (Delta Inter-Ciclos):**
+   - Al seleccionar el período `[ Ciclo 15D (VT) ]`, el sistema compara automáticamente tus últimos 15 días contra los 15 días inmediatamente anteriores:
+     - Badge de Rendimiento: `▲ +11.8% IER vs Ciclo Anterior`.
+     - Dólares Recuperados en Caja: *«¡Tu tripulación recuperó +$ 1,100.00 en caja frente al ciclo anterior!»*.
+     - Utilidad Práctica: Te permite comprobar si una conversación con tu ayudante, un cambio de personal o un incentivo por recaudación funcionó en la vida real.
+6. **Auditoría de Ayudantes:**
+   - En la pestaña **Auditoría Ayudantes** puedes ver el desempeño individual de cada cobrador:
+     - Jornadas y Vueltas trabajadas.
+     - IPF por vuelta generado por ese ayudante.
+     - Facturación total acumulada.
+     - Permite reconocer a los ayudantes honrados y eficientes, y detectar a tiempo a quienes dejan escapar pasajes en carretera.
+
+---
+
 ## ❓ PREGUNTAS FRECUENTES DEL SOCIO (FAQ)
 
 **1. ¿Por qué mi Utilidad Neta no coincide con lo que tengo en mi cuenta bancaria?**  

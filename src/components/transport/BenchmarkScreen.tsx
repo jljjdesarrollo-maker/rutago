@@ -25,11 +25,12 @@ import {
   Eye,
   EyeOff,
   Info,
+  Sparkles,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { getAllBuses, getActiveBusId, getActiveBus } from '@/lib/fleet-storage';
+import { getAllBuses, getActiveBusId, getActiveBus, fetchBusesFromApi } from '@/lib/fleet-storage';
 import { type BusItem } from '@/types/fleet';
 import {
   type BenchmarkPeriod,
@@ -59,7 +60,7 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
   const [expandedBusId, setExpandedBusId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'UNIDADES' | 'TRIPULACIONES'>('UNIDADES');
 
-  // Identificación del usuario y bus activo para protocolo de privacidad
+  // Identificación del usuario y rol
   const isSuperAdmin = useMemo(() => {
     const rol = String(currentUser?.rol || '').toUpperCase();
     const id = String(currentUser?.id || '').toLowerCase();
@@ -67,13 +68,41 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
     return rol === 'SUPERADMIN_SAAS' || id.includes('superadmin') || nombre.includes('superadmin');
   }, [currentUser]);
 
+  const isSocio = useMemo(() => {
+    const rol = String(currentUser?.rol || '').toUpperCase();
+    return rol === 'SOCIO' || rol === 'SOCIO_PROPIETARIO';
+  }, [currentUser]);
+
+  const socioIdActual = currentUser?.socioId || (isSocio ? currentUser?.id : null);
+
+  // Unidades pertenecientes al socio (para el selector Multi-Unidad)
+  const misBusesSocio = useMemo(() => {
+    if (!fleet || fleet.length === 0) return [];
+    if (isSuperAdmin) return fleet;
+    if (socioIdActual) {
+      const match = fleet.filter((b: any) => b.socioId === socioIdActual);
+      if (match.length > 0) return match;
+    }
+    if (currentUser?.busId) {
+      const b = fleet.find(
+        (x) => x.id === currentUser.busId || `BUS-${x.numeroDisco.padStart(2, '0')}` === currentUser.busId
+      );
+      if (b) return [b];
+    }
+    const b01 = fleet.find((x) => x.numeroDisco === '01');
+    return b01 ? [b01] : fleet.slice(0, 1);
+  }, [fleet, socioIdActual, isSocio, isSuperAdmin, currentUser]);
+
+  // Selección interactiva de "Tu Unidad" para el socio (Fase 3)
+  const [selectedUnitId, setSelectedUnitId] = useState<string>(activeBusId || getActiveBusId() || 'BUS-01');
+
   // Permitir al SuperAdmin alternar entre vista anónima (como socio) y vista auditoría completa
   const [adminAuditorMode, setAdminAuditorMode] = useState(false);
 
   // Bus activo resuelto
   const currentActiveBusId = useMemo(() => {
-    return activeBusId || getActiveBusId() || 'BUS-01';
-  }, [activeBusId]);
+    return selectedUnitId || activeBusId || getActiveBusId() || 'BUS-01';
+  }, [selectedUnitId, activeBusId]);
 
   // Carga inicial de datos (Anti-Loop: se ejecuta estrictamente una vez al montar)
   const loadData = async (isManualRefresh = false) => {
@@ -81,8 +110,8 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
     else setLoading(true);
 
     try {
-      // 1. Obtener catálogo de flota oficial
-      const busesList = getAllBuses();
+      // 1. Carga híbrida de flota oficial desde API con fallback a caché local (Fase 2)
+      const busesList = await fetchBusesFromApi();
       setFleet(busesList);
 
       // 2. Obtener registros con trips desde API
@@ -169,7 +198,6 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
 
     for (const r of records) {
       if (r.date < summary.fechaInicio || r.date > summary.fechaFin) continue;
-
       const prod = Number(r.production) || 0;
       let vueltasCount = 0;
       if (Array.isArray(r.trips) && r.trips.length > 0) {
@@ -203,7 +231,7 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
     })).sort((a, b) => b.ipf - a.ipf);
   }, [records, summary.fechaInicio, summary.fechaFin]);
 
-  // Compartir resumen ejecutivo por WhatsApp con protección estricta de privacidad
+  // Compartir resumen ejecutivo por WhatsApp con protección estricta de privacidad (Fase 1: Divisa en $)
   const handleShareWhatsApp = () => {
     const t = summary.troncal;
     const a = summary.alimentadores;
@@ -215,34 +243,34 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
       `🛡️ *Protocolo de Privacidad:* Unidades pares anonimizadas (#T y #A)`,
       ``,
       `🚍 *1. CIRCUITO TRONCAL GENERAL (45 Pax)*`,
-      `• Producción Consolidada: S/ ${t.produccionConsolidada.toFixed(2)}`,
+      `• Producción Consolidada: $ ${t.produccionConsolidada.toFixed(2)}`,
       `• Vueltas Operadas: ${t.vueltasConsolidadas} (No realizadas: ${t.vueltasNoRealizadasConsolidadas})`,
-      `• *IPF Promedio General: S/ ${t.ipfPromedioGrupo.toFixed(2)} por vuelta*`,
-      `• Desglose: Ruta S/ ${t.efectivoConsolidado.toFixed(2)} • Oficina S/ ${t.cajaComunConsolidada.toFixed(2)}`,
+      `• *IPF Promedio General: $ ${t.ipfPromedioGrupo.toFixed(2)} por vuelta*`,
+      `• Desglose: Ruta $ ${t.efectivoConsolidado.toFixed(2)} • Oficina $ ${t.cajaComunConsolidada.toFixed(2)}`,
       ``,
       `🏆 *Ranking Troncal (IPF por Vuelta):*`,
       ...t.ranking
         .filter((b) => b.produccionTotal > 0)
         .map((b, idx) => {
           const delta = b.comparativaMediaIPF.diferencia;
-          const sign = delta > 0 ? `+S/ ${delta.toFixed(2)}` : `S/ ${delta.toFixed(2)}`;
+          const sign = delta > 0 ? `+$ ${delta.toFixed(2)}` : `$ ${delta.toFixed(2)}`;
           const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '🔹';
           const label = b.esUnidadPropia
             ? `⭐ Tu Unidad (Bus ${b.numeroDisco})`
             : `${b.nombreDisplay}`;
-          return `${medal} *${label}*: IPF S/ ${b.ipf.toFixed(2)} | Prod: S/ ${b.produccionTotal.toFixed(2)} (${b.vueltasEfectivas} vtas) [${sign}]`;
+          return `${medal} *${label}*: IPF $ ${b.ipf.toFixed(2)} | Prod: $ ${b.produccionTotal.toFixed(2)} (${b.vueltasEfectivas} vtas) [IER: ${b.ier.toFixed(1)}%] [${sign}]`;
         }),
       ``,
       `🚐 *2. ALIMENTADORES ESPECIALES P (28 Pax)*`,
-      `• Producción Consolidada: S/ ${a.produccionConsolidada.toFixed(2)}`,
-      `• *IPF Promedio: S/ ${a.ipfPromedioGrupo.toFixed(2)} por vuelta*`,
+      `• Producción Consolidada: $ ${a.produccionConsolidada.toFixed(2)}`,
+      `• *IPF Promedio: $ ${a.ipfPromedioGrupo.toFixed(2)} por vuelta*`,
       ...a.ranking
         .filter((b) => b.produccionTotal > 0)
         .map((b) => {
           const label = b.esUnidadPropia
             ? `⭐ Tu Unidad (Bus ${b.numeroDisco})`
             : `${b.nombreDisplay}`;
-          return `🔹 *${label}*: IPF S/ ${b.ipf.toFixed(2)} | Prod: S/ ${b.produccionTotal.toFixed(2)} (${b.vueltasEfectivas} vtas)`;
+          return `🔹 *${label}*: IPF $ ${b.ipf.toFixed(2)} | Prod: $ ${b.produccionTotal.toFixed(2)} (${b.vueltasEfectivas} vtas) [IER: ${b.ier.toFixed(1)}%]`;
         }),
       ``,
       `_Reporte emitido bajo estándar de confidencialidad gremial de RutaGo_`,
@@ -304,6 +332,36 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
 
       {/* ─── CUERPO PRINCIPAL ─── */}
       <main className="flex-1 px-4 py-3 max-w-xl mx-auto w-full space-y-3 pb-24">
+        {/* Selector Multi-Unidad para Socios con más de un Autobús (Fase 3) */}
+        {misBusesSocio.length > 1 && (
+          <div className="bg-white border border-blue-200 rounded-2xl p-2.5 shadow-xs flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <Bus className="w-4 h-4 text-blue-700 shrink-0" />
+              <span className="text-xs font-bold text-gray-800">Analizar como Tu Unidad:</span>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {misBusesSocio.map((b) => {
+                const isCurrent =
+                  currentActiveBusId === b.id ||
+                  `BUS-${b.numeroDisco.padStart(2, '0')}` === currentActiveBusId;
+                return (
+                  <button
+                    key={b.id}
+                    onClick={() => setSelectedUnitId(b.id)}
+                    className={`px-3 py-1 rounded-xl text-xs font-black transition-all ${
+                      isCurrent
+                        ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-300'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Bus {b.numeroDisco}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Banner de Protocolo de Privacidad Gremial */}
         <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl flex items-start gap-2.5">
           <ShieldCheck className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
@@ -327,11 +385,12 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
           </div>
         </div>
 
-        {/* ─── FILTROS TEMPORALES (Pills) ─── */}
+        {/* ─── FILTROS TEMPORALES (Pills con Ciclo 15D VT) (Fase 4 y 6) ─── */}
         <div className="flex items-center justify-between gap-1 overflow-x-auto pb-1 no-scrollbar text-xs font-semibold">
           {[
             { id: 'HOY', label: 'Hoy' },
             { id: '7_DIAS', label: '7 Días' },
+            { id: 'CICLO_15D', label: 'Ciclo 15D (VT) ⭐' },
             { id: 'ESTE_MES', label: 'Este Mes' },
             { id: 'MES_ANTERIOR', label: 'Mes Ant.' },
             { id: 'HISTORICO', label: 'Histórico' },
@@ -363,7 +422,6 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
             <Bus className="w-4 h-4" />
             <span>Troncal (45 Pax)</span>
           </button>
-
           <button
             onClick={() => setCircuitGroup('ALIMENTADOR_P')}
             className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-bold text-xs transition-all ${
@@ -377,7 +435,7 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
           </button>
         </div>
 
-        {/* ─── RESUMEN DEL CIRCUITO SELECCIONADO ─── */}
+        {/* ─── RESUMEN DEL CIRCUITO SELECCIONADO (Fase 1: Divisa en $) ─── */}
         <Card className="rounded-2xl border border-gray-200 bg-white shadow-xs overflow-hidden">
           <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white p-3.5">
             <div className="flex items-center justify-between">
@@ -412,7 +470,7 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
               </div>
               <div className="text-right">
                 <span className="text-lg font-black text-emerald-900">
-                  S/ {currentCircuitData.ipfPromedioGrupo.toFixed(2)}
+                  $ {currentCircuitData.ipfPromedioGrupo.toFixed(2)}
                 </span>
                 <span className="text-[10px] block text-emerald-700 font-medium">
                   {currentCircuitData.vueltasConsolidadas} vueltas totales
@@ -425,13 +483,13 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
               <div>
                 <p className="text-[10px] text-gray-400 font-medium">Efectivo Ruta</p>
                 <p className="text-xs font-bold text-gray-700">
-                  S/ {currentCircuitData.efectivoConsolidado.toFixed(2)}
+                  $ {currentCircuitData.efectivoConsolidado.toFixed(2)}
                 </p>
               </div>
               <div>
                 <p className="text-[10px] text-gray-400 font-medium">Caja Común</p>
                 <p className="text-xs font-bold text-gray-700">
-                  S/ {currentCircuitData.cajaComunConsolidada.toFixed(2)}
+                  $ {currentCircuitData.cajaComunConsolidada.toFixed(2)}
                 </p>
               </div>
               <div>
@@ -443,6 +501,186 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
             </div>
           </CardContent>
         </Card>
+
+        {/* ─── EVOLUCIÓN TEMPORAL DE TRIPULACIÓN (INTER-CICLO 15 DÍAS) (Fase 6) ─── */}
+        {period === 'CICLO_15D' && currentCircuitData.evolucionTemporalTuUnidad && (
+          <Card className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50/70 via-white to-purple-50/40 shadow-xs overflow-hidden">
+            <CardContent className="p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-700">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black text-indigo-950">
+                      Evolución de Tripulación (Ciclo 15 Días)
+                    </h3>
+                    <p className="text-[10px] text-indigo-700">
+                      Comparativa inter-quincenal inmune a estacionalidad
+                    </p>
+                  </div>
+                </div>
+
+                {currentCircuitData.evolucionTemporalTuUnidad.deltaIER !== null && (
+                  <span
+                    className={`text-[11px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 ${
+                      currentCircuitData.evolucionTemporalTuUnidad.deltaIER >= 0
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : 'bg-rose-100 text-rose-800 border border-rose-200'
+                    }`}
+                  >
+                    {currentCircuitData.evolucionTemporalTuUnidad.deltaIER >= 0 ? (
+                      <TrendingUp className="w-3.5 h-3.5" />
+                    ) : (
+                      <TrendingDown className="w-3.5 h-3.5" />
+                    )}
+                    {currentCircuitData.evolucionTemporalTuUnidad.deltaIER >= 0 ? '+' : ''}
+                    {currentCircuitData.evolucionTemporalTuUnidad.deltaIER.toFixed(1)}% IER
+                  </span>
+                )}
+              </div>
+
+              {/* Mensaje de impacto económico o evolución */}
+              <div className="p-2.5 rounded-xl bg-white border border-indigo-100 text-xs">
+                <p className="font-extrabold text-indigo-900 leading-snug">
+                  {currentCircuitData.evolucionTemporalTuUnidad.mensajeEvolucion}
+                </p>
+                <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-100 text-[11px]">
+                  <div>
+                    <span className="text-gray-400 block text-[9px] uppercase font-bold">
+                      IER Ciclo Actual
+                    </span>
+                    <strong className="text-indigo-950">
+                      {currentCircuitData.evolucionTemporalTuUnidad.ierActual.toFixed(1)}% (Base 100)
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[9px] uppercase font-bold">
+                      IER Ciclo Anterior (15d)
+                    </span>
+                    <strong className="text-gray-700">
+                      {currentCircuitData.evolucionTemporalTuUnidad.ierAnterior !== null
+                        ? `${currentCircuitData.evolucionTemporalTuUnidad.ierAnterior.toFixed(1)}%`
+                        : 'Primer ciclo auditado'}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-gray-500 italic leading-tight">
+                💡 El Índice de Eficiencia Relativa (IER) neutraliza la baja o subida de demanda general porque compara el rendimiento de tu tripulación frente a los buses que cubrieron los mismos turnos.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ─── PODIO DE PRODUCCIÓN BRUTA Y TARJETA DE BRECHA EN EFECTIVO (Fase 5) ─── */}
+        {currentCircuitData.podioProduccion.length > 0 && (
+          <div className="space-y-2.5">
+            {/* Podio de los 3 Primeros Lugares */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-3 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-amber-500" />
+                  <h3 className="font-extrabold text-xs text-gray-900 uppercase tracking-tight">
+                    Podio de Recaudación Bruta del Período
+                  </h3>
+                </div>
+                <span className="text-[10px] font-bold text-gray-400">Dólares en Caja</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {currentCircuitData.podioProduccion.map((podio) => (
+                  <div
+                    key={podio.busId}
+                    className={`p-2.5 rounded-xl border text-center transition-all ${
+                      podio.esUnidadPropia
+                        ? 'bg-blue-50/70 border-blue-300 ring-1 ring-blue-300'
+                        : 'bg-gray-50/80 border-gray-200'
+                    }`}
+                  >
+                    <span className="text-lg block leading-none">{podio.medalla}</span>
+                    <span className="text-[10px] font-black text-gray-800 block truncate mt-1">
+                      {podio.esUnidadPropia ? `Bus ${podio.numeroDisco}` : podio.codigoAnonimo || podio.nombreDisplay}
+                    </span>
+                    <span className="text-xs font-black text-emerald-800 block mt-0.5">
+                      $ {podio.produccionTotal.toFixed(2)}
+                    </span>
+                    <span className="text-[9px] text-gray-400 block mt-0.5">
+                      {podio.vueltasEfectivas} vtas • IPF $ {podio.ipf.toFixed(1)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Tarjeta de Brecha de Captura (Dinero en la Calle) */}
+            {currentCircuitData.brechaTuUnidad && (
+              <div className="p-3.5 bg-gradient-to-br from-gray-900 to-gray-800 text-white rounded-2xl shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      Auditoría de Brecha en Efectivo
+                    </span>
+                    <h4 className="text-xs font-black text-white">
+                      Dinero en la Calle vs Media de la Flota
+                    </h4>
+                  </div>
+                  <span
+                    className={`text-xs font-black px-2 py-0.5 rounded-lg ${
+                      currentCircuitData.brechaTuUnidad.brechaEfectivo >= 0
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                    }`}
+                  >
+                    {currentCircuitData.brechaTuUnidad.brechaEfectivo >= 0 ? '+' : ''}${' '}
+                    {currentCircuitData.brechaTuUnidad.brechaEfectivo.toFixed(2)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 bg-white/5 p-2 rounded-xl text-center text-[11px]">
+                  <div>
+                    <span className="text-gray-400 block text-[9px] uppercase font-bold">
+                      Media Flota
+                    </span>
+                    <span className="font-bold text-gray-200">
+                      $ {currentCircuitData.brechaTuUnidad.mediaGrupo.toFixed(2)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[9px] uppercase font-bold">
+                      Tu Unidad
+                    </span>
+                    <span className="font-bold text-blue-300">
+                      $ {currentCircuitData.brechaTuUnidad.produccionTuUnidad.toFixed(2)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[9px] uppercase font-bold">
+                      vs Líder (#1)
+                    </span>
+                    <span className="font-bold text-amber-300">
+                      {currentCircuitData.brechaTuUnidad.diferenciaVsLider >= 0 ? '+' : ''}${' '}
+                      {currentCircuitData.brechaTuUnidad.diferenciaVsLider.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-gray-300 leading-snug">
+                  {currentCircuitData.brechaTuUnidad.brechaEfectivo < 0 ? (
+                    <span>
+                      ⚠️ En las mismas <strong>{currentCircuitData.brechaTuUnidad.diasOperados} jornadas</strong> y circuito, a tu autobús le faltaron <strong>$ {Math.abs(currentCircuitData.brechaTuUnidad.brechaEfectivo).toFixed(2)}</strong> para alcanzar el promedio (aprox. <strong>$ {Math.abs(currentCircuitData.brechaTuUnidad.brechaPorDia).toFixed(2)} diarios</strong> que se quedaron en la carretera).
+                    </span>
+                  ) : (
+                    <span>
+                      🟢 ¡Excelente labor! Tu autobús superó la media del circuito en <strong>+$ {currentCircuitData.brechaTuUnidad.brechaEfectivo.toFixed(2)}</strong> (+${currentCircuitData.brechaTuUnidad.brechaPorDia.toFixed(2)} diarios frente a la cooperativa).
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ─── GRÁFICO ESTADÍSTICO INTUITIVO (IPF, PRODUCCIÓN Y VUELTAS) ─── */}
         <BenchmarkChart
@@ -481,7 +719,7 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
           </span>
         </div>
 
-        {/* ─── PESTAÑA 1: RANKING DE UNIDADES Y COMPARATIVA IPF ─── */}
+        {/* ─── PESTAÑA 1: RANKING DE UNIDADES Y COMPARATIVA IPF (Fases 1, 4 y 5) ─── */}
         {activeTab === 'UNIDADES' && (
           <div className="space-y-3">
             {currentCircuitData.ranking.map((bus, index) => {
@@ -552,6 +790,28 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
                           <p className="text-[11px] text-gray-500">
                             {bus.marca} • {bus.capacidadAsientos} pasajeros • {bus.propietarioDisplay}
                           </p>
+
+                          {/* Semáforo de Representatividad Muestral (15 Jornadas VT) (Fase 4) */}
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <span
+                              className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md ${
+                                bus.madurezMuestral.nivel === 'CERTIFICADO'
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : bus.madurezMuestral.nivel === 'EN_PROGRESO'
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                  : 'bg-gray-100 text-gray-600 border border-gray-200'
+                              }`}
+                              title={bus.madurezMuestral.descripcion}
+                            >
+                              {bus.madurezMuestral.badge}
+                            </span>
+
+                            {hasRecords && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800">
+                                IER: {bus.ier.toFixed(1)}%
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -560,7 +820,7 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
                         <div className="flex items-baseline justify-end gap-1">
                           <span className="text-[10px] text-gray-400 font-bold">IPF</span>
                           <span className="text-base font-black text-gray-900">
-                            S/ {bus.ipf.toFixed(2)}
+                            $ {bus.ipf.toFixed(2)}
                           </span>
                         </div>
 
@@ -570,12 +830,12 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
                             {estado === 'SUPERIOR' ? (
                               <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
                                 <TrendingUp className="w-3 h-3" />
-                                +S/ {diferencia.toFixed(2)} (+{porcentajeDiferencia}%)
+                                +$ {diferencia.toFixed(2)} (+{porcentajeDiferencia}%)
                               </span>
                             ) : estado === 'INFERIOR' ? (
                               <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
                                 <TrendingDown className="w-3 h-3" />
-                                S/ {diferencia.toFixed(2)} ({porcentajeDiferencia}%)
+                                -$ {Math.abs(diferencia).toFixed(2)} ({porcentajeDiferencia}%)
                               </span>
                             ) : (
                               <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md flex items-center gap-0.5">
@@ -620,7 +880,7 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
                           Producción
                         </span>
                         <span className="font-bold text-gray-800">
-                          S/ {bus.produccionTotal.toFixed(2)}
+                          $ {bus.produccionTotal.toFixed(2)}
                         </span>
                       </div>
                       <div>
@@ -672,31 +932,31 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
                                 <div className="flex justify-between">
                                   <span>Efectivo Ruta (Ayudante):</span>
                                   <strong className="text-gray-900">
-                                    S/ {bus.efectivoTotal.toFixed(2)}
+                                    $ {bus.efectivoTotal.toFixed(2)}
                                   </strong>
                                 </div>
                                 <div className="flex justify-between">
                                   <span>Caja Común (Oficinas):</span>
                                   <strong className="text-gray-900">
-                                    S/ {bus.cajaComunTotal.toFixed(2)}
+                                    $ {bus.cajaComunTotal.toFixed(2)}
                                   </strong>
                                 </div>
                                 <div className="flex justify-between">
                                   <span>Gastos Operativos & Diésel:</span>
                                   <strong className="text-rose-600">
-                                    S/ {bus.totalGastos.toFixed(2)}
+                                    $ {bus.totalGastos.toFixed(2)}
                                   </strong>
                                 </div>
                                 <div className="flex justify-between border-t border-blue-200/60 pt-1 font-bold">
                                   <span>Utilidad Neta Líquida:</span>
                                   <strong className="text-emerald-700">
-                                    S/ {bus.utilidadNeta.toFixed(2)}
+                                    $ {bus.utilidadNeta.toFixed(2)}
                                   </strong>
                                 </div>
                                 {bus.kmTotales > 0 && (
                                   <div className="flex justify-between text-[11px] text-gray-500 pt-1">
                                     <span>Rendimiento por Km:</span>
-                                    <span>S/ {bus.rendimientoPorKm.toFixed(2)} / km ({bus.kmTotales} km)</span>
+                                    <span>$ {bus.rendimientoPorKm.toFixed(2)} / km ({bus.kmTotales} km)</span>
                                   </div>
                                 )}
                                 {bus.ultimoRegistro && (
@@ -721,7 +981,7 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
                                       Rendimiento Operativo
                                     </span>
                                     <span className="font-bold text-gray-800">
-                                      S/ {bus.rendimientoPorKm.toFixed(2)} / km
+                                      $ {bus.rendimientoPorKm.toFixed(2)} / km
                                     </span>
                                   </div>
                                   <div>
@@ -746,7 +1006,7 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
           </div>
         )}
 
-        {/* ─── PESTAÑA 2: AUDITORÍA DE AYUDANTES ─── */}
+        {/* ─── PESTAÑA 2: AUDITORÍA DE AYUDANTES (Fase 1: Divisa en $) ─── */}
         {activeTab === 'TRIPULACIONES' && (
           <div className="space-y-3">
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-900">
@@ -787,11 +1047,11 @@ export function BenchmarkScreen({ onBack, currentUser, activeBusId }: BenchmarkS
                       <div className="flex items-baseline justify-end gap-1">
                         <span className="text-[10px] text-gray-400 font-bold">IPF</span>
                         <span className="text-sm font-black text-gray-900">
-                          S/ {crew.ipf.toFixed(2)}
+                          $ {crew.ipf.toFixed(2)}
                         </span>
                       </div>
                       <span className="text-[10px] text-gray-500">
-                        Total: S/ {crew.produccion.toFixed(2)}
+                        Total: $ {crew.produccion.toFixed(2)}
                       </span>
                     </div>
                   </CardContent>

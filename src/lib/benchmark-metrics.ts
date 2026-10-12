@@ -6,7 +6,66 @@ import {
   type CircuitGroupBenchmark,
   type FleetBenchmarkSummary,
   type ComparativaMedia,
+  type MadurezMuestral,
+  type EvolucionTemporalCiclo,
+  type PodioProduccionItem,
+  type BrechaEfectivoTuUnidad,
 } from '../types/benchmark';
+
+/**
+ * Calcula la representatividad y madurez estadística muestral de una unidad en base a jornadas operadas.
+ * El umbral de 15 jornadas corresponde a un ciclo rotacional completo de los 15 VT (turnos troncales).
+ */
+export function calcularMadurezMuestral(diasOperados: number): MadurezMuestral {
+  const umbralCertificado = 15;
+  if (diasOperados >= 15) {
+    return {
+      nivel: 'CERTIFICADO',
+      badge: '🟢 Ciclo VT Certificado',
+      badgeCorto: '🟢 Certificado (15+)',
+      label: 'Muestra Certificada',
+      descripcion: 'Comparativa consolidada de alta precisión estadística (rotación completa de los 15 VT).',
+      diasOperados,
+      umbralCertificado,
+    };
+  }
+  if (diasOperados >= 5) {
+    return {
+      nivel: 'EN_PROGRESO',
+      badge: `🟡 Muestra Parcial (${diasOperados}/15)`,
+      badgeCorto: `🟡 En Progreso (${diasOperados}/15)`,
+      label: 'Tendencia en Formación',
+      descripcion: 'Comparativa orientativa de tendencia (muestra intermedia en desarrollo de ciclo).',
+      diasOperados,
+      umbralCertificado,
+    };
+  }
+  return {
+    nivel: 'CALIBRACION',
+    badge: `🌱 En Calibración (${diasOperados}/15)`,
+    badgeCorto: `🌱 Calibración (${diasOperados}/15)`,
+    label: 'Calibración Temprana',
+    descripcion: 'Datos preliminares en rodaje muestral.',
+    diasOperados,
+    umbralCertificado,
+  };
+}
+
+/**
+ * Deduce el rango de fechas de los 15 días inmediatamente anteriores a fromDateStr.
+ */
+export function getPreviousCycleRange(fromDateStr: string): { from: string; to: string } {
+  const currentStart = new Date(fromDateStr + 'T00:00:00');
+  const prevEnd = new Date(currentStart);
+  prevEnd.setDate(prevEnd.getDate() - 1);
+  const prevStart = new Date(prevEnd);
+  prevStart.setDate(prevStart.getDate() - 14);
+  const formatYMD = (d: Date) => d.toISOString().split('T')[0];
+  return {
+    from: formatYMD(prevStart),
+    to: formatYMD(prevEnd),
+  };
+}
 
 /**
  * Normaliza y deduce a qué unidad física pertenece un registro diario (DailyRecord).
@@ -40,6 +99,7 @@ export function resolveRecordBus(record: any, fleet: BusItem[]): BusItem | null 
       const found = fleet.find((b) => b.numeroDisco.padStart(2, '0') === disco);
       if (found) return found;
     }
+
     const pureNumberMatch = conductorStr.match(/^(\d{1,2})$/);
     if (pureNumberMatch) {
       const disco = pureNumberMatch[1].padStart(2, '0');
@@ -88,6 +148,14 @@ export function filterRecordsByPeriod(
       fromDate = formatYMD(past7);
       toDate = todayStr;
       periodoLabel = 'Últimos 7 Días';
+      break;
+    }
+    case 'CICLO_15D': {
+      const past15 = new Date(now);
+      past15.setDate(past15.getDate() - 14); // 15 días exactos (hoy + 14 previos)
+      fromDate = formatYMD(past15);
+      toDate = todayStr;
+      periodoLabel = 'Ciclo 15D (Rotación VT)';
       break;
     }
     case 'ESTE_MES': {
@@ -215,6 +283,13 @@ export function calculateBusMetrics(
   const rendimientoPorKm = kmTotales > 0 ? Math.round((produccionTotal / kmTotales) * 100) / 100 : 0;
   const utilidadNeta = Math.round((produccionTotal - totalGastos) * 100) / 100;
 
+  // IER (Índice de Eficiencia Relativa - Base 100)
+  // IER = (IPF del Bus / IPF Promedio del Grupo) * 100
+  const ier = grupoPromedioIPF > 0 ? Math.round((ipf / grupoPromedioIPF) * 1000) / 10 : 100;
+
+  // Madurez Muestral (Umbral de 15 jornadas para ciclo rotacional VT completo)
+  const madurezMuestral = calcularMadurezMuestral(diasOperados);
+
   // Comparativa con la media del grupo
   let comparativaMediaIPF: ComparativaMedia;
   if (grupoPromedioIPF > 0 && ipf > 0) {
@@ -260,6 +335,10 @@ export function calculateBusMetrics(
     rendimientoPorKm,
     comparativaMediaIPF,
     ultimoRegistro,
+    ier,
+    madurezMuestral,
+    brechaEfectivoMedia: 0, // Se complementa al conocer la media del grupo
+    diferenciaVsLider: 0, // Se complementa al conocer al líder
   };
 }
 
@@ -308,7 +387,10 @@ export function computeFleetBenchmark(
     troncalFleet,
     recordsByBusId,
     activeBusId,
-    isSuperAdminMode
+    isSuperAdminMode,
+    allRecords,
+    period,
+    fromDate
   );
 
   // 4. Procesar Grupo Alimentadores (P1 - P3 • 28 Pax)
@@ -320,7 +402,10 @@ export function computeFleetBenchmark(
     alimentadorFleet,
     recordsByBusId,
     activeBusId,
-    isSuperAdminMode
+    isSuperAdminMode,
+    allRecords,
+    period,
+    fromDate
   );
 
   return {
@@ -350,7 +435,10 @@ function computeCircuitGroup(
   groupFleet: BusItem[],
   recordsByBusId: Map<string, any[]>,
   activeBusId: string = 'BUS-01',
-  isSuperAdminMode: boolean = false
+  isSuperAdminMode: boolean = false,
+  allRecords: any[] = [],
+  period: BenchmarkPeriod = 'ESTE_MES',
+  fromDate: string = ''
 ): CircuitGroupBenchmark {
   // Primer paso: calcular totales globales del grupo para deducir el promedio IPF
   let produccionConsolidada = 0;
@@ -425,7 +513,7 @@ function computeCircuitGroup(
   const prefix = circuito === 'TRONCAL_VT' ? 'T' : 'A';
   let peerCounter = 1;
 
-  const ranking: BusBenchmarkMetric[] = rawCalculated.map(({ bus, metrics }) => {
+  const rankingWithPrivacy: BusBenchmarkMetric[] = rawCalculated.map(({ bus, metrics }) => {
     const isDiscoMatch = bus.numeroDisco.padStart(2, '0') === cleanActiveDisco;
     const isIdMatch = String(bus.id || '').toUpperCase() === cleanActiveId || `BUS-${String(bus.numeroDisco || '').padStart(2, '0')}`.toUpperCase() === cleanActiveId;
     const esUnidadPropia = isDiscoMatch || isIdMatch;
@@ -471,6 +559,174 @@ function computeCircuitGroup(
     };
   });
 
+  // Cuarto paso: Identificar al líder de producción y computar Podio
+  const busesOrdenadosPorProduccion = [...rankingWithPrivacy]
+    .filter((b) => b.produccionTotal > 0)
+    .sort((a, b) => b.produccionTotal - a.produccionTotal);
+
+  const liderProduccion = busesOrdenadosPorProduccion[0] || null;
+
+  // Podio de Producción Bruta ($) (🥇, 🥈, 🥉)
+  const podioProduccion: PodioProduccionItem[] = busesOrdenadosPorProduccion.slice(0, 3).map((b, idx) => ({
+    posicion: (idx + 1) as 1 | 2 | 3,
+    medalla: idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉',
+    busId: b.busId,
+    numeroDisco: b.numeroDisco,
+    nombreDisplay: b.nombreDisplay,
+    codigoAnonimo: b.codigoAnonimo,
+    produccionTotal: b.produccionTotal,
+    ipf: b.ipf,
+    vueltasEfectivas: b.vueltasEfectivas,
+    diasOperados: b.diasOperados,
+    esUnidadPropia: b.esUnidadPropia,
+  }));
+
+  // Completar brechas y diferencias en ranking
+  const ranking: BusBenchmarkMetric[] = rankingWithPrivacy.map((b) => ({
+    ...b,
+    brechaEfectivoMedia: Math.round((b.produccionTotal - produccionPromedioPorUnidad) * 100) / 100,
+    diferenciaVsLider: liderProduccion
+      ? Math.round((b.produccionTotal - liderProduccion.produccionTotal) * 100) / 100
+      : 0,
+  }));
+
+  // Quinto paso: Computar Tarjeta de Brecha de Captura (Dinero en la Calle) para Tu Unidad
+  const tuUnidad = ranking.find((b) => b.esUnidadPropia);
+  let brechaTuUnidad: BrechaEfectivoTuUnidad | null = null;
+
+  if (tuUnidad) {
+    const liderDisplay = liderProduccion ? liderProduccion.nombreDisplay : 'Líder de Circuito';
+    const liderTotal = liderProduccion ? liderProduccion.produccionTotal : 0;
+    const brechaEfectivo = Math.round((tuUnidad.produccionTotal - produccionPromedioPorUnidad) * 100) / 100;
+    const brechaPorDia =
+      tuUnidad.diasOperados > 0
+        ? Math.round((brechaEfectivo / tuUnidad.diasOperados) * 100) / 100
+        : 0;
+    const diferenciaVsLider = Math.round((tuUnidad.produccionTotal - liderTotal) * 100) / 100;
+
+    brechaTuUnidad = {
+      busId: tuUnidad.busId,
+      disco: tuUnidad.numeroDisco,
+      produccionTuUnidad: tuUnidad.produccionTotal,
+      mediaGrupo: produccionPromedioPorUnidad,
+      brechaEfectivo,
+      brechaPorDia,
+      lider: {
+        nombreDisplay: liderDisplay,
+        produccionTotal: liderTotal,
+      },
+      diferenciaVsLider,
+      diasOperados: tuUnidad.diasOperados,
+      vueltasEfectivas: tuUnidad.vueltasEfectivas,
+      ipf: tuUnidad.ipf,
+    };
+  }
+
+  // Sexto paso: Evolución Temporal Inter-Ciclo (Delta de 15 Días)
+  let evolucionTemporalTuUnidad: EvolucionTemporalCiclo | null = null;
+  if (tuUnidad) {
+    const prevRange = getPreviousCycleRange(fromDate || new Date().toISOString().split('T')[0]);
+    const prevRecords = allRecords.filter((r) => r.date && r.date >= prevRange.from && r.date <= prevRange.to);
+
+    let ierAnterior: number | null = null;
+    let produccionAnterior: number | null = null;
+    let ipfAnterior: number | null = null;
+    let vueltasAnterior: number | null = null;
+    let diasAnterior: number | null = null;
+
+    if (prevRecords.length > 0) {
+      let prevProdGrupo = 0;
+      let prevVueltasGrupo = 0;
+      const prevTuRecords: any[] = [];
+
+      for (const r of prevRecords) {
+        const mBus = resolveRecordBus(r, groupFleet);
+        if (mBus) {
+          const prod = Number(r.production) || 0;
+          prevProdGrupo += prod;
+          if (Array.isArray(r.trips) && r.trips.length > 0) {
+            prevVueltasGrupo += r.trips.filter((t: any) => t.tipo !== 'NO_REALIZADO').length;
+          } else if (prod > 0) {
+            prevVueltasGrupo += 6;
+          }
+          if (
+            mBus.id === tuUnidad.busId ||
+            mBus.numeroDisco.padStart(2, '0') === tuUnidad.numeroDisco.padStart(2, '0')
+          ) {
+            prevTuRecords.push(r);
+          }
+        }
+      }
+
+      const prevIpfGrupo = prevVueltasGrupo > 0 ? prevProdGrupo / prevVueltasGrupo : 0;
+
+      if (prevTuRecords.length > 0) {
+        const tuBusItem =
+          groupFleet.find(
+            (b) =>
+              b.id === tuUnidad.busId ||
+              b.numeroDisco.padStart(2, '0') === tuUnidad.numeroDisco.padStart(2, '0')
+          ) || groupFleet[0];
+
+        const prevTuMetrics = calculateBusMetrics(tuBusItem, prevTuRecords, prevIpfGrupo);
+        produccionAnterior = prevTuMetrics.produccionTotal;
+        ipfAnterior = prevTuMetrics.ipf;
+        ierAnterior = prevTuMetrics.ier;
+        vueltasAnterior = prevTuMetrics.vueltasEfectivas;
+        diasAnterior = prevTuMetrics.diasOperados;
+      }
+    }
+
+    const ierActual = tuUnidad.ier;
+    const deltaIER = ierAnterior !== null ? Math.round((ierActual - ierAnterior) * 10) / 10 : null;
+    const deltaProduccion =
+      produccionAnterior !== null
+        ? Math.round((tuUnidad.produccionTotal - produccionAnterior) * 100) / 100
+        : null;
+    const deltaIPF =
+      ipfAnterior !== null ? Math.round((tuUnidad.ipf - ipfAnterior) * 100) / 100 : null;
+
+    let tendencia: 'MEJORA' | 'ESTABLE' | 'DESCENSO' | 'INICIAL' = 'INICIAL';
+    let mensajeEvolucion = 'Primer ciclo de 15 días auditado para la unidad.';
+
+    if (deltaIER !== null) {
+      if (deltaIER >= 1.0) {
+        tendencia = 'MEJORA';
+        mensajeEvolucion =
+          deltaProduccion && deltaProduccion > 0
+            ? `¡Tu tripulación recuperó +$ ${deltaProduccion.toFixed(2)} en caja frente al ciclo anterior!`
+            : `¡Mejora de +${deltaIER}% en eficiencia relativa (IER) frente a la cooperativa!`;
+      } else if (deltaIER <= -1.0) {
+        tendencia = 'DESCENSO';
+        mensajeEvolucion =
+          deltaProduccion && deltaProduccion < 0
+            ? `Variación de -$ ${Math.abs(deltaProduccion).toFixed(2)} frente al ciclo anterior.`
+            : `Rendimiento de ${deltaIER}% en IER respecto al ciclo anterior.`;
+      } else {
+        tendencia = 'ESTABLE';
+        mensajeEvolucion = 'Rendimiento estable respecto a la media de la cooperativa.';
+      }
+    }
+
+    evolucionTemporalTuUnidad = {
+      ierActual,
+      ierAnterior,
+      deltaIER,
+      produccionActual: tuUnidad.produccionTotal,
+      produccionAnterior,
+      deltaProduccion,
+      ipfActual: tuUnidad.ipf,
+      ipfAnterior,
+      deltaIPF,
+      vueltasActual: tuUnidad.vueltasEfectivas,
+      vueltasAnterior,
+      diasActual: tuUnidad.diasOperados,
+      diasAnterior,
+      mensajeEvolucion,
+      tendencia,
+    };
+  }
+
   return {
     circuito,
     titulo,
@@ -487,5 +743,8 @@ function computeCircuitGroup(
     produccionPromedioPorUnidad,
     kmConsolidados: Math.round(kmConsolidados * 10) / 10,
     ranking,
+    podioProduccion,
+    brechaTuUnidad,
+    evolucionTemporalTuUnidad,
   };
 }

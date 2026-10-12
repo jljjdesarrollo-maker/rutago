@@ -4303,7 +4303,7 @@ bun test tests/manual-socio.test.ts
 
 ---
 
-## 🏛️ v3.61.36 - EN ANÁLISIS Y PLANIFICACIÓN: COMPARATIVA ESTADÍSTICA JUSTA DE PRODUCCIÓN BRUTA Y BENCHMARK DE FLOTA
+## 🏛️ v3.61.36 - IMPLEMENTACIÓN Y CERTIFICACIÓN COMPLETA: COMPARATIVA ESTADÍSTICA JUSTA DE PRODUCCIÓN BRUTA Y BENCHMARK DE FLOTA (2026-10-12)
 
 > **ESTADO:** 🟡 EN ANÁLISIS Y PLANIFICACIÓN ARQUITECTÓNICA (SIN CAMBIOS DE CÓDIGO)  
 > **FECHA DE INICIO:** 2026-10-11 | **SISTEMA:** RutaGo - Motor de Benchmark de Flota & IPF  
@@ -4392,20 +4392,21 @@ bun test tests/manual-socio.test.ts
        * ¡La tripulación **recuperó +$1,100.00 de recaudación** y se puso a tiro de la media!
 
 ### 📍 5. Plan de Acción Integral (Roadmap de Implementación):
-- [ ] **Fase 1: Corrección de Divisa en `BenchmarkScreen.tsx`:**
-  - Sustituir todas las cadenas hardcodeadas de soles (`S/`) por dólares americanos (`$`) en toda la interfaz, gráficos y generador de WhatsApp.
-- [ ] **Fase 2: Carga Híbrida de Flota desde `/api/buses`:**
-  - `loadData()` consultará la API remota `/api/buses` con fallback offline a `getAllBuses()` de `localStorage`.
-- [ ] **Fase 3: Selector Multi-Unidad para Socios con más de un Autobús:**
-  - Conmutador táctil ergonómico para seleccionar cuál de sus buses suscritos actúa como *"Tu Unidad"*.
-- [ ] **Fase 4: Semáforo de Representatividad Muestral (Mínimo 15 Jornadas / Ciclo VT):**
-  - Indicadores visuales de rodaje: `🌱 Calibración (1-4)`, `🟡 En Progreso (5-14)`, `🟢 Certificado (15+)`.
-- [ ] **Fase 5: Podio Comparativo de Ingreso Bruto Total y Brecha en Efectivo:**
-  - Comparativa directa de dinero ($5,000 vs $6,500 vs $6,300) y tarjeta de *"Brecha de Captura vs Media"*.
-- [ ] **Fase 6: Módulo de Evolución Temporal de Tripulación (IER Inter-Ciclos):**
-  - Filtro quincenal de 15 días y comparativa automática con la quincena anterior (Delta de IER y dólares ganados).
-- [ ] **Fase 7: Pruebas Automatizadas Unitarias (100% de Cobertura) y Documentación:**
-  - Nuevos tests en `tests/benchmark-eficiencia-temporal.test.ts` asegurando paridad matemática y cero regresiones.
+- [x] **Fase 1: Corrección de Divisa en `BenchmarkScreen.tsx` y `BenchmarkChart.tsx`:**
+  - Sustitución del 100% de las cadenas hardcodeadas de soles (`S/`) por dólares americanos (`$`) en toda la interfaz, gráficos, ejes, tooltips y generador de WhatsApp.
+- [x] **Fase 2: Carga Híbrida de Flota desde `/api/buses`:**
+  - `loadData()` consulta la API remota `/api/buses` a través de `fetchBusesFromApi()` con fallback offline a `getAllBuses()` de `localStorage`.
+- [x] **Fase 3: Selector Multi-Unidad para Socios con más de un Autobús:**
+  - Conmutador táctil ergonómico para seleccionar cuál de sus buses suscritos actúa como *"Tu Unidad"* (`Analizar como Tu Unidad: [ Bus 01 ] [ Bus 10 ]`).
+- [x] **Fase 4: Semáforo de Representatividad Muestral (Mínimo 15 Jornadas / Ciclo VT):**
+  - Indicadores visuales de rodaje: `🌱 Calibración (1-4)`, `🟡 En Progreso (5-14)`, `🟢 Certificado (15+)` con píldora de filtro `[ Ciclo 15D (VT) ⭐ ]`.
+- [x] **Fase 5: Podio Comparativo de Ingreso Bruto Total y Brecha en Efectivo:**
+  - Podio de facturación (🥇, 🥈, 🥉) y tarjeta de *"Dinero en la Calle vs Media de la Flota"* informando dólares que faltaron en ruta y diferencia vs líder.
+- [x] **Fase 6: Módulo de Evolución Temporal de Tripulación (IER Inter-Ciclos):**
+  - Filtro quincenal de 15 días y comparativa automática con la quincena anterior (Delta de IER Base 100 y dólares recuperados en caja frente al ciclo anterior).
+- [x] **Fase 7: Pruebas Automatizadas Unitarias (100% de Cobertura) y Documentación:**
+  - Nuevos tests en `tests/benchmark-eficiencia-temporal.test.ts` asegurando paridad matemática y cero regresiones. **83/83 tests pasando al 100%**.
+  - Documentación de la Etapa 8 integrada formalmente en `docs/MANUAL_DE_USUARIO_SOCIO.md`.
 
 
 

@@ -1,8 +1,69 @@
 import { type TipoOperacionBus } from './fleet';
 
-export type BenchmarkPeriod = 'HOY' | '7_DIAS' | 'ESTE_MES' | 'MES_ANTERIOR' | 'HISTORICO';
+export type BenchmarkPeriod = 'HOY' | '7_DIAS' | 'CICLO_15D' | 'ESTE_MES' | 'MES_ANTERIOR' | 'HISTORICO';
 
 export type BenchmarkCircuitGroup = 'TRONCAL_VT' | 'ALIMENTADOR_P';
+
+export type MadurezMuestralNivel = 'CALIBRACION' | 'EN_PROGRESO' | 'CERTIFICADO';
+
+export interface MadurezMuestral {
+  nivel: MadurezMuestralNivel;
+  badge: string; // "🌱 Calibración (1 a 4 días)", "🟡 En Progreso (5 a 14 días)", "🟢 Ciclo VT Certificado"
+  badgeCorto: string; // "🌱 Calibración (X/15)", "🟡 En Progreso (X/15)", "🟢 Certificado (15+)"
+  label: string; // "Calibración Temprana", "Tendencia en Formación", "Muestra Certificada"
+  descripcion: string;
+  diasOperados: number;
+  umbralCertificado: number; // 15
+}
+
+export interface EvolucionTemporalCiclo {
+  ierActual: number;
+  ierAnterior: number | null;
+  deltaIER: number | null; // ierActual - ierAnterior (ej. +9.0)
+  produccionActual: number;
+  produccionAnterior: number | null;
+  deltaProduccion: number | null; // produccionActual - produccionAnterior (ej. +1100.00)
+  ipfActual: number;
+  ipfAnterior: number | null;
+  deltaIPF: number | null;
+  vueltasActual: number;
+  vueltasAnterior: number | null;
+  diasActual: number;
+  diasAnterior: number | null;
+  mensajeEvolucion: string;
+  tendencia: 'MEJORA' | 'ESTABLE' | 'DESCENSO' | 'INICIAL';
+}
+
+export interface PodioProduccionItem {
+  posicion: 1 | 2 | 3;
+  medalla: '🥇' | '🥈' | '🥉';
+  busId: string;
+  numeroDisco: string;
+  nombreDisplay: string;
+  codigoAnonimo: string;
+  produccionTotal: number;
+  ipf: number;
+  vueltasEfectivas: number;
+  diasOperados: number;
+  esUnidadPropia: boolean;
+}
+
+export interface BrechaEfectivoTuUnidad {
+  busId: string;
+  disco: string;
+  produccionTuUnidad: number;
+  mediaGrupo: number;
+  brechaEfectivo: number; // produccionTuUnidad - mediaGrupo (negativo = dinero que faltó / en la calle)
+  brechaPorDia: number; // brechaEfectivo / (diasOperados > 0 ? diasOperados : 1)
+  lider: {
+    nombreDisplay: string;
+    produccionTotal: number;
+  };
+  diferenciaVsLider: number; // produccionTuUnidad - lider.produccionTotal
+  diasOperados: number;
+  vueltasEfectivas: number;
+  ipf: number;
+}
 
 export interface ComparativaMedia {
   diferencia: number; // ipf - promedioGrupoIPF
@@ -18,6 +79,7 @@ export interface BusBenchmarkMetric {
   capacidadAsientos: number;
   tipoOperacion: TipoOperacionBus;
   esSocioLider: boolean;
+
   // Atributos de Identidad y Anonimización (Fase 8)
   esUnidadPropia: boolean; // True si es la unidad del socio autenticado
   codigoAnonimo: string; // "#T-01", "#T-02", "#A-01"
@@ -40,6 +102,12 @@ export interface BusBenchmarkMetric {
   rendimientoPorKm: number; // produccionTotal / (kmTotales > 0 ? kmTotales : 1)
   comparativaMediaIPF: ComparativaMedia;
   ultimoRegistro?: string; // Fecha del último arqueo
+
+  // Nuevas Métricas Etapa 8: Inteligencia de Benchmark y Ciclo VT
+  ier: number; // Índice de Eficiencia Relativa (Base 100): (ipf / promedioGrupoIPF) * 100
+  madurezMuestral: MadurezMuestral;
+  brechaEfectivoMedia: number; // produccionTotal - produccionPromedioPorUnidad
+  diferenciaVsLider: number; // produccionTotal - lider.produccionTotal
 }
 
 export interface CircuitGroupBenchmark {
@@ -58,6 +126,11 @@ export interface CircuitGroupBenchmark {
   produccionPromedioPorUnidad: number;
   kmConsolidados: number;
   ranking: BusBenchmarkMetric[]; // Ordenado por IPF desc
+
+  // Nuevos Indicadores Etapa 8
+  podioProduccion: PodioProduccionItem[];
+  brechaTuUnidad: BrechaEfectivoTuUnidad | null;
+  evolucionTemporalTuUnidad: EvolucionTemporalCiclo | null;
 }
 
 export interface FleetBenchmarkSummary {
