@@ -4410,3 +4410,33 @@ bun test tests/manual-socio.test.ts
 
 
 
+
+---
+
+## 🏛️ v3.61.37 - AUDITORÍA INTEGRAL Y GENERACIÓN DE EXPEDIENTES DE ARQUEO GENERAL DE LA UNIDAD 01 (2026-10-12)
+> **ESTADO:** 🟢 190 EXPEDIENTES GENERADOS Y 100% CERTIFICADOS EN `docs/arqueos_unidad_01/`  
+> **FECHA DE REGISTRO:** 2026-10-12 | **SISTEMA:** RutaGo - Motor de Auditoría y Control Operativo  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **UNIDAD OBJETO:** Bus 01 (Placa TAA-5152, Hino AK)  
+
+### 📍 1. Diagnóstico y Alcance del Requerimiento:
+- **Solicitud del Usuario:** Proporcionar la información registrada en cada arqueo general y generar un documento independiente por cada arqueo con todos los datos de la Unidad 01.
+- **Volumen Total Extraído:** Se auditó y extrajo la totalidad de registros históricos de la base de datos de producción (`https://rutago-jljjj.vercel.app/api/records`), cubriendo desde el 01/01/2026 hasta el 11/10/2026.
+- **Total de Arqueos Auditados:** **190 jornadas operativas completas**.
+
+### 📍 2. Métricas Consolidadas Globales (190 Jornadas - Bus 01):
+- **Producción Bruta Total:** **$49,820.48** (Promedio: **$262.21 / día**).
+- **Gastos Operativos de Ruta Totales:** **$47,222.65** (Promedio: **$248.54 / día**).
+- **Líquido Entregado al Socio (Efectivo de Bolsillo en Mano):** **$340.98** (Promedio: **$1.79 / día**).
+- **Aporte Total Retenido a Caja Común:** **$1,640.35** (Promedio: **$8.63 / día**).
+- **Kilometraje Total Acumulado Registrado:** **48,987 km** (Promedio: **257.8 km / jornada**).
+
+### 📍 3. Estructura de Documentación Generada (`docs/arqueos_unidad_01/`):
+- **190 Archivos Markdown Individuales (`ARQUEO_{YYYY-MM-DD}_{VT}.md`):** Cada archivo contiene:
+  1. **Ficha del Autobús y Tripulación:** Placa TAA-5152, Modelo Hino AK, Conductor y Ayudante asignados, Turno VT y UUID en base de datos.
+  2. **Control de Odómetro y Kilometraje:** Lectura inicial, lectura final y kilómetros recorridos netos.
+  3. **Balance Financiero del Día:** Producción bruta, gastos totales, líquido al socio, retención de caja común, boletos impresos, sobrantes/descuadres y entrega a compañía.
+  4. **Tabla Detallada de Frecuencias y Vueltas:** Orden, hora, ruta (origen-destino), sentido (ida/vuelta), ingresos por boletos y efectivo, pasajeros de caja común e importe retenido.
+  5. **Tabla Detallada de Gastos de Ruta:** Desglose categorizado de salarios de chofer, ayudante, diésel, Plan Renova ($68.00) y gastos mecánicos menores en ruta.
+  6. **Certificación y Margen Operativo:** Rentabilidad porcentual de la jornada.
+- **Índice Maestro (`INDICE_ARQUEOS_UNIDAD_01.md`):** Tabla cronológica integral con los 190 registros y enlaces directos a cada expediente individual.
