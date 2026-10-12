@@ -1,0 +1,1217 @@
+﻿Numero_Jornada,Fecha,Turno_VT,Unidad_Disco,Conductor,Ayudante,Orden_Vuelta,Hora_Programada,Ruta_Origen,Ruta_Destino,Sentido,Tipo_Frecuencia,Ingreso_Boletos_USD,Ingreso_Efectivo_USD,Pasajeros_Caja_Comun,Monto_Caja_Comun_USD,Total_Vuelta_USD
+1,"2026-01-01","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,12.00,0,0.00,12.00
+1,"2026-01-01","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,24.00,0,0.00,24.00
+1,"2026-01-01","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,60.25,0,0.00,60.25
+1,"2026-01-01","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,42.50,0,0.00,42.50
+1,"2026-01-01","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"16:15","Loja","Vilcabamba","Ida","frecuencia",0.00,40.00,0,0.00,40.00
+1,"2026-01-01","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,60.00,0,0.00,60.00
+2,"2026-01-31","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:40","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+2,"2026-01-31","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,5.00,0,0.00,5.00
+2,"2026-01-31","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"07:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,47.00,0,0.00,47.00
+2,"2026-01-31","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:30","Loja","La Elvira","Ida","frecuencia",0.00,35.00,0,0.00,35.00
+2,"2026-01-31","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"17:40","La Elvira","Loja","Vuelta","frecuencia",0.00,41.75,0,0.00,41.75
+2,"2026-01-31","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:15","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+3,"2026-02-05","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,10.00,0,0.00,10.00
+3,"2026-02-05","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:45","Loja","Vilcabamba","Ida","frecuencia",0.00,52.00,0,0.00,52.00
+3,"2026-02-05","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"09:00","Vilcabamba","Loja","Vuelta","frecuencia",0.00,28.50,0,0.00,28.50
+3,"2026-02-05","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:40","Loja","Vilcabamba","Ida","frecuencia",0.00,35.50,0,0.00,35.50
+3,"2026-02-05","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"15:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,28.25,0,0.00,28.25
+3,"2026-02-05","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:45","Loja","Vilcabamba","Ida","frecuencia",0.00,32.50,0,0.00,32.50
+4,"2026-02-06","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:15","Loja","Vilcabamba","Ida","frecuencia",0.00,28.00,0,0.00,28.00
+4,"2026-02-06","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.50,0,0.00,30.50
+4,"2026-02-06","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:15","Loja","Vilcabamba","Ida","frecuencia",0.00,39.25,0,0.00,39.25
+4,"2026-02-06","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,72.50,0,0.00,72.50
+4,"2026-02-06","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,49.50,0,0.00,49.50
+4,"2026-02-06","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,53.00,0,0.00,53.00
+5,"2026-02-07","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,4.50,0,0.00,4.50
+5,"2026-02-07","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:40","Loja","El Tambo","Ida","frecuencia",0.00,74.00,0,0.00,74.00
+5,"2026-02-07","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:15","El Tambo","Loja","Vuelta","frecuencia",0.00,23.25,0,0.00,23.25
+5,"2026-02-07","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:10","Loja","El Tambo","Ida","frecuencia",0.00,70.00,0,0.00,70.00
+5,"2026-02-07","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:15","El Tambo","Loja","Vuelta","frecuencia",0.00,40.00,0,0.00,40.00
+5,"2026-02-07","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:30","Loja","Vilcabamba","Ida","frecuencia",0.00,36.00,0,0.00,36.00
+6,"2026-02-08","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,88.50,0,0.00,88.50
+6,"2026-02-08","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:30","Loja","Vilcabamba","Ida","frecuencia",0.00,45.25,0,0.00,45.25
+6,"2026-02-08","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,38.75,0,0.00,38.75
+6,"2026-02-08","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Loja","Vilcabamba","Ida","frecuencia",0.00,40.00,0,0.00,40.00
+6,"2026-02-08","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,59.50,0,0.00,59.50
+6,"2026-02-08","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,35.50,0,0.00,35.50
+7,"2026-02-09","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:50","El Tambo","Loja","Vuelta","frecuencia",0.00,56.50,0,0.00,56.50
+7,"2026-02-09","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:30","Loja","Vilcabamba","Ida","frecuencia",0.00,22.00,0,0.00,22.00
+7,"2026-02-09","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,23.50,0,0.00,23.50
+7,"2026-02-09","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:20","Loja","Vilcabamba","Ida","frecuencia",0.00,35.50,0,0.00,35.50
+7,"2026-02-09","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.00,0,0.00,22.00
+7,"2026-02-09","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:20","Loja","El Tambo","Ida","frecuencia",0.00,45.00,0,0.00,45.00
+8,"2026-02-10","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:25","Loja","Vilcabamba","Ida","frecuencia",0.00,24.00,0,0.00,24.00
+8,"2026-02-10","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,33.00,0,0.00,33.00
+8,"2026-02-10","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:15","Loja","Vilcabamba","Ida","frecuencia",0.00,43.75,0,0.00,43.75
+8,"2026-02-10","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,34.50,0,0.00,34.50
+8,"2026-02-10","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:25","Loja","Vilcabamba","Ida","frecuencia",0.00,41.00,0,0.00,41.00
+8,"2026-02-10","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,16.75,0,0.00,16.75
+9,"2026-02-11","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:50","Loja","Vilcabamba","Ida","frecuencia",0.00,28.00,0,0.00,28.00
+9,"2026-02-11","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,29.25,0,0.00,29.25
+9,"2026-02-11","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,70.00,0,0.00,70.00
+9,"2026-02-11","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"11:30","Loja","Vilcabamba","Ida","frecuencia",0.00,32.25,0,0.00,32.25
+9,"2026-02-11","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,47.00,0,0.00,47.00
+9,"2026-02-11","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,60.50,0,0.00,60.50
+9,"2026-02-11","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,41.75,0,0.00,41.75
+9,"2026-02-11","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,24.50,0,0.00,24.50
+10,"2026-02-12","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,46.00,0,0.00,46.00
+10,"2026-02-12","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,55.25,0,0.00,55.25
+10,"2026-02-12","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,34.00,0,0.00,34.00
+10,"2026-02-12","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.00,0,0.00,35.00
+10,"2026-02-12","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:15","Loja","Vilcabamba","Ida","frecuencia",0.00,41.50,0,0.00,41.50
+10,"2026-02-12","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,18.50,0,0.00,18.50
+11,"2026-02-14","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:15","Loja","Vilcabamba","Ida","frecuencia",0.00,32.25,0,0.00,32.25
+11,"2026-02-14","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:00","Yangana","Loja","Vuelta","frecuencia",0.00,28.00,0,0.00,28.00
+11,"2026-02-14","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.00,0,0.00,13.00
+11,"2026-02-14","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"10:25","Loja","Vilcabamba","Ida","frecuencia",0.00,70.00,0,0.00,70.00
+11,"2026-02-14","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"12:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+11,"2026-02-14","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,0.00,0,0.00,0.00
+11,"2026-02-14","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.00,0,0.00,25.00
+11,"2026-02-14","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"20:45","Loja","Yangana","Ida","frecuencia",0.00,41.00,0,0.00,41.00
+12,"2026-02-15","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:15","Loja","Vilcabamba","Ida","frecuencia",0.00,83.25,0,0.00,83.25
+12,"2026-02-15","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,68.00,0,0.00,68.00
+12,"2026-02-15","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"13:30","Loja","Vilcabamba","Ida","frecuencia",0.00,88.95,0,0.00,88.95
+12,"2026-02-15","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"15:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.00,0,0.00,25.00
+12,"2026-02-15","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,31.00,0,0.00,31.00
+12,"2026-02-15","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,50.25,0,0.00,50.25
+13,"2026-02-16","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Loja","Vilcabamba","Ida","frecuencia",0.00,8.00,0,0.00,8.00
+13,"2026-02-16","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,24.00,0,0.00,24.00
+13,"2026-02-16","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"07:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,65.00,0,0.00,65.00
+13,"2026-02-16","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"14:30","Loja","Vilcabamba","Ida","frecuencia",0.00,81.70,0,0.00,81.70
+13,"2026-02-16","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:40","La Elvira","Loja","Vuelta","frecuencia",0.00,76.25,0,0.00,76.25
+13,"2026-02-16","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:15","Loja","Vilcabamba","Ida","frecuencia",0.00,36.00,0,0.00,36.00
+14,"2026-02-17","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"08:00","La Elvira","Loja","Vuelta","frecuencia",0.00,107.25,0,0.00,107.25
+14,"2026-02-17","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:45","Loja","Vilcabamba","Ida","frecuencia",0.00,36.00,0,0.00,36.00
+14,"2026-02-17","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,57.00,0,0.00,57.00
+14,"2026-02-17","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Loja","Vilcabamba","Ida","frecuencia",0.00,85.65,0,0.00,85.65
+14,"2026-02-17","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,47.00,0,0.00,47.00
+14,"2026-02-17","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+15,"2026-02-18","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.00,0,0.00,22.00
+15,"2026-02-18","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"10:15","Loja","Vilcabamba","Ida","frecuencia",0.00,21.00,0,0.00,21.00
+15,"2026-02-18","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"12:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,66.00,0,0.00,66.00
+15,"2026-02-18","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"14:30","Loja","Vilcabamba","Ida","frecuencia",0.00,56.00,0,0.00,56.00
+15,"2026-02-18","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,24.25,0,0.00,24.25
+15,"2026-02-18","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"21:00","Loja","Vilcabamba","Ida","frecuencia",0.00,11.00,0,0.00,11.00
+16,"2026-02-19","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,6.75,0,0.00,6.75
+16,"2026-02-19","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.00,0,0.00,13.00
+16,"2026-02-19","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,56.25,0,0.00,56.25
+16,"2026-02-19","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.50,0,0.00,37.50
+16,"2026-02-19","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,50.50,0,0.00,50.50
+16,"2026-02-19","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,17.00,0,0.00,17.00
+17,"2026-02-20","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:25","Loja","Vilcabamba","Ida","frecuencia",0.00,60.00,0,0.00,60.00
+17,"2026-02-20","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.75,0,0.00,37.75
+17,"2026-02-20","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:45","Loja","Vilcabamba","Ida","frecuencia",0.00,33.75,0,0.00,33.75
+17,"2026-02-20","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,81.50,0,0.00,81.50
+17,"2026-02-20","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"15:15","Loja","Vilcabamba","Ida","frecuencia",0.00,21.50,0,0.00,21.50
+17,"2026-02-20","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,34.25,0,0.00,34.25
+17,"2026-02-20","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"18:55","Loja","Vilcabamba","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+17,"2026-02-20","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"21:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,20.00,0,0.00,20.00
+18,"2026-02-21","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,62.25,0,0.00,62.25
+18,"2026-02-21","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:45","Loja","Vilcabamba","Ida","frecuencia",0.00,35.00,0,0.00,35.00
+18,"2026-02-21","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"09:00","Vilcabamba","Loja","Vuelta","frecuencia",0.00,40.00,0,0.00,40.00
+18,"2026-02-21","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:40","Loja","Vilcabamba","Ida","frecuencia",0.00,33.00,0,0.00,33.00
+18,"2026-02-21","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"15:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.00,0,0.00,22.00
+18,"2026-02-21","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,38.50,0,0.00,38.50
+19,"2026-02-22","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:15","Loja","Vilcabamba","Ida","frecuencia",0.00,35.25,0,0.00,35.25
+19,"2026-02-22","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,23.25,0,0.00,23.25
+19,"2026-02-22","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:15","Loja","Vilcabamba","Ida","frecuencia",0.00,37.25,0,0.00,37.25
+19,"2026-02-22","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,65.00,0,0.00,65.00
+19,"2026-02-22","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,0.00,0,0.00,0.00
+19,"2026-02-22","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,0.00,0,0.00,0.00
+20,"2026-02-23","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,21.00,0,0.00,21.00
+20,"2026-02-23","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:40","Loja","El Tambo","Ida","frecuencia",0.00,62.00,0,0.00,62.00
+20,"2026-02-23","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:15","El Tambo","Loja","Vuelta","frecuencia",0.00,31.50,0,0.00,31.50
+20,"2026-02-23","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:10","Loja","El Tambo","Ida","frecuencia",0.00,52.25,0,0.00,52.25
+20,"2026-02-23","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:15","El Tambo","Loja","Vuelta","frecuencia",0.00,65.00,0,0.00,65.00
+20,"2026-02-23","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:30","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+21,"2026-02-24","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,80.00,0,0.00,80.00
+21,"2026-02-24","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:30","Loja","Vilcabamba","Ida","frecuencia",0.00,75.50,0,0.00,75.50
+21,"2026-02-24","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.25,0,0.00,25.25
+21,"2026-02-24","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Loja","Vilcabamba","Ida","frecuencia",0.00,37.00,0,0.00,37.00
+21,"2026-02-24","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.50,0,0.00,30.50
+21,"2026-02-24","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,52.50,0,0.00,52.50
+22,"2026-02-25","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:50","El Tambo","Loja","Vuelta","frecuencia",0.00,50.00,0,0.00,50.00
+22,"2026-02-25","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:30","Loja","Vilcabamba","Ida","frecuencia",0.00,18.50,0,0.00,18.50
+22,"2026-02-25","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,31.00,0,0.00,31.00
+22,"2026-02-25","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:20","Loja","Vilcabamba","Ida","frecuencia",0.00,41.00,0,0.00,41.00
+22,"2026-02-25","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,14.00,0,0.00,14.00
+22,"2026-02-25","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:20","Loja","El Tambo","Ida","frecuencia",0.00,25.00,0,0.00,25.00
+23,"2026-02-26","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:25","Loja","Vilcabamba","Ida","frecuencia",0.00,12.00,0,0.00,12.00
+23,"2026-02-26","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.00,0,0.00,25.00
+23,"2026-02-26","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:15","Loja","Vilcabamba","Ida","frecuencia",0.00,22.25,0,0.00,22.25
+23,"2026-02-26","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.75,0,0.00,22.75
+23,"2026-02-26","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:25","Loja","Vilcabamba","Ida","frecuencia",0.00,28.00,0,0.00,28.00
+23,"2026-02-26","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,18.00,0,0.00,18.00
+24,"2026-02-27","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:50","Loja","Vilcabamba","Ida","frecuencia",0.00,42.00,0,0.00,42.00
+24,"2026-02-27","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,6.00,0,0.00,6.00
+24,"2026-02-27","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,47.00,0,0.00,47.00
+24,"2026-02-27","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"11:30","Loja","Vilcabamba","Ida","frecuencia",0.00,37.75,0,0.00,37.75
+24,"2026-02-27","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,68.00,0,0.00,68.00
+24,"2026-02-27","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,56.75,0,0.00,56.75
+24,"2026-02-27","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,67.25,0,0.00,67.25
+24,"2026-02-27","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,8.00,0,0.00,8.00
+25,"2026-02-28","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,64.25,0,0.00,64.25
+25,"2026-02-28","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,33.25,0,0.00,33.25
+25,"2026-02-28","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,57.00,0,0.00,57.00
+25,"2026-02-28","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.00,0,0.00,35.00
+25,"2026-02-28","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:15","Loja","Vilcabamba","Ida","frecuencia",0.00,43.00,0,0.00,43.00
+25,"2026-02-28","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,33.25,0,0.00,33.25
+26,"2026-03-02","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:15","Loja","Vilcabamba","Ida","frecuencia",0.00,56.50,0,0.00,56.50
+26,"2026-03-02","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:00","Yangana","Loja","Vuelta","frecuencia",0.00,71.00,0,0.00,71.00
+26,"2026-03-02","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.00,0,0.00,25.00
+26,"2026-03-02","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"10:25","Loja","Vilcabamba","Ida","frecuencia",0.00,9.50,0,0.00,9.50
+26,"2026-03-02","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"12:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,36.50,0,0.00,36.50
+26,"2026-03-02","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,35.75,0,0.00,35.75
+26,"2026-03-02","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,32.00,0,0.00,32.00
+26,"2026-03-02","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"20:45","Loja","Yangana","Ida","frecuencia",0.00,28.50,0,0.00,28.50
+27,"2026-03-03","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:15","Loja","Vilcabamba","Ida","frecuencia",0.00,24.00,0,0.00,24.00
+27,"2026-03-03","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,41.00,0,0.00,41.00
+27,"2026-03-03","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"13:45","Loja","Vilcabamba","Ida","frecuencia",0.00,22.00,0,0.00,22.00
+27,"2026-03-03","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"15:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,34.50,0,0.00,34.50
+27,"2026-03-03","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:45","Loja","Vilcabamba","Ida","frecuencia",0.00,46.00,0,0.00,46.00
+27,"2026-03-03","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,31.25,0,0.00,31.25
+28,"2026-03-04","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Loja","Vilcabamba","Ida","frecuencia",0.00,17.25,0,0.00,17.25
+28,"2026-03-04","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,21.50,0,0.00,21.50
+28,"2026-03-04","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"07:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,52.00,0,0.00,52.00
+28,"2026-03-04","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:30","Loja","La Elvira","Ida","frecuencia",0.00,41.00,0,0.00,41.00
+28,"2026-03-04","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:40","La Elvira","Loja","Vuelta","frecuencia",0.00,48.00,0,0.00,48.00
+28,"2026-03-04","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Loja","Vilcabamba","Ida","frecuencia",0.00,5.75,0,0.00,5.75
+29,"2026-03-05","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"08:00","La Elvira","Loja","Vuelta","frecuencia",0.00,54.00,0,0.00,54.00
+29,"2026-03-05","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:45","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+29,"2026-03-05","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,38.25,0,0.00,38.25
+29,"2026-03-05","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Loja","Vilcabamba","Ida","frecuencia",0.00,35.00,0,0.00,35.00
+29,"2026-03-05","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,5.00,0,0.00,5.00
+29,"2026-03-05","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"06:05","Loja","Zahuayco","Ida","frecuencia",0.00,9.00,0,0.00,9.00
+30,"2026-03-06","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,48.25,0,0.00,48.25
+30,"2026-03-06","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"10:15","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+30,"2026-03-06","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"12:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,18.00,0,0.00,18.00
+30,"2026-03-06","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"14:30","Loja","Vilcabamba","Ida","frecuencia",0.00,57.00,0,0.00,57.00
+30,"2026-03-06","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.50,0,0.00,35.50
+30,"2026-03-06","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"21:00","Loja","Vilcabamba","Ida","frecuencia",0.00,25.00,0,0.00,25.00
+31,"2026-03-07","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,34.00,0,0.00,34.00
+31,"2026-03-07","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,5.00,0,0.00,5.00
+31,"2026-03-07","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,70.00,0,0.00,70.00
+31,"2026-03-07","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,45.00,0,0.00,45.00
+31,"2026-03-07","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+31,"2026-03-07","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,41.50,0,0.00,41.50
+32,"2026-03-08","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:25","Loja","Vilcabamba","Ida","frecuencia",0.00,28.00,0,0.00,28.00
+32,"2026-03-08","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,20.00,0,0.00,20.00
+32,"2026-03-08","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:45","Loja","Vilcabamba","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+32,"2026-03-08","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,43.00,0,0.00,43.00
+32,"2026-03-08","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"15:15","Loja","Vilcabamba","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+32,"2026-03-08","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,63.75,0,0.00,63.75
+32,"2026-03-08","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"18:55","Loja","Vilcabamba","Ida","frecuencia",0.00,11.00,0,0.00,11.00
+32,"2026-03-08","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"21:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,34.25,0,0.00,34.25
+33,"2026-03-09","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,5.00,0,0.00,5.00
+33,"2026-03-09","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:45","Loja","Vilcabamba","Ida","frecuencia",0.00,46.75,0,0.00,46.75
+33,"2026-03-09","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"09:00","Vilcabamba","Loja","Vuelta","frecuencia",0.00,16.00,0,0.00,16.00
+33,"2026-03-09","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:40","Loja","Vilcabamba","Ida","frecuencia",0.00,25.00,0,0.00,25.00
+33,"2026-03-09","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"15:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.00,0,0.00,25.00
+33,"2026-03-09","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:45","Loja","Vilcabamba","Ida","frecuencia",0.00,29.00,0,0.00,29.00
+34,"2026-03-10","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:15","Loja","Vilcabamba","Ida","frecuencia",0.00,55.00,0,0.00,55.00
+34,"2026-03-10","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,45.00,0,0.00,45.00
+34,"2026-03-10","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:15","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+34,"2026-03-10","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,63.00,0,0.00,63.00
+34,"2026-03-10","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,45.50,0,0.00,45.50
+34,"2026-03-10","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.00,0,0.00,22.00
+35,"2026-03-11","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,18.00,0,0.00,18.00
+35,"2026-03-11","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:40","Loja","El Tambo","Ida","frecuencia",0.00,58.00,0,0.00,58.00
+35,"2026-03-11","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:15","El Tambo","Loja","Vuelta","frecuencia",0.00,20.00,0,0.00,20.00
+35,"2026-03-11","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:10","Loja","El Tambo","Ida","frecuencia",0.00,48.50,0,0.00,48.50
+35,"2026-03-11","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:15","El Tambo","Loja","Vuelta","frecuencia",0.00,63.00,0,0.00,63.00
+35,"2026-03-11","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:30","Loja","Vilcabamba","Ida","frecuencia",0.00,27.50,0,0.00,27.50
+36,"2026-03-12","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,50.00,0,0.00,50.00
+36,"2026-03-12","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,56.00,0,0.00,56.00
+36,"2026-03-12","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,40.00,0,0.00,40.00
+36,"2026-03-12","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+36,"2026-03-12","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,16.00,0,0.00,16.00
+36,"2026-03-12","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,40.00,0,0.00,40.00
+37,"2026-03-13","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:50","El Tambo","Loja","Vuelta","frecuencia",0.00,53.00,0,0.00,53.00
+37,"2026-03-13","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:30","Loja","Vilcabamba","Ida","frecuencia",0.00,33.00,0,0.00,33.00
+37,"2026-03-13","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,26.00,0,0.00,26.00
+37,"2026-03-13","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:20","Loja","Vilcabamba","Ida","frecuencia",0.00,49.00,0,0.00,49.00
+37,"2026-03-13","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,28.25,0,0.00,28.25
+37,"2026-03-13","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:20","Loja","El Tambo","Ida","frecuencia",0.00,42.00,0,0.00,42.00
+38,"2026-03-14","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:25","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+38,"2026-03-14","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.75,0,0.00,22.75
+38,"2026-03-14","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:15","Loja","Vilcabamba","Ida","frecuencia",0.00,48.25,0,0.00,48.25
+38,"2026-03-14","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,23.25,0,0.00,23.25
+38,"2026-03-14","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:25","Loja","Vilcabamba","Ida","frecuencia",0.00,22.75,0,0.00,22.75
+38,"2026-03-14","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,21.75,0,0.00,21.75
+39,"2026-03-15","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:50","Loja","Vilcabamba","Ida","frecuencia",0.00,14.00,0,0.00,14.00
+39,"2026-03-15","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,33.50,0,0.00,33.50
+39,"2026-03-15","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.00,0,0.00,35.00
+39,"2026-03-15","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"11:30","Loja","Vilcabamba","Ida","frecuencia",0.00,40.25,0,0.00,40.25
+39,"2026-03-15","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,43.00,0,0.00,43.00
+39,"2026-03-15","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,18.00,0,0.00,18.00
+39,"2026-03-15","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,100.00,0,0.00,100.00
+39,"2026-03-15","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,5.25,0,0.00,5.25
+40,"2026-03-16","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,32.00,0,0.00,32.00
+40,"2026-03-16","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,48.75,0,0.00,48.75
+40,"2026-03-16","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,51.00,0,0.00,51.00
+40,"2026-03-16","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,31.50,0,0.00,31.50
+40,"2026-03-16","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,33.25,0,0.00,33.25
+40,"2026-03-16","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,24.00,0,0.00,24.00
+41,"2026-03-17","P3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"08:15","Loja","Vilcabamba","Ida","frecuencia",0.00,34.00,0,0.00,34.00
+41,"2026-03-17","P3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"10:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,15.75,0,0.00,15.75
+41,"2026-03-17","P3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"13:30","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+41,"2026-03-17","P3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"15:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,14.75,0,0.00,14.75
+41,"2026-03-17","P3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:15","Loja","Vilcabamba","Ida","frecuencia",0.00,25.00,0,0.00,25.00
+41,"2026-03-17","P3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,6.00,0,0.00,6.00
+42,"2026-03-18","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:15","Loja","Vilcabamba","Ida","frecuencia",0.00,0.00,0,0.00,0.00
+42,"2026-03-18","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:00","Yangana","Loja","Vuelta","frecuencia",0.00,50.50,0,0.00,50.50
+42,"2026-03-18","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,0.00,0,0.00,0.00
+42,"2026-03-18","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"10:25","Loja","Vilcabamba","Ida","frecuencia",0.00,17.75,0,0.00,17.75
+42,"2026-03-18","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"12:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,55.00,0,0.00,55.00
+42,"2026-03-18","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,31.00,0,0.00,31.00
+42,"2026-03-18","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.00,0,0.00,13.00
+42,"2026-03-18","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"20:45","Loja","Yangana","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+43,"2026-03-19","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:15","Loja","Vilcabamba","Ida","frecuencia",0.00,37.00,0,0.00,37.00
+43,"2026-03-19","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,31.00,0,0.00,31.00
+43,"2026-03-19","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"13:45","Loja","Vilcabamba","Ida","frecuencia",0.00,48.00,0,0.00,48.00
+43,"2026-03-19","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"15:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,20.25,0,0.00,20.25
+43,"2026-03-19","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:45","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+43,"2026-03-19","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,26.00,0,0.00,26.00
+44,"2026-03-20","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Loja","Vilcabamba","Ida","frecuencia",0.00,6.00,0,0.00,6.00
+44,"2026-03-20","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,50.00,0,0.00,50.00
+44,"2026-03-20","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"07:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,43.50,0,0.00,43.50
+44,"2026-03-20","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:30","Loja","La Elvira","Ida","frecuencia",0.00,23.00,0,0.00,23.00
+44,"2026-03-20","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:40","La Elvira","Loja","Vuelta","frecuencia",0.00,47.00,0,0.00,47.00
+44,"2026-03-20","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Loja","Vilcabamba","Ida","frecuencia",0.00,56.25,0,0.00,56.25
+45,"2026-03-21","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"08:00","La Elvira","Loja","Vuelta","frecuencia",0.00,0.00,0,0.00,0.00
+45,"2026-03-21","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:45","Loja","Vilcabamba","Ida","frecuencia",0.00,31.25,0,0.00,31.25
+45,"2026-03-21","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,34.00,0,0.00,34.00
+45,"2026-03-21","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Loja","Vilcabamba","Ida","frecuencia",0.00,69.50,0,0.00,69.50
+45,"2026-03-21","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,40.00,0,0.00,40.00
+45,"2026-03-21","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"16:25","Loja","La Elvira","Ida","frecuencia",0.00,73.00,0,0.00,73.00
+46,"2026-03-22","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,14.00,0,0.00,14.00
+46,"2026-03-22","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"10:15","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,0,0.00,45.00
+46,"2026-03-22","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"12:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,39.25,0,0.00,39.25
+46,"2026-03-22","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"14:30","Loja","Vilcabamba","Ida","frecuencia",0.00,24.00,0,0.00,24.00
+46,"2026-03-22","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,62.00,0,0.00,62.00
+46,"2026-03-22","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"21:00","Loja","Vilcabamba","Ida","frecuencia",0.00,2.50,0,0.00,2.50
+47,"2026-03-23","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,21.25,0,0.00,21.25
+47,"2026-03-23","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,21.75,0,0.00,21.75
+47,"2026-03-23","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,40.00,0,0.00,40.00
+47,"2026-03-23","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,11.00,0,0.00,11.00
+47,"2026-03-23","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,44.00,0,0.00,44.00
+47,"2026-03-23","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,10.00,0,0.00,10.00
+48,"2026-03-24","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:25","Loja","Vilcabamba","Ida","frecuencia",0.00,71.00,0,0.00,71.00
+48,"2026-03-24","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.25,0,0.00,22.25
+48,"2026-03-24","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:45","Loja","Vilcabamba","Ida","frecuencia",0.00,40.00,0,0.00,40.00
+48,"2026-03-24","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,72.75,0,0.00,72.75
+48,"2026-03-24","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"15:15","Loja","Vilcabamba","Ida","frecuencia",0.00,16.75,0,0.00,16.75
+48,"2026-03-24","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,28.25,0,0.00,28.25
+48,"2026-03-24","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"18:55","Loja","Vilcabamba","Ida","frecuencia",0.00,41.25,0,0.00,41.25
+48,"2026-03-24","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"21:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,18.00,0,0.00,18.00
+49,"2026-03-25","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,12.00,0,0.00,12.00
+49,"2026-03-25","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:45","Loja","Vilcabamba","Ida","frecuencia",0.00,41.75,0,0.00,41.75
+49,"2026-03-25","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"09:00","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.00,0,0.00,13.00
+49,"2026-03-25","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:40","Loja","Vilcabamba","Ida","frecuencia",0.00,21.25,0,0.00,21.25
+49,"2026-03-25","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"15:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,12.25,0,0.00,12.25
+49,"2026-03-25","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:45","Loja","Vilcabamba","Ida","frecuencia",0.00,8.00,0,0.00,8.00
+50,"2026-03-26","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:15","Loja","Vilcabamba","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+50,"2026-03-26","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,15.00,0,0.00,15.00
+50,"2026-03-26","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:15","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+50,"2026-03-26","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,67.25,0,0.00,67.25
+50,"2026-03-26","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,14.00,0,0.00,14.00
+50,"2026-03-26","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,26.00,0,0.00,26.00
+51,"2026-03-27","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,5.00,0,0.00,5.00
+51,"2026-03-27","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:40","Loja","El Tambo","Ida","frecuencia",0.00,44.00,0,0.00,44.00
+51,"2026-03-27","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:15","El Tambo","Loja","Vuelta","frecuencia",0.00,27.25,0,0.00,27.25
+51,"2026-03-27","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:10","Loja","El Tambo","Ida","frecuencia",0.00,62.00,0,0.00,62.00
+51,"2026-03-27","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:15","El Tambo","Loja","Vuelta","frecuencia",0.00,31.50,0,0.00,31.50
+51,"2026-03-27","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:30","Loja","Vilcabamba","Ida","frecuencia",0.00,65.50,0,0.00,65.50
+52,"2026-03-28","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+52,"2026-03-28","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:30","Loja","Vilcabamba","Ida","frecuencia",0.00,24.50,0,0.00,24.50
+52,"2026-03-28","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,24.25,0,0.00,24.25
+52,"2026-03-28","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+52,"2026-03-28","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,46.75,0,0.00,46.75
+52,"2026-03-28","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,73.00,0,0.00,73.00
+53,"2026-03-29","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:50","El Tambo","Loja","Vuelta","frecuencia",0.00,42.00,0,0.00,42.00
+53,"2026-03-29","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:30","Loja","Vilcabamba","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+53,"2026-03-29","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,38.00,0,0.00,38.00
+53,"2026-03-29","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:20","Loja","Vilcabamba","Ida","frecuencia",0.00,41.00,0,0.00,41.00
+53,"2026-03-29","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,21.00,0,0.00,21.00
+53,"2026-03-29","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:20","Loja","El Tambo","Ida","frecuencia",0.00,12.75,0,0.00,12.75
+54,"2026-03-30","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:25","Loja","Vilcabamba","Ida","frecuencia",0.00,25.25,0,0.00,25.25
+54,"2026-03-30","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.00,0,0.00,22.00
+54,"2026-03-30","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:15","Loja","Vilcabamba","Ida","frecuencia",0.00,53.00,0,0.00,53.00
+54,"2026-03-30","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,32.75,0,0.00,32.75
+54,"2026-03-30","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:25","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+54,"2026-03-30","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,19.00,0,0.00,19.00
+55,"2026-03-31","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:50","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+55,"2026-03-31","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+55,"2026-03-31","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,50.00,0,0.00,50.00
+55,"2026-03-31","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"11:30","Loja","Vilcabamba","Ida","frecuencia",0.00,40.00,0,0.00,40.00
+55,"2026-03-31","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.00,0,0.00,35.00
+55,"2026-03-31","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,41.00,0,0.00,41.00
+55,"2026-03-31","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,46.00,0,0.00,46.00
+55,"2026-03-31","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,10.00,0,0.00,10.00
+56,"2026-04-01","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,37.00,0,0.00,37.00
+56,"2026-04-01","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.00,0,0.00,35.00
+56,"2026-04-01","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,26.00,0,0.00,26.00
+56,"2026-04-01","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,10.00,0,0.00,10.00
+56,"2026-04-01","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:15","Loja","Vilcabamba","Ida","frecuencia",0.00,35.00,0,0.00,35.00
+56,"2026-04-01","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,20.00,0,0.00,20.00
+57,"2026-04-04","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:15","Loja","Vilcabamba","Ida","frecuencia",0.00,22.50,0,0.00,22.50
+57,"2026-04-04","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:00","Yangana","Loja","Vuelta","frecuencia",0.00,36.75,0,0.00,36.75
+57,"2026-04-04","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,40.00,0,0.00,40.00
+57,"2026-04-04","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"10:25","Loja","Vilcabamba","Ida","frecuencia",0.00,55.00,0,0.00,55.00
+57,"2026-04-04","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"12:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.50,0,0.00,37.50
+57,"2026-04-04","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,64.00,0,0.00,64.00
+57,"2026-04-04","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,44.25,0,0.00,44.25
+57,"2026-04-04","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"20:45","Loja","Yangana","Ida","frecuencia",0.00,25.75,0,0.00,25.75
+58,"2026-04-05","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:15","Loja","Vilcabamba","Ida","frecuencia",0.00,52.00,0,0.00,52.00
+58,"2026-04-05","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,43.25,0,0.00,43.25
+58,"2026-04-05","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"13:45","Loja","Vilcabamba","Ida","frecuencia",0.00,32.00,0,0.00,32.00
+58,"2026-04-05","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"15:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,68.00,0,0.00,68.00
+58,"2026-04-05","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:45","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+58,"2026-04-05","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,75.00,0,0.00,75.00
+59,"2026-04-06","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Loja","Vilcabamba","Ida","frecuencia",0.00,23.75,0,0.00,23.75
+59,"2026-04-06","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,31.75,0,0.00,31.75
+59,"2026-04-06","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"07:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,72.25,0,0.00,72.25
+59,"2026-04-06","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:30","Loja","La Elvira","Ida","frecuencia",0.00,42.00,0,0.00,42.00
+59,"2026-04-06","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:40","La Elvira","Loja","Vuelta","frecuencia",0.00,53.00,0,0.00,53.00
+59,"2026-04-06","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Loja","Vilcabamba","Ida","frecuencia",0.00,13.00,0,0.00,13.00
+60,"2026-04-07","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"08:00","La Elvira","Loja","Vuelta","frecuencia",0.00,0.00,0,0.00,0.00
+60,"2026-04-07","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:45","Loja","Vilcabamba","Ida","frecuencia",0.00,22.00,0,0.00,22.00
+60,"2026-04-07","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,44.00,0,0.00,44.00
+60,"2026-04-07","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,0,0.00,45.00
+60,"2026-04-07","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,69.50,0,0.00,69.50
+60,"2026-04-07","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:15","Loja","Vilcabamba","Ida","frecuencia",0.00,32.00,0,0.00,32.00
+61,"2026-04-08","P3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"08:15","Loja","Vilcabamba","Ida","frecuencia",0.00,42.00,0,0.00,42.00
+61,"2026-04-08","P3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,33.25,0,0.00,33.25
+61,"2026-04-08","P3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"13:30","Loja","Vilcabamba","Ida","frecuencia",0.00,55.75,0,0.00,55.75
+61,"2026-04-08","P3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"15:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.00,0,0.00,22.00
+61,"2026-04-08","P3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"19:15","Loja","Vilcabamba","Ida","frecuencia",0.00,13.00,0,0.00,13.00
+61,"2026-04-08","P3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"06:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,36.00,0,0.00,36.00
+62,"2026-04-09","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,26.00,0,0.00,26.00
+62,"2026-04-09","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,9.00,0,0.00,9.00
+62,"2026-04-09","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,32.50,0,0.00,32.50
+62,"2026-04-09","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,60.75,0,0.00,60.75
+62,"2026-04-09","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+62,"2026-04-09","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,8.00,0,0.00,8.00
+63,"2026-04-10","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:25","Loja","Vilcabamba","Ida","frecuencia",0.00,62.00,0,0.00,62.00
+63,"2026-04-10","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,51.50,0,0.00,51.50
+63,"2026-04-10","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:45","Loja","Vilcabamba","Ida","frecuencia",0.00,56.25,0,0.00,56.25
+63,"2026-04-10","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,57.50,0,0.00,57.50
+63,"2026-04-10","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"15:15","Loja","Vilcabamba","Ida","frecuencia",0.00,47.00,0,0.00,47.00
+63,"2026-04-10","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,20.00,0,0.00,20.00
+63,"2026-04-10","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"18:55","Loja","Vilcabamba","Ida","frecuencia",0.00,66.00,0,0.00,66.00
+63,"2026-04-10","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"21:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.00,0,0.00,25.00
+64,"2026-04-11","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,0.00,0,0.00,0.00
+64,"2026-04-11","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:45","Loja","Vilcabamba","Ida","frecuencia",0.00,60.00,0,0.00,60.00
+64,"2026-04-11","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"09:00","Vilcabamba","Loja","Vuelta","frecuencia",0.00,33.50,0,0.00,33.50
+64,"2026-04-11","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:30","Loja","Vilcabamba","Ida","frecuencia",0.00,80.00,0,0.00,80.00
+64,"2026-04-11","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"15:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,10.25,0,0.00,10.25
+64,"2026-04-11","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:45","Loja","Vilcabamba","Ida","frecuencia",0.00,0.00,0,0.00,0.00
+65,"2026-04-12","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:15","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+65,"2026-04-12","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.25,0,0.00,37.25
+65,"2026-04-12","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:15","Loja","Vilcabamba","Ida","frecuencia",0.00,37.00,0,0.00,37.00
+65,"2026-04-12","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,47.50,0,0.00,47.50
+65,"2026-04-12","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,16.50,0,0.00,16.50
+65,"2026-04-12","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,69.00,0,0.00,69.00
+66,"2026-04-13","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,48.25,0,0.00,48.25
+66,"2026-04-13","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:40","Loja","El Tambo","Ida","frecuencia",0.00,80.00,0,0.00,80.00
+66,"2026-04-13","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:15","El Tambo","Loja","Vuelta","frecuencia",0.00,37.00,0,0.00,37.00
+66,"2026-04-13","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:10","Loja","El Tambo","Ida","frecuencia",0.00,40.00,0,0.00,40.00
+66,"2026-04-13","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:15","El Tambo","Loja","Vuelta","frecuencia",0.00,65.50,0,0.00,65.50
+66,"2026-04-13","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:30","Loja","Vilcabamba","Ida","frecuencia",0.00,25.00,0,0.00,25.00
+67,"2026-04-14","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,74.00,0,0.00,74.00
+67,"2026-04-14","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:30","Loja","Vilcabamba","Ida","frecuencia",0.00,53.50,0,0.00,53.50
+67,"2026-04-14","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,11.00,0,0.00,11.00
+67,"2026-04-14","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Loja","Vilcabamba","Ida","frecuencia",0.00,20.50,0,0.00,20.50
+67,"2026-04-14","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,26.75,0,0.00,26.75
+67,"2026-04-14","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,51.00,0,0.00,51.00
+68,"2026-04-15","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:50","El Tambo","Loja","Vuelta","frecuencia",0.00,35.75,0,0.00,35.75
+68,"2026-04-15","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:30","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+68,"2026-04-15","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,16.00,0,0.00,16.00
+68,"2026-04-15","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:20","Loja","Vilcabamba","Ida","frecuencia",0.00,57.00,0,0.00,57.00
+68,"2026-04-15","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,24.00,0,0.00,24.00
+68,"2026-04-15","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:20","Loja","El Tambo","Ida","frecuencia",0.00,23.75,0,0.00,23.75
+69,"2026-04-16","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:25","Loja","Vilcabamba","Ida","frecuencia",0.00,16.75,0,0.00,16.75
+69,"2026-04-16","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,15.75,0,0.00,15.75
+69,"2026-04-16","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:15","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+69,"2026-04-16","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.75,0,0.00,37.75
+69,"2026-04-16","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:25","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,0,0.00,45.00
+69,"2026-04-16","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,9.75,0,0.00,9.75
+70,"2026-04-17","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:50","Loja","Vilcabamba","Ida","frecuencia",0.00,44.25,0,0.00,44.25
+70,"2026-04-17","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,10.00,0,0.00,10.00
+70,"2026-04-17","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,53.75,0,0.00,53.75
+70,"2026-04-17","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"11:30","Loja","Vilcabamba","Ida","frecuencia",0.00,35.00,0,0.00,35.00
+70,"2026-04-17","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,70.00,0,0.00,70.00
+70,"2026-04-17","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,80.00,0,0.00,80.00
+70,"2026-04-17","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,50.00,0,0.00,50.00
+70,"2026-04-17","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+71,"2026-04-18","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+71,"2026-04-18","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,40.00,0,0.00,40.00
+71,"2026-04-18","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,60.00,0,0.00,60.00
+71,"2026-04-18","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,20.00,0,0.00,20.00
+71,"2026-04-18","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:15","Loja","Vilcabamba","Ida","frecuencia",0.00,75.00,0,0.00,75.00
+71,"2026-04-18","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.00,0,0.00,35.00
+72,"2026-04-20","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:15","Loja","Vilcabamba","Ida","frecuencia",0.00,46.25,0,0.00,46.25
+72,"2026-04-20","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:00","Yangana","Loja","Vuelta","frecuencia",0.00,67.00,0,0.00,67.00
+72,"2026-04-20","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,41.75,0,0.00,41.75
+72,"2026-04-20","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"10:25","Loja","Vilcabamba","Ida","frecuencia",0.00,32.75,0,0.00,32.75
+72,"2026-04-20","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"12:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,45.75,0,0.00,45.75
+72,"2026-04-20","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+72,"2026-04-20","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.00,0,0.00,35.00
+72,"2026-04-20","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"20:45","Loja","Yangana","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+73,"2026-04-21","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:15","Loja","Vilcabamba","Ida","frecuencia",0.00,11.50,0,0.00,11.50
+73,"2026-04-21","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,57.50,0,0.00,57.50
+73,"2026-04-21","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"13:45","Loja","Vilcabamba","Ida","frecuencia",0.00,41.00,0,0.00,41.00
+73,"2026-04-21","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"15:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,51.25,0,0.00,51.25
+73,"2026-04-21","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:45","Loja","Vilcabamba","Ida","frecuencia",0.00,59.75,0,0.00,59.75
+73,"2026-04-21","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.00,0,0.00,13.00
+74,"2026-04-22","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Loja","Vilcabamba","Ida","frecuencia",0.00,26.00,0,0.00,26.00
+74,"2026-04-22","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,27.75,0,0.00,27.75
+74,"2026-04-22","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"07:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,52.50,0,0.00,52.50
+74,"2026-04-22","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:30","Loja","La Elvira","Ida","frecuencia",0.00,60.50,0,0.00,60.50
+74,"2026-04-22","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:40","-","-","Vuelta","no_realizada",0.00,0.00,0,0.00,0.00
+74,"2026-04-22","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Loja","Vilcabamba","Ida","frecuencia",0.00,27.25,0,0.00,27.25
+75,"2026-04-23","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"08:00","La Elvira","Loja","Vuelta","frecuencia",0.00,31.00,0,0.00,31.00
+75,"2026-04-23","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:45","Loja","Vilcabamba","Ida","frecuencia",0.00,25.00,0,0.00,25.00
+75,"2026-04-23","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.00,0,0.00,37.00
+75,"2026-04-23","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Loja","Vilcabamba","Ida","frecuencia",0.00,49.00,0,0.00,49.00
+75,"2026-04-23","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.00,0,0.00,22.00
+75,"2026-04-23","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"16:25","Loja","La Elvira","Ida","frecuencia",0.00,42.75,0,0.00,42.75
+76,"2026-04-24","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,31.25,0,0.00,31.25
+76,"2026-04-24","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"10:15","Loja","Vilcabamba","Ida","frecuencia",0.00,25.50,0,0.00,25.50
+76,"2026-04-24","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"12:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+76,"2026-04-24","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"14:30","Loja","Vilcabamba","Ida","frecuencia",0.00,63.00,0,0.00,63.00
+76,"2026-04-24","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,52.50,0,0.00,52.50
+76,"2026-04-24","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"21:00","Loja","Vilcabamba","Ida","frecuencia",0.00,31.00,0,0.00,31.00
+77,"2026-04-25","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,33.50,0,0.00,33.50
+77,"2026-04-25","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,15.00,0,0.00,15.00
+77,"2026-04-25","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,76.75,0,0.00,76.75
+77,"2026-04-25","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,31.25,0,0.00,31.25
+77,"2026-04-25","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,47.75,0,0.00,47.75
+77,"2026-04-25","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,10.00,0,0.00,10.00
+78,"2026-04-26","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:25","Loja","Vilcabamba","Ida","frecuencia",0.00,17.75,0,0.00,17.75
+78,"2026-04-26","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,20.00,0,0.00,20.00
+78,"2026-04-26","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:45","Loja","Vilcabamba","Ida","frecuencia",0.00,70.00,0,0.00,70.00
+78,"2026-04-26","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,55.75,0,0.00,55.75
+78,"2026-04-26","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"15:15","Loja","Vilcabamba","Ida","frecuencia",0.00,35.00,0,0.00,35.00
+78,"2026-04-26","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,62.25,0,0.00,62.25
+78,"2026-04-26","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"18:55","Loja","Vilcabamba","Ida","frecuencia",0.00,24.75,0,0.00,24.75
+78,"2026-04-26","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"21:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,23.50,0,0.00,23.50
+79,"2026-04-27","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,16.50,0,0.00,16.50
+79,"2026-04-27","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:45","Loja","Vilcabamba","Ida","frecuencia",0.00,35.00,0,0.00,35.00
+79,"2026-04-27","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"09:00","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.00,0,0.00,37.00
+79,"2026-04-27","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:40","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+79,"2026-04-27","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"15:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,47.00,0,0.00,47.00
+79,"2026-04-27","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:45","Loja","Vilcabamba","Ida","frecuencia",0.00,36.50,0,0.00,36.50
+80,"2026-04-28","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:15","Loja","Vilcabamba","Ida","frecuencia",0.00,25.50,0,0.00,25.50
+80,"2026-04-28","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,47.50,0,0.00,47.50
+80,"2026-04-28","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:15","Loja","Vilcabamba","Ida","frecuencia",0.00,16.75,0,0.00,16.75
+80,"2026-04-28","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,83.25,0,0.00,83.25
+80,"2026-04-28","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,51.75,0,0.00,51.75
+80,"2026-04-28","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,48.00,0,0.00,48.00
+81,"2026-04-29","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,7.00,0,0.00,7.00
+81,"2026-04-29","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:40","Loja","El Tambo","Ida","frecuencia",0.00,73.25,0,0.00,73.25
+81,"2026-04-29","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:15","El Tambo","Loja","Vuelta","frecuencia",0.00,25.00,0,0.00,25.00
+81,"2026-04-29","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:10","Loja","El Tambo","Ida","frecuencia",0.00,34.00,0,0.00,34.00
+81,"2026-04-29","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:15","El Tambo","Loja","Vuelta","frecuencia",0.00,62.00,0,0.00,62.00
+81,"2026-04-29","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:15","Loja","Vilcabamba","Ida","frecuencia",0.00,34.50,0,0.00,34.50
+82,"2026-04-30","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,40.00,0,0.00,40.00
+82,"2026-04-30","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:30","Loja","Vilcabamba","Ida","frecuencia",0.00,50.50,0,0.00,50.50
+82,"2026-04-30","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.00,0,0.00,25.00
+82,"2026-04-30","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Loja","Vilcabamba","Ida","frecuencia",0.00,35.00,0,0.00,35.00
+82,"2026-04-30","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,53.00,0,0.00,53.00
+82,"2026-04-30","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,82.50,0,0.00,82.50
+83,"2026-05-01","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:50","El Tambo","Loja","Vuelta","frecuencia",0.00,37.00,0,0.00,37.00
+83,"2026-05-01","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:30","Loja","Vilcabamba","Ida","frecuencia",0.00,65.00,0,0.00,65.00
+83,"2026-05-01","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.75,0,0.00,37.75
+83,"2026-05-01","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:20","Loja","Vilcabamba","Ida","frecuencia",0.00,64.00,0,0.00,64.00
+83,"2026-05-01","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,15.75,0,0.00,15.75
+83,"2026-05-01","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:20","Loja","El Tambo","Ida","frecuencia",0.00,23.00,0,0.00,23.00
+84,"2026-05-02","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:25","Loja","Vilcabamba","Ida","frecuencia",0.00,28.00,0,0.00,28.00
+84,"2026-05-02","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,33.00,0,0.00,33.00
+84,"2026-05-02","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:15","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,0,0.00,45.00
+84,"2026-05-02","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.50,0,0.00,30.50
+84,"2026-05-02","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:25","Loja","Vilcabamba","Ida","frecuencia",0.00,24.25,0,0.00,24.25
+84,"2026-05-02","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,75.00,0,0.00,75.00
+85,"2026-05-03","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:50","Loja","Vilcabamba","Ida","frecuencia",0.00,17.50,0,0.00,17.50
+85,"2026-05-03","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,60.00,0,0.00,60.00
+85,"2026-05-03","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,47.75,0,0.00,47.75
+85,"2026-05-03","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"11:30","Loja","Vilcabamba","Ida","frecuencia",0.00,55.75,0,0.00,55.75
+85,"2026-05-03","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,56.50,0,0.00,56.50
+85,"2026-05-03","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,48.00,0,0.00,48.00
+85,"2026-05-03","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,81.75,0,0.00,81.75
+85,"2026-05-03","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,11.75,0,0.00,11.75
+86,"2026-05-04","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,39.50,0,0.00,39.50
+86,"2026-05-04","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,71.50,0,0.00,71.50
+86,"2026-05-04","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,40.00,0,0.00,40.00
+86,"2026-05-04","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.25,0,0.00,30.25
+86,"2026-05-04","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+86,"2026-05-04","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+87,"2026-05-06","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:15","Loja","Vilcabamba","Ida","frecuencia",0.00,54.00,0,0.00,54.00
+87,"2026-05-06","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:00","Yangana","Loja","Vuelta","frecuencia",0.00,80.00,0,0.00,80.00
+87,"2026-05-06","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.75,0,0.00,35.75
+87,"2026-05-06","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"10:25","Loja","Vilcabamba","Ida","frecuencia",0.00,26.00,0,0.00,26.00
+87,"2026-05-06","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"12:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,53.75,0,0.00,53.75
+87,"2026-05-06","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,42.75,0,0.00,42.75
+87,"2026-05-06","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,46.75,0,0.00,46.75
+87,"2026-05-06","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"20:45","Loja","Yangana","Ida","frecuencia",0.00,59.25,0,0.00,59.25
+88,"2026-05-07","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:15","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+88,"2026-05-07","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.25,0,0.00,25.25
+88,"2026-05-07","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"13:45","Loja","Vilcabamba","Ida","frecuencia",0.00,57.00,0,0.00,57.00
+88,"2026-05-07","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"15:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,38.25,0,0.00,38.25
+88,"2026-05-07","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:45","Loja","Vilcabamba","Ida","frecuencia",0.00,65.50,0,0.00,65.50
+88,"2026-05-07","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,12.25,0,0.00,12.25
+89,"2026-05-08","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Loja","Vilcabamba","Ida","frecuencia",0.00,37.25,0,0.00,37.25
+89,"2026-05-08","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,31.25,0,0.00,31.25
+89,"2026-05-08","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"07:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,40.00,0,0.00,40.00
+89,"2026-05-08","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:30","Loja","La Elvira","Ida","frecuencia",0.00,65.00,0,0.00,65.00
+89,"2026-05-08","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:40","La Elvira","Loja","Vuelta","frecuencia",0.00,77.00,0,0.00,77.00
+89,"2026-05-08","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Loja","Vilcabamba","Ida","frecuencia",0.00,82.00,0,0.00,82.00
+90,"2026-05-09","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"08:00","La Elvira","Loja","Vuelta","frecuencia",0.00,72.00,0,0.00,72.00
+90,"2026-05-09","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:45","Loja","Vilcabamba","Ida","frecuencia",0.00,15.75,0,0.00,15.75
+90,"2026-05-09","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,31.75,0,0.00,31.75
+90,"2026-05-09","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Loja","Vilcabamba","Ida","frecuencia",0.00,52.50,0,0.00,52.50
+90,"2026-05-09","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,48.00,0,0.00,48.00
+90,"2026-05-09","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"16:25","Loja","La Elvira","Ida","frecuencia",0.00,90.50,0,0.00,90.50
+91,"2026-05-10","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,72.50,0,0.00,72.50
+91,"2026-05-10","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"10:15","Loja","Vilcabamba","Ida","frecuencia",0.00,31.00,0,0.00,31.00
+91,"2026-05-10","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"12:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,18.00,0,0.00,18.00
+91,"2026-05-10","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"14:30","Loja","Vilcabamba","Ida","frecuencia",0.00,54.00,0,0.00,54.00
+91,"2026-05-10","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,71.50,0,0.00,71.50
+91,"2026-05-10","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"21:00","Loja","Vilcabamba","Ida","frecuencia",0.00,5.00,0,0.00,5.00
+92,"2026-05-11","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,12.50,0,0.00,12.50
+92,"2026-05-11","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,48.25,0,0.00,48.25
+92,"2026-05-11","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,49.00,0,0.00,49.00
+92,"2026-05-11","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,73.00,0,0.00,73.00
+92,"2026-05-11","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,17.00,0,0.00,17.00
+92,"2026-05-11","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,7.00,0,0.00,7.00
+93,"2026-05-12","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:25","Loja","Vilcabamba","Ida","frecuencia",0.00,53.50,0,0.00,53.50
+93,"2026-05-12","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,21.75,0,0.00,21.75
+93,"2026-05-12","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:45","Loja","Vilcabamba","Ida","frecuencia",0.00,48.25,0,0.00,48.25
+93,"2026-05-12","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,68.00,0,0.00,68.00
+93,"2026-05-12","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"15:15","Loja","Vilcabamba","Ida","frecuencia",0.00,18.00,0,0.00,18.00
+93,"2026-05-12","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,20.00,0,0.00,20.00
+93,"2026-05-12","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"18:55","Loja","Vilcabamba","Ida","frecuencia",0.00,22.50,0,0.00,22.50
+93,"2026-05-12","VT7","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"21:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,16.00,0,0.00,16.00
+94,"2026-05-13","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,12.25,0,0.00,12.25
+94,"2026-05-13","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:45","Loja","Vilcabamba","Ida","frecuencia",0.00,46.00,0,0.00,46.00
+94,"2026-05-13","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"09:00","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.50,0,0.00,25.50
+94,"2026-05-13","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:40","Loja","Vilcabamba","Ida","frecuencia",0.00,25.25,0,0.00,25.25
+94,"2026-05-13","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"15:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,27.00,0,0.00,27.00
+94,"2026-05-13","VT8","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:45","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,0,0.00,45.00
+95,"2026-05-14","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:15","Loja","Vilcabamba","Ida","frecuencia",0.00,41.00,0,0.00,41.00
+95,"2026-05-14","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,40.75,0,0.00,40.75
+95,"2026-05-14","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:15","Loja","Vilcabamba","Ida","frecuencia",0.00,27.25,0,0.00,27.25
+95,"2026-05-14","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,74.25,0,0.00,74.25
+95,"2026-05-14","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,40.00,0,0.00,40.00
+95,"2026-05-14","VT9","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,60.00,0,0.00,60.00
+96,"2026-05-15","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,16.50,0,0.00,16.50
+96,"2026-05-15","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:40","Loja","El Tambo","Ida","frecuencia",0.00,86.00,0,0.00,86.00
+96,"2026-05-15","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:15","El Tambo","Loja","Vuelta","frecuencia",0.00,33.25,0,0.00,33.25
+96,"2026-05-15","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:10","Loja","El Tambo","Ida","frecuencia",0.00,75.50,0,0.00,75.50
+96,"2026-05-15","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:15","El Tambo","Loja","Vuelta","frecuencia",0.00,88.00,0,0.00,88.00
+96,"2026-05-15","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:30","Loja","Vilcabamba","Ida","frecuencia",0.00,28.50,0,0.00,28.50
+97,"2026-05-16","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,46.00,0,0.00,46.00
+97,"2026-05-16","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:30","Loja","Vilcabamba","Ida","frecuencia",0.00,36.00,0,0.00,36.00
+97,"2026-05-16","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,44.75,0,0.00,44.75
+97,"2026-05-16","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Loja","Vilcabamba","Ida","frecuencia",0.00,29.50,0,0.00,29.50
+97,"2026-05-16","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,49.50,0,0.00,49.50
+97,"2026-05-16","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+98,"2026-05-17","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,40.50,0,0.00,40.50
+98,"2026-05-17","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:30","Loja","Vilcabamba","Ida","frecuencia",0.00,48.25,0,0.00,48.25
+98,"2026-05-17","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,29.00,0,0.00,29.00
+98,"2026-05-17","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:20","Loja","Vilcabamba","Ida","frecuencia",0.00,53.00,0,0.00,53.00
+98,"2026-05-17","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,42.00,0,0.00,42.00
+98,"2026-05-17","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:20","Loja","El Tambo","Ida","frecuencia",0.00,15.75,0,0.00,15.75
+99,"2026-05-18","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:25","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+99,"2026-05-18","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,39.25,0,0.00,39.25
+99,"2026-05-18","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:15","Loja","Vilcabamba","Ida","frecuencia",0.00,39.25,0,0.00,39.25
+99,"2026-05-18","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,29.00,0,0.00,29.00
+99,"2026-05-18","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:25","Loja","Vilcabamba","Ida","frecuencia",0.00,60.00,0,0.00,60.00
+99,"2026-05-18","VT13","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,7.00,0,0.00,7.00
+100,"2026-05-19","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:50","Loja","Vilcabamba","Ida","frecuencia",0.00,45.50,0,0.00,45.50
+100,"2026-05-19","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.25,0,0.00,13.25
+100,"2026-05-19","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+100,"2026-05-19","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"11:30","Loja","Vilcabamba","Ida","frecuencia",0.00,40.00,0,0.00,40.00
+100,"2026-05-19","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.00,0,0.00,35.00
+100,"2026-05-19","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,58.00,0,0.00,58.00
+100,"2026-05-19","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,53.00,0,0.00,53.00
+100,"2026-05-19","VT14","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+101,"2026-05-20","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,31.50,0,0.00,31.50
+101,"2026-05-20","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,26.00,0,0.00,26.00
+101,"2026-05-20","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+101,"2026-05-20","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,33.00,0,0.00,33.00
+101,"2026-05-20","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:15","Loja","Vilcabamba","Ida","frecuencia",0.00,22.75,0,0.00,22.75
+101,"2026-05-20","VT15","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,21.75,0,0.00,21.75
+102,"2026-05-22","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:15","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,0,0.00,45.00
+102,"2026-05-22","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:00","Yangana","Loja","Vuelta","frecuencia",0.00,41.00,0,0.00,41.00
+102,"2026-05-22","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"08:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,15.50,0,0.00,15.50
+102,"2026-05-22","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"10:25","Loja","Vilcabamba","Ida","frecuencia",0.00,43.50,0,0.00,43.50
+102,"2026-05-22","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"12:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,69.00,0,0.00,69.00
+102,"2026-05-22","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,63.00,0,0.00,63.00
+102,"2026-05-22","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",7,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,50.50,0,0.00,50.50
+102,"2026-05-22","VT1","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",8,"20:45","Loja","Yangana","Ida","frecuencia",0.00,55.50,0,0.00,55.50
+103,"2026-05-23","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:15","Loja","Vilcabamba","Ida","frecuencia",0.00,92.50,0,0.00,92.50
+103,"2026-05-23","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.00,0,0.00,37.00
+103,"2026-05-23","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"13:45","Loja","Vilcabamba","Ida","frecuencia",0.00,53.00,0,0.00,53.00
+103,"2026-05-23","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"15:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,77.40,0,0.00,77.40
+103,"2026-05-23","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:45","Loja","Vilcabamba","Ida","frecuencia",0.00,48.00,0,0.00,48.00
+103,"2026-05-23","VT2","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,36.75,0,0.00,36.75
+104,"2026-05-25","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"08:00","La Elvira","Loja","Vuelta","frecuencia",0.00,79.50,0,0.00,79.50
+104,"2026-05-25","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:45","Loja","Vilcabamba","Ida","frecuencia",0.00,16.00,0,0.00,16.00
+104,"2026-05-25","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.00,0,0.00,35.00
+104,"2026-05-25","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:45","Loja","Vilcabamba","Ida","frecuencia",0.00,24.75,0,0.00,24.75
+104,"2026-05-25","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"14:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,38.25,0,0.00,38.25
+104,"2026-05-25","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"16:25","Loja","La Elvira","Ida","frecuencia",0.00,32.25,0,0.00,32.25
+105,"2026-05-26","VT5","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,58.25,0,0.00,58.25
+105,"2026-05-26","VT5","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"10:15","Loja","Vilcabamba","Ida","frecuencia",0.00,19.00,0,0.00,19.00
+105,"2026-05-26","VT5","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"12:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.00,0,0.00,35.00
+105,"2026-05-26","VT5","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"14:30","Loja","Vilcabamba","Ida","frecuencia",0.00,39.00,0,0.00,39.00
+105,"2026-05-26","VT5","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"16:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.00,0,0.00,37.00
+105,"2026-05-26","VT5","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:15","Loja","Vilcabamba","Ida","frecuencia",0.00,17.00,0,0.00,17.00
+106,"2026-05-27","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,14.25,0,0.00,14.25
+106,"2026-05-27","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,27.25,0,0.00,27.25
+106,"2026-05-27","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,54.00,0,0.00,54.00
+106,"2026-05-27","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,58.75,0,0.00,58.75
+106,"2026-05-27","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,40.25,0,0.00,40.25
+106,"2026-05-27","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,5.50,0,0.00,5.50
+107,"2026-05-28","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:25","Loja","Vilcabamba","Ida","frecuencia",0.00,47.00,0,0.00,47.00
+107,"2026-05-28","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,32.75,0,0.00,32.75
+107,"2026-05-28","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:45","Loja","Vilcabamba","Ida","frecuencia",0.00,42.00,0,0.00,42.00
+107,"2026-05-28","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,72.50,0,0.00,72.50
+107,"2026-05-28","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"15:15","Loja","Vilcabamba","Ida","frecuencia",0.00,26.50,0,0.00,26.50
+107,"2026-05-28","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.00,0,0.00,13.00
+107,"2026-05-28","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"18:55","Loja","Vilcabamba","Ida","frecuencia",0.00,60.75,0,0.00,60.75
+107,"2026-05-28","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"21:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,12.00,0,0.00,12.00
+108,"2026-05-29","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,4.00,0,0.00,4.00
+108,"2026-05-29","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:45","Loja","Vilcabamba","Ida","frecuencia",0.00,62.25,0,0.00,62.25
+108,"2026-05-29","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"09:00","Vilcabamba","Loja","Vuelta","frecuencia",0.00,33.25,0,0.00,33.25
+108,"2026-05-29","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:40","Loja","Vilcabamba","Ida","frecuencia",0.00,35.00,0,0.00,35.00
+108,"2026-05-29","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"15:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,75.00,0,0.00,75.00
+108,"2026-05-29","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:45","Loja","Vilcabamba","Ida","frecuencia",0.00,62.00,0,0.00,62.00
+109,"2026-05-30","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:15","Loja","Vilcabamba","Ida","frecuencia",0.00,46.00,0,0.00,46.00
+109,"2026-05-30","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"09:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,26.00,0,0.00,26.00
+109,"2026-05-30","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,30.75,0,0.00,30.75
+109,"2026-05-30","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,57.50,0,0.00,57.50
+109,"2026-05-30","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,70.50,0,0.00,70.50
+109,"2026-05-30","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"18:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,51.75,0,0.00,51.75
+110,"2026-05-31","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.00,0,0.00,25.00
+110,"2026-05-31","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:40","Loja","El Tambo","Ida","frecuencia",0.00,43.50,0,0.00,43.50
+110,"2026-05-31","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:15","El Tambo","Loja","Vuelta","frecuencia",0.00,59.00,0,0.00,59.00
+110,"2026-05-31","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:10","Loja","El Tambo","Ida","frecuencia",0.00,39.00,0,0.00,39.00
+110,"2026-05-31","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"17:15","El Tambo","Loja","Vuelta","frecuencia",0.00,110.00,0,0.00,110.00
+110,"2026-05-31","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:30","Loja","Vilcabamba","Ida","frecuencia",0.00,11.00,0,0.00,11.00
+111,"2026-06-01","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,70.00,0,0.00,70.00
+111,"2026-06-01","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"07:30","Loja","Vilcabamba","Ida","frecuencia",0.00,37.00,0,0.00,37.00
+111,"2026-06-01","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,38.50,0,0.00,38.50
+111,"2026-06-01","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:15","Loja","Vilcabamba","Ida","frecuencia",0.00,17.00,0,0.00,17.00
+111,"2026-06-01","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,46.75,0,0.00,46.75
+111,"2026-06-01","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,83.50,0,0.00,83.50
+112,"2026-06-02","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:50","El Tambo","Loja","Vuelta","frecuencia",0.00,50.00,0,0.00,50.00
+112,"2026-06-02","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:30","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+112,"2026-06-02","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,7.00,0,0.00,7.00
+112,"2026-06-02","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:20","Loja","Vilcabamba","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+112,"2026-06-02","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"14:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.25,0,0.00,13.25
+112,"2026-06-02","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"18:20","Loja","El Tambo","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+113,"2026-06-03","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:25","Loja","Vilcabamba","Ida","frecuencia",0.00,18.00,0,0.00,18.00
+113,"2026-06-03","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,16.00,0,0.00,16.00
+113,"2026-06-03","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"14:15","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+113,"2026-06-03","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"15:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,29.75,0,0.00,29.75
+113,"2026-06-03","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"18:25","Loja","Vilcabamba","Ida","frecuencia",0.00,36.00,0,0.00,36.00
+113,"2026-06-03","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,24.25,0,0.00,24.25
+114,"2026-06-04","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:50","Loja","Vilcabamba","Ida","frecuencia",0.00,8.00,0,0.00,8.00
+114,"2026-06-04","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,50.00,0,0.00,50.00
+114,"2026-06-04","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"08:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,44.75,0,0.00,44.75
+114,"2026-06-04","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"11:30","Loja","Vilcabamba","Ida","frecuencia",0.00,43.00,0,0.00,43.00
+114,"2026-06-04","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.00,0,0.00,22.00
+114,"2026-06-04","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,52.00,0,0.00,52.00
+114,"2026-06-04","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,11.00,0,0.00,11.00
+114,"2026-06-04","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+115,"2026-06-05","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,35.00,0,0.00,35.00
+115,"2026-06-05","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,36.00,0,0.00,36.00
+115,"2026-06-05","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+115,"2026-06-05","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,54.00,0,0.00,54.00
+115,"2026-06-05","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"16:15","Loja","Vilcabamba","Ida","frecuencia",0.00,63.00,0,0.00,63.00
+115,"2026-06-05","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"18:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,31.50,0,0.00,31.50
+116,"2026-06-07","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:15","Loja","Vilcabamba","Ida","frecuencia",0.00,26.25,0,0.00,26.25
+116,"2026-06-07","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"07:00","Yangana","Loja","Vuelta","frecuencia",0.00,80.00,0,0.00,80.00
+116,"2026-06-07","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"08:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,10.00,0,0.00,10.00
+116,"2026-06-07","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"10:25","Loja","Vilcabamba","Ida","frecuencia",0.00,44.50,0,0.00,44.50
+116,"2026-06-07","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"12:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,36.25,0,0.00,36.25
+116,"2026-06-07","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,26.00,0,0.00,26.00
+116,"2026-06-07","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,45.00,0,0.00,45.00
+116,"2026-06-07","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"20:45","Loja","Yangana","Ida","frecuencia",0.00,23.00,0,0.00,23.00
+117,"2026-06-08","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:15","Loja","Vilcabamba","Ida","frecuencia",0.00,21.50,0,0.00,21.50
+117,"2026-06-08","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,48.00,0,0.00,48.00
+117,"2026-06-08","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"13:45","Loja","Vilcabamba","Ida","frecuencia",0.00,28.00,0,0.00,28.00
+117,"2026-06-08","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"15:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,60.90,0,0.00,60.90
+117,"2026-06-08","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"17:45","Loja","Vilcabamba","Ida","frecuencia",0.00,76.15,0,0.00,76.15
+117,"2026-06-08","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,17.50,0,0.00,17.50
+118,"2026-06-09","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Loja","Vilcabamba","Ida","frecuencia",0.00,10.25,0,0.00,10.25
+118,"2026-06-09","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,42.50,0,0.00,42.50
+118,"2026-06-09","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"07:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,50.00,0,0.00,50.00
+118,"2026-06-09","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:30","Loja","La Elvira","Ida","frecuencia",0.00,61.85,0,0.00,61.85
+118,"2026-06-09","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:40","La Elvira","Loja","Vuelta","frecuencia",0.00,34.50,0,0.00,34.50
+118,"2026-06-09","VT3","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:15","Loja","Vilcabamba","Ida","frecuencia",0.00,22.50,0,0.00,22.50
+119,"2026-06-10","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"08:00","La Elvira","Loja","Vuelta","frecuencia",0.00,75.00,0,0.00,75.00
+119,"2026-06-10","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:45","Loja","Vilcabamba","Ida","frecuencia",0.00,31.80,0,0.00,31.80
+119,"2026-06-10","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.00,0,0.00,37.00
+119,"2026-06-10","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:45","Loja","Vilcabamba","Ida","frecuencia",0.00,66.50,0,0.00,66.50
+119,"2026-06-10","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+119,"2026-06-10","VT4","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"16:25","Loja","La Elvira","Ida","frecuencia",0.00,51.00,0,0.00,51.00
+120,"2026-06-11","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,41.25,0,0.00,41.25
+120,"2026-06-11","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"10:15","Loja","Vilcabamba","Ida","frecuencia",0.00,25.00,0,0.00,25.00
+120,"2026-06-11","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"12:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,62.00,0,0.00,62.00
+120,"2026-06-11","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"14:30","Loja","Vilcabamba","Ida","frecuencia",0.00,39.00,0,0.00,39.00
+120,"2026-06-11","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"16:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+120,"2026-06-11","VT5","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"21:00","Loja","Vilcabamba","Ida","frecuencia",0.00,22.50,0,0.00,22.50
+121,"2026-06-12","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,19.00,0,0.00,19.00
+121,"2026-06-12","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,17.00,0,0.00,17.00
+121,"2026-06-12","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,60.00,0,0.00,60.00
+121,"2026-06-12","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.50,0,0.00,37.50
+121,"2026-06-12","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,43.00,0,0.00,43.00
+121,"2026-06-12","VT6","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.00,0,0.00,22.00
+122,"2026-06-13","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:25","Loja","Vilcabamba","Ida","frecuencia",0.00,23.00,0,0.00,23.00
+122,"2026-06-13","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.25,0,0.00,13.25
+122,"2026-06-13","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:15","Loja","Vilcabamba","Ida","frecuencia",0.00,70.00,0,0.00,70.00
+122,"2026-06-13","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,32.25,0,0.00,32.25
+122,"2026-06-13","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"15:15","Loja","Vilcabamba","Ida","frecuencia",0.00,43.50,0,0.00,43.50
+122,"2026-06-13","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,39.00,0,0.00,39.00
+122,"2026-06-13","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"18:55","Loja","Vilcabamba","Ida","frecuencia",0.00,53.75,0,0.00,53.75
+122,"2026-06-13","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"21:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.50,0,0.00,37.50
+123,"2026-06-14","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:10","-","-","Vuelta","no_realizada",0.00,0.00,0,0.00,0.00
+123,"2026-06-14","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:45","Loja","Vilcabamba","Ida","frecuencia",0.00,12.00,0,0.00,12.00
+123,"2026-06-14","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"09:00","Vilcabamba","Loja","Vuelta","frecuencia",0.00,21.00,0,0.00,21.00
+123,"2026-06-14","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,33.00,0,0.00,33.00
+123,"2026-06-14","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.50,0,0.00,25.50
+123,"2026-06-14","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:45","-","-","Vuelta","no_realizada",0.00,0.00,0,0.00,0.00
+124,"2026-06-15","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:15","Loja","Vilcabamba","Ida","frecuencia",0.00,48.00,0,0.00,48.00
+124,"2026-06-15","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"09:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,47.50,0,0.00,47.50
+124,"2026-06-15","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"11:15","Loja","Vilcabamba","Ida","frecuencia",0.00,17.25,0,0.00,17.25
+124,"2026-06-15","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,76.00,0,0.00,76.00
+124,"2026-06-15","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+124,"2026-06-15","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"18:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,38.00,0,0.00,38.00
+125,"2026-06-16","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,31.00,0,0.00,31.00
+125,"2026-06-16","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:40","Loja","El Tambo","Ida","frecuencia",0.00,52.50,0,0.00,52.50
+125,"2026-06-16","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:15","El Tambo","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+125,"2026-06-16","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:10","Loja","El Tambo","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+125,"2026-06-16","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"17:15","El Tambo","Loja","Vuelta","frecuencia",0.00,43.00,0,0.00,43.00
+125,"2026-06-16","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:30","Loja","Vilcabamba","Ida","frecuencia",0.00,51.25,0,0.00,51.25
+126,"2026-06-17","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,91.00,0,0.00,91.00
+126,"2026-06-17","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"07:30","Loja","Vilcabamba","Ida","frecuencia",0.00,66.00,0,0.00,66.00
+126,"2026-06-17","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,5.50,0,0.00,5.50
+126,"2026-06-17","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:15","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+126,"2026-06-17","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,33.00,0,0.00,33.00
+126,"2026-06-17","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,56.00,0,0.00,56.00
+127,"2026-06-18","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:50","El Tambo","Loja","Vuelta","frecuencia",0.00,58.00,0,0.00,58.00
+127,"2026-06-18","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:15","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+127,"2026-06-18","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,46.00,0,0.00,46.00
+127,"2026-06-18","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:45","Loja","Vilcabamba","Ida","frecuencia",0.00,67.00,0,0.00,67.00
+127,"2026-06-18","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"14:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,45.50,0,0.00,45.50
+127,"2026-06-18","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"18:20","Loja","El Tambo","Ida","frecuencia",0.00,20.75,0,0.00,20.75
+128,"2026-06-19","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:25","Loja","Vilcabamba","Ida","frecuencia",0.00,30.50,0,0.00,30.50
+128,"2026-06-19","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,17.00,0,0.00,17.00
+128,"2026-06-19","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"14:15","Loja","Vilcabamba","Ida","frecuencia",0.00,42.75,0,0.00,42.75
+128,"2026-06-19","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"16:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,48.00,0,0.00,48.00
+128,"2026-06-19","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"18:25","Loja","Vilcabamba","Ida","frecuencia",0.00,51.50,0,0.00,51.50
+128,"2026-06-19","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.00,0,0.00,25.00
+129,"2026-06-20","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:50","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+129,"2026-06-20","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:10","-","-","Vuelta","no_realizada",0.00,0.00,0,0.00,0.00
+129,"2026-06-20","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"08:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,38.00,0,0.00,38.00
+129,"2026-06-20","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"11:30","Loja","Vilcabamba","Ida","frecuencia",0.00,25.00,0,0.00,25.00
+129,"2026-06-20","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+129,"2026-06-20","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,43.00,0,0.00,43.00
+129,"2026-06-20","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,49.00,0,0.00,49.00
+129,"2026-06-20","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,7.50,15.00
+130,"2026-06-22","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,20.00,0,0.00,20.00
+130,"2026-06-22","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:45","Loja","Vilcabamba","Ida","frecuencia",0.00,60.00,0,0.00,60.00
+130,"2026-06-22","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"09:00","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.00,0,0.00,35.00
+130,"2026-06-22","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:40","Loja","Vilcabamba","Ida","frecuencia",0.00,55.50,0,0.00,55.50
+130,"2026-06-22","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"15:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,33.50,0,0.00,33.50
+130,"2026-06-22","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:45","-","-","Vuelta","no_realizada",0.00,0.00,0,0.00,0.00
+131,"2026-06-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:15","Loja","Vilcabamba","Ida","frecuencia",0.00,35.00,0,0.00,35.00
+131,"2026-06-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"07:00","Yangana","Loja","Vuelta","frecuencia",0.00,75.00,0,0.00,75.00
+131,"2026-06-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"08:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,41.00,0,0.00,41.00
+131,"2026-06-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"10:25","Loja","Vilcabamba","Ida","frecuencia",0.00,35.00,0,0.00,35.00
+131,"2026-06-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"12:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,41.00,0,0.00,41.00
+131,"2026-06-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,47.25,0,0.00,47.25
+131,"2026-06-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,32.50,0,0.00,32.50
+131,"2026-06-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"20:45","Loja","Yangana","Ida","frecuencia",0.00,34.00,0,15.75,34.00
+132,"2026-06-24","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:15","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+132,"2026-06-24","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,56.25,0,0.00,56.25
+132,"2026-06-24","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"13:45","Loja","Vilcabamba","Ida","frecuencia",0.00,37.00,0,0.00,37.00
+132,"2026-06-24","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"15:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,18.75,0,0.00,18.75
+132,"2026-06-24","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"17:45","Loja","Vilcabamba","Ida","frecuencia",0.00,67.00,0,0.00,67.00
+132,"2026-06-24","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,15.00,0,10.65,15.00
+133,"2026-06-25","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:40","Loja","Vilcabamba","Ida","frecuencia",0.00,15.00,0,0.00,15.00
+133,"2026-06-25","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.50,0,0.00,37.50
+133,"2026-06-25","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"07:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.75,0,0.00,35.75
+133,"2026-06-25","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:30","Loja","La Elvira","Ida","frecuencia",0.00,45.00,0,0.00,45.00
+133,"2026-06-25","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"17:40","La Elvira","Loja","Vuelta","frecuencia",0.00,69.25,0,0.00,69.25
+133,"2026-06-25","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:15","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,0,12.80,30.00
+134,"2026-06-26","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"08:00","-","-","Vuelta","no_realizada",0.00,0.00,0,0.00,0.00
+134,"2026-06-26","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:45","Loja","Vilcabamba","Ida","frecuencia",0.00,56.00,0,0.00,56.00
+134,"2026-06-26","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,27.70,0,0.00,27.70
+134,"2026-06-26","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:45","Loja","Vilcabamba","Ida","frecuencia",0.00,33.50,0,0.00,33.50
+134,"2026-06-26","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"14:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,29.75,0,0.00,29.75
+134,"2026-06-26","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"16:15","Loja","Vilcabamba","Ida","frecuencia",0.00,61.50,0,35.85,61.50
+135,"2026-06-28","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,44.00,0,0.00,44.00
+135,"2026-06-28","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.50,0,0.00,25.50
+135,"2026-06-28","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,54.00,0,0.00,54.00
+135,"2026-06-28","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,80.00,0,0.00,80.00
+135,"2026-06-28","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+135,"2026-06-28","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,62.00,0,15.15,62.00
+136,"2026-06-29","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,44.00,0,0.00,44.00
+136,"2026-06-29","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.50,0,0.00,25.50
+136,"2026-06-29","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,54.00,0,0.00,54.00
+136,"2026-06-29","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,80.00,0,0.00,80.00
+136,"2026-06-29","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+136,"2026-06-29","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,62.00,0,15.15,62.00
+137,"2026-06-30","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:25","Loja","Vilcabamba","Ida","frecuencia",0.00,37.00,0,0.00,37.00
+137,"2026-06-30","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,41.50,0,0.00,41.50
+137,"2026-06-30","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:45","Loja","Vilcabamba","Ida","frecuencia",0.00,56.00,0,0.00,56.00
+137,"2026-06-30","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,82.25,0,0.00,82.25
+137,"2026-06-30","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"15:15","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,0.00,20.00
+137,"2026-06-30","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,15.00,0,0.00,15.00
+137,"2026-06-30","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"18:55","Loja","Vilcabamba","Ida","frecuencia",0.00,39.00,0,0.00,39.00
+137,"2026-06-30","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"21:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.00,0,21.90,13.00
+138,"2026-07-01","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:15","Loja","Vilcabamba","Ida","frecuencia",0.00,58.50,0,0.00,58.50
+138,"2026-07-01","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"09:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,47.00,0,0.00,47.00
+138,"2026-07-01","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"11:15","Loja","Vilcabamba","Ida","frecuencia",0.00,10.25,0,0.00,10.25
+138,"2026-07-01","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,64.00,0,0.00,64.00
+138,"2026-07-01","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,18.00,0,0.00,18.00
+138,"2026-07-01","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"18:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,57.75,0,46.60,57.75
+139,"2026-07-02","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.00,0,0.00,13.00
+139,"2026-07-02","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:40","Loja","El Tambo","Ida","frecuencia",0.00,70.00,0,0.00,70.00
+139,"2026-07-02","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:15","El Tambo","Loja","Vuelta","frecuencia",0.00,52.00,0,0.00,52.00
+139,"2026-07-02","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:10","Loja","El Tambo","Ida","frecuencia",0.00,53.50,0,0.00,53.50
+139,"2026-07-02","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"17:15","El Tambo","Loja","Vuelta","frecuencia",0.00,67.00,0,0.00,67.00
+139,"2026-07-02","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:30","Loja","Vilcabamba","Ida","frecuencia",0.00,31.25,0,18.00,31.25
+140,"2026-07-03","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,34.00,0,0.00,34.00
+140,"2026-07-03","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"07:30","Loja","Vilcabamba","Ida","frecuencia",0.00,38.50,0,0.00,38.50
+140,"2026-07-03","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,44.00,0,0.00,44.00
+140,"2026-07-03","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:15","Loja","Vilcabamba","Ida","frecuencia",0.00,37.00,0,0.00,37.00
+140,"2026-07-03","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.50,0,0.00,30.50
+140,"2026-07-03","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,65.00,0,40.20,65.00
+141,"2026-07-04","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:50","El Tambo","Loja","Vuelta","frecuencia",0.00,20.00,0,0.00,20.00
+141,"2026-07-04","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:30","Loja","Vilcabamba","Ida","frecuencia",0.00,70.00,0,0.00,70.00
+141,"2026-07-04","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,15.25,0,0.00,15.25
+141,"2026-07-04","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:20","Loja","Vilcabamba","Ida","frecuencia",0.00,37.00,0,0.00,37.00
+141,"2026-07-04","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"14:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,40.00,0,0.00,40.00
+141,"2026-07-04","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"18:20","Loja","El Tambo","Ida","frecuencia",0.00,25.00,0,49.40,25.00
+142,"2026-07-05","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:25","Loja","Vilcabamba","Ida","frecuencia",0.00,63.00,0,0.00,63.00
+142,"2026-07-05","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,11.25,0,0.00,11.25
+142,"2026-07-05","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"14:15","Loja","Vilcabamba","Ida","frecuencia",0.00,67.00,0,0.00,67.00
+142,"2026-07-05","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"16:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,57.00,0,0.00,57.00
+142,"2026-07-05","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"18:25","Loja","Vilcabamba","Ida","frecuencia",0.00,12.50,0,0.00,12.50
+142,"2026-07-05","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,81.00,0,6.20,81.00
+143,"2026-07-06","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:50","Loja","Vilcabamba","Ida","frecuencia",0.00,25.00,0,0.00,25.00
+143,"2026-07-06","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,61.00,0,0.00,61.00
+143,"2026-07-06","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"08:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,64.50,0,0.00,64.50
+143,"2026-07-06","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"11:30","Loja","Vilcabamba","Ida","frecuencia",0.00,35.00,0,0.00,35.00
+143,"2026-07-06","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,47.75,0,0.00,47.75
+143,"2026-07-06","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,47.00,0,0.00,47.00
+143,"2026-07-06","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,46.00,0,0.00,46.00
+143,"2026-07-06","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,10.00,0,19.00,10.00
+144,"2026-07-07","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,41.00,0,0.00,41.00
+144,"2026-07-07","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,46.75,0,0.00,46.75
+144,"2026-07-07","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,45.75,0,0.00,45.75
+144,"2026-07-07","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,51.75,0,0.00,51.75
+144,"2026-07-07","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"16:15","Loja","Vilcabamba","Ida","frecuencia",0.00,32.25,0,0.00,32.25
+144,"2026-07-07","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"18:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,20.50,0,28.80,20.50
+145,"2026-07-08","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:15","Loja","Vilcabamba","Ida","frecuencia",0.00,70.00,0,0.00,70.00
+145,"2026-07-08","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"07:00","Yangana","Loja","Vuelta","frecuencia",0.00,70.00,0,0.00,70.00
+145,"2026-07-08","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"08:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,74.00,0,0.00,74.00
+145,"2026-07-08","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"10:25","Loja","Vilcabamba","Ida","frecuencia",0.00,33.00,0,0.00,33.00
+145,"2026-07-08","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"12:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,58.00,0,0.00,58.00
+145,"2026-07-08","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,57.00,0,0.00,57.00
+145,"2026-07-08","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,41.00,0,0.00,41.00
+145,"2026-07-08","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"20:45","Loja","Yangana","Ida","frecuencia",0.00,30.25,0,11.50,30.25
+146,"2026-07-09","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"08:00","-","-","Vuelta","no_realizada",0.00,0.00,0,0.00,0.00
+146,"2026-07-09","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:45","Loja","Vilcabamba","Ida","frecuencia",0.00,26.00,0,0.00,26.00
+146,"2026-07-09","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,34.50,0,0.00,34.50
+146,"2026-07-09","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:30","Loja","Vilcabamba","Ida","frecuencia",0.00,33.00,0,0.00,33.00
+146,"2026-07-09","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,26.00,0,0.00,26.00
+146,"2026-07-09","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:45","Loja","Vilcabamba","Ida","frecuencia",0.00,48.50,0,35.60,48.50
+147,"2026-07-10","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:40","Loja","Vilcabamba","Ida","frecuencia",0.00,18.00,0,0.00,18.00
+147,"2026-07-10","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.00,0,0.00,22.00
+147,"2026-07-10","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"07:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,75.00,0,0.00,75.00
+147,"2026-07-10","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:30","Loja","La Elvira","Ida","frecuencia",0.00,14.00,0,0.00,14.00
+147,"2026-07-10","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"17:40","La Elvira","Loja","Vuelta","frecuencia",0.00,80.00,0,0.00,80.00
+147,"2026-07-10","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:15","Loja","Vilcabamba","Ida","frecuencia",0.00,13.50,0,19.10,13.50
+148,"2026-07-11","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"08:00","La Elvira","Loja","Vuelta","frecuencia",0.00,65.00,0,0.00,65.00
+148,"2026-07-11","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:45","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,0,0.00,45.00
+148,"2026-07-11","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.00,0,0.00,37.00
+148,"2026-07-11","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:45","Loja","Vilcabamba","Ida","frecuencia",0.00,57.00,0,0.00,57.00
+148,"2026-07-11","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"14:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.00,0,0.00,22.00
+148,"2026-07-11","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"16:25","Loja","La Elvira","Ida","frecuencia",0.00,62.00,0,18.40,62.00
+149,"2026-07-12","VT5","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,85.00,0,0.00,85.00
+149,"2026-07-12","VT5","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"10:15","Loja","Vilcabamba","Ida","frecuencia",0.00,48.00,0,0.00,48.00
+149,"2026-07-12","VT5","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"12:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,51.00,0,0.00,51.00
+149,"2026-07-12","VT5","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"14:30","Loja","Vilcabamba","Ida","frecuencia",0.00,44.50,0,0.00,44.50
+149,"2026-07-12","VT5","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"16:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,74.00,0,0.00,74.00
+149,"2026-07-12","VT5","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,13.00,0,47.25,13.00
+150,"2026-07-13","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,13.00,0,0.00,13.00
+150,"2026-07-13","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,19.50,0,0.00,19.50
+150,"2026-07-13","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,59.00,0,0.00,59.00
+150,"2026-07-13","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,53.50,0,0.00,53.50
+150,"2026-07-13","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+150,"2026-07-13","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,16.50,0,17.25,16.50
+151,"2026-07-14","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:25","Loja","Vilcabamba","Ida","frecuencia",0.00,40.00,0,0.00,40.00
+151,"2026-07-14","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,32.00,0,0.00,32.00
+151,"2026-07-14","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:45","Loja","Vilcabamba","Ida","frecuencia",0.00,48.00,0,0.00,48.00
+151,"2026-07-14","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,49.00,0,0.00,49.00
+151,"2026-07-14","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"15:15","Loja","Vilcabamba","Ida","frecuencia",0.00,8.00,0,0.00,8.00
+151,"2026-07-14","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,20.00,0,0.00,20.00
+151,"2026-07-14","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"18:55","Loja","Vilcabamba","Ida","frecuencia",0.00,58.00,0,0.00,58.00
+151,"2026-07-14","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"21:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,10.00,0,24.75,10.00
+152,"2026-07-15","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"21:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,27.00,0,0.00,27.00
+152,"2026-07-15","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:45","Loja","Vilcabamba","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+152,"2026-07-15","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"09:00","Vilcabamba","Loja","Vuelta","frecuencia",0.00,52.00,0,0.00,52.00
+152,"2026-07-15","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:40","Loja","Vilcabamba","Ida","frecuencia",0.00,14.00,0,0.00,14.00
+152,"2026-07-15","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"15:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,18.00,0,0.00,18.00
+152,"2026-07-15","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"18:55","Loja","Vilcabamba","Ida","frecuencia",0.00,33.50,0,23.15,33.50
+153,"2026-07-16","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:15","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+153,"2026-07-16","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"09:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,70.00,0,0.00,70.00
+153,"2026-07-16","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"11:15","Loja","Vilcabamba","Ida","frecuencia",0.00,16.50,0,0.00,16.50
+153,"2026-07-16","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,70.00,0,0.00,70.00
+153,"2026-07-16","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"16:45","Loja","Vilcabamba","Ida","frecuencia",0.00,11.50,0,0.00,11.50
+153,"2026-07-16","VT9","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"18:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,45.00,0,37.70,45.00
+154,"2026-07-17","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.00,0,0.00,13.00
+154,"2026-07-17","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:40","Loja","El Tambo","Ida","frecuencia",0.00,45.00,0,0.00,45.00
+154,"2026-07-17","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:15","El Tambo","Loja","Vuelta","frecuencia",0.00,36.00,0,0.00,36.00
+154,"2026-07-17","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:10","Loja","El Tambo","Ida","frecuencia",0.00,42.00,0,0.00,42.00
+154,"2026-07-17","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"17:15","El Tambo","Loja","Vuelta","frecuencia",0.00,60.50,0,0.00,60.50
+154,"2026-07-17","VT10","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:30","Loja","Vilcabamba","Ida","frecuencia",0.00,43.00,0,26.50,43.00
+155,"2026-07-18","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,53.00,0,0.00,53.00
+155,"2026-07-18","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"07:30","Loja","Vilcabamba","Ida","frecuencia",0.00,53.00,0,0.00,53.00
+155,"2026-07-18","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,52.50,0,0.00,52.50
+155,"2026-07-18","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:15","Loja","Vilcabamba","Ida","frecuencia",0.00,45.50,0,0.00,45.50
+155,"2026-07-18","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,36.00,0,0.00,36.00
+155,"2026-07-18","VT11","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,51.00,0,55.85,51.00
+156,"2026-07-19","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:50","El Tambo","Loja","Vuelta","frecuencia",0.00,69.50,0,0.00,69.50
+156,"2026-07-19","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:30","Loja","Vilcabamba","Ida","frecuencia",0.00,61.00,0,0.00,61.00
+156,"2026-07-19","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,37.50,0,0.00,37.50
+156,"2026-07-19","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:20","Loja","Vilcabamba","Ida","frecuencia",0.00,36.00,0,0.00,36.00
+156,"2026-07-19","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"14:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,23.75,0,0.00,23.75
+156,"2026-07-19","VT12","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"18:20","Loja","El Tambo","Ida","frecuencia",0.00,7.00,0,13.45,7.00
+157,"2026-07-20","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:25","Loja","Vilcabamba","Ida","frecuencia",0.00,21.00,0,0.00,21.00
+157,"2026-07-20","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+157,"2026-07-20","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"14:15","Loja","Vilcabamba","Ida","frecuencia",0.00,27.00,0,0.00,27.00
+157,"2026-07-20","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"16:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,26.50,0,0.00,26.50
+157,"2026-07-20","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"18:25","Loja","Vilcabamba","Ida","frecuencia",0.00,59.00,0,0.00,59.00
+157,"2026-07-20","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,35.00,0,13.80,35.00
+158,"2026-07-21","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:30","Loja","Vilcabamba","Ida","frecuencia",0.00,42.00,0,0.00,42.00
+158,"2026-07-21","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,32.00,0,0.00,32.00
+158,"2026-07-21","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,20.00,0,0.00,20.00
+158,"2026-07-21","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"11:30","Loja","Vilcabamba","Ida","frecuencia",0.00,43.00,0,0.00,43.00
+158,"2026-07-21","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,46.50,0,0.00,46.50
+158,"2026-07-21","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,0,0.00,30.00
+158,"2026-07-21","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,40.00,0,0.00,40.00
+158,"2026-07-21","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,12.00,0,30.70,12.00
+159,"2026-07-22","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,50.00,0,0.00,50.00
+159,"2026-07-22","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,41.00,0,0.00,41.00
+159,"2026-07-22","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,51.00,0,0.00,51.00
+159,"2026-07-22","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,43.00,0,0.00,43.00
+159,"2026-07-22","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"16:15","Loja","Vilcabamba","Ida","frecuencia",0.00,23.00,0,0.00,23.00
+159,"2026-07-22","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"18:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.00,0,28.15,13.00
+160,"2026-07-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:15","Loja","Vilcabamba","Ida","frecuencia",0.00,37.00,0,0.00,37.00
+160,"2026-07-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"07:00","Yangana","Loja","Vuelta","frecuencia",0.00,60.25,0,0.00,60.25
+160,"2026-07-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"08:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,8.50,0,0.00,8.50
+160,"2026-07-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"10:25","Loja","Vilcabamba","Ida","frecuencia",0.00,26.00,0,0.00,26.00
+160,"2026-07-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"12:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,42.00,0,0.00,42.00
+160,"2026-07-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,36.00,0,0.00,36.00
+160,"2026-07-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,31.00,0,0.00,31.00
+160,"2026-07-23","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"20:45","Loja","Yangana","Ida","frecuencia",0.00,25.25,0,17.30,25.25
+161,"2026-07-24","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:15","Loja","Vilcabamba","Ida","frecuencia",0.00,6.00,0,0.00,6.00
+161,"2026-07-24","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,38.00,0,0.00,38.00
+161,"2026-07-24","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"13:45","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,0,0.00,45.00
+161,"2026-07-24","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"15:40","-","-","Vuelta","no_realizada",0.00,0.00,0,0.00,0.00
+161,"2026-07-24","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"17:45","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,0,0.00,45.00
+161,"2026-07-24","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,55.00,0,29.80,55.00
+162,"2026-07-25","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:40","Loja","Vilcabamba","Ida","frecuencia",0.00,5.00,0,0.00,5.00
+162,"2026-07-25","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,19.00,0,0.00,19.00
+162,"2026-07-25","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"07:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,58.00,0,0.00,58.00
+162,"2026-07-25","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:30","Loja","La Elvira","Ida","frecuencia",0.00,52.50,0,0.00,52.50
+162,"2026-07-25","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"17:40","La Elvira","Loja","Vuelta","frecuencia",0.00,54.00,0,0.00,54.00
+162,"2026-07-25","VT3","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:15","Loja","Vilcabamba","Ida","frecuencia",0.00,29.00,0,11.25,29.00
+163,"2026-07-26","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"08:00","La Elvira","Loja","Vuelta","frecuencia",0.00,91.00,0,0.00,91.00
+163,"2026-07-26","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:45","Loja","Vilcabamba","Ida","frecuencia",0.00,0.00,0,0.00,0.00
+163,"2026-07-26","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,0.00,0,0.00,0.00
+163,"2026-07-26","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:45","Loja","Vilcabamba","Ida","frecuencia",0.00,41.00,0,0.00,41.00
+163,"2026-07-26","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"14:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,48.00,0,0.00,48.00
+163,"2026-07-26","VT4","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"16:25","Loja","La Elvira","Ida","frecuencia",0.00,25.00,0,25.00,25.00
+164,"2026-07-28","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,23.50,0,0.00,23.50
+164,"2026-07-28","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,12.00,0,0.00,12.00
+164,"2026-07-28","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,38.00,0,0.00,38.00
+164,"2026-07-28","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+164,"2026-07-28","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,44.25,0,0.00,44.25
+164,"2026-07-28","VT6","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,24.50,0,17.30,24.50
+165,"2026-07-29","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:25","Loja","Vilcabamba","Ida","frecuencia",0.00,48.00,0,0.00,48.00
+165,"2026-07-29","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"08:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.00,0,0.00,25.00
+165,"2026-07-29","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"10:45","Loja","Vilcabamba","Ida","frecuencia",0.00,16.00,0,0.00,16.00
+165,"2026-07-29","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"12:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,39.00,0,0.00,39.00
+165,"2026-07-29","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"15:15","Loja","Vilcabamba","Ida","frecuencia",0.00,34.00,0,0.00,34.00
+165,"2026-07-29","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+165,"2026-07-29","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"18:55","Loja","Vilcabamba","Ida","frecuencia",0.00,44.00,0,0.00,44.00
+165,"2026-07-29","VT7","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"21:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,17.00,0,35.75,17.00
+166,"2026-07-30","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,0.00,0,0.00,0.00
+166,"2026-07-30","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:45","Loja","Vilcabamba","Ida","frecuencia",0.00,19.00,0,0.00,19.00
+166,"2026-07-30","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,32.00,0,0.00,32.00
+166,"2026-07-30","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:40","Loja","Vilcabamba","Ida","frecuencia",0.00,43.00,0,0.00,43.00
+166,"2026-07-30","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"15:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,26.00,0,0.00,26.00
+166,"2026-07-30","VT8","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:45","Loja","Vilcabamba","Ida","frecuencia",0.00,31.00,0,7.45,31.00
+167,"2026-09-15","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,53.25,0,0.00,53.25
+167,"2026-09-15","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"06:40","Loja","El Tambo","Ida","frecuencia",0.00,69.00,0,24.00,69.00
+167,"2026-09-15","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:15","El Tambo","Loja","Vuelta","frecuencia",0.00,62.25,0,0.00,62.25
+167,"2026-09-15","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:10","Loja","El Tambo","Ida","frecuencia",0.00,46.50,0,12.90,46.50
+167,"2026-09-15","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"17:15","El Tambo","Loja","Vuelta","frecuencia",0.00,52.75,0,0.00,52.75
+167,"2026-09-15","VT10","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"19:30","Loja","Vilcabamba","Ida","frecuencia",0.00,28.00,0,0.00,28.00
+168,"2026-09-16","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,111.25,0,0.00,111.25
+168,"2026-09-16","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"07:30","Loja","Vilcabamba","Ida","frecuencia",0.00,46.00,0,8.00,46.00
+168,"2026-09-16","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,11.00,0,0.00,11.00
+168,"2026-09-16","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"13:15","Loja","Vilcabamba","Ida","frecuencia",0.00,10.25,0,7.50,10.25
+168,"2026-09-16","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,28.75,0,0.00,28.75
+168,"2026-09-16","VT11","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,83.00,0,3.75,83.00
+169,"2026-09-17","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",1,"07:50","El Tambo","Loja","Vuelta","frecuencia",0.00,64.25,0,0.00,64.25
+169,"2026-09-17","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",2,"08:15","Loja","Vilcabamba","Ida","frecuencia",0.00,33.25,0,0.90,33.25
+169,"2026-09-17","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",3,"10:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,66.00,0,0.00,66.00
+169,"2026-09-17","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",4,"12:20","Loja","Vilcabamba","Ida","frecuencia",0.00,46.00,0,1.00,46.00
+169,"2026-09-17","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",5,"14:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,61.75,0,0.00,61.75
+169,"2026-09-17","VT12","01","Jimmy Armando Vera Japon","Kelyn Silvana Solórzano Márquez",6,"18:20","Loja","El Tambo","Ida","frecuencia",0.00,29.25,0,3.75,29.25
+170,"2026-09-18","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:25","Loja","Vilcabamba","Ida","frecuencia",0.00,26.00,0,0.00,26.00
+170,"2026-09-18","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,24.00,0,0.00,24.00
+170,"2026-09-18","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"14:15","Loja","Vilcabamba","Ida","frecuencia",0.00,78.00,0,8.50,78.00
+170,"2026-09-18","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"16:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,76.00,0,0.00,76.00
+170,"2026-09-18","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"18:25","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,0,5.00,45.00
+170,"2026-09-18","VT13","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,22.50,0,0.00,22.50
+171,"2026-09-19","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"05:50","Loja","Vilcabamba","Ida","frecuencia",0.00,48.00,0,0.00,48.00
+171,"2026-09-19","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"06:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,28.00,0,0.00,28.00
+171,"2026-09-19","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"08:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,51.00,0,0.00,51.00
+171,"2026-09-19","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"11:30","Loja","Vilcabamba","Ida","frecuencia",0.00,45.25,0,6.75,45.25
+171,"2026-09-19","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,48.00,0,0.00,48.00
+171,"2026-09-19","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,45.25,0,36.00,45.25
+171,"2026-09-19","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,62.50,0,0.00,62.50
+171,"2026-09-19","VT14","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,27.25,0,0.00,27.25
+172,"2026-09-20","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,34.25,0,15.25,34.25
+172,"2026-09-20","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,65.00,0,0.00,65.00
+172,"2026-09-20","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,64.00,0,13.50,64.00
+172,"2026-09-20","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"13:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,52.00,0,0.00,52.00
+172,"2026-09-20","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"16:15","Loja","Vilcabamba","Ida","frecuencia",0.00,21.75,0,19.85,21.75
+172,"2026-09-20","VT15","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"18:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,86.00,0,0.00,86.00
+173,"2026-09-21","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"06:15","Loja","Vilcabamba","Ida","frecuencia",0.00,63.00,0,3.50,63.00
+173,"2026-09-21","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"07:00","Yangana","Loja","Vuelta","frecuencia",0.00,86.50,0,0.00,86.50
+173,"2026-09-21","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"08:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,72.00,0,0.00,72.00
+173,"2026-09-21","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"10:25","Loja","Vilcabamba","Ida","frecuencia",0.00,21.00,0,4.50,21.00
+173,"2026-09-21","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"12:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,36.75,0,0.00,36.75
+173,"2026-09-21","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,66.00,0,16.00,66.00
+173,"2026-09-21","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",7,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,23.00,0,0.00,23.00
+173,"2026-09-21","VT1","01","Jimmy Armando Vera Japon","Jorge Patiño",8,"20:45","Loja","Yangana","Ida","frecuencia",0.00,54.00,0,26.20,54.00
+174,"2026-09-22","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",1,"09:15","Loja","Vilcabamba","Ida","frecuencia",0.00,27.00,0,5.00,27.00
+174,"2026-09-22","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",2,"11:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,97.00,0,0.00,97.00
+174,"2026-09-22","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",3,"13:45","Loja","Vilcabamba","Ida","frecuencia",0.00,29.00,0,5.65,29.00
+174,"2026-09-22","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",4,"15:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,43.00,0,0.00,43.00
+174,"2026-09-22","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",5,"17:45","Loja","Vilcabamba","Ida","frecuencia",0.00,43.50,0,10.75,43.50
+174,"2026-09-22","VT2","01","Jimmy Armando Vera Japon","Jorge Patiño",6,"19:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,23.75,0,5.00,23.75
+175,"2026-09-23","VT3","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"05:40","Loja","Vilcabamba","Ida","frecuencia",0.00,24.00,0,0.00,24.00
+175,"2026-09-23","VT3","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"07:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,68.25,0,0.00,68.25
+175,"2026-09-23","VT3","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"12:30","Loja","La Elvira","Ida","frecuencia",0.00,50.00,4,9.25,50.00
+175,"2026-09-23","VT3","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"17:40","La Elvira","Loja","Vuelta","frecuencia",0.00,54.25,0,0.00,54.25
+175,"2026-09-23","VT3","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"20:15","Loja","Vilcabamba","Ida","frecuencia",0.00,31.75,3,7.00,31.75
+175,"2026-09-23","VT3","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,38.00,1,2.50,38.00
+176,"2026-09-24","VT4","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"08:45","Loja","Vilcabamba","Ida","frecuencia",0.00,13.00,1,5.25,13.00
+176,"2026-09-24","VT4","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"10:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.50,0,0.00,25.50
+176,"2026-09-24","VT4","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"12:45","Loja","Vilcabamba","Ida","frecuencia",0.00,57.00,1,2.50,57.00
+176,"2026-09-24","VT4","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"14:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,41.50,0,0.00,41.50
+176,"2026-09-24","VT4","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"16:25","Loja","La Elvira","Ida","frecuencia",0.00,38.00,4,14.15,38.00
+176,"2026-09-24","VT4","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"08:00","La Elvira","Loja","Vuelta","frecuencia",0.00,80.00,0,0.00,80.00
+177,"2026-09-25","VT5","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"10:15","Loja","Vilcabamba","Ida","frecuencia",0.00,8.00,3,7.00,8.00
+177,"2026-09-25","VT5","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"12:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,47.00,0,0.00,47.00
+177,"2026-09-25","VT5","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"14:30","Loja","Vilcabamba","Ida","frecuencia",0.00,58.50,2,7.00,58.50
+177,"2026-09-25","VT5","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"16:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,40.00,0,0.00,40.00
+177,"2026-09-25","VT5","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"21:00","Loja","Vilcabamba","Ida","frecuencia",0.00,30.28,0,2.50,30.28
+177,"2026-09-25","VT5","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"07:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,32.00,0,0.00,32.00
+178,"2026-09-26","VT6","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,3,9.00,45.00
+178,"2026-09-26","VT6","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,21.00,0,0.00,21.00
+178,"2026-09-26","VT6","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,85.00,2,14.00,85.00
+178,"2026-09-26","VT6","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,65.00,0,0.00,65.00
+178,"2026-09-26","VT6","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,42.50,1,9.00,42.50
+178,"2026-09-26","VT6","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,41.50,0,0.00,41.50
+179,"2026-09-27","VT7","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"06:25","Loja","Vilcabamba","Ida","frecuencia",0.00,40.00,1,2.00,40.00
+179,"2026-09-27","VT7","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"08:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,38.50,0,0.00,38.50
+179,"2026-09-27","VT7","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"10:45","Loja","Vilcabamba","Ida","frecuencia",0.00,30.00,4,13.25,30.00
+179,"2026-09-27","VT7","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"12:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,43.00,1,2.00,43.00
+179,"2026-09-27","VT7","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"15:15","Loja","Vilcabamba","Ida","frecuencia",0.00,5.00,1,23.15,5.00
+179,"2026-09-27","VT7","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"17:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,88.00,0,0.00,88.00
+179,"2026-09-27","VT7","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",7,"18:55","Loja","Vilcabamba","Ida","frecuencia",0.00,8.75,0,0.00,8.75
+179,"2026-09-27","VT7","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",8,"21:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,53.00,0,0.00,53.00
+180,"2026-09-30","VT10","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"06:40","Loja","El Tambo","Ida","frecuencia",0.00,65.00,1,19.55,65.00
+180,"2026-09-30","VT10","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"10:15","El Tambo","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+180,"2026-09-30","VT10","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"12:10","Loja","El Tambo","Ida","frecuencia",0.00,68.00,1,17.45,68.00
+180,"2026-09-30","VT10","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"17:15","El Tambo","Loja","Vuelta","frecuencia",0.00,90.00,0,0.00,90.00
+180,"2026-09-30","VT10","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"19:30","Loja","Vilcabamba","Ida","frecuencia",0.00,24.00,0,0.00,24.00
+180,"2026-09-30","VT10","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"05:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,53.00,0,0.00,53.00
+181,"2026-10-01","VT11","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"07:30","Loja","Vilcabamba","Ida","frecuencia",0.00,56.00,4,8.00,56.00
+181,"2026-10-01","VT11","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"10:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.00,0,0.00,13.00
+181,"2026-10-01","VT11","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"13:15","Loja","Vilcabamba","Ida","frecuencia",0.00,21.50,0,0.00,21.50
+181,"2026-10-01","VT11","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"14:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.00,0,0.00,25.00
+181,"2026-10-01","VT11","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"17:25","Loja","El Tambo","Ida","frecuencia",0.00,29.50,2,20.00,29.50
+181,"2026-10-01","VT11","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"06:55","El Tambo","Loja","Vuelta","frecuencia",0.00,83.00,0,0.00,83.00
+182,"2026-10-02","VT12","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"08:30","Loja","Vilcabamba","Ida","frecuencia",0.00,34.50,0,10.00,34.50
+182,"2026-10-02","VT12","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"10:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+182,"2026-10-02","VT12","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"12:20","Loja","Vilcabamba","Ida","ingreso_especial",0.00,45.00,0,0.00,45.00
+182,"2026-10-02","VT12","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"14:15","Vilcabamba","Loja","Vuelta","ingreso_especial",0.00,45.00,0,0.00,45.00
+182,"2026-10-02","VT12","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"18:20","Loja","El Tambo","Ida","frecuencia",0.00,77.00,0,3.30,77.00
+182,"2026-10-02","VT12","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"07:50","El Tambo","Loja","Vuelta","frecuencia",0.00,35.00,0,0.00,35.00
+183,"2026-10-03","VT13","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"09:25","Loja","Vilcabamba","Ida","frecuencia",0.00,38.00,1,5.00,38.00
+183,"2026-10-03","VT13","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"11:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+183,"2026-10-03","VT13","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"14:15","Loja","Vilcabamba","Ida","frecuencia",0.00,65.00,1,31.40,65.00
+183,"2026-10-03","VT13","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"16:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,24.00,1,2.50,24.00
+183,"2026-10-03","VT13","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"18:25","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,1,7.25,45.00
+183,"2026-10-03","VT13","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"20:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,62.00,0,0.00,62.00
+184,"2026-10-04","VT14","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,86.00,1,7.00,86.00
+184,"2026-10-04","VT14","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,59.00,0,0.00,59.00
+184,"2026-10-04","VT14","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"11:30","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,1,15.25,45.00
+184,"2026-10-04","VT14","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"13:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,58.50,0,0.00,58.50
+184,"2026-10-04","VT14","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"17:15","Loja","Vilcabamba","Ida","frecuencia",0.00,10.00,1,10.50,10.00
+184,"2026-10-04","VT14","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"18:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,106.00,0,0.00,106.00
+184,"2026-10-04","VT14","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",7,"21:15","Loja","Vilcabamba","Ida","frecuencia",0.00,4.00,0,0.00,4.00
+184,"2026-10-04","VT14","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",8,"06:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,82.50,0,0.00,82.50
+185,"2026-10-05","VT15","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"07:45","Loja","Vilcabamba","Ida","frecuencia",0.00,35.00,0,15.75,35.00
+185,"2026-10-05","VT15","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"09:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,51.00,0,0.00,51.00
+185,"2026-10-05","VT15","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"11:45","Loja","Vilcabamba","Ida","frecuencia",0.00,66.00,0,4.00,66.00
+185,"2026-10-05","VT15","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"13:55","Vilcabamba","Loja","Vuelta","frecuencia",0.00,62.00,0,0.00,62.00
+185,"2026-10-05","VT15","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"16:15","Loja","Vilcabamba","Ida","frecuencia",0.00,25.00,0,12.75,25.00
+185,"2026-10-05","VT15","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"18:10","Vilcabamba","Loja","Vuelta","frecuencia",0.00,16.00,0,0.00,16.00
+186,"2026-10-06","VT1","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"06:15","Loja","Vilcabamba","Ida","frecuencia",0.00,41.00,0,1.25,41.00
+186,"2026-10-06","VT1","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"07:00","Yangana","Loja","Vuelta","frecuencia",0.00,56.00,0,0.00,56.00
+186,"2026-10-06","VT1","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"08:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,24.00,0,0.00,24.00
+186,"2026-10-06","VT1","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"10:25","Loja","Vilcabamba","Ida","frecuencia",0.00,40.00,0,7.75,40.00
+186,"2026-10-06","VT1","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"12:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,50.00,0,0.00,50.00
+186,"2026-10-06","VT1","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"15:45","Loja","Vilcabamba","Ida","frecuencia",0.00,45.00,0,10.75,45.00
+186,"2026-10-06","VT1","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",7,"17:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,67.00,0,0.00,67.00
+186,"2026-10-06","VT1","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",8,"20:45","Loja","Yangana","Ida","frecuencia",0.00,47.00,0,8.25,47.00
+187,"2026-10-07","VT2","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"09:15","Loja","Vilcabamba","Ida","frecuencia",0.00,20.00,0,7.50,20.00
+187,"2026-10-07","VT2","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"11:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,30.00,0,0.00,30.00
+187,"2026-10-07","VT2","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"13:45","Loja","Vilcabamba","Ida","frecuencia",0.00,23.75,0,0.00,23.75
+187,"2026-10-07","VT2","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"15:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,34.00,0,0.00,34.00
+187,"2026-10-07","VT2","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"17:45","Loja","Vilcabamba","Ida","frecuencia",0.00,61.00,0,29.90,61.00
+187,"2026-10-07","VT2","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"19:25","Vilcabamba","Loja","Vuelta","frecuencia",0.00,21.50,0,0.00,21.50
+188,"2026-10-08","VT3","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",1,"05:40","Loja","Vilcabamba","Ida","frecuencia",0.00,29.00,0,0.00,29.00
+188,"2026-10-08","VT3","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",2,"07:40","Vilcabamba","Loja","Vuelta","frecuencia",0.00,79.00,0,0.00,79.00
+188,"2026-10-08","VT3","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",3,"12:30","Loja","La Elvira","Ida","frecuencia",0.00,64.00,0,2.50,64.00
+188,"2026-10-08","VT3","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",4,"17:40","La Elvira","Loja","Vuelta","frecuencia",0.00,63.00,0,0.00,63.00
+188,"2026-10-08","VT3","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",5,"20:15","Loja","Vilcabamba","Ida","frecuencia",0.00,27.00,0,9.50,27.00
+188,"2026-10-08","VT3","01","BUS-01 - Jimmy Armando Vera Japon","Jorge Patiño",6,"06:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,25.00,0,0.00,25.00
+189,"2026-10-10","VT5","01","BUS-01 - HENRRY OMAR RAMON QUIZHPE","Jorge Patiño",1,"10:15","Loja","Vilcabamba","Ida","frecuencia",0.00,19.35,3,42.75,19.35
+189,"2026-10-10","VT5","01","BUS-01 - HENRRY OMAR RAMON QUIZHPE","Jorge Patiño",2,"12:15","Vilcabamba","Loja","Vuelta","frecuencia",0.00,40.00,0,0.00,40.00
+189,"2026-10-10","VT5","01","BUS-01 - HENRRY OMAR RAMON QUIZHPE","Jorge Patiño",3,"14:30","Loja","Vilcabamba","Ida","frecuencia",0.00,50.00,1,30.75,50.00
+189,"2026-10-10","VT5","01","BUS-01 - HENRRY OMAR RAMON QUIZHPE","Jorge Patiño",4,"16:30","Vilcabamba","Loja","Vuelta","frecuencia",0.00,52.00,0,0.00,52.00
+189,"2026-10-10","VT5","01","BUS-01 - HENRRY OMAR RAMON QUIZHPE","Jorge Patiño",5,"21:00","Loja","Vilcabamba","Ida","frecuencia",0.00,27.00,2,4.00,27.00
+189,"2026-10-10","VT5","01","BUS-01 - HENRRY OMAR RAMON QUIZHPE","Jorge Patiño",6,"07:20","Vilcabamba","Loja","Vuelta","frecuencia",0.00,13.00,0,0.00,13.00
+190,"2026-10-11","VT6","01","BUS-01 - HENRRY OMAR RAMON QUIZHPE","Jorge Patiño",1,"09:45","Loja","Vilcabamba","Ida","frecuencia",0.00,36.00,1,12.75,36.00
+190,"2026-10-11","VT6","01","BUS-01 - HENRRY OMAR RAMON QUIZHPE","Jorge Patiño",2,"11:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,26.00,0,0.00,26.00
+190,"2026-10-11","VT6","01","BUS-01 - HENRRY OMAR RAMON QUIZHPE","Jorge Patiño",3,"14:45","Loja","Vilcabamba","Ida","frecuencia",0.00,73.00,1,13.25,73.00
+190,"2026-10-11","VT6","01","BUS-01 - HENRRY OMAR RAMON QUIZHPE","Jorge Patiño",4,"16:50","Vilcabamba","Loja","Vuelta","frecuencia",0.00,94.00,0,0.00,94.00
+190,"2026-10-11","VT6","01","BUS-01 - HENRRY OMAR RAMON QUIZHPE","Jorge Patiño",5,"18:40","Loja","Vilcabamba","Ida","frecuencia",0.00,23.50,1,2.00,23.50
+190,"2026-10-11","VT6","01","BUS-01 - HENRRY OMAR RAMON QUIZHPE","Jorge Patiño",6,"20:45","Vilcabamba","Loja","Vuelta","frecuencia",0.00,43.00,2,5.00,43.00

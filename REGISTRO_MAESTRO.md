@@ -4445,3 +4445,12 @@ bun test tests/manual-socio.test.ts
 - **Token de Autenticación (PAT):** Proporcionado por el usuario en el chat, utilizado exclusivamente en memoria para la sesión y nunca persistido en archivos ni variables del repositorio.
 - **Ramas Sincronizadas:** Push exitoso a las ramas `main` y `staging` de `https://github.com/jljjdesarrollo-maker/rutago`.
 - **Despliegue Vercel:** Disparado automáticamente por Vercel para Producción y Staging con los 190 expedientes y el índice maestro integrados en `docs/arqueos_unidad_01/`.
+
+### 📍 5. Generación de Archivos Planos CSV (Consolidado y Detallado de Vueltas):
+- **Requerimiento del Usuario:** Generar un archivo CSV plano que incluya la información de todos los arqueos de la Unidad 01.
+- **Archivos CSV Generados con Codificación UTF-8 + BOM:**
+  1. `docs/arqueos_unidad_01/ARQUEOS_CONSOLIDADOS_UNIDAD_01.csv` (190 filas, 26 columnas):
+     * Columnas: `Numero_Jornada`, `ID_Registro_BD`, `Fecha`, `Unidad_Disco`, `Placa`, `Turno_VT`, `Conductor`, `Ayudante`, `Odometro_Inicial`, `Odometro_Final`, `Km_Recorrido`, `Total_Vueltas`, `Produccion_Bruta_USD`, `Total_Gastos_USD`, `Liquido_Socio_USD`, `Caja_Comun_USD`, `Venta_Boletos_USD`, `Sobrante_Faltante_USD`, `Entrega_Compania_USD`, `Gasto_Chofer_USD`, `Gasto_Ayudante_USD`, `Gasto_Diesel_USD`, `Gasto_Plan_Renova_USD`, `Gasto_Reparaciones_Otros_USD`, `Detalle_Gastos_Texto`, `Detalle_Vueltas_Texto`.
+  2. `docs/arqueos_unidad_01/ARQUEOS_DETALLE_VUELTAS_UNIDAD_01.csv` (1,216 filas, 17 columnas):
+     * Fila por cada frecuencia/vuelta individual: `Numero_Jornada`, `Fecha`, `Turno_VT`, `Unidad_Disco`, `Conductor`, `Ayudante`, `Orden_Vuelta`, `Hora_Programada`, `Ruta_Origen`, `Ruta_Destino`, `Sentido`, `Tipo_Frecuencia`, `Ingreso_Boletos_USD`, `Ingreso_Efectivo_USD`, `Pasajeros_Caja_Comun`, `Monto_Caja_Comun_USD`, `Total_Vuelta_USD`.
+- **Compatibilidad Universal:** Incluye cabecera BOM (`\uFEFF`) para apertura directa e inmediata en Microsoft Excel, LibreOffice y Google Sheets sin problemas de codificación.
