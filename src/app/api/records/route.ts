@@ -216,6 +216,46 @@ export async function GET(req: NextRequest) {
           }).catch(() => {});
         }
 
+        // 6. Regularizar cuadre histórico del 02 de octubre en Unidad 08 (faltante en cuaderno -$6.00)
+        if (
+          r.date === "2026-10-02" &&
+          String(r.conductor || "").includes("BUS-08") &&
+          r.sobrante === 0 &&
+          r.entregaAyudante === 49
+        ) {
+          r.sobrante = -6;
+          r.entregaAyudante = 43;
+          r.production = 257.30;
+          await db.dailyRecord.update({
+            where: { id: r.id },
+            data: {
+              sobrante: -6,
+              entregaAyudante: 43,
+              production: 257.30,
+            },
+          }).catch(() => {});
+        }
+
+        // 7. Regularizar cuadre histórico del 01 de octubre en Unidad 08 (faltante en cuaderno -$6.00)
+        if (
+          r.date === "2026-10-01" &&
+          String(r.conductor || "").includes("BUS-08") &&
+          r.sobrante === 0 &&
+          r.entregaAyudante === 129
+        ) {
+          r.sobrante = -6;
+          r.entregaAyudante = 123;
+          r.production = 327.20;
+          await db.dailyRecord.update({
+            where: { id: r.id },
+            data: {
+              sobrante: -6,
+              entregaAyudante: 123,
+              production: 327.20,
+            },
+          }).catch(() => {});
+        }
+
         if (Object.keys(updates).length > 0) {
           await db.dailyRecord.update({
             where: { id: r.id },

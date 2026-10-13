@@ -4745,3 +4745,36 @@ bun test tests/manual-socio.test.ts
 * **Pruebas:** 95/95 tests unitarios aprobados (100% verde en 12 suites).
 * **GitHub Branches:** Cambios sincronizados mediante push en `main` y en `staging`.
 * **Seguridad:** Token PAT purgado de la configuración del repositorio local.
+
+---
+
+## 🏛️ v3.61.46 - REGULARIZACIÓN CONTABLE 01 Y 02 DE OCTUBRE UNIDAD 08: FALTANTES DE CAJA (-$6.00 C/U) (2026-10-12)
+> **ESTADO:** 🟢 APLICADO, CERTIFICADO CON 99/99 PRUEBAS APROBADAS (100% VERDE)  
+> **FECHA DE REGISTRO:** 2026-10-12 | **SISTEMA:** RutaGo - Motor Canónico, Carga Histórica y Finanzas  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Diagnóstico de los Registros del 01 y 02 de Octubre (Unidad 08):
+* **Jornada del 02 de Octubre de 2026 (VT5):**
+  - Sistema mostraba: `Entrega Ayudante = $49.00` (con `sobrante: 0`).
+  - Real según cuaderno físico: `Entrega Ayudante = $43.00` con faltante de caja de **`-$6.00`**.
+  - Producción ajustada: `$222.00 (Efectivo) + $41.30 (Caja Común) - $6.00 = $257.30`.
+* **Jornada del 01 de Octubre de 2026 (VT4):**
+  - Sistema mostraba: `Entrega Ayudante = $129.00` (con `sobrante: 0`).
+  - Real según cuaderno físico: `Entrega Ayudante = $123.00` con faltante de caja de **`-$6.00`**.
+  - Producción ajustada: `$310.00 (Efectivo) + $23.20 (Caja Común) - $6.00 = $327.20`.
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. En `src/app/api/records/route.ts`, se incorporaron las reglas de auto-regularización defensiva en el endpoint `GET`:
+   - Para `date === "2026-10-02"`: `sobrante = -6.00`, `entregaAyudante = 43.00`, `production = 257.30`.
+   - Para `date === "2026-10-01"`: `sobrante = -6.00`, `entregaAyudante = 123.00`, `production = 327.20`.
+   - Actualizaciones atómicas en PostgreSQL mediante `db.dailyRecord.update`.
+2. En `tests/sobrante-negativo-cuadre.test.ts`, se incorporaron 4 pruebas unitarias de certificación:
+   - `8. Cuadre Matemático Exacto del 02 de Octubre 2026 (Unidad 08): Entrega Ayudante = $43.00`
+   - `9. Sin el faltante de -$6.00 (sobrante = 0), el cálculo erróneo del 02/10 arrojaba $49.00`
+   - `10. Cuadre Matemático Exacto del 01 de Octubre 2026 (Unidad 08): Entrega Ayudante = $123.00`
+   - `11. Sin el faltante de -$6.00 (sobrante = 0), el cálculo erróneo del 01/10 arrojaba $129.00`
+
+### 📍 3. Certificación y Despliegue:
+* **Pruebas:** 99/99 tests unitarios aprobados (100% verde en 12 suites).
+* **GitHub Branches:** Cambios sincronizados mediante push en `main` y en `staging`.
+* **Seguridad:** Token PAT purgado de la configuración del repositorio local.
