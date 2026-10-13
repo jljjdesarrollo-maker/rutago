@@ -119,4 +119,60 @@ describe('💰 AUDITORÍA FINANCIERA: SOBRANTE NEGATIVO (FALTANTE DE CAJA) EN CA
     const entregaErronea = totalEfectivoReal + sobranteClamped - totalGastos;
     expect(entregaErronea).toBe(86.00); // Exactamente los $86 erróneos previos
   });
+
+  test('8. Cuadre Matemático Exacto del 02 de Octubre 2026 (Unidad 08): Entrega Ayudante = $43.00', () => {
+    const totalEfectivoReal = 222.00;
+    const totalCajaComun = 41.30;
+    const totalGastos = 173.00;
+    const tickets = 6.00;
+    const sobrante = -6.00; // Faltante registrado por el usuario en cuaderno (-$6.00)
+
+    // Regla de Cuadre Canónica de RutaGo con Caja Común
+    const entregaAyudante = totalEfectivoReal + sobrante - totalGastos;
+    const entregaCompania = totalCajaComun - tickets;
+    const produccion = totalEfectivoReal + totalCajaComun + sobrante;
+
+    // Validación contra el cuadre real del usuario ($43.00 de entrega al socio)
+    expect(totalEfectivoReal).toBe(222.00);
+    expect(totalGastos).toBe(173.00);
+    expect(entregaAyudante).toBe(43.00); // 222 - 6 - 173 = 43
+    expect(entregaCompania).toBe(35.30); // 41.30 - 6.00 = 35.30
+    expect(produccion).toBe(257.30);     // 222 + 41.30 - 6 = 257.30
+  });
+
+  test('9. Sin el faltante de -$6.00 (sobrante = 0), el cálculo erróneo del 02/10 arrojaba $49.00', () => {
+    const totalEfectivoReal = 222.00;
+    const totalGastos = 173.00;
+    const sobranteClamped = 0; // Lo que hacía Math.max(0, -6)
+    const entregaErronea = totalEfectivoReal + sobranteClamped - totalGastos;
+    expect(entregaErronea).toBe(49.00); // Exactamente los $49 erróneos previos
+  });
+
+  test('10. Cuadre Matemático Exacto del 01 de Octubre 2026 (Unidad 08): Entrega Ayudante = $123.00', () => {
+    const totalEfectivoReal = 310.00;
+    const totalCajaComun = 23.20;
+    const totalGastos = 181.00;
+    const tickets = 6.00;
+    const sobrante = -6.00; // Faltante registrado por el usuario en cuaderno (-$6.00)
+
+    // Regla de Cuadre Canónica de RutaGo con Caja Común
+    const entregaAyudante = totalEfectivoReal + sobrante - totalGastos;
+    const entregaCompania = totalCajaComun - tickets;
+    const produccion = totalEfectivoReal + totalCajaComun + sobrante;
+
+    // Validación contra el cuadre real del usuario ($123.00 de entrega al socio)
+    expect(totalEfectivoReal).toBe(310.00);
+    expect(totalGastos).toBe(181.00);
+    expect(entregaAyudante).toBe(123.00); // 310 - 6 - 181 = 123
+    expect(entregaCompania).toBe(17.20);  // 23.20 - 6.00 = 17.20
+    expect(produccion).toBe(327.20);      // 310 + 23.20 - 6 = 327.20
+  });
+
+  test('11. Sin el faltante de -$6.00 (sobrante = 0), el cálculo erróneo del 01/10 arrojaba $129.00', () => {
+    const totalEfectivoReal = 310.00;
+    const totalGastos = 181.00;
+    const sobranteClamped = 0; // Lo que hacía Math.max(0, -6)
+    const entregaErronea = totalEfectivoReal + sobranteClamped - totalGastos;
+    expect(entregaErronea).toBe(129.00); // Exactamente los $129 erróneos previos
+  });
 });
