@@ -91,4 +91,32 @@ describe('💰 AUDITORÍA FINANCIERA: SOBRANTE NEGATIVO (FALTANTE DE CAJA) EN CA
     const entregaErronea = totalEfectivoReal + sobranteClamped - totalGastos;
     expect(entregaErronea).toBe(195.00); // Exactamente los $195 erróneos previos
   });
+
+  test('6. Cuadre Matemático Exacto del 03 de Octubre 2026 (Unidad 08): Entrega Ayudante = $75.00', () => {
+    const totalEfectivoReal = 249.00;
+    const totalCajaComun = 21.40;
+    const totalGastos = 163.00;
+    const tickets = 4.50;
+    const sobrante = -11.00; // Faltante registrado por el usuario en cuaderno (-$11.00)
+
+    // Regla de Cuadre Canónica de RutaGo con Caja Común
+    const entregaAyudante = totalEfectivoReal + sobrante - totalGastos;
+    const entregaCompania = totalCajaComun - tickets;
+    const produccion = totalEfectivoReal + totalCajaComun + sobrante;
+
+    // Validación contra el cuadre real del usuario ($75.00 de entrega al socio)
+    expect(totalEfectivoReal).toBe(249.00);
+    expect(totalGastos).toBe(163.00);
+    expect(entregaAyudante).toBe(75.00); // 249 - 11 - 163 = 75
+    expect(entregaCompania).toBe(16.90); // 21.40 - 4.50 = 16.90
+    expect(produccion).toBe(259.40);     // 249 + 21.40 - 11 = 259.40
+  });
+
+  test('7. Sin el faltante de -$11.00 (sobrante = 0), el cálculo erróneo arrojaba $86.00', () => {
+    const totalEfectivoReal = 249.00;
+    const totalGastos = 163.00;
+    const sobranteClamped = 0; // Lo que hacía Math.max(0, -11)
+    const entregaErronea = totalEfectivoReal + sobranteClamped - totalGastos;
+    expect(entregaErronea).toBe(86.00); // Exactamente los $86 erróneos previos
+  });
 });

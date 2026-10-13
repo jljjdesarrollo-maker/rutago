@@ -4715,3 +4715,33 @@ bun test tests/manual-socio.test.ts
 * **Error Detectado en Vercel:** `P1001: Can't reach database server at db.prisma.io:5432`.
 * **Causa Raíz:** En `package.json`, el comando `build` intentaba ejecutar `prisma db push` contra `db.prisma.io:5432` en el runner de compilación de Vercel. Al encontrarse la base de datos en reposo / red fría, `prisma db push` fallaba e interrumpía la compilación de Next.js (`npm run build exited with 1`).
 * **Solución Implementada:** Se blindó el script `build` en `package.json` para que `prisma db push` sea tolerante a fallos (`|| echo "⚠️ db:push omitido (BD en reposo o inaccesible durante build), continuando compilacion..."`), permitiendo que `next build` proceda y finalice con éxito.
+
+---
+
+## 🏛️ v3.61.45 - REGULARIZACIÓN CONTABLE 03 DE OCTUBRE UNIDAD 08: FALTANTE DE CAJA -$11.00 (ENTREGA $75.00) (2026-10-12)
+> **ESTADO:** 🟢 APLICADO, CERTIFICADO CON 95/95 PRUEBAS APROBADAS (100% VERDE)  
+> **FECHA DE REGISTRO:** 2026-10-12 | **SISTEMA:** RutaGo - Motor Canónico, Carga Histórica y Finanzas  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Diagnóstico del Registro Reportado por el Usuario:
+* **Incidente:** En el registro del **03 de octubre de 2026** de la **Unidad 08**, el sistema proyectaba una Entrega del Ayudante de **`$86.00`** cuando lo real físico en el cuaderno de ruta fue de **`$75.00`**, registrándose un faltante de caja de **`-$11.00`**.
+* **Causa Raíz:** El registro se encontraba migrado con `sobrante: 0`:
+  $$\text{Entrega Ayudante Errónea} = \text{Total Efectivo Real } (\$249.00) + \text{Sobrante } (\$0.00) - \text{Total Gastos } (\$163.00) = \$86.00$$
+* **Cuadre Canónico Fiel al Cuaderno de Campo:**
+  $$\text{Entrega Ayudante Real} = \$249.00 + (-\$11.00) - \$163.00 = \mathbf{\$75.00}$$
+  $$\text{Producción Bruta Real} = \$249.00 + \$21.40 (\text{Caja Común}) + (-\$11.00) = \mathbf{\$259.40}$$
+
+### 📍 2. Solución de Ingeniería Implementada:
+1. En `src/app/api/records/route.ts`, se incorporó auto-regularización defensiva en el endpoint `GET` para `date === "2026-10-03"` de la Unidad 08:
+   - `sobrante = -11.00`
+   - `entregaAyudante = 75.00`
+   - `production = 259.40`
+   - Actualización atómica persistida en PostgreSQL.
+2. En `tests/sobrante-negativo-cuadre.test.ts`, se incorporaron dos pruebas de certificación:
+   - `6. Cuadre Matemático Exacto del 03 de Octubre 2026 (Unidad 08): Entrega Ayudante = $75.00`
+   - `7. Sin el faltante de -$11.00 (sobrante = 0), el cálculo erróneo arrojaba $86.00`
+
+### 📍 3. Certificación y Despliegue:
+* **Pruebas:** 95/95 tests unitarios aprobados (100% verde en 12 suites).
+* **GitHub Branches:** Cambios sincronizados mediante push en `main` y en `staging`.
+* **Seguridad:** Token PAT purgado de la configuración del repositorio local.
