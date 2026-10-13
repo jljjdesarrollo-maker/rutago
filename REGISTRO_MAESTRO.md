@@ -4814,3 +4814,41 @@ bun test tests/manual-socio.test.ts
 * **Bullet Chart de Rango Continuo ("Tú vs. El Cardumen"):** Barra horizontal con mínimo, media de cooperativa y un marcador destacado de "Tu Bus", permitiendo al socio ver en 1 segundo si gasta menos o más que la flota.
 * **Métricas de Lucro Cesante:** Traducción de las vueltas perdidas a dinero real dejado de percibir ($).
 * **Anonimato Cooperativo Estricto:** Unidades de terceros codificadas como `#T-01`, `#T-02` sin mostrar placas ni propietarios.
+
+* **Nomenclatura Anónima Alfabética Confirmada:** Reemplazo estricto de números por letras (`#T-A`, `#T-B`, `#T-C`... para Troncales; `#A-A`, `#A-B`... para Alimentadores) para erradicar cualquier asociación con el número de disco del vehículo.
+* **Ubicación en el Sistema:** Doble acceso ergonómico:
+  1. *Acceso Primario:* Tarjeta directa en el Dashboard de Inicio (`HomeScreen.tsx`) en la sección *"Análisis Operativo y Auditoría"*.
+  2. *Acceso Secundario:* Pestaña complementaria en *"Reportes e Informes"* (`ReportsScreen.tsx`).
+* **Estrategia de Conectividad Híbrida (Offline-First SWR):** Carga instantánea (0 ms) desde snapshot en almacenamiento local, con revalidación silenciosa en segundo plano al disponer de red y chip de estado (🟢 Actualizado / 📡 Sincronizando / 🟡 Fuera de línea).
+
+---
+
+### 📋 PLAN MAESTRO DE IMPLEMENTACIÓN POR FASES (RESILIENTE A CUOTAS)
+
+Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avance ante agotamiento de cuotas de sesión, el desarrollo se ejecutará en 4 fases atómicas:
+
+#### 🔹 FASE 1: Motor Canónico de Negocio, Anonimización Alfabética y Pruebas Unitarias
+* **Objetivo:** Construir la lógica pura y matemática del módulo con pruebas automáticas sin tocar la UI.
+* **Archivos a Crear/Modificar:**
+  - `src/lib/reporte-calendario-socio.ts`: Algoritmo de ventanas fijas de calendario (7, 15, 30 días sin ceros ficticios), $/km real, lucro cesante de vueltas perdidas ($), anonimización `#T-A`, motor de dictamen determinista y gestor de caché local.
+  - `tests/reporte-calendario-socio.test.ts`: Suite de pruebas unitarias exhaustivas con `bun test`.
+* **Hito de Certificación:** 100% de pruebas aprobadas en verde (`bun test`), actualización del log, commit y push a `main` y `staging`.
+
+#### 🔹 FASE 2: Endpoint API REST Optimizado en PostgreSQL
+* **Objetivo:** Exponer la consulta de base de datos eficiente para alimentar el reporte y el benchmark del circuito.
+* **Archivos a Crear:**
+  - `src/app/api/socio/reporte-calendario/route.ts`: Consulta atómica con filtrado por ventana de calendario, aislamiento multi-tenant y exclusión de unidades con cobertura < 30%.
+* **Hito de Certificación:** Compilación verificada con `compile_applet`, commit y push a `main` y `staging`.
+
+#### 🔹 FASE 3: Componente UI React (Modal Offline-First con Bullet Chart y Split-Screen)
+* **Objetivo:** Desarrollar la interfaz visual de usuario optimizada para móvil y pulgar.
+* **Archivos a Crear:**
+  - `src/components/socio/ReporteSocioCalendarioModal.tsx`: Modal bottom-sheet con selector de ventana (7/15/30d), tarjeta de dictamen, desglose de baches de ayudante, split-screen, bullet chart y ranking anónimo.
+* **Hito de Certificación:** Compilación limpia con `compile_applet`, commit y push a `main` y `staging`.
+
+#### 🔹 FASE 4: Integración en Menús, Conexión E2E y Certificación Final
+* **Objetivo:** Acoplar el modal en `HomeScreen.tsx` y `ReportsScreen.tsx`, verificar flujo end-to-end y auditar el sistema completo.
+* **Archivos a Modificar:**
+  - `src/components/transport/HomeScreen.tsx`: Inserción de la tarjeta en "Análisis Operativo y Auditoría".
+  - `src/components/transport/ReportsScreen.tsx`: Enlace complementario de auditoría calendario.
+* **Hito de Certificación:** 99+ pruebas aprobadas, `compile_applet` exitoso, actualización de cierre en `REGISTRO_MAESTRO.md`, commit final y push a `main` y `staging`.
