@@ -4881,3 +4881,22 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
   6. Asignación de códigos `#T-A`, `#T-B` y exclusión de unidades con cobertura < 30% en medias cooperativas.
   7. Disparo de dictámenes de alerta mecánica y felicitaciones de alta eficiencia.
 * **Resultado Global del Proyecto:** **114/114 pruebas aprobadas (100% verde en 13 suites)**.
+
+
+---
+
+## 🚀 CULMINACIÓN FASE 2: ENDPOINT API REST OPTIMIZADO EN POSTGRESQL (2026-10-13)
+> **ESTADO:** 🟢 COMPLETADA Y CERTIFICADA AL 100% (ENDPOINT CREADO Y COMPILADO)
+> **FECHA DE REGISTRO:** 2026-10-13 | **SISTEMA:** RutaGo - Motor de Reportes Calendario del Socio
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Módulos y Funcionalidades Implementadas:
+* **Archivo Creado:** `src/app/api/socio/reporte-calendario/route.ts`
+  - Método `GET`: Admite parámetros `busId`, `ventana` (7, 15, 30 días) y `fechaBase`.
+  - Construcción de ventana fija de calendario estricta con `generarRangoFechasCalendario`.
+  - Detección automática del tipo de circuito del autobús en PostgreSQL (`TRONCAL_VT` vs `ALIMENTADOR_P`).
+  - Consulta atómica a `DailyRecord` optimizada con selección de campos livianos (`km`, `production`, `expenses`, `trips`).
+  - Procesamiento server-side con el motor canónico `procesarReporteCalendarioSocio` para retornar de forma instantánea el payload consolidado.
+* **Certificación Técnica:**
+  - Compilación Next.js con Turbopack exitosa (25 rutas dinámicas y estáticas generadas sin errores).
+  - 114/114 pruebas unitarias aprobadas en verde.
