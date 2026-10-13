@@ -4852,3 +4852,32 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
   - `src/components/transport/HomeScreen.tsx`: Inserción de la tarjeta en "Análisis Operativo y Auditoría".
   - `src/components/transport/ReportsScreen.tsx`: Enlace complementario de auditoría calendario.
 * **Hito de Certificación:** 99+ pruebas aprobadas, `compile_applet` exitoso, actualización de cierre en `REGISTRO_MAESTRO.md`, commit final y push a `main` y `staging`.
+
+
+---
+
+## 🚀 CULMINACIÓN FASE 1: MOTOR CANÓNICO DE NEGOCIO, ANONIMIZACIÓN ALFABÉTICA Y PRUEBAS UNITARIAS (2026-10-13)
+> **ESTADO:** 🟢 COMPLETADA Y CERTIFICADA AL 100% (114/114 PRUEBAS APROBADAS EN 13 SUITES)
+> **FECHA DE REGISTRO:** 2026-10-13 | **SISTEMA:** RutaGo - Motor de Reportes Calendario del Socio
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Módulos y Funcionalidades Implementadas:
+* **Archivo Creado:** `src/lib/reporte-calendario-socio.ts`
+  - `convertirIndiceALetra(indice)`: Mapeo alfabético de índices para anonimización pura (`0 -> A`, `1 -> B`... `#T-A`, `#T-B` para troncales; `#A-A`, `#A-B` para alimentadores).
+  - `calcularGastoDiesel(expenses)`: Extracción de egresos de combustible de la ruta diaria (`diesel`, `diésel`, `combustible`).
+  - `extraerKmRecorridos(rec)`: Extracción estricta de odómetro delta (`kmFinal - kmInicial`) o `km` directo con clámpeo lógico anti-error ($0 < km \le 1200$).
+  - `generarRangoFechasCalendario(diasVentana, fechaBase)`: Construcción de ventanas fijas de calendario (7, 15 y 30 días) sin deformación temporal.
+  - `procesarReporteCalendarioSocio(...)`: Motor de cálculo consolidado que detecta días con baches del ayudante, calcula el costo por kilómetro real ($/km) sobre días válidos, computa el lucro cesante por vueltas perdidas ($) y calcula el bullet chart comparativo ("Tú vs El Cardumen").
+  - `generarDictamenEjecutivo(...)`: Motor heurístico determinista que categoriza en 5 niveles de dictamen: `COBERTURA_CRITICA`, `ALERTA_OPERATIVA`, `ALERTA_MECANICA`, `EXCELENTE` y `BUENO`.
+  - `saveReporteCalendarioSnapshot` / `getReporteCalendarioSnapshot`: Soporte de persistencia Offline-First para carga a 0 ms con revalidación Stale-While-Revalidate.
+
+### 📍 2. Certificación con Suite de Pruebas Unitarias:
+* **Archivo Creado:** `tests/reporte-calendario-socio.test.ts` (15 pruebas unitarias):
+  1. Anonimización alfabética (A..Z y combinaciones AA..).
+  2. Extracción precisa de combustible diésel.
+  3. Validación estricta de odómetro y descarte de deltas negativos o absurdos.
+  4. Generación de ventana de 7 días y detección de baches de ayudante.
+  5. Costo $/km puro sobre días válidos y lucro cesante de vueltas perdidas.
+  6. Asignación de códigos `#T-A`, `#T-B` y exclusión de unidades con cobertura < 30% en medias cooperativas.
+  7. Disparo de dictámenes de alerta mecánica y felicitaciones de alta eficiencia.
+* **Resultado Global del Proyecto:** **114/114 pruebas aprobadas (100% verde en 13 suites)**.
