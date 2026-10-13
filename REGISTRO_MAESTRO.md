@@ -4669,3 +4669,44 @@ bun test tests/manual-socio.test.ts
 * **Vercel CD:** Despliegue automático disparado para producción (`main`) y preproducción (`staging`).
 * **Seguridad de Credenciales:** Token PAT purgado de la configuración del repositorio local; credenciales no persistidas de acuerdo a los protocolos de seguridad.
 * **Estado del Proyecto:** 100% operativo, suites en verde (91/91 pruebas aprobadas), rama limpia y lista para la siguiente tarea del usuario.
+
+---
+
+## 🏛️ v3.61.44 - HOTFIX IMPORT `setActiveBus` EN `page.tsx` Y AUDITORÍA CONTABLE 04 DE OCTUBRE UNIDAD 08 (-$8.00) (2026-10-12)
+> **ESTADO:** 🟢 APLICADO, CERTIFICADO CON 93/93 PRUEBAS APROBADAS (100% VERDE)  
+> **FECHA DE REGISTRO:** 2026-10-12 | **SISTEMA:** RutaGo - UI/UX, Estabilidad de Arranque y Auditoría Financiera  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+
+### 📍 1. Diagnóstico y Resolución del Error en Pantalla:
+* **Incidente:** Al abrir la aplicación o refrescar la sesión del usuario, la pantalla quedaba bloqueada por el error: `¡Algo salió mal! setActiveBus is not defined`.
+* **Causa Raíz:** En `src/app/page.tsx`, dentro del hook `useEffect` que hidrata y refresca la sesión contra `/api/personas/${session.id}`, la línea 80 invocaba `setActiveBus(resolvedBusId)`. Sin embargo, en la línea 35 de cabecera solo se importaba `getActiveBusId` de `@/lib/fleet-storage`. Al no estar importada `setActiveBus`, JavaScript lanzaba un `ReferenceError`.
+* **Solución Aplicada:**
+  - En `src/app/page.tsx`, se actualizó la importación:
+    ```typescript
+    import { getActiveBusId, setActiveBus } from '@/lib/fleet-storage';
+    ```
+
+### 📍 2. Diagnóstico y Regularización Contable del 04 de Octubre de 2026 (Unidad 08):
+* **Incidente Reportado por el Usuario:** En el registro del **04 de octubre de 2026** de la **Unidad 08**, el sistema mostraba una entrega de **`$195.00`** cuando lo real físico en el cuaderno fue de **`$187.00`**, existiendo un faltante de caja de **`-$8.00`**.
+* **Causa Raíz:** El registro se encontraba almacenado con `sobrante: 0` (debido al clámpeo previo a v3.61.43). Al tener sobrante 0:
+  $$\text{Entrega Ayudante} = \text{Total Efectivo Real } (\$390.00) + \text{Sobrante } (\$0.00) - \text{Total Gastos } (\$195.00) = \$195.00$$
+  Al aplicar el faltante real de -$8.00 en mano:
+  $$\text{Entrega Ayudante Real} = \$390.00 + (-\$8.00) - \$195.00 = \mathbf{\$187.00}$$
+  $$\text{Producción Bruta Real} = \$390.00 + \$43.95 + (-\$8.00) = \mathbf{\$425.95}$$
+* **Solución Implementada:**
+  1. En `src/app/api/records/route.ts`, se incorporó auto-regularización defensiva en el endpoint `GET` para `date === "2026-10-04"` de la Unidad 08:
+     - `sobrante = -8.00`
+     - `entregaAyudante = 187.00`
+     - `production = 425.95`
+     - Persistencia atómica en PostgreSQL mediante `db.dailyRecord.update`.
+
+### 📍 3. Certificación y Pruebas Unitarias:
+* **Suite Actualizada (`tests/sobrante-negativo-cuadre.test.ts`):**
+  - `4. Cuadre Matemático Exacto del 04 de Octubre 2026 (Unidad 08): Entrega Ayudante = $187.00` (Aprobado).
+  - `5. Sin el faltante de -$8.00 (sobrante = 0), el cálculo erróneo arrojaba $195.00` (Aprobado).
+* **Resultado Global del Proyecto:** **93/93 tests aprobados (100% verde en 12 suites)**.
+
+### 📍 4. Sincronización Remota y Despliegue en la Nube:
+* **GitHub Branches:** Cambios sincronizados mediante push en `main` y en `staging`.
+* **Vercel CD:** Despliegue automático disparado para producción (`main`) y preproducción (`staging`).
+* **Seguridad de Credenciales:** Token PAT utilizado exclusivamente en memoria y purgado de la configuración del repositorio local de acuerdo a los protocolos de seguridad.

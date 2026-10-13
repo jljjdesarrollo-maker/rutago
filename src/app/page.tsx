@@ -32,7 +32,7 @@ import { type AppView, type RecordFormData, type SavedRecord, type UserSession, 
 import { type VTSession, type FrecuenciaEstado } from '@/components/transport/types-boletos';
 import { useToast } from '@/hooks/use-toast';
 import { useConnectionStatus } from '@/hooks/use-connection';
-import { getActiveBusId } from '@/lib/fleet-storage';
+import { getActiveBusId, setActiveBus } from '@/lib/fleet-storage';
 
 export default function Home() {
   const [user, setUser] = useState<UserSession | null>(null);
