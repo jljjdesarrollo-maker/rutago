@@ -4778,3 +4778,39 @@ bun test tests/manual-socio.test.ts
 * **Pruebas:** 99/99 tests unitarios aprobados (100% verde en 12 suites).
 * **GitHub Branches:** Cambios sincronizados mediante push en `main` y en `staging`.
 * **Seguridad:** Token PAT purgado de la configuración del repositorio local.
+
+
+---
+
+## 🏛️ v3.61.47 - ANÁLISIS Y ARQUITECTURA: REPORTE GERENCIAL EN VENTANAS DE CALENDARIO FIJAS (7/15/30 DÍAS), COSTO POR KM Y DICTAMEN DETERMINISTA (2026-10-13)
+> **ESTADO:** 🟢 PROPUESTA Y ARQUITECTURA APROBADA, REGISTRADA EN REPOSITORIO
+> **FECHA DE REGISTRO:** 2026-10-13 | **SISTEMA:** RutaGo - Motor de Reportes para Socios, Benchmark y Dictamen Ejecutivo
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Diagnóstico y Necesidad de Negocio:
+* **El Problema del Enfoque Tradicional ("Últimos X Registros"):** Tomar los últimos N registros en base de datos descompone la línea temporal. Si una unidad no operó o el ayudante no sincronizó durante 4 días, los "últimos 15 registros" retroceden 19 o 20 días en el pasado, falseando los promedios quincenales y mensuales.
+* **Solución de Ventana Fija de Calendario:** Delimitar estrictamente el rango entre `[Hoy - (N-1) días]` y `[Hoy]` (para ventanas de 7, 15 y 30 días de calendario).
+* **Control de Integridad y Detección de Baches:** La omisión de registros por parte del ayudante no se oculta ni se maquilla con ceros: se expone claramente como ratio de cobertura (ej: *Días con Registro: 11 / 15 (73% de cobertura • Sincronización pendiente)*), permitiendo al socio auditar las omisiones de su tripulación.
+* **Cálculo de Costo por Kilómetro ($/km):** El total de diésel se divide estrictamente entre los kilómetros reportados en días con odómetro válido ($0 < km < 1200$), omitiendo días vacíos para preservar la exactitud del rendimiento mecánico.
+
+### 📍 2. Arquitectura de Datos y Consulta PostgreSQL:
+* **Endpoint Proyectado:** `GET /api/socio/reporte-calendario?busId=...&ventana=7|15|30`
+* **Consulta Atómica:**
+  - `DailyRecord.findMany` con filtro `date: { gte: fechaInicio, lte: fechaFin }`.
+  - Agrupación y extracción de gastos de combustible (`description` con `diesel|diésel|combustible`).
+  - Extracción de kilómetros recorridos por jornada (`kmFinal - kmInicial` o `km`).
+  - Extracción de frecuencias cumplidas vs frecuencias no realizadas en `trips`.
+  - Carga de la flota activa del circuito (`TRONCAL_VT` vs `ALIMENTADOR_P`) para computar la media cooperativa anónima, excluyendo unidades con cobertura < 30% para no distorsionar la muestra.
+
+### 📍 3. Motor de Dictamen Ejecutivo Determinista (Copiloto del Socio):
+* **Reglas Heurísticas:**
+  1. *Cobertura Crítica (< 60%):* Alerta de falta de sincronización del ayudante y necesidad de cargar cuadernos de ruta pendientes.
+  2. *Pérdida de Vueltas (Cumplimiento < 90% o $\ge 3$ no realizadas):* Alerta operativa con recomendación de revisar causas de avería o retraso en terminal.
+  3. *Consumo Anormal de Combustible (Costo/km > +15% vs media de la cooperativa):* Alerta mecánica con recomendación de revisar filtros (trampa/secundario), toberas de inyección Denso y presión de neumáticos.
+  4. *Operación de Alta Eficiencia (Cumplimiento $\ge 95\%$ y Costo/km $\le$ media):* Reconocimiento y felicitación a la tripulación.
+  5. *Operación Estable:* Parámetros en regla alineados a la cooperativa.
+
+### 📍 4. Propuesta de UX/UI y Comparativa Visual Anónima:
+* **Bullet Chart de Rango Continuo ("Tú vs. El Cardumen"):** Barra horizontal con mínimo, media de cooperativa y un marcador destacado de "Tu Bus", permitiendo al socio ver en 1 segundo si gasta menos o más que la flota.
+* **Métricas de Lucro Cesante:** Traducción de las vueltas perdidas a dinero real dejado de percibir ($).
+* **Anonimato Cooperativo Estricto:** Unidades de terceros codificadas como `#T-01`, `#T-02` sin mostrar placas ni propietarios.
