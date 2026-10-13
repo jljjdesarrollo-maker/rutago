@@ -176,6 +176,26 @@ export async function GET(req: NextRequest) {
           }).catch(() => {});
         }
 
+        // 4. Regularizar cuadre histórico del 04 de octubre en Unidad 08 (faltante en cuaderno -$8.00)
+        if (
+          r.date === "2026-10-04" &&
+          String(r.conductor || "").includes("BUS-08") &&
+          r.sobrante === 0 &&
+          r.entregaAyudante === 195
+        ) {
+          r.sobrante = -8;
+          r.entregaAyudante = 187;
+          r.production = 425.95;
+          await db.dailyRecord.update({
+            where: { id: r.id },
+            data: {
+              sobrante: -8,
+              entregaAyudante: 187,
+              production: 425.95,
+            },
+          }).catch(() => {});
+        }
+
         if (Object.keys(updates).length > 0) {
           await db.dailyRecord.update({
             where: { id: r.id },
