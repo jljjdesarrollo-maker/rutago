@@ -489,7 +489,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, date, km, kmInicial, kmFinal, conductor, ayudanteNombre, vtCode, sobrante, production, entregaAyudante, cajaComun, tickets, totalGastos } = body;
+    const { id, date, km, kmInicial, kmFinal, conductor, ayudanteNombre, vtCode, sobrante, production, entregaAyudante, cajaComun, tickets, totalGastos, photoUrl } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Falta id del registro' }, { status: 400 });
@@ -509,6 +509,7 @@ export async function PATCH(req: NextRequest) {
     if (cajaComun !== undefined) updateData.cajaComun = Number(cajaComun);
     if (tickets !== undefined) updateData.tickets = Number(tickets);
     if (totalGastos !== undefined) updateData.totalGastos = Number(totalGastos);
+    if (photoUrl !== undefined) updateData.photoUrl = photoUrl;
 
     const record = await db.dailyRecord.update({
       where: { id },
