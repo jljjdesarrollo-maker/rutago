@@ -4977,3 +4977,50 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
 * Ejecución de suite completa con `bun test`:
   - **115 de 115 pruebas aprobadas** en 13 suites sin errores (100% de efectividad).
   - 465 aserciones validadas en 79 ms.
+
+---
+
+## 🏛️ v3.61.49 - ANÁLISIS Y PLAN DE ARQUITECTURA: DESCARGA NATIVA Y REEMPLAZO MULTI-DISPOSITIVO (MÓVIL/WEB) DE LA FOTO DEL CUADERNO EN EL HISTORIAL DEL SOCIO (2026-10-13)
+> **ESTADO:** 📋 PLANIFICADO Y REGISTRADO (EN ESPERA DE APROBACIÓN PARA EJECUCIÓN)
+> **FECHA DE REGISTRO:** 2026-10-13 | **SISTEMA:** RutaGo - Módulo Socio / Historial de Cuaderno
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Diagnóstico y Necesidad Operativa del Socio:
+* **Situación Actual:** Al consultar un registro histórico cerrado en la vista de detalle (`RecordDetail.tsx`), la fotografía del cuaderno de control diario se renderiza como una etiqueta `<img />` puramente estática.
+* **Problemática Operativa:**
+  1. **Sin Descarga:** El socio no cuenta con un mecanismo para guardar la evidencia fotográfica en la galería o almacenamiento local de su teléfono o PC para trámites contables, reclamos de multas o respaldo legal.
+  2. **Sin Posibilidad de Reemplazo o Corrección:** Si la foto original subida por el ayudante o socio quedó desenfocada, movida, con sombra o cortada, no hay manera de sustituirla por una toma nítida sin tener que eliminar todo el registro financiero.
+  3. **Registros sin Foto Previa:** Registros históricos ingresados sin foto en su momento no ofrecen opción de adjuntar la evidencia posteriormente.
+  4. **Limitación en Endpoint PATCH:** El endpoint `PATCH /api/records` procesa campos numéricos (`production`, `km`, `gastos`, `sobrante`), pero ignora el atributo `photoUrl` en la actualización a PostgreSQL.
+
+### 📍 2. Arquitectura de Solución Propuesta:
+
+#### 🔹 Componente Frontend (`src/components/transport/RecordDetail.tsx`):
+1. **Descarga Nativa Multi-Dispositivo:**
+   - Botón táctil ergonómico `[ 📥 Descargar Foto ]`.
+   - Conversión de base64/URL a `Blob` con descarga forzada mediante elemento ancla virtual (`<a download="...">`).
+   - Nomenclatura canónica: `Cuaderno_BUS-{disco}_{fecha}.jpg` (ejemplo: `Cuaderno_BUS-08_2026-10-12.jpg`).
+2. **Reemplazo y Adjunto Inteligente:**
+   - Botón `[ 🔄 Reemplazar Foto ]` (o `[ 📷 Adjuntar Foto ]` si `photoUrl` es nulo).
+   - Acceso dual mediante inputs ocultos:
+     - **Cámara Directa:** `capture="environment"` para enfocar directamente la hoja con el lente del teléfono.
+     - **Galería / Archivos:** Selector tradicional para imágenes ya almacenadas en PC o móvil.
+3. **Pipeline de Optimización y Compresión en Cliente (Canvas HTML5):**
+   - Procesamiento local previo al envío: clámpeo dimensional (máx. 1200px) y compresión JPEG 80%.
+   - Garantiza payloads ultra livianos (< 250 KB), blindando contra el error `413 Payload Too Large` en Vercel/Next.js y asegurando persistencia en menos de 1 segundo en redes 3G/4G.
+4. **Modal de Confirmación con Previsualización:**
+   - Vista previa de la nueva imagen seleccionada con tamaño en KB.
+   - Botones táctiles: `[ Cancelar ]` y `[ ✓ Guardar y Actualizar ]` con estado de carga interactivo (`Loader2`).
+5. **Visor en Pantalla Completa (Zoom Modal):**
+   - Tocar la imagen abre un visor a pantalla completa con fondo oscuro y botón de cierre para leer con precisión números pequeños y anotaciones a lápiz.
+
+#### 🔹 Endpoint Backend (`src/app/api/records/route.ts`):
+- Extensión del handler `PATCH`:
+  - Recepción de `photoUrl: string | null` en el payload del body.
+  - Inclusión en el objeto `updateData` para ejecución atómica en `db.dailyRecord.update`.
+  - Retorno del registro actualizado para refrescar de forma inmediata el estado local del componente sin recargar la página.
+
+### 📋 3. Plan Maestro de Ejecución por Fases:
+* **Fase 1 (Backend):** Soporte de `photoUrl` en `PATCH /api/records` y validación de tipos.
+* **Fase 2 (Frontend UI/UX):** Implementación de descarga nativa, inputs de cámara/galería, compresión en Canvas, modal de confirmación y visor a pantalla completa en `RecordDetail.tsx`.
+* **Fase 3 (Certificación y Despliegue):** 115+ pruebas unitarias aprobadas, validación de compilación, actualización de registro maestro, commit y push a `main` y `staging`.
