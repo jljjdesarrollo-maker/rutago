@@ -5024,3 +5024,28 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
 * **Fase 1 (Backend):** Soporte de `photoUrl` en `PATCH /api/records` y validación de tipos.
 * **Fase 2 (Frontend UI/UX):** Implementación de descarga nativa, inputs de cámara/galería, compresión en Canvas, modal de confirmación y visor a pantalla completa en `RecordDetail.tsx`.
 * **Fase 3 (Certificación y Despliegue):** 115+ pruebas unitarias aprobadas, validación de compilación, actualización de registro maestro, commit y push a `main` y `staging`.
+
+---
+
+## 🚀 CULMINACIÓN: DESCARGA NATIVA, REEMPLAZO MULTI-DISPOSITIVO Y VISOR ZOOM DE FOTO DEL CUADERNO (v3.61.49)
+> **ESTADO:** 🟢 IMPLEMENTADA Y CERTIFICADA AL 100% (118/118 TESTS EN VERDE)
+> **FECHA DE REGISTRO:** 2026-10-13 | **SISTEMA:** RutaGo - Historial de Cuaderno / Socio
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Modificaciones de Ingeniería Implementadas:
+* **Backend (`src/app/api/records/route.ts`):**
+  - Se habilitó la persistencia atómica de `photoUrl: string | null` en el método `PATCH`.
+  - Permite sustituir o desvincular imágenes sin afectar el balance financiero, kilometraje ni vueltas.
+* **Frontend (`src/components/transport/RecordDetail.tsx`):**
+  - **Descarga Nativa Multi-Dispositivo:** Botón `[ 📥 Descargar ]` que genera la descarga directa del archivo con formato `Cuaderno_BUS-{disco}_{fecha}.jpg` en la memoria del teléfono o PC.
+  - **Reemplazo / Adjunto Dual:** Disparadores para cámara nativa trasera (`capture="environment"`) y selector de galería o PC.
+  - **Compresión en Cliente:** Pipeline HTML5 Canvas (máx 1200px, JPEG 82%) reduciendo el payload a menos de 250 KB para prevenir el error HTTP 413.
+  - **Confirmación con Previsualización:** Tarjeta modal con indicador de peso en KB antes de confirmar el guardado en la nube.
+  - **Visor en Pantalla Completa (Zoom Modal):** Overlay interactivo con fondo oscuro para inspección detallada de trazos y números del cuaderno físico.
+  - **Eliminación Segura:** Opción de desvincular foto si el registro contenía una imagen equivocada.
+* **Pruebas Unitarias (`tests/photo-cuaderno-update.test.ts`):**
+  - 3 pruebas unitarias cubriendo formato canónico de nombre de archivo, payload para PATCH y validación de tipos MIME de imagen.
+
+### 📍 2. Certificación Técnica:
+* **Pruebas Unitarias Globales:** **118 de 118 pruebas aprobadas (100% verde en 14 suites)**.
+* **Sincronización:** Ramas `main` y `staging` actualizadas y al día con el repositorio remoto.
