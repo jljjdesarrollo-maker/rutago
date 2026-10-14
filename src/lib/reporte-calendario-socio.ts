@@ -24,6 +24,15 @@ export interface ReporteUnidadMetrics {
   lucroCesanteVueltas: number; // $ dejado de percibir por vueltas no realizadas
 }
 
+export interface DiagnosticoFinancieroItem {
+  id: 'pasajes_lider' | 'diesel_media' | 'faltantes_caja' | 'vueltas_caidas' | 'cuadernos_baches';
+  titulo: string;
+  tipo: 'positivo' | 'alerta' | 'oportunidad' | 'neutro';
+  badgeColor: 'emerald' | 'blue' | 'amber' | 'rose';
+  impactoDolares?: number;
+  mensajeCorto: string;
+}
+
 export interface UnidadAnonimaBenchmark {
   codigoAnonimo: string; // ej. #T-A, #T-B
   esTuUnidad: boolean;
@@ -32,6 +41,9 @@ export interface UnidadAnonimaBenchmark {
   cumplimientoPorcentaje: number;
   costoPorKm: number;
   diasConRegistro: number;
+  vueltasRealizadas: number;
+  promedioPorVuelta: number;
+  coberturaParcial: boolean; // true si diasConRegistro < 60% de la ventana
   posicion: number;
   medalla?: '🥇' | '🥈' | '🥉';
 }
@@ -73,6 +85,7 @@ export interface ReporteSocioPayload {
   };
   bulletChart: BulletChartMetrics;
   rankingAnonimo: UnidadAnonimaBenchmark[];
+  diagnosticoPrivadoSocio: DiagnosticoFinancieroItem[];
   fechasSinRegistro: string[];
   dictamen: DictamenEjecutivo;
   timestamp: string;
@@ -289,6 +302,9 @@ export function procesarReporteCalendarioSocio(params: {
     costoKm: number;
     cumplimiento: number;
     diasReg: number;
+    vueltasRealizadas: number;
+    promedioPorVuelta: number;
+    coberturaParcial: boolean;
   }
   const busesCalculados: BusCalculadoTemp[] = [];
 
@@ -329,24 +345,34 @@ export function procesarReporteCalendarioSocio(params: {
         unidadesValidasCoop += 1;
       }
 
+      const promVuelta = fReal > 0 ? Math.round((pTotal / fReal) * 100) / 100 : 0;
+      const esParcial = regs.length < Math.ceil(diasVentana * 0.6);
       busesCalculados.push({
         disco,
         produccion: Math.round(pTotal * 100) / 100,
         costoKm: cKm,
         cumplimiento: cCumpl,
         diasReg: regs.length,
+        vueltasRealizadas: fReal,
+        promedioPorVuelta: promVuelta,
+        coberturaParcial: esParcial,
       });
     }
   }
 
   // Asegurar que la unidad del socio esté presente en la comparativa si tiene registros
   if (!busesCalculados.some((b) => b.disco === cleanDisco) && diasConRegistro > 0) {
+    const promVueltaTuBus = frecRealizadas > 0 ? Math.round((ingresosTotales / frecRealizadas) * 100) / 100 : 0;
+    const esParcialTuBus = diasConRegistro < Math.ceil(diasVentana * 0.6);
     busesCalculados.push({
       disco: cleanDisco,
       produccion: Math.round(ingresosTotales * 100) / 100,
       costoKm: costoPorKm,
       cumplimiento: cumplimientoPorcentaje,
       diasReg: diasConRegistro,
+      vueltasRealizadas: frecRealizadas,
+      promedioPorVuelta: promVueltaTuBus,
+      coberturaParcial: esParcialTuBus,
     });
   }
 
@@ -366,16 +392,26 @@ export function procesarReporteCalendarioSocio(params: {
       : 240;
 
   // 5. Ranking Anónimo Alfabético (#T-A, #T-B, #T-C...)
+  // 5. Ranking Anónimo Alfabético (#T-A, #T-B, #T-C...)
   const busesOrdenados = [...busesCalculados].sort((a, b) => b.produccion - a.produccion);
 
   let peerCounter = 0;
+  let podiumCounter = 0;
   const rankingAnonimo: UnidadAnonimaBenchmark[] = busesOrdenados.map((busItem, idx) => {
     const esTuUnidad = busItem.disco === cleanDisco;
     const letra = convertirIndiceALetra(peerCounter);
     peerCounter += 1;
 
     const codigoAnonimo = esTuUnidad ? `Bus ${cleanDisco} (Tú)` : `Unidad #${prefixAnonimo}-${letra}`;
-    const medalla = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : undefined;
+    
+    // Filtro anti-engaño: unidades con muestra parcial (< 60% cobertura) no reciben medalla de podio
+    let medalla: '🥇' | '🥈' | '🥉' | undefined = undefined;
+    if (!busItem.coberturaParcial && podiumCounter < 3) {
+      if (podiumCounter === 0) medalla = '🥇';
+      else if (podiumCounter === 1) medalla = '🥈';
+      else if (podiumCounter === 2) medalla = '🥉';
+      podiumCounter += 1;
+    }
 
     return {
       codigoAnonimo,
@@ -385,6 +421,9 @@ export function procesarReporteCalendarioSocio(params: {
       cumplimientoPorcentaje: busItem.cumplimiento,
       costoPorKm: busItem.costoKm,
       diasConRegistro: busItem.diasReg,
+      vueltasRealizadas: busItem.vueltasRealizadas,
+      promedioPorVuelta: busItem.promedioPorVuelta,
+      coberturaParcial: busItem.coberturaParcial,
       posicion: idx + 1,
       medalla,
     };
@@ -406,6 +445,130 @@ export function procesarReporteCalendarioSocio(params: {
     tuCostoKm: costoPorKm,
     diferenciaPorcentualVsMedia: diffPctVsMedia,
   };
+
+  // 6.5. Diagnóstico Financiero Privado y Recomendaciones Clave para el Socio en Sesión
+  const diagnosticoPrivadoSocio: DiagnosticoFinancieroItem[] = [];
+  const vueltasBaseVentana = diasVentana * 6; // 42 en 7d, 90 en 15d, 180 en 30d
+  const kmBaseVentana = diasVentana * 280;
+
+  // 1. Brecha en Pasajes vs. Líder del Circuito
+  const unidadesConfiables = busesCalculados.filter((b) => !b.coberturaParcial);
+  const busLider =
+    unidadesConfiables.length > 0
+      ? [...unidadesConfiables].sort((a, b) => b.promedioPorVuelta - a.promedioPorVuelta)[0]
+      : [...busesCalculados].sort((a, b) => b.promedioPorVuelta - a.promedioPorVuelta)[0];
+
+  const liderPromedioVuelta = busLider ? busLider.promedioPorVuelta : 0;
+  const tuPromedioVuelta = frecRealizadas > 0 ? Math.round((ingresosTotales / frecRealizadas) * 100) / 100 : 0;
+  const diffVueltaVsLider = Math.round((tuPromedioVuelta - liderPromedioVuelta) * 100) / 100;
+  const brechaDolaresLider = Math.round(diffVueltaVsLider * vueltasBaseVentana);
+
+  if (busLider && busLider.disco !== cleanDisco && diffVueltaVsLider < 0) {
+    diagnosticoPrivadoSocio.push({
+      id: 'pasajes_lider',
+      titulo: 'Pasajes vs. Líder de Circuito',
+      tipo: 'oportunidad',
+      badgeColor: 'amber',
+      impactoDolares: brechaDolaresLider,
+      mensajeCorto: `Promedias ${tuPromedioVuelta.toFixed(2)}/vuelta vs ${liderPromedioVuelta.toFixed(2)} del líder (-${Math.abs(diffVueltaVsLider).toFixed(2)}/vuelta). En ${vueltasBaseVentana} vueltas dejas de captar ~${Math.abs(brechaDolaresLider)}. Ajusta control de cobro en horas pico.`,
+    });
+  } else {
+    diagnosticoPrivadoSocio.push({
+      id: 'pasajes_lider',
+      titulo: 'Pasajes vs. Circuito',
+      tipo: 'positivo',
+      badgeColor: 'emerald',
+      impactoDolares: brechaDolaresLider >= 0 ? brechaDolaresLider : 0,
+      mensajeCorto: `¡Líder de recaudación! Tu bus promedia ${tuPromedioVuelta.toFixed(2)} por vuelta, superando o igualando a las demás unidades del circuito.`,
+    });
+  }
+
+  // 2. Eficiencia en Diésel vs. Media Cooperativa
+  const diffDieselKm = Math.round((costoPorKm - costoPorKmPromedioCoop) * 1000) / 1000;
+  const impactoDieselPeriodo = Math.round(diffDieselKm * kmBaseVentana);
+
+  if (diffDieselKm <= 0) {
+    diagnosticoPrivadoSocio.push({
+      id: 'diesel_media',
+      titulo: 'Eficiencia en Combustible Diésel',
+      tipo: 'positivo',
+      badgeColor: 'emerald',
+      impactoDolares: Math.abs(impactoDieselPeriodo),
+      mensajeCorto: `Gastas ${costoPorKm.toFixed(3)}/km vs ${costoPorKmPromedioCoop.toFixed(3)} de la media cooperativa. ¡Felicitaciones! Ahorras ~${Math.abs(impactoDieselPeriodo)} en combustible en el período.`,
+    });
+  } else {
+    diagnosticoPrivadoSocio.push({
+      id: 'diesel_media',
+      titulo: 'Consumo de Combustible Diésel',
+      tipo: 'alerta',
+      badgeColor: 'rose',
+      impactoDolares: -Math.abs(impactoDieselPeriodo),
+      mensajeCorto: `Gastas +${diffDieselKm.toFixed(3)}/km sobre la media (~${Math.abs(impactoDieselPeriodo)} de sobrecosto). Revisa inyectores o hábitos de aceleración del chofer.`,
+    });
+  }
+
+  // 3. Faltantes de Caja del Ayudante (Descuadres Acumulados)
+  const faltantesAyudanteTotal = Math.round(
+    registrosTuUnidad.reduce((acc, r) => acc + (Number(r?.sobrante) < 0 ? Math.abs(Number(r?.sobrante)) : 0), 0) * 100
+  ) / 100;
+
+  if (faltantesAyudanteTotal > 0) {
+    diagnosticoPrivadoSocio.push({
+      id: 'faltantes_caja',
+      titulo: 'Descuadres de Caja del Ayudante',
+      tipo: 'alerta',
+      badgeColor: 'rose',
+      impactoDolares: -faltantesAyudanteTotal,
+      mensajeCorto: `Tu ayudante acumula -${faltantesAyudanteTotal.toFixed(2)} en faltantes de caja en este período. Exige entrega al centavo en cada turno.`,
+    });
+  } else {
+    diagnosticoPrivadoSocio.push({
+      id: 'faltantes_caja',
+      titulo: 'Descuadres de Caja del Ayudante',
+      tipo: 'positivo',
+      badgeColor: 'emerald',
+      mensajeCorto: `Caja cuadrada sin faltantes reportados por el ayudante en este período.`,
+    });
+  }
+
+  // 4. Vueltas Caídas (Lucro Cesante)
+  if (lucroCesanteVueltas > 0) {
+    diagnosticoPrivadoSocio.push({
+      id: 'vueltas_caidas',
+      titulo: 'Vueltas Caídas (Lucro Cesante)',
+      tipo: 'alerta',
+      badgeColor: 'amber',
+      impactoDolares: -lucroCesanteVueltas,
+      mensajeCorto: `${frecNoRealizadas} frecuencia(s) no realizada(s) costaron -${lucroCesanteVueltas.toFixed(2)} en ingresos netos no percibidos. Prioriza puntualidad de salida.`,
+    });
+  } else {
+    diagnosticoPrivadoSocio.push({
+      id: 'vueltas_caidas',
+      titulo: 'Cumplimiento de Frecuencias',
+      tipo: 'positivo',
+      badgeColor: 'emerald',
+      mensajeCorto: `100% de cumplimiento en ruta. Ninguna vuelta perdida en este período auditado.`,
+    });
+  }
+
+  // 5. Cuadernos Faltantes del Ayudante (Baches de Registro)
+  if (fechasSinRegistro.length > 0) {
+    diagnosticoPrivadoSocio.push({
+      id: 'cuadernos_baches',
+      titulo: 'Auditoría de Cuadernos Diarios',
+      tipo: 'alerta',
+      badgeColor: 'amber',
+      mensajeCorto: `Tienes ${fechasSinRegistro.length} día(s) sin arqueo sincronizado (${diasConRegistro} de ${diasVentana} jornadas). Exige a tu ayudante liquidar los cuadernos pendientes.`,
+    });
+  } else {
+    diagnosticoPrivadoSocio.push({
+      id: 'cuadernos_baches',
+      titulo: 'Auditoría de Cuadernos Diarios',
+      tipo: 'positivo',
+      badgeColor: 'emerald',
+      mensajeCorto: `Todos los cuadernos al día (${diasConRegistro}/${diasVentana} jornadas cerradas entregadas).`,
+    });
+  }
 
   // 7. Dictamen Heurístico Determinista
   const dictamen = generarDictamenEjecutivo({
@@ -457,6 +620,7 @@ export function procesarReporteCalendarioSocio(params: {
     },
     bulletChart,
     rankingAnonimo,
+    diagnosticoPrivadoSocio,
     fechasSinRegistro,
     dictamen,
     timestamp: new Date().toISOString(),

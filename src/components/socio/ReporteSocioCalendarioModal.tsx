@@ -532,7 +532,83 @@ export function ReporteSocioCalendarioModal({ isOpen, onClose, busId, numeroDisc
                 </div>
               </div>
 
-              {/* 6. Podio y Ranking Anónimo Alfabético (#T-A, #T-B...) */}
+              {/* 6. Diagnóstico Financiero Privado y Recomendaciones Clave en Dólares ($) */}
+              {Array.isArray(reporte.diagnosticoPrivadoSocio) && reporte.diagnosticoPrivadoSocio.length > 0 && (
+                <div className="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                        Diagnóstico Financiero Privado • Bus {numeroDisco}
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                      🔒 Solo Visible Para Ti
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400">
+                    Análisis cuantitativo de impacto económico en dólares ($) proyectado a tu ventana operativa:
+                  </p>
+
+                  <div className="space-y-2.5">
+                    {reporte.diagnosticoPrivadoSocio.map((diag) => {
+                      const isAlert = diag.tipo === 'alerta';
+                      const isOpp = diag.tipo === 'oportunidad';
+
+                      const borderClass = isAlert
+                        ? 'border-rose-500/30 bg-rose-950/20'
+                        : isOpp
+                        ? 'border-amber-500/30 bg-amber-950/20'
+                        : 'border-emerald-500/30 bg-emerald-950/20';
+
+                      const iconColor = isAlert
+                        ? 'text-rose-400'
+                        : isOpp
+                        ? 'text-amber-400'
+                        : 'text-emerald-400';
+
+                      return (
+                        <div
+                          key={diag.id}
+                          className={`p-3 rounded-xl border ${borderClass} transition hover:bg-slate-800/40`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <span className="shrink-0 mt-0.5">
+                              {diag.id === 'pasajes_lider' && <TrendingUp className={`w-4 h-4 ${iconColor}`} />}
+                              {diag.id === 'diesel_media' && <Fuel className={`w-4 h-4 ${iconColor}`} />}
+                              {diag.id === 'faltantes_caja' && <DollarSign className={`w-4 h-4 ${iconColor}`} />}
+                              {diag.id === 'vueltas_caidas' && <Clock className={`w-4 h-4 ${iconColor}`} />}
+                              {diag.id === 'cuadernos_baches' && <AlertTriangle className={`w-4 h-4 ${iconColor}`} />}
+                            </span>
+                            <div className="flex-1 space-y-0.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-slate-200">{diag.titulo}</span>
+                                {typeof diag.impactoDolares === 'number' && diag.impactoDolares !== 0 && (
+                                  <span
+                                    className={`text-[11px] font-mono font-black ${
+                                      diag.impactoDolares > 0 ? 'text-emerald-400' : 'text-rose-400'
+                                    }`}
+                                  >
+                                    {diag.impactoDolares > 0
+                                      ? `+$${diag.impactoDolares}`
+                                      : `-$${Math.abs(diag.impactoDolares)}`}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-300 leading-snug">
+                                {diag.mensajeCorto}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 7. Podio y Ranking Anónimo Alfabético (#T-A, #T-B...) */}
               <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden">
                 <button
                   type="button"
@@ -561,43 +637,58 @@ export function ReporteSocioCalendarioModal({ isOpen, onClose, busId, numeroDisc
                       🔒 Las unidades hermanas están codificadas alfabéticamente (#T-A, #T-B...) para garantizar anonimato absoluto.
                     </p>
 
-                    <div className="divide-y divide-slate-800/60 max-h-56 overflow-y-auto pr-1">
+                    <div className="divide-y divide-slate-800/60 max-h-72 overflow-y-auto pr-1">
                       {reporte.rankingAnonimo.map((item) => (
                         <div
                           key={item.codigoAnonimo}
-                          className={`py-2 px-2.5 rounded-xl flex items-center justify-between text-xs transition ${
+                          className={`py-2.5 px-3 rounded-xl flex items-center justify-between text-xs transition ${
                             item.esTuUnidad
                               ? 'bg-amber-500/10 border border-amber-500/30 font-bold'
                               : 'hover:bg-slate-800/30'
                           }`}
                         >
-                          <div className="flex items-center gap-2.5">
-                            <span className="w-5 text-center font-black text-slate-400">
+                          <div className="flex items-start gap-2.5">
+                            <span className="w-5 text-center font-black text-slate-400 text-sm mt-0.5">
                               {item.medalla || `${item.posicion}.`}
                             </span>
-                            <span
-                              className={
-                                item.esTuUnidad ? 'text-amber-400 font-bold' : 'text-slate-300'
-                              }
-                            >
-                              {item.codigoAnonimo}
-                            </span>
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span
+                                  className={
+                                    item.esTuUnidad ? 'text-amber-400 font-bold' : 'text-slate-300'
+                                  }
+                                >
+                                  {item.codigoAnonimo}
+                                </span>
+                                {item.coberturaParcial && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                    🟡 {item.diasConRegistro} arqueos (Parcial)
+                                  </span>
+                                )}
+                              </div>
+                              <span className="block text-[10px] text-slate-400 font-normal">
+                                {item.diasConRegistro} arqueos • {item.vueltasRealizadas || 0} vueltas
+                              </span>
+                            </div>
                           </div>
 
                           <div className="flex items-center gap-4 text-right">
                             <div>
                               <span className="block font-mono font-bold text-slate-200">
-                                ${item.produccionTotal.toFixed(0)}
+                                ${item.produccionTotal.toFixed(0)} Total
                               </span>
                               <span className="block text-[10px] text-slate-400">
-                                {item.cumplimientoPorcentaje}% vueltas
+                                ({item.cumplimientoPorcentaje}% vueltas)
                               </span>
                             </div>
-                            <div className="w-16">
-                              <span className="block font-mono text-[11px] text-blue-400">
-                                ${item.costoPorKm.toFixed(3)}
+
+                            <div className="min-w-[70px]">
+                              <span className="block font-mono font-bold text-emerald-400 text-[11px]">
+                                ${(item.promedioPorVuelta || 0).toFixed(2)} /vta
                               </span>
-                              <span className="block text-[10px] text-slate-500">diésel/km</span>
+                              <span className="block font-mono text-[10px] text-slate-400">
+                                ${item.costoPorKm.toFixed(3)} dsl
+                              </span>
                             </div>
                           </div>
                         </div>

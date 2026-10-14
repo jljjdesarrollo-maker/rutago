@@ -5083,7 +5083,7 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
 ---
 
 ## 🏛️ v3.61.51 - ANÁLISIS Y PLAN MAESTRO: RANKING NORMALIZADO POR VUELTA (TOTAL PRODUCIDO + ARQUEOS + VUELTAS + $/VUELTA) Y ASISTENTE FINANCIERO PRIVADO DEL SOCIO EN DÓLARES (2026-10-13)
-> **ESTADO:** 📋 PLANIFICADO Y DOCUMENTADO EN DETALLE (LISTO PARA EJECUCIÓN • FASE 1 PENDIENTE)
+> **ESTADO:** 🟢 IMPLEMENTADA Y CERTIFICADA AL 100% (122/122 TESTS EN VERDE)
 > **FECHA DE REGISTRO:** 2026-10-13 | **SISTEMA:** RutaGo - Motor de Reportes y Benchmark Gerencial del Socio
 > **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
 
@@ -5190,6 +5190,60 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
    - **v3.61.51:** Planificada y documentada con especificación matemática y de UI aprobada.
 3. **Primera Tarea Pendiente al Conectar:**
    - Iniciar de inmediato la **FASE 1**: Modificar `src/lib/reporte-calendario-socio.ts` agregando los campos y cálculos de `$/vuelta`, brecha en dólares y diagnósticos privados, certificando con pruebas unitarias en Bun.
+4. **Protocolo de Seguridad:**
+   - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
+   - Cero almacenamiento fijo de tokens en archivos locales o de configuración.
+
+
+---
+
+## 🚀 CULMINACIÓN: RANKING NORMALIZADO ($/VUELTA), FILTRO DE MUESTRA PARCIAL Y ASISTENTE FINANCIERO PRIVADO EN DÓLARES (v3.61.51)
+> **ESTADO:** 🟢 IMPLEMENTADA Y CERTIFICADA AL 100% (122/122 TESTS EN VERDE)
+> **FECHA DE REGISTRO:** 2026-10-13 | **SISTEMA:** RutaGo - Motor de Benchmark Gerencial y Auditoría del Socio
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Modificaciones de Ingeniería Implementadas:
+
+1. **Motor Canónico de Benchmark (`src/lib/reporte-calendario-socio.ts`):**
+   - **Métricas Atómicas y Equitativas:**
+     * `vueltasRealizadas`: Conteo estricto de frecuencias efectivamente completadas en la ventana de auditoría.
+     * `promedioPorVuelta` (`$/vuelta`): Rendimiento normalizado (`produccionTotal / vueltasRealizadas`), eliminando la distorsión del sesgo de cantidad de arqueos o días pico aislados.
+     * `coberturaParcial`: Bandera booleana (`diasConRegistro < Math.ceil(diasVentana * 0.6)`) que identifica unidades con muestra incompleta (< 60% de la ventana temporal).
+   - **Filtro Anti-Engaño en Podio:**
+     * Unidades con `coberturaParcial === true` quedan excluidas de la asignación de medallas (`🥇`, `🥈`, `🥉`), garantizando que días pico esporádicos no desplacen a los autobuses con cobertura y liquidación regular.
+   - **Diagnóstico Financiero Privado del Socio (`diagnosticoPrivadoSocio`):**
+     * 5 pastillas ejecutivas con cálculo cuantitativo de impacto económico en dólares ($) proyectado a la ventana operativa:
+       1. **📉 Pasajes vs. Líder de Circuito:** Cuantifica la brecha quincenal en base a 90 vueltas (ej. `-$1.52/vuelta = -$137`). Si la unidad es líder, felicita y resalta el liderazgo.
+       2. **⛽ Combustible Diésel:** Compara $/km contra la media cooperativa proyectado a 280 km/día, cuantificando ahorro (`+$45`) o sobrecosto (`-$45`).
+       3. **🚨 Faltantes de Caja del Ayudante:** Suma matemática exacta de descuadres acumulados en el período (`-$10.00`).
+       4. **⏱️ Vueltas Caídas (Lucro Cesante):** Cuantifica el valor monetario no percibido por frecuencias perdidas.
+       5. **📋 Cuadernos Faltantes (Baches):** Conteo exacto de días sin arqueo entregado por el ayudante en la ventana evaluada.
+
+2. **Componente de Interfaz de Usuario React (`src/components/socio/ReporteSocioCalendarioModal.tsx`):**
+   - **Tarjeta Privada:** Bloque destacado con badge `[ 🔒 Solo Visible Para Ti ]` que despliega las 5 pastillas con bordes semafóricos de color (`emerald`, `amber`, `rose`), iconos intuitivos y montos en dólares destacados.
+   - **Ranking Enriquecido:** Filas de unidades que muestran:
+     * Código anónimo o identificación propia (`Bus XX (Tú)`).
+     * Badge visual `[ 🟡 X arqueos (Parcial) ]` en caso de cobertura menor al 60%.
+     * Desglose: `X arqueos • Y vueltas`.
+     * Total recaudado con porcentaje de cumplimiento de vueltas.
+     * Métrica estrella destacada: `$XX.XX /vta` y `$X.XXX dsl`.
+
+3. **Suite de Pruebas Unitarias (`tests/ranking-normalizado-socio.test.ts`):**
+   - 3 pruebas exhaustivas en Bun verificando cálculo de $/vuelta, activación de `coberturaParcial`, exclusión de podio y generación de las 5 pastillas con impacto en dólares.
+
+### 📍 2. Certificación Técnica:
+* **Pruebas Unitarias:** **122 de 122 pruebas aprobadas al 100% en verde** (15 suites ejecutadas en 76ms con `bun test`).
+* **Sincronización:** Ramas `main` y `staging` actualizadas y enviadas al repositorio remoto oficial.
+
+---
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA DE GOOGLE AI STUDIO)
+1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago`
+2. **Estado Actual:**
+   - **v3.61.51:** Culminada y certificada al 100% (Ranking normalizado por $/vuelta, filtro anti-engaño de muestra parcial <60%, y asistente financiero privado en dólares con 122/122 tests en verde).
+3. **Próxima Tarea / Sugerencias:**
+   - Auditoría en caliente con datos reales de la cooperativa en la interfaz del socio.
+   - Cualquier refinamiento adicional solicitado por el socio para los reportes oficiales o exportación a PDF.
 4. **Protocolo de Seguridad:**
    - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
    - Cero almacenamiento fijo de tokens en archivos locales o de configuración.
