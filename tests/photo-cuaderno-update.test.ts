@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-describe('📷 FOTO DEL CUADERNO: Descarga Nativa y Actualización (v3.61.49)', () => {
+describe('📷 FOTO DEL CUADERNO: Descarga Nativa y Actualización (v3.61.50)', () => {
   it('1. Genera nomenclatura canónica para descarga: Cuaderno_BUS-{disco}_{fecha}.jpg', () => {
     const formatFileName = (conductor: string, date: string) => {
       const discoMatch = conductor.match(/BUS-(\d{2})/i) || ['01', '01'];
@@ -34,5 +34,17 @@ describe('📷 FOTO DEL CUADERNO: Descarga Nativa y Actualización (v3.61.49)', 
     expect(isValidImageFile('image/png')).toBe(true);
     expect(isValidImageFile('application/pdf')).toBe(false);
     expect(isValidImageFile('text/plain')).toBe(false);
+  });
+
+  it('4. Soporta fallback payload con date y conductor para rescate si id es offline', () => {
+    const buildFallbackPatchPayload = (id: string, date: string, conductor: string, disco: string, photoUrl: string | null) => {
+      return { id, date, conductor, numeroDisco: disco, photoUrl };
+    };
+
+    const payload = buildFallbackPatchPayload('rec_temp_offline_01', '2026-10-12', 'BUS-08 - Juan Perez', '08', 'data:image/jpeg;base64,abc123');
+    expect(payload.id).toBe('rec_temp_offline_01');
+    expect(payload.date).toBe('2026-10-12');
+    expect(payload.numeroDisco).toBe('08');
+    expect(payload.conductor).toContain('BUS-08');
   });
 });
