@@ -5079,3 +5079,117 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
 ### 📍 3. Certificación Técnica:
 * **Suite de Pruebas Unitarias:** **119 de 119 pruebas aprobadas al 100% en verde** (`bun test` en 14 suites).
 * **Sincronización:** Ramas `main` y `staging` actualizadas y enviadas al repositorio remoto.
+
+---
+
+## 🏛️ v3.61.51 - ANÁLISIS Y PLAN MAESTRO: RANKING NORMALIZADO POR VUELTA (TOTAL PRODUCIDO + ARQUEOS + VUELTAS + $/VUELTA) Y ASISTENTE FINANCIERO PRIVADO DEL SOCIO EN DÓLARES (2026-10-13)
+> **ESTADO:** 📋 PLANIFICADO Y DOCUMENTADO EN DETALLE (LISTO PARA EJECUCIÓN • FASE 1 PENDIENTE)
+> **FECHA DE REGISTRO:** 2026-10-13 | **SISTEMA:** RutaGo - Motor de Reportes y Benchmark Gerencial del Socio
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Diagnóstico del Problema y Realidad Operativa:
+1. **La Ilusión Óptica de los Totales Brutos Acumulados:**
+   - En el ranking anónimo del circuito se exhiben montos globales como: `#T-A: $3,880`, `Bus 10: $3,392` y `#T-C: $1,459`.
+   - Esto confunde al socio haciéndole creer que la Unidad `#T-C` es deficiente, cuando en realidad solo tiene **5 arqueos reportados** (por descanso, taller o demora del ayudante en liquidar) frente a los **14 arqueos** de `#T-A` y **12 arqueos** del `Bus 10`.
+2. **El Peligro del Promedio Simple (Sesgo de Días Pico / Muestra Pequeña):**
+   - Promediar sin filtro distorsiona la realidad: si una unidad solo trabajó 3 días y coincidieron con viernes, sábado y domingo de romería/feria a Vilcabamba, su promedio marcará falsamente **$320/día**.
+   - Otra unidad que trabajó toda la quincena regular (incluyendo martes y miércoles flojos) marcará **$270/día**.
+   - Comparar promedios sin exigir muestra representativa induce a decisiones patrimoniales erróneas.
+3. **Necesidad de Traducir las Estadísticas a Dinero Real en Dólares ($):**
+   - El socio transportista no es matemático ni analista de datos: requiere saber con precisión de centavos: **"¿Cuánto dinero representa la diferencia frente al líder en una quincena completa?"** y **"¿Qué acciones correctivas debo tomar con mi chofer y ayudante?"**.
+4. **Privacidad y Exclusividad Estricta:**
+   - La auditoría, consejos gerenciales, alertas de faltantes de caja y cuantificación en dólares son **estrictamente privados y exclusivos para el socio que tiene abierta su sesión**, auditando **únicamente su propia unidad**. Los demás buses se mantienen 100% anónimos (`#T-A`, `#T-B`).
+
+---
+
+### 📍 2. Arquitectura Matemática y Reglas de Negocio:
+
+#### A. Métricas Canónicas por Fila de Unidad:
+1. **Producción Total Acumulada ($):** Monto bruto efectivamente liquidado (se mantiene visible como referencia de caja).
+2. **Jornadas con Arqueo Realizado:** Total de días reportados (`diasConRegistro`).
+3. **Vueltas Realizadas:** Total de frecuencias efectivas concluidas en ruta (`vueltasRealizadas`).
+4. **Rendimiento Atómico por Vuelta (`$/vuelta`):**
+   $$\text{Rendimiento por Vuelta} = \frac{\text{Producción Total}}{\text{Vueltas Realizadas}}$$
+5. **Insignia de Muestra Confiable (Filtro Anti-Engaño):**
+   - Si la unidad tiene menos del 60% de cobertura de la ventana (ej. menos de 9 días en 15 días, o menos de 4 días en 7 días), se clasifica con un badge visual: `[🟡 X arqueos - Muestra Parcial]`, excluyéndola de la competencia por medallas para no falsear el podio.
+
+#### B. Cuantificación de la Brecha Financiera Quincenal Normalizada:
+- Se proyecta sobre la base de vueltas estándar del período (ej. **90 vueltas** para ventana de 15 días a razón de 6 vueltas/jornada):
+  - **Impacto vs. Líder del Circuito:**
+    $$\text{Brecha Quincenal} = (\text{Tu } \$/\text{vuelta} - \text{Líder } \$/\text{vuelta}) \times 90 \text{ vueltas}$$
+  - **Impacto vs. Media Cooperativa:**
+    $$\text{Balance vs. Media} = (\text{Tu } \$/\text{vuelta} - \text{Media Coop } \$/\text{vuelta}) \times 90 \text{ vueltas}$$
+
+---
+
+### 📍 3. Maqueta de Diseño Visual (UI/UX):
+
+#### A. Fila Enriquecida del Ranking Anónimo:
+```text
+🥇 Unidad #T-A
+   $3,880 Total                        $46.19 /vuelta        $0.380
+   14 arqueos • 84 vueltas             (100% vueltas)        diésel/km
+
+🥈 Bus 10 (Tú)
+   $3,392 Total                        $47.11 /vuelta        $0.370
+   12 arqueos • 72 vueltas             (100% vueltas)        diésel/km
+
+🥉 Unidad #T-C  [🟡 5 arqueos - Muestra Parcial]
+   $1,459 Total                        $48.63 /vuelta        $0.327
+   5 arqueos • 30 vueltas              (100% vueltas)        diésel/km
+```
+
+#### B. Tarjeta Privada: "💡 Diagnóstico Financiero y Recomendaciones Clave" (Mensajes Cortos y Directos):
+1. **📉 Pasajes vs. Líder:**
+   `Promedias $47.11/vuelta vs. $48.63 del líder (-$1.52/vuelta). En 90 vueltas dejas de captar ~$137. Ajusta control de cobro en horas pico.`
+2. **⛽ Combustible Diésel:**
+   `Gastas $0.370/km vs. $0.380 de la cooperativa. ¡Felicitaciones! Ahorras ~$45 quincenales en combustible.`
+   *(o Alerta de sobrecosto si supera la media).*
+3. **🚨 Faltantes de Caja del Ayudante:**
+   `Tu ayudante acumula -$28 en descuadres en esta quincena. Exige entrega de cuentas al centavo en cada turno.`
+4. **⏱️ Vueltas Caídas (Lucro Cesante):**
+   `0 vueltas caídas reportadas. Cumplimiento al 100% en ruta.`
+   *(o: 2 vueltas no realizadas costaron -$92 en ingresos netos).*
+5. **📋 Cuadernos Faltantes (Baches):**
+   `Tienes 3 días sin arqueo sincronizado (12 de 15 jornadas). Exige a tu ayudante liquidar los cuadernos pendientes.`
+
+---
+
+### 📋 4. Plan de Ejecución en 3 Fases de Ingeniería:
+
+#### 🔹 FASE 1: Motor Canónico de Negocio, Extensión de Interfaces y Pruebas Unitarias
+* **Archivos a Modificar:**
+  - `src/lib/reporte-calendario-socio.ts`:
+    - Ampliar `UnidadAnonimaBenchmark` con `vueltasRealizadas`, `promedioPorVuelta`, `coberturaParcial: boolean`.
+    - Ampliar `DictamenEjecutivo` con el bloque `diagnosticoFinancieroPrivado` (brecha contra líder en $, ahorro/sobrecosto diésel en $, faltantes acumulados del ayudante en $, lucro cesante en $ y baches pendientes).
+    - Implementar umbral del 60% para asignación de medallas (unidades parciales no desplazan a unidades de quincena completa).
+* **Archivos de Prueba:**
+  - `tests/reporte-calendario-socio.test.ts` o nueva suite `tests/ranking-normalizado-socio.test.ts`:
+    - Validar cálculo exacto de `$/vuelta`.
+    - Validar proyección quincenal en base 90 vueltas.
+    - Validar exclusión de podio para unidades con < 60% de cobertura.
+    - Validar generación de las 5 pastillas con mensajes cortos y concretos.
+
+#### 🔹 FASE 2: Interfaz de Usuario React en Modal del Socio
+* **Archivo a Modificar:**
+  - `src/components/socio/ReporteSocioCalendarioModal.tsx`:
+    - Rediseñar el renderizado de `reporte.rankingAnonimo` incorporando el Total ($), Arqueos, Vueltas y `$/vuelta` con badge de muestra parcial.
+    - Insertar la tarjeta privada `💡 Diagnóstico Financiero y Recomendaciones Clave` con diseño de alto contraste, iconos descriptivos y mensajes breves.
+
+#### 🔹 FASE 3: Certificación E2E, Registro Maestro y Sincronización Remota
+* Ejecución de `bun test` asegurando 100% de pruebas aprobadas (124+ tests).
+* Documentación de culminación en `REGISTRO_MAESTRO.md`.
+* Push a ramas `main` y `staging` de GitHub.
+
+---
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA DE GOOGLE AI STUDIO)
+1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago`
+2. **Estado Actual:**
+   - **v3.61.50:** Culminada y certificada (Blindaje de persistencia de foto de cuaderno, doble resolución ID + Fecha/Disco, compresión < 90KB y respaldo offline).
+   - **v3.61.51:** Planificada y documentada con especificación matemática y de UI aprobada.
+3. **Primera Tarea Pendiente al Conectar:**
+   - Iniciar de inmediato la **FASE 1**: Modificar `src/lib/reporte-calendario-socio.ts` agregando los campos y cálculos de `$/vuelta`, brecha en dólares y diagnósticos privados, certificando con pruebas unitarias en Bun.
+4. **Protocolo de Seguridad:**
+   - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
+   - Cero almacenamiento fijo de tokens en archivos locales o de configuración.
