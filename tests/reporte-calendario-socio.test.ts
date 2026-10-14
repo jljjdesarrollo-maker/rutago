@@ -67,13 +67,24 @@ describe('🏛️ FASE 1: Motor de Reportes Calendario del Socio (v3.61.47)', ()
   });
 
   describe('4. Ventana Fija de Calendario y Detección de Baches', () => {
-    it('4.1 Genera ventana fija de 7 días exactos', () => {
+    it('4.1 Genera ventana fija de 7 días exactos con fecha base explícita', () => {
       const ventana = generarRangoFechasCalendario(7, '2026-10-15');
       expect(ventana.todasLasFechas.length).toBe(7);
       expect(ventana.fechaInicio).toBe('2026-10-09');
       expect(ventana.fechaFin).toBe('2026-10-15');
       expect(ventana.todasLasFechas[0]).toBe('2026-10-09');
       expect(ventana.todasLasFechas[6]).toBe('2026-10-15');
+    });
+
+    it('4.1b Por defecto genera ventana anclada en Ayer (T - 1) para evaluar jornadas cerradas', () => {
+      const ventana = generarRangoFechasCalendario(7);
+      const hoy = new Date();
+      const ayer = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 1, 12, 0, 0);
+      const fechaFinEsperada = ayer.toISOString().split('T')[0];
+
+      expect(ventana.todasLasFechas.length).toBe(7);
+      expect(ventana.fechaFin).toBe(fechaFinEsperada);
+      expect(ventana.todasLasFechas[6]).toBe(fechaFinEsperada);
     });
 
     it('4.2 Detecta baches de días sin registro para auditar al ayudante', () => {

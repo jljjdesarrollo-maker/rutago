@@ -177,12 +177,17 @@ export function ReporteSocioCalendarioModal({ isOpen, onClose, busId, numeroDisc
 
         {/* Selector Táctil de Ventanas de Calendario */}
         <div className="px-4 py-3 bg-slate-900/60 border-b border-slate-800/60 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-            <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span>
-              {reporte?.ventana
-                ? `${reporte.ventana.fechaInicio} — ${reporte.ventana.fechaFin}`
-                : 'Ventana de tiempo'}
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <div className="flex items-center gap-1.5 text-xs text-slate-300 font-semibold truncate">
+              <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>
+                {reporte?.ventana
+                  ? `${reporte.ventana.fechaInicio} — ${reporte.ventana.fechaFin}`
+                  : 'Ventana de tiempo'}
+              </span>
+            </div>
+            <span className="text-[10px] text-amber-400/90 font-medium">
+              Jornadas cerradas (corte a ayer)
             </span>
           </div>
 
@@ -258,7 +263,7 @@ export function ReporteSocioCalendarioModal({ isOpen, onClose, busId, numeroDisc
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-200 flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-amber-400" />
-                    Cobertura de Arqueos en Calendario:
+                    Cobertura de Jornadas Cerradas:
                   </span>
                   <span
                     className={`font-black px-2.5 py-0.5 rounded-full text-[11px] ${
