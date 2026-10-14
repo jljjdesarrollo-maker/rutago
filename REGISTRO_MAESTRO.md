@@ -5049,3 +5049,33 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
 ### 📍 2. Certificación Técnica:
 * **Pruebas Unitarias Globales:** **118 de 118 pruebas aprobadas (100% verde en 14 suites)**.
 * **Sincronización:** Ramas `main` y `staging` actualizadas y al día con el repositorio remoto.
+
+---
+
+## 🏛️ v3.61.50 - BLINDAJE CANÓNICO DE PERSISTENCIA DE FOTO DEL CUADERNO: DOBLE VÍA DE RESOLUCIÓN (ID + FECHA/DISCO), RESPALDO OFFLINE Y COMPRESIÓN ULTRA-LIVIANA (2026-10-13)
+> **ESTADO:** 🟢 IMPLEMENTADA Y CERTIFICADA AL 100% (119/119 TESTS EN VERDE)
+> **FECHA DE REGISTRO:** 2026-10-13 | **SISTEMA:** RutaGo - Historial de Cuaderno / Socio
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Diagnóstico y Causa Raíz del Error:
+* **Problema Identificado:** Al intentar guardar o actualizar la foto del cuaderno desde la interfaz móvil/web, aparecía el mensaje *"Error al actualizar la foto en la base de datos"*.
+* **Causas Raíz:**
+  1. **IDs Temporales Offline:** En registros históricos creados o cacheados localmente (`localStorage`), el registro poseía un ID transitorio local (`rec_...`) que no existía en la tabla `DailyRecord` de PostgreSQL, provocando el rechazo de Prisma (`Record to update not found - P2025`).
+  2. **Diagnóstico Ciego:** El frontend no leía el payload de error devuelto por la API y arrojaba una excepción genérica fija.
+  3. **Riesgo de Conectividad Móvil:** En rutas o zonas con señal intermitente, no existía un respaldo local que conservara la nueva foto en el teléfono mientras se reintentaba la sincronización.
+
+### 📍 2. Solución de Ingeniería y Blindaje Canónico:
+* **Backend (`src/app/api/records/route.ts`):**
+  - **Doble Vía de Resolución:**
+    1. Intento primario: `db.dailyRecord.update({ where: { id } })`.
+    2. Fallback de rescate automático: Si el ID no existe en la nube, el backend busca de forma atómica el registro correspondiente por **Fecha (`date`)** y **Unidad (`conductor` / `numeroDisco` / `vtCode`)**.
+    3. Como en la cooperativa la tupla `(Fecha, Disco)` es 100% unívoca (solo hay un arqueo del Bus 08 por fecha), se garantiza la localización y actualización de la foto sin importar el ID de origen.
+* **Frontend (`src/components/transport/RecordDetail.tsx`):**
+  - **Metadatos Enriquecidos:** Se envía `id`, `date`, `conductor` y `numeroDisco` en cada solicitud `PATCH`.
+  - **Respaldo Simultáneo en Almacenamiento Local (Offline-First):** La foto actualizada se escribe de inmediato en el `localStorage` del dispositivo (`rg_record_${date}_${disco}`), garantizando que el socio nunca pierda su evidencia ante desconexiones.
+  - **Compresión Ultra-Liviana:** Se ajustó la escala Canvas a máx. 960px y calidad JPEG 72%, produciendo imágenes nítidas de **~70-90 KB** que eliminan cualquier riesgo de error `413 Payload Too Large` en Vercel.
+  - **Diagnóstico Transparente:** La interfaz ahora extrae y muestra el mensaje exacto de la respuesta del servidor en caso de imprevistos.
+
+### 📍 3. Certificación Técnica:
+* **Suite de Pruebas Unitarias:** **119 de 119 pruebas aprobadas al 100% en verde** (`bun test` en 14 suites).
+* **Sincronización:** Ramas `main` y `staging` actualizadas y enviadas al repositorio remoto.

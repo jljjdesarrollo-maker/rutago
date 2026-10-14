@@ -511,14 +511,58 @@ export async function PATCH(req: NextRequest) {
     if (totalGastos !== undefined) updateData.totalGastos = Number(totalGastos);
     if (photoUrl !== undefined) updateData.photoUrl = photoUrl;
 
-    const record = await db.dailyRecord.update({
-      where: { id },
-      data: updateData,
-      include: {
-        trips: { orderBy: { order: 'asc' } },
-        expenses: { orderBy: { order: 'asc' } },
-      },
-    });
+    let record = null;
+    try {
+      // 1. Intento primario: Actualizar por ID directo en PostgreSQL
+      record = await db.dailyRecord.update({
+        where: { id },
+        data: updateData,
+        include: {
+          trips: { orderBy: { order: 'asc' } },
+          expenses: { orderBy: { order: 'asc' } },
+        },
+      });
+    } catch (errPrimary) {
+      // 2. Rescate unívoco (Fallback): Si el id no existe en PostgreSQL (ej. generado offline o temporal),
+      // localizar por Fecha (date) + Disco (conductor / vtCode / numeroDisco)
+      const targetDate = date || (body.date as string | undefined);
+      const targetConductor = conductor || (body.conductor as string | undefined);
+      const targetDisco = body.numeroDisco || (targetConductor ? targetConductor.match(/BUS-(\d{2})/i)?.[1] : null);
+
+      if (targetDate) {
+        const existing = await db.dailyRecord.findFirst({
+          where: {
+            date: targetDate,
+            ...(targetDisco
+              ? {
+                  OR: [
+                    { conductor: { contains: `BUS-${targetDisco}` } },
+                    { conductor: { contains: targetDisco } },
+                    { vtCode: { contains: targetDisco } },
+                  ],
+                }
+              : targetConductor
+              ? { conductor: targetConductor }
+              : {}),
+          },
+        });
+
+        if (existing) {
+          record = await db.dailyRecord.update({
+            where: { id: existing.id },
+            data: updateData,
+            include: {
+              trips: { orderBy: { order: 'asc' } },
+              expenses: { orderBy: { order: 'asc' } },
+            },
+          });
+        }
+      }
+
+      if (!record) {
+        throw errPrimary;
+      }
+    }
 
     return NextResponse.json(record);
   } catch (error) {

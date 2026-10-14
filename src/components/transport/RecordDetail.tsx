@@ -82,7 +82,7 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
     setEditingDate(false);
   };
 
-  // Procesamiento y compresión en cliente (HTML5 Canvas)
+  // Procesamiento y compresión en cliente (HTML5 Canvas: max 960px, JPEG 72% para peso < 100 KB)
   const processImageFile = (file: File) => {
     if (!file || !file.type.startsWith('image/')) {
       setPhotoMsg({ type: 'error', text: 'El archivo seleccionado no es una imagen válida' });
@@ -92,7 +92,7 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        const maxDim = 1200;
+        const maxDim = 960;
         let width = img.width;
         let height = img.height;
         if (width > maxDim || height > maxDim) {
@@ -110,7 +110,7 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.72);
           setPendingPhoto({
             dataUrl: compressedBase64,
             sizeKB: Math.round(compressedBase64.length / 1024),
@@ -160,24 +160,47 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
     }
   };
 
-  // Persistir nueva imagen en PostgreSQL vía PATCH /api/records
+  // Persistir nueva imagen en PostgreSQL con Doble Resolución (ID + Fecha/Disco) y Respaldo Offline
   const handleSaveNewPhoto = async () => {
     if (!pendingPhoto) return;
     setSavingPhoto(true);
     setPhotoMsg(null);
     try {
+      const discoMatch =
+        String(rec.conductor || '').match(/BUS-(\d{2})/i) ||
+        String(rec.vtCode || '').match(/(\d{2})/);
+      const disco = discoMatch ? discoMatch[1] : '01';
+
       const res = await fetch('/api/records', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: rec.id, photoUrl: pendingPhoto.dataUrl }),
+        body: JSON.stringify({
+          id: rec.id,
+          date: rec.date,
+          conductor: rec.conductor,
+          numeroDisco: disco,
+          photoUrl: pendingPhoto.dataUrl,
+        }),
       });
-      if (!res.ok) throw new Error('Error al actualizar la foto en la base de datos');
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || errData.message || `Error del servidor (${res.status})`);
+      }
+
       const updated = await res.json();
       const merged = { ...rec, ...updated, photoUrl: pendingPhoto.dataUrl };
       setLiveRecord(merged);
       onRecordUpdated?.(merged);
+
+      // Respaldo simultáneo en almacenamiento local (Offline-First)
+      try {
+        const localKey = `rg_record_${rec.date}_${disco}`;
+        localStorage.setItem(localKey, JSON.stringify(merged));
+      } catch {}
+
       setPendingPhoto(null);
-      setPhotoMsg({ type: 'success', text: '✓ Foto del cuaderno actualizada correctamente' });
+      setPhotoMsg({ type: 'success', text: '✓ Foto del cuaderno actualizada y guardada correctamente' });
       setTimeout(() => setPhotoMsg(null), 3500);
     } catch (err: any) {
       console.error('Error guardando foto:', err);
@@ -192,16 +215,38 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
     if (!window.confirm('¿Seguro que deseas eliminar la foto de este cuaderno?')) return;
     setSavingPhoto(true);
     try {
+      const discoMatch =
+        String(rec.conductor || '').match(/BUS-(\d{2})/i) ||
+        String(rec.vtCode || '').match(/(\d{2})/);
+      const disco = discoMatch ? discoMatch[1] : '01';
+
       const res = await fetch('/api/records', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: rec.id, photoUrl: null }),
+        body: JSON.stringify({
+          id: rec.id,
+          date: rec.date,
+          conductor: rec.conductor,
+          numeroDisco: disco,
+          photoUrl: null,
+        }),
       });
-      if (!res.ok) throw new Error('Error al eliminar la foto');
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || errData.message || `Error del servidor (${res.status})`);
+      }
+
       const updated = await res.json();
       const merged = { ...rec, ...updated, photoUrl: null };
       setLiveRecord(merged);
       onRecordUpdated?.(merged);
+
+      try {
+        const localKey = `rg_record_${rec.date}_${disco}`;
+        localStorage.setItem(localKey, JSON.stringify(merged));
+      } catch {}
+
       setPhotoMsg({ type: 'success', text: 'Foto eliminada del registro' });
       setTimeout(() => setPhotoMsg(null), 3500);
     } catch (err: any) {
@@ -466,7 +511,8 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
             <div className="flex justify-between">
               <span className="text-sm text-white/80">Entrega Ayudante</span>
               <span
-                className={`font-bold ${rec.entregaAyudante >= 0 ? 'text-[#4ADE80]' : 'text-red-400'}`}>
+                className={`font-bold ${rec.entregaAyudante >= 0 ? 'text-[#4ADE80]' : 'text-red-400'}`}
+              >
                 S/ {rec.entregaAyudante.toFixed(2)}
               </span>
             </div>
@@ -474,7 +520,8 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
             <div className="flex justify-between">
               <span className="text-sm text-white/80">Entrega Compania</span>
               <span
-                className={`font-bold ${rec.entregaCompania >= 0 ? 'text-[#4ADE80]' : 'text-red-400'}`}>
+                className={`font-bold ${rec.entregaCompania >= 0 ? 'text-[#4ADE80]' : 'text-red-400'}`}
+              >
                 S/ {rec.entregaCompania.toFixed(2)}
               </span>
             </div>
@@ -520,7 +567,7 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
                 />
               </div>
               <p className="text-[11px] text-slate-600">
-                ¿Deseas reemplazar la foto del cuaderno con esta nueva captura?
+                ¿Deseas guardar esta foto del cuaderno en la base de datos?
               </p>
               <div className="flex gap-2">
                 <Button
