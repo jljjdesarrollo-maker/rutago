@@ -54,6 +54,7 @@ import { getAllBuses, getActiveBusId, setActiveBus, subscribeToActiveBus } from 
 import { getCurrentYearMonth, formatMonthName, formatFechaCompletaEcuador } from '@/lib/date-helpers';
 import { getSuscripciones } from '@/lib/saas-storage';
 import { getBusModuloMantenimientoActivo, isBusModuloMantenimientoConfigurado, syncMantenimientoConfigConServidor } from '@/lib/mantenimiento-estaciones';
+import { ReporteSocioCalendarioModal } from '@/components/socio/ReporteSocioCalendarioModal';
 
 interface HomeScreenProps {
   user: UserSession;
@@ -104,6 +105,7 @@ export function HomeScreen({
   const isSocioOwner = Boolean(isSuperAdmin || isAdmin || user.rol === 'SOCIO' || user.rol === 'ADMIN');
 
   const [backupLoading, setBackupLoading] = useState(false);
+  const [showReporteCalendario, setShowReporteCalendario] = useState(false);
   const [activeBusId, setActiveBusId] = useState<string>(() => {
     if (user?.busId) return user.busId;
     return getActiveBusId() || 'BUS-01';
@@ -790,6 +792,30 @@ export function HomeScreen({
 
               {/* Benchmark y Auditoría de Boletos */}
               <div className="grid grid-cols-1 gap-2 mt-2">
+                {/* Tarjeta Destacada: Auditoría Calendario (7 / 15 / 30 Días) */}
+                <Card
+                  onClick={() => setShowReporteCalendario(true)}
+                  className="cursor-pointer hover:shadow-md transition-shadow rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-950 text-white"
+                >
+                  <CardContent className="flex items-center justify-between p-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-xs sm:text-sm text-white">Auditoría Calendario (7 / 15 / 30 Días)</p>
+                          <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 tracking-wide">
+                            $/km Diésel
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400">Ventana temporal fija • Baches de ayudante • Dictamen</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-amber-400 shrink-0" />
+                  </CardContent>
+                </Card>
+
                 {onGoToBenchmark && (
                   <Card
                     onClick={onGoToBenchmark}
@@ -1197,6 +1223,16 @@ export function HomeScreen({
           )}
         </div>
       </aside>
+
+      {/* Modal de Auditoría de Calendario Fija (7/15/30 días) */}
+      {showReporteCalendario && (
+        <ReporteSocioCalendarioModal
+          isOpen={showReporteCalendario}
+          onClose={() => setShowReporteCalendario(false)}
+          busId={activeBusId}
+          numeroDisco={busNumero}
+        />
+      )}
     </div>
   );
 }
