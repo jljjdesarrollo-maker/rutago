@@ -141,12 +141,25 @@ export function extraerKmRecorridos(rec: {
 /**
  * Genera el arreglo de todas las fechas YYYY-MM-DD en la ventana fija de calendario
  */
+/**
+ * Genera el arreglo de todas las fechas YYYY-MM-DD en la ventana fija de calendario.
+ * REGLA DE NEGOCIO CANÓNICA (TRANSPORTE):
+ * Por defecto, la ventana se ancla estrictamente en la última jornada operativa cerrada (Ayer: T - 1),
+ * dado que los buses operan hasta altas horas y el 50% de los socios duerme fuera de base,
+ * entregando el arqueo de caja al día siguiente.
+ */
 export function generarRangoFechasCalendario(diasVentana: number, fechaBaseReferencia?: string): {
   fechaInicio: string;
   fechaFin: string;
   todasLasFechas: string[];
 } {
-  const base = fechaBaseReferencia ? new Date(fechaBaseReferencia + 'T12:00:00') : new Date();
+  let base: Date;
+  if (fechaBaseReferencia) {
+    base = new Date(fechaBaseReferencia + 'T12:00:00');
+  } else {
+    const hoy = new Date();
+    base = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 1, 12, 0, 0);
+  }
   const fechaFin = base.toISOString().split('T')[0];
 
   const inicio = new Date(base);

@@ -4947,3 +4947,33 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
   - Next.js 16 compilado con Turbopack exitosamente sin errores de tipos ni advertencias.
   - 114 de 114 pruebas unitarias aprobadas en 13 suites (`bun test`).
   - Sincronización completa con `main` y `staging`.
+
+---
+
+## 🏛️ v3.61.48 - REGLA CANÓNICA DE AUDITORÍA OPERATIVA EN JORNADAS CERRADAS (CORTE A AYER T - 1) Y ERRADICACIÓN DE FALSOS BACHES (2026-10-13)
+> **ESTADO:** 🟢 IMPLEMENTADA Y CERTIFICADA AL 100% (115/115 TESTS EN VERDE)
+> **FECHA DE REGISTRO:** 2026-10-13 | **SISTEMA:** RutaGo - Motor de Reportes Calendario del Socio
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Diagnóstico y Realidad de Operación en Transporte:
+* **Problema Identificado:** Las cooperativas de transporte urbano e interprovincial operan turnos hasta altas horas de la noche, y un 50% de las unidades pernocta fuera de la terminal o base cooperativa. En consecuencia, el ayudante entrega la liquidación y arqueo de caja a la mañana siguiente o al retorno de la unidad.
+* **Falla en la Versión Anterior:** La función `generarRangoFechasCalendario` tomaba por defecto `new Date()` (Hoy: 13 de Octubre) como fecha final de la ventana. Al no existir aún el arqueo del día en curso (por estar en ruta), el sistema catalogaba la fecha de hoy como un "bache" (día sin registro), penalizando la métrica de cobertura del ayudante y arrojando alertas infundadas al socio.
+* **Decisión Canónica:** La auditoría del socio evalúa **estrictamente jornadas operativas cerradas**. El corte por defecto se ancla de forma deliberada en **Ayer (`T - 1`)**. Se descartó deliberadamente cualquier toggle opcional de "incluir hoy" para preservar la integridad contable y no generar confusión al socio.
+
+### 📍 2. Ajustes de Ingeniería Implementados:
+* **`src/lib/reporte-calendario-socio.ts`:**
+  - Se modificó `generarRangoFechasCalendario(diasVentana, fechaBaseReferencia)` para que, en ausencia de una fecha base explícita, tome la fecha de ayer (`hoy - 1 día` a las 12:00:00).
+  - Ventanas fijas canónicas de jornadas cerradas:
+    - **7 Días:** `T - 7` a `T - 1` (7 jornadas cerradas completas).
+    - **15 Días:** `T - 15` a `T - 1` (15 jornadas cerradas completas).
+    - **30 Días:** `T - 30` a `T - 1` (30 jornadas cerradas completas).
+* **`src/components/socio/ReporteSocioCalendarioModal.tsx`:**
+  - Selector táctil actualizado con feedback visual: `Jornadas cerradas (corte a ayer)`.
+  - Etiqueta de auditoría clarificada a: `Cobertura de Jornadas Cerradas`.
+* **`tests/reporte-calendario-socio.test.ts`:**
+  - Nueva prueba unitaria **4.1b**: Verifica que por defecto la ventana de calendario finalice exactamente en la fecha de ayer (`T - 1`).
+
+### 📍 3. Certificación de Pruebas Unitarias:
+* Ejecución de suite completa con `bun test`:
+  - **115 de 115 pruebas aprobadas** en 13 suites sin errores (100% de efectividad).
+  - 465 aserciones validadas en 79 ms.
