@@ -14,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { type UserSession } from '@/components/transport/types';
 import { getAllBuses, getActiveBusId, type BusItem } from '@/lib/fleet-storage';
+import { ReporteSocioCalendarioModal } from '@/components/socio/ReporteSocioCalendarioModal';
 
 type ReportType = 'diario' | 'semanal' | 'mensual' | 'conductor' | 'rango' | 'caja-comun';
 
@@ -24,6 +25,7 @@ interface ReportsScreenProps {
 }
 
 export function ReportsScreen({ onBack, currentUser, activeBusId: propActiveBusId }: ReportsScreenProps) {
+  const [showReporteCalendarioModal, setShowReporteCalendarioModal] = useState(false);
   const [reportType, setReportType] = useState<ReportType>('diario');
   const [date, setDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [month, setMonth] = useState<string>(() => new Date().toISOString().slice(0, 7));
@@ -513,6 +515,31 @@ export function ReportsScreen({ onBack, currentUser, activeBusId: propActiveBusI
               <span>Aislamiento Privado Activo</span>
             </div>
           )}
+        </div>
+
+        {/* Banner Acceso Directo: Auditoría Calendario Fija (7/15/30 días) */}
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-950 border border-amber-500/40 text-white flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="font-bold text-xs sm:text-sm text-white">Auditoría Calendario (7 / 15 / 30 Días)</p>
+                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 tracking-wide">
+                  $/km Diésel
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">Ventana temporal fija • Baches de ayudante • Dictamen</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setShowReporteCalendarioModal(true)}
+            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-xs shrink-0 active:scale-95 transition cursor-pointer ml-2"
+          >
+            Abrir
+          </Button>
         </div>
 
         {/* Report type selector */}
@@ -1217,6 +1244,16 @@ export function ReportsScreen({ onBack, currentUser, activeBusId: propActiveBusI
           )}
         </div>
       </main>
+
+      {/* Modal de Auditoría de Calendario Fija (7/15/30 días) */}
+      {showReporteCalendarioModal && (
+        <ReporteSocioCalendarioModal
+          isOpen={showReporteCalendarioModal}
+          onClose={() => setShowReporteCalendarioModal(false)}
+          busId={selectedBusId !== 'TODOS' ? selectedBusId : (currentUser?.busId || getActiveBusId() || 'BUS-01')}
+          numeroDisco={availableBuses.find(b => b.id === selectedBusId)?.numeroDisco || (selectedBusId && selectedBusId !== 'TODOS' ? selectedBusId.replace(/\D/g, '') : '') || currentUser?.busNumero || '01'}
+        />
+      )}
     </div>
   );
 }

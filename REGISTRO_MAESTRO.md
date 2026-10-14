@@ -4924,3 +4924,26 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
 * **Certificación Técnica:**
   - `compile_applet` exitoso sin errores en Turbopack/Next.js.
   - 114/114 pruebas unitarias aprobadas en verde.
+
+
+---
+
+## 🚀 CULMINACIÓN FASE 4: INTEGRACIÓN EN MENÚS, CONEXIÓN E2E Y CERTIFICACIÓN FINAL (2026-10-13)
+> **ESTADO:** 🟢 PLAN MAESTRO 100% CULMINADO Y CERTIFICADO (114/114 TESTS EN VERDE)
+> **FECHA DE REGISTRO:** 2026-10-13 | **SISTEMA:** RutaGo - Motor de Reportes Calendario del Socio
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Modificaciones y Puntos de Integración:
+* **`src/components/transport/HomeScreen.tsx`:**
+  - Importación y control de estado reactivo `showReporteCalendario`.
+  - Inserción de la tarjeta destacada de alto contraste en la sección *"Análisis Operativo y Auditoría"*:
+    `[ 📊 Auditoría Calendario (7 / 15 / 30 Días) • $/km Diésel ]` con subtítulo explicativo de baches de ayudante y dictamen.
+  - Renderizado del modal `<ReporteSocioCalendarioModal />` vinculado a `activeBusId` y `busNumero`.
+* **`src/components/transport/ReportsScreen.tsx`:**
+  - Importación y control de estado reactivo `showReporteCalendarioModal`.
+  - Inserción del banner de acceso rápido en la cabecera del módulo de reportes.
+  - Renderizado del modal `<ReporteSocioCalendarioModal />` acoplado al selector de unidad multi-tenant.
+* **Certificación E2E Integral:**
+  - Next.js 16 compilado con Turbopack exitosamente sin errores de tipos ni advertencias.
+  - 114 de 114 pruebas unitarias aprobadas en 13 suites (`bun test`).
+  - Sincronización completa con `main` y `staging`.
