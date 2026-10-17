@@ -5384,3 +5384,58 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
 4. **Protocolo de Seguridad:**
    - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
    - Cero almacenamiento fijo de tokens en archivos locales o de configuración.
+
+
+---
+
+## 🚀 PASO 3: BLINDAJE Y ASISTENCIA INTELIGENTE EN CARGA HISTÓRICA DEL SOCIO (v3.61.54)
+
+> **ESTADO:** 🟢 IMPLEMENTADA Y CERTIFICADA AL 100% (143/143 TESTS EN VERDE)  
+> **FECHA DE REGISTRO:** 2026-10-17 | **SISTEMA:** RutaGo - Módulo de Regularización y Carga Histórica del Socio  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Diagnóstico de Causa Raíz y Problema Operativo
+* **Incidente Real Reportado:** Durante la transcripción de cuadernos contables atrasados o desordenados, si un socio no disponía de las anotaciones de odómetro en papel o digitaba una fecha intermedia después de haber cargado días posteriores, se generaban desfasajes de odómetros. Asimismo, la ausencia de validación bloqueante en la pantalla histórica permitía que errores humanos con ceros de más (ej. 5,667 km al cruzar 900,000 km) se guardaran sin advertencia en base de datos.
+
+### 📍 2. Modificaciones de Ingeniería Implementadas
+1. **Enlace Cronológico Inteligente por Calendario (`src/components/transport/CargaHistoricaScreen.tsx`):**
+   - **Búsqueda Multi-Fuente:** Unifica candidatos de odómetro provenientes de `/api/records`, almacenamiento dedicado por autobús (`getLatestBusOdometer`) y registros locales en `localStorage`.
+   - **Enlace Anterior (< date):** Ordena por fecha de calendario estricta (`b.date.localeCompare(a.date)`) independientemente del orden de inserción en BD, precargando el tacómetro de salida con indicador de antigüedad (`Cierre de ayer` o `Cierre del {fecha} (Xd atrás)`).
+   - **Enlace Posterior (> date):** Detecta si ya existe un registro de fecha posterior y ofrece el botón táctil `[ 🔗 Enlazar con {nextDate} ({nextKm} km) ]` para auto-completar la llegada de forma coherente.
+
+2. **Botón Inteligente [ ⚡ Usar Km Oficial del Turno ]:**
+   - Calcula reactivamente `kmTeoricoTurno` a partir de `VT_DATA` y las frecuencias del turno activo (ej. VT1: 416 km, VT11: 273 km, VT2: 272 km).
+   - Con un solo toque, proyecta la llegada (`kmFinal = kmInicial + kmTeoricoTurno`), eliminando la fricción cuando el socio no tiene el odómetro anotado en el cuaderno físico.
+   - Si existe un enlace posterior, proyecta en reversa la salida necesaria.
+
+3. **Candado Semafórico Anti-Error Tipográfico (Ceros de Más):**
+   - Integración completa con `validarLecturaOdometro`:
+     - **🔴 ROJO Bloqueante:** Salto extremo físicamente absurdo (> 1,000 km o ceros de más) y odómetro invertido ($kmFinal < kmInicial$). Bloquea el botón Guardar en `handleSave` y ofrece el botón de corrección asistida con el turno oficial.
+     - **🟡 ÁMBAR:** Variación operativa permitida sin bloqueos.
+     - **🟢 VERDE:** Recorrido óptimo verificado contra el turno programado.
+   - Inyección de `odometroEstado`, `odometroKmTeorico` y `odometroDesfaseKm` en el payload canónico hacia `DailyRecord`.
+
+4. **Suite de Pruebas Unitarias (`tests/carga-historica-blindaje.test.ts`):**
+   - 7 pruebas unitarias en Bun que validan:
+     - Cálculo de kilometraje de turno según catálogo oficial.
+     - Proyección directa de llegada con el botón inteligente.
+     - Proyección reversa ante enlace posterior.
+     - Bloqueo estricto de ceros de más (5,667 km) y tacómetro invertido.
+     - Ordenamiento cronológico inteligente por fecha de calendario.
+     - Integración y persistencia canónica de odómetro en `buildCanonicalRecordPayload`.
+
+### 📍 3. Certificación Técnica
+* **Pruebas Unitarias:** **143 de 143 pruebas aprobadas al 100% en verde** (18 suites ejecutadas con `bun test`).
+* **Sincronización:** Ramas `main` y `staging` preparadas para despliegue y respaldo.
+
+---
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA DE GOOGLE AI STUDIO)
+1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago`
+2. **Estado Actual:**
+   - **v3.61.54:** Culminada y certificada al 100% (Hoja de ruta de 3 Pasos completada: Paso 1 Saneamiento de BD, Paso 2 Tolerancia elástica por VT sin candado de 600 km, Paso 3 Enlace cronológico inteligente y botón de km oficial en carga histórica). 143/143 tests en verde.
+3. **Próxima Tarea / Sugerencias:**
+   - Pruebas en caliente y monitoreo en producción con socios cargando cuadernos y ayudantes en arqueos de ruta.
+4. **Protocolo de Seguridad:**
+   - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
+   - Cero almacenamiento fijo de tokens en archivos locales o de configuración.

@@ -31,6 +31,8 @@ import {
   Ban,
   FileText,
   XCircle,
+  Zap,
+  Link2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +45,12 @@ import { getActiveBus, setActiveBus, saveBusOdometer, getLatestBusOdometer, getG
 import { obtenerUltimosArqueosBus } from '@/lib/turno-secuencia-tracker';
 import { VT_DATA } from '@/lib/seed-vts';
 import { buildCanonicalRecordPayload } from '@/lib/canonical-record-payload';
+import {
+  validarLecturaOdometro,
+  calcularKmTeoricoJornada,
+  type FrecuenciaParaKm,
+} from '@/lib/odometer-validator';
+import { getLocalRutasKmConfig } from '@/lib/rutas-km-storage';
 
 const MOTIVOS_NO_REALIZADA = [
   { id: 'daño_unidad', label: 'Daño en la unidad', icon: <Truck className="w-4 h-4" />, color: 'text-red-500' },
@@ -220,6 +228,8 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
   const [kmInicial, setKmInicial] = useState('');
   const [km, setKm] = useState('');
   const [kmInicialOrigen, setKmInicialOrigen] = useState<string | null>(null);
+  const [nextKmAnclado, setNextKmAnclado] = useState<{ date: string; km: string } | null>(null);
+  const [rutasKmConfig] = useState(() => getLocalRutasKmConfig());
 
   // Cálculo en vivo del recorrido del día (idéntico a ArqueoGeneralScreen)
   const kmRecorridos = useMemo(() => {
@@ -230,7 +240,7 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
     return Math.round((fin - ini) * 10) / 10;
   }, [kmInicial, km]);
 
-  // Precarga automática del tacómetro inicial según la fecha seleccionada y la unidad física activa
+  // Precarga automática del tacómetro inicial y enlace cronológico inteligente por calendario
   useEffect(() => {
     let cancelled = false;
     async function fetchPrevOdometro() {
@@ -251,44 +261,89 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
 
         let serverRecords: any[] = [];
         try {
-          const res = await fetch(`/api/records?limit=90&busId=${encodeURIComponent(targetBusId)}`);
+          const res = await fetch(`/api/records?limit=120&busId=${encodeURIComponent(targetBusId)}`);
           if (res.ok) {
             serverRecords = await res.json();
           }
         } catch {}
 
+        // Candidatos guardados localmente en navegador
+        const localRecords: any[] = [];
+        if (typeof window !== 'undefined' && window.localStorage) {
+          try {
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && (key.startsWith('arqueo_general_') || key.startsWith('rutago_odometro_bus_'))) {
+                const item = localStorage.getItem(key);
+                if (item) {
+                  try {
+                    const parsed = JSON.parse(item);
+                    if (parsed && parsed.date && (parsed.kmFinal || parsed.km)) {
+                      localRecords.push(parsed);
+                    }
+                  } catch {}
+                }
+              }
+            }
+          } catch {}
+        }
+
         const allCandidates = [
           ...(dedicatedCandidate ? [dedicatedCandidate] : []),
           ...serverRecords,
+          ...localRecords,
         ];
 
-        const prevCandidates = allCandidates
-          .filter((r) => {
-            if (!r.date || r.date >= date || (!r.kmFinal && !r.km)) return false;
-            const rBusId = String(r.busId || '').toUpperCase();
-            const rDisco = String(r.numeroDisco || '').padStart(2, '0');
-            const rConductor = String(r.conductor || '').toUpperCase();
-            if (rBusId === targetBusId || rBusId === `BUS-${targetDisco}` || rDisco === targetDisco) {
-              return true;
-            }
-            if (rConductor.startsWith(`BUS-${targetDisco}`) || rConductor === targetDisco) {
-              return true;
-            }
-            if (!r.busId && !r.numeroDisco && (!r.conductor || !r.conductor.startsWith('BUS-'))) {
-              return targetDisco === '01';
-            }
-            return false;
-          })
+        const busCandidates = allCandidates.filter((r) => {
+          if (!r.date) return false;
+          const rBusId = String(r.busId || '').toUpperCase();
+          const rDisco = String(r.numeroDisco || '').padStart(2, '0');
+          const rConductor = String(r.conductor || '').toUpperCase();
+          if (rBusId === targetBusId || rBusId === `BUS-${targetDisco}` || rDisco === targetDisco) {
+            return true;
+          }
+          if (rConductor.startsWith(`BUS-${targetDisco}`) || rConductor === targetDisco) {
+            return true;
+          }
+          if (!r.busId && !r.numeroDisco && (!r.conductor || !r.conductor.startsWith('BUS-'))) {
+            return targetDisco === '01';
+          }
+          return false;
+        });
+
+        // 1. Enlace Cronológico Anterior (< date): Buscar el cierre más reciente por calendario
+        const prevCandidates = busCandidates
+          .filter(r => r.date < date && (r.kmFinal || r.km))
           .sort((a, b) => b.date.localeCompare(a.date));
 
         const prev = prevCandidates[0];
         if (prev && !cancelled) {
           const valor = prev.kmFinal ? prev.kmFinal : prev.km;
           setKmInicial(String(valor));
-          setKmInicialOrigen(`Cierre del ${prev.date}`);
+          const diffDays = Math.round((new Date(date).getTime() - new Date(prev.date).getTime()) / (1000 * 60 * 60 * 24));
+          const badgeOrigen = diffDays === 1
+            ? `Cierre de ayer (${prev.date})`
+            : `Cierre del ${prev.date} (${diffDays}d atrás)`;
+          setKmInicialOrigen(badgeOrigen);
         } else if (!cancelled) {
           setKmInicial('');
           setKmInicialOrigen(null);
+        }
+
+        // 2. Enlace Cronológico Posterior (> date): Si ya existe un registro de fecha posterior
+        const nextCandidates = busCandidates
+          .filter(r => r.date > date && (r.kmInicial || r.kmFinal))
+          .sort((a, b) => a.date.localeCompare(b.date));
+
+        const next = nextCandidates[0];
+        if (next && !cancelled) {
+          const valorSiguiente = next.kmInicial ? next.kmInicial : next.kmFinal;
+          setNextKmAnclado({
+            date: next.date,
+            km: String(valorSiguiente),
+          });
+        } else if (!cancelled) {
+          setNextKmAnclado(null);
         }
       } catch {}
     }
@@ -321,6 +376,59 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
 
   // Frecuencias del día cargadas para el VT seleccionado
   const [frecuencias, setFrecuencias] = useState<FrecuenciaItem[]>([]);
+
+  // Frecuencias formateadas para el validador de kilometraje
+  const frecuenciasParaKm: FrecuenciaParaKm[] = useMemo(() => {
+    return frecuencias.map(f => ({
+      ruta: `${f.routeFrom} - ${f.routeTo}`,
+      estado: f.noRealizada ? 'no_realizada' : 'cerrada',
+      tipo: f.noRealizada ? 'no_realizada' : f.isIngresoEspecial ? 'ingreso_especial' : 'frecuencia',
+    }));
+  }, [frecuencias]);
+
+  // Kilometraje teórico oficial del turno seleccionado (ej. VT1: 416 km, VT11: 294 km, VT2: 272 km)
+  const kmTeoricoTurno = useMemo(() => {
+    if (frecuenciasParaKm.length > 0) {
+      return calcularKmTeoricoJornada(frecuenciasParaKm, rutasKmConfig);
+    }
+    if (selectedVtCode) {
+      const vt = VT_DATA.find(v => v.codigo === selectedVtCode);
+      if (vt && Array.isArray(vt.frecuencias)) {
+        const mapped = vt.frecuencias.map(f => ({
+          ruta: `${f.routeFrom} - ${f.routeTo}`,
+          estado: 'cerrada',
+        }));
+        return calcularKmTeoricoJornada(mapped, rutasKmConfig);
+      }
+    }
+    return 0;
+  }, [frecuenciasParaKm, selectedVtCode, rutasKmConfig]);
+
+  // Validación Semafórica Inteligente de Odómetro (con tolerancia elástica y detección de ceros extra)
+  const validacionOdometro = useMemo(() => {
+    return validarLecturaOdometro(kmInicial, km, frecuenciasParaKm, rutasKmConfig);
+  }, [kmInicial, km, frecuenciasParaKm, rutasKmConfig]);
+
+  // Botón Inteligente: Asigna o proyecta el kilometraje oficial del turno en un solo toque
+  const handleUsarKmOficialTurno = () => {
+    if (!kmTeoricoTurno || kmTeoricoTurno <= 0) return;
+    const ini = parseFloat(kmInicial.replace(/,/g, ''));
+    if (!isNaN(ini) && ini > 0) {
+      const finEstimado = Math.round((ini + kmTeoricoTurno) * 10) / 10;
+      setKm(String(finEstimado));
+    } else if (nextKmAnclado) {
+      const nextIni = parseFloat(nextKmAnclado.km.replace(/,/g, ''));
+      if (!isNaN(nextIni) && nextIni > kmTeoricoTurno) {
+        const iniEstimado = Math.round((nextIni - kmTeoricoTurno) * 10) / 10;
+        setKmInicial(String(iniEstimado));
+        setKm(nextKmAnclado.km);
+      } else {
+        setKm(String(kmTeoricoTurno));
+      }
+    } else {
+      setKm(String(kmTeoricoTurno));
+    }
+  };
 
   // Todas las frecuencias del sistema (para reasignar)
   const [allSystemFrecuencias, setAllSystemFrecuencias] = useState<SystemFrecuencia[]>([]);
@@ -735,6 +843,10 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
       setError('No hay frecuencias cargadas para este VT.');
       return;
     }
+    if (validacionOdometro && validacionOdometro.esBloqueante) {
+      setError(`Alerta de Odómetro: ${validacionOdometro.mensaje}`);
+      return;
+    }
 
     setSaving(true);
     try {
@@ -759,6 +871,9 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
         conductorNombre: selectedConductor.trim() || null,
         ayudanteNombre: selectedAyudante.trim() || null,
         vtCode: selectedVtCode,
+        odometroEstado: validacionOdometro.estado,
+        odometroKmTeorico: validacionOdometro.kmTeorico,
+        odometroDesfaseKm: validacionOdometro.desfaseKm,
         trips: frecuencias.map(f => {
           const isEsp = Boolean(f.isIngresoEspecial);
           const isNoReal = Boolean(f.noRealizada) && !isEsp;
@@ -1023,7 +1138,7 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
                   <Label className="text-xs font-medium text-gray-600 flex items-center justify-between">
                     <span>Km Inicial (Salida)</span>
                     {kmInicialOrigen && (
-                      <span className="text-[10px] text-emerald-700 font-semibold">
+                      <span className="text-[10px] text-emerald-700 font-semibold truncate max-w-[120px]" title={kmInicialOrigen}>
                         {kmInicialOrigen}
                       </span>
                     )}
@@ -1036,8 +1151,13 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
                   />
                 </div>
                 <div>
-                  <Label className="text-xs font-medium text-gray-600">
-                    Km Final (Llegada)
+                  <Label className="text-xs font-medium text-gray-600 flex items-center justify-between">
+                    <span>Km Final (Llegada)</span>
+                    {nextKmAnclado && !km && (
+                      <span className="text-[10px] text-blue-700 font-semibold truncate max-w-[120px]" title={`Salida de ${nextKmAnclado.date}: ${nextKmAnclado.km} km`}>
+                        {nextKmAnclado.km} km ({nextKmAnclado.date})
+                      </span>
+                    )}
                   </Label>
                   <Input
                     placeholder="Ej: 897818"
@@ -1047,17 +1167,76 @@ export function CargaHistoricaScreen({ currentUser, onBack, onSuccess }: CargaHi
                   />
                 </div>
               </div>
-              {kmRecorridos !== null && (
-                <div
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between ${
-                    kmRecorridos >= 0
-                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                      : 'bg-red-50 text-red-700 border border-red-200'
-                  }`}
-                >
-                  <span>Recorrido calculado del día:</span>
+
+              {/* Botones de Asistencia Inteligente de Odómetro */}
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {kmTeoricoTurno > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleUsarKmOficialTurno}
+                    className="py-1 px-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 rounded-lg text-[11px] font-bold flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-blue-600" />
+                    ⚡ Usar Km Oficial del Turno (~{kmTeoricoTurno} km)
+                  </button>
+                )}
+                {nextKmAnclado && (!km || km !== nextKmAnclado.km) && (
+                  <button
+                    type="button"
+                    onClick={() => setKm(nextKmAnclado.km)}
+                    className="py-1 px-2.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-800 rounded-lg text-[11px] font-bold flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Link2 className="w-3.5 h-3.5 text-indigo-600" />
+                    🔗 Enlazar con {nextKmAnclado.date} ({nextKmAnclado.km} km)
+                  </button>
+                )}
+              </div>
+
+              {/* Alerta Roja Bloqueante ante Errores Críticos / Ceros Extra */}
+              {validacionOdometro.estado === 'ROJO' && (
+                <div className="p-2.5 rounded-xl bg-red-50 border-2 border-red-300 text-xs text-red-900 space-y-1">
+                  <div className="flex items-start gap-1.5 font-black text-red-900 uppercase">
+                    <XCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <span>Bloqueo de Tacómetro — Error Crítico</span>
+                  </div>
+                  <p className="text-[11px] text-red-800 font-medium pl-5.5">
+                    {validacionOdometro.mensaje}
+                  </p>
+                  {kmTeoricoTurno > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleUsarKmOficialTurno}
+                      className="mt-1 w-full py-1.5 bg-red-100 hover:bg-red-200 border border-red-300 rounded-lg text-xs font-bold text-red-800 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                    >
+                      <Zap className="w-3.5 h-3.5 text-red-600" />
+                      Corregir con Turno Oficial (~{kmTeoricoTurno} km)
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Alerta Ámbar ante Variaciones Operativas */}
+              {validacionOdometro.estado === 'AMBAR' && (
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-900 space-y-1">
+                  <div className="flex items-start gap-1.5 font-bold">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <span>Variación Operativa ({kmRecorridos !== null ? `+${kmRecorridos} km` : ''} vs Teórico ~{validacionOdometro.kmTeorico} km):</span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 pl-5.5">
+                    {validacionOdometro.mensaje}
+                  </p>
+                </div>
+              )}
+
+              {/* Rango Verde Óptimo */}
+              {validacionOdometro.estado === 'VERDE' && kmRecorridos !== null && (
+                <div className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Recorrido calculado del día:
+                  </span>
                   <span className="font-mono">
-                    {kmRecorridos >= 0 ? `+${kmRecorridos} km` : `${kmRecorridos} km (revisar)`}
+                    +{kmRecorridos} km {kmTeoricoTurno > 0 ? `(Teórico: ~${kmTeoricoTurno} km)` : ''}
                   </span>
                 </div>
               )}
