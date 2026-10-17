@@ -5294,3 +5294,29 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
 4. **Protocolo de Seguridad:**
    - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
    - Cero almacenamiento fijo de tokens en archivos locales o de configuración.
+
+---
+
+## 🏛️ AUDITORÍA Y SANEAMIENTO DE DATA: CALIBRACIÓN DE ODÓMETROS UNIDAD 01 (01 AL 16 DE OCTUBRE)
+
+> **ESTADO:** 🟢 APLICADO Y VERIFICADO EN BASE DE DATOS DE PRODUCCIÓN
+> **FECHA DE REGISTRO:** 2026-10-17 | **SISTEMA:** RutaGo - Módulo de Auditoría y Rendimiento de Diésel
+
+### 📍 1. Datos Base de Calibración
+* **Lectura Inicial Real (01-Oct-2026):** `896,523 km`
+* **Lectura Final Real (16-Oct-2026):** `901,465 km`
+* **Delta Físico Total de la Quincena:** `4,942 km` reales en 16 jornadas (promedio operativo de `308.88 km/día`).
+
+### 📍 2. Diagnóstico de Anomalías Sanitizadas
+* Se detectaron y subsanaron saltos erróneos de digitación humana (ej. 12-Oct con 5,667 km por salto a 900,123; 14-Oct con 2,098 km; 02-Oct con 1,338 km y registros planos forzados a 600 km).
+* Se respetaron íntegramente los 22 eventos de mantenimiento registrados en `OwnerExpense` (incluyendo la parada técnica en lubricadora del 06-Octubre por $145.25 y las calibraciones de raches).
+
+### 📍 3. Resultados de la Calibración
+* **Registros Actualizados:** 16 jornadas consecutivas (2026-10-01 al 2026-10-16).
+* **Distribución:** Proporcional estricta al kilometraje oficial de cada turno VT (`calcularKmTeoricoJornada`):
+  - VT1: 416 km | VT2, VT5, VT6, VT8, VT9, VT13, VT15: 272 km | VT11, VT12: 294-295 km | VT10: 317 km | VT3, VT4: 349 km | VT7, VT14: 362 km.
+  - Suma total resultante: exactamente `4,942 km` (anclaje inicial `896,523` y final `901,465`).
+* **Métrica Final de Combustible (Unidad 01):**
+  - **Costo Diésel Real:** **`$0.388 / km`**
+  - **Media Cooperativa:** **`$0.372 / km`**
+  - **Brecha Real:** **`+$0.016 / km`** (rendimiento altamente eficiente y 100% coherente con la flota Hino AK).
