@@ -1,3 +1,4 @@
+import { getEcuadorDateString } from "@/lib/date-helpers";
 export interface FrecuenciaData {
   id: string;
   vtCode: string;
@@ -26,6 +27,8 @@ export interface FrecuenciaEstado {
   ganadorPosicion?: number | null;  // random position for free trip winner
   cajaComunCount?: number;          // boletos vendidos en oficina Loja (caja común)
   cajaComunMonto?: number;         // monto total de boletos caja común (suma manual)
+  esPernoctaRetorno?: boolean;      // true si es la primera vuelta del día 2 tras pernocta
+  diaTurno?: number;                // 1 = Mismo día de apertura, 2 = Retorno pernocta
 }
 
 export interface VTSession {
@@ -174,18 +177,24 @@ export interface EstadoTiempoVenta {
   bloqueado: boolean;
   tiempoRestante: number;
   esCorta: boolean;
+  esPernocta?: boolean;
+  bloqueadoPorAnticipacion?: boolean;
+  tiempoAnticipacionMinutos?: number;
 }
 
 export function calcularEstadoTiempoVenta(
   horaFrecuencia: string,
   ruta: string,
   fechaOperacion?: string,
-  configCustom?: TiempoVentaConfig
+  configCustom?: TiempoVentaConfig,
+  esPernoctaRetorno?: boolean,
+  fechaReferencia?: Date
 ): EstadoTiempoVenta {
   const config = configCustom || loadTiempoVentaConfig();
   const esCorta = esRutaCorta(ruta);
   const tiempoAlerta = esCorta ? config.tiempoAlertaCorta : config.tiempoAlertaExtendida;
   const tiempoLimite = esCorta ? config.tiempoLimiteCorta : config.tiempoLimiteExtendida;
+  const TIEMPO_ANTICIPACION_MAX = 45; // Ventas permitidas maximo 45 min antes de salida
 
   if (!horaFrecuencia) {
     return {
@@ -196,12 +205,16 @@ export function calcularEstadoTiempoVenta(
       bloqueado: false,
       tiempoRestante: tiempoLimite,
       esCorta,
+      esPernocta: Boolean(esPernoctaRetorno),
+      bloqueadoPorAnticipacion: false,
+      tiempoAnticipacionMinutos: TIEMPO_ANTICIPACION_MAX,
     };
   }
 
-  const parts = horaFrecuencia.split(':');
+  const parts = horaFrecuencia.split(":");
   const hh = parseInt(parts[0], 10);
   const mm = parseInt(parts[1], 10);
+
   if (isNaN(hh) || isNaN(mm)) {
     return {
       minutosTranscurridos: 0,
@@ -211,25 +224,48 @@ export function calcularEstadoTiempoVenta(
       bloqueado: false,
       tiempoRestante: tiempoLimite,
       esCorta,
+      esPernocta: Boolean(esPernoctaRetorno),
+      bloqueadoPorAnticipacion: false,
+      tiempoAnticipacionMinutos: TIEMPO_ANTICIPACION_MAX,
     };
   }
 
-  const now = new Date();
-  const scheduled = new Date();
+  const now = fechaReferencia || new Date();
+  const scheduled = new Date(now.getTime());
+
   if (fechaOperacion) {
-    const fParts = fechaOperacion.split('-').map(Number);
+    const fParts = fechaOperacion.split("-").map(Number);
     if (fParts.length === 3 && !isNaN(fParts[0])) {
       scheduled.setFullYear(fParts[0], fParts[1] - 1, fParts[2]);
     }
   }
   scheduled.setHours(hh, mm, 0, 0);
 
+  // ─── REGLA CANONICA DE RETORNO AL DIA SIGUIENTE (PERNOCTA / DIA 2) ───
+  // Si la frecuencia es retorno de pernocta (esPernoctaRetorno === true) o
+  // la fecha actual de Ecuador ya avanzo al siguiente dia respecto a fechaOperacion:
+  // la hora programada se ancla con precision matematica a fechaOperacion + 1 dia
+  const esPernoctaEfectiva = Boolean(
+    esPernoctaRetorno ||
+    (fechaOperacion && getEcuadorDateString(now) > fechaOperacion && hh < 12)
+  );
+
+  if (esPernoctaEfectiva) {
+    scheduled.setDate(scheduled.getDate() + 1);
+  }
+
   const diffMs = now.getTime() - scheduled.getTime();
   const minutosTranscurridos = Math.floor(diffMs / (1000 * 60));
 
-  const bloqueado = minutosTranscurridos >= tiempoLimite;
-  const enAlerta = minutosTranscurridos >= tiempoAlerta && !bloqueado;
-  const tiempoRestante = Math.max(0, tiempoLimite - minutosTranscurridos);
+  // 1. Bloqueo por tiempo limite excedido de viaje (85-90 min o 135-140 min)
+  const bloqueadoPorTiempoLimite = minutosTranscurridos >= tiempoLimite;
+
+  // 2. Bloqueo por compuerta de anticipacion (no permitir venta si faltan > 45 min)
+  const bloqueadoPorAnticipacion = minutosTranscurridos < -TIEMPO_ANTICIPACION_MAX;
+
+  const bloqueado = bloqueadoPorTiempoLimite || bloqueadoPorAnticipacion;
+  const enAlerta = minutosTranscurridos >= tiempoAlerta && !bloqueadoPorTiempoLimite && !bloqueadoPorAnticipacion;
+  const tiempoRestante = Math.max(0, tiempoLimite - Math.max(0, minutosTranscurridos));
 
   return {
     minutosTranscurridos,
@@ -239,5 +275,8 @@ export function calcularEstadoTiempoVenta(
     bloqueado,
     tiempoRestante,
     esCorta,
+    esPernocta: esPernoctaEfectiva,
+    bloqueadoPorAnticipacion,
+    tiempoAnticipacionMinutos: TIEMPO_ANTICIPACION_MAX,
   };
 }

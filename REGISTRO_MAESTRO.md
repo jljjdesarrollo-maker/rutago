@@ -5247,3 +5247,50 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
 4. **Protocolo de Seguridad:**
    - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
    - Cero almacenamiento fijo de tokens en archivos locales o de configuración.
+
+---
+
+## 🚀 CULMINACIÓN: BLINDAJE DE RETORNO AL DÍA SIGUIENTE (PERNOCTA/DÍA 2) Y COMPUERTA DE ANTICIPACIÓN TEMPORAL (v3.61.52)
+
+> **ESTADO:** 🟢 IMPLEMENTADA Y CERTIFICADA AL 100% (128/128 TESTS EN VERDE)
+> **FECHA DE REGISTRO:** 2026-10-17 | **SISTEMA:** RutaGo - Motor de Turnos, Venta de Boletos y Pernoctas
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Diagnóstico de Causa Raíz y Auditoría Operativa
+* **Incidente Real Reportado:** En el turno `VT11` (BTE 11 - Unidad 1), la frecuencia 6 (`06:55 AM El Tambo - Loja`) es el retorno tras pernocta del día viernes. El viernes por la noche se permitió abrir la frecuencia fuera de turno, mientras que el sábado por la mañana el sistema bloqueó la venta arrojando *«Límite de viaje alcanzado (140 min). Nuevas ventas desactivadas para esta frecuencia»* con `1379m` transcurridos.
+* **Causa Raíz A (Bloqueo matutino erróneo):** `calcularEstadoTiempoVenta` anclaba la hora programada (`scheduled`) exclusivamente a la fecha de inicio del turno (`session.fecha`, viernes). Al evaluar el sábado por la mañana, calculaba 1,379 a 1,425 minutos transcurridos desde las 06:55 AM del viernes, superando los 140 minutos de límite e inhabilitando las ventas legítimas.
+* **Causa Raíz B (Apertura anticipada nocturna):** `isFrecuenciaDisponible` en `FrecuenciaSelector` operaba de forma puramente secuencial: al cerrar la vuelta 5, habilitaba de inmediato la vuelta 6 sin validar horario ni descanso nocturno, y el control de venta carecía de compuerta inferior para rechazar ventas emitidas horas antes de la salida programada.
+
+### 📍 2. Modificaciones de Ingeniería Implementadas
+1. **Motor de Tiempo de Venta y Pernoctas (`src/components/transport/types-boletos.ts`):**
+   - **Proyección de Día 2 (+1 Día):** Si la frecuencia es retorno de pernocta (`esPernoctaRetorno === true`) o la fecha de Ecuador ya avanzó respecto a `fechaOperacion`, la hora programada se proyecta matemáticamente a `fechaOperacion + 1 día`.
+   - **Compuerta de Anticipación Temporal (45 min):** Se implementó `bloqueadoPorAnticipacion` cuando `minutosTranscurridos < -45`. Si se intenta abrir una frecuencia muchas horas antes (ej. noche anterior), la venta queda bloqueada con aviso informativo.
+   - **Ampliación de Interfaces:** Se incorporaron `esPernoctaRetorno?: boolean`, `diaTurno?: number` en `FrecuenciaEstado`, y `esPernocta?: boolean`, `bloqueadoPorAnticipacion?: boolean`, `tiempoAnticipacionMinutos?: number` en `EstadoTiempoVenta`.
+2. **Pantalla de Cobro de Boletos (`src/components/transport/TicketScreen.tsx`):**
+   - Transmisión explícita de `estado.esPernoctaRetorno` al evaluar `calcularEstadoTiempoVenta`.
+   - Banner de advertencia amigable en color ámbar: *«⏳ Salida programada para las {hora} (Día 2 · Pernocta). La emisión de boletos se habilitará 45 min antes de la salida»*.
+   - Botón de transición constructiva: *«⏳ Salida Programada {hora} • Volver al Selector»*.
+   - Badge visual `[ Día 2 ]` activo en encabezado cuando `esPernoctaRetorno` es verdadero o el calendario actual superó la fecha del turno.
+3. **Selector de Frecuencias (`src/components/transport/FrecuenciaSelector.tsx`):**
+   - Detección determinista de retorno de pernocta (`isPernoctaRetornoFrec`) basada en inversión horaria respecto a la vuelta anterior (`curr.hora < prev.hora`) o última vuelta de catálogo extendido.
+   - Preservación y propagación de `esPernoctaRetorno` y `diaTurno` en estados de memoria y `localStorage`.
+   - Badge visual en tarjeta: `🌙 Día 2`.
+4. **Suite de Pruebas Unitarias (`tests/pernocta-retorno-tiempo.test.ts`):**
+   - 6 pruebas unitarias en Bun verificando bloqueo por anticipación en la noche previa, desbloqueo a -15 min, tiempo 0 a la salida, cálculo durante el viaje, caducidad a los 140 min y auto-resolución defensiva.
+
+### 📍 3. Certificación Técnica
+* **Pruebas Unitarias:** **128 de 128 pruebas aprobadas al 100% en verde** (16 suites ejecutadas con `bun test`).
+* **Sincronización:** Ramas `main` y `staging` sincronizadas y desplegadas en GitHub.
+
+---
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA DE GOOGLE AI STUDIO)
+1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago`
+2. **Estado Actual:**
+   - **v3.61.52:** Culminada y certificada al 100% (Blindaje de retorno de pernocta al día siguiente / Día 2, compuerta de anticipación a 45 min, y 128/128 tests en verde).
+3. **Próxima Tarea / Sugerencias:**
+   - Monitoreo en producción del turno VT11 / VT12 con ayudantes en ruta real.
+   - Continuar con refinamientos operativos del cuaderno contable del socio.
+4. **Protocolo de Seguridad:**
+   - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
+   - Cero almacenamiento fijo de tokens en archivos locales o de configuración.

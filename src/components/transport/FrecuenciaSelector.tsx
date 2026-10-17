@@ -1,5 +1,14 @@
 'use client';
 
+function isPernoctaRetornoFrec(idx: number, list: FrecuenciaData[]): boolean {
+  if (idx === 0) return false;
+  const prev = list[idx - 1];
+  const curr = list[idx];
+  if (prev?.hora && curr?.hora && curr.hora < prev.hora) return true;
+  return idx === list.length - 1 && list.length >= 6;
+}
+
+
 import { useState, useEffect, useCallback } from 'react';
 import { type VTSession, type FrecuenciaEstado, type FrecuenciaData, loadPromoConfig } from './types-boletos';
 import { getActiveBusId } from '@/lib/fleet-storage';
@@ -171,36 +180,53 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
         const saved = loadEstadosFromLS(session.vtCode, fecha);
         if (saved && saved.length === data.length) {
           // Mantener el orden canónico del catálogo (por ID/creación), respetando cada ranura por su estadoId inmutable (incluso si fue reasignada a otra hora)
-          const orderedSaved = data.map((f: FrecuenciaData) =>
-            saved.find(s => s.estadoId === `${fecha}_${f.id}`) ||
-            saved.find(s => !s.estadoId && (s.frecuenciaId === f.id || s.id === f.id)) || {
-            id: f.id,
-            estadoId: `${fecha}_${f.id}`,
-            frecuenciaId: f.id,
-            nombre: f.nombre,
-            ruta: f.ruta,
-            hora: f.hora,
-            direccion: f.direccion,
-            estado: 'pendiente' as const,
-            ventasCount: 0,
-            totalRecaudado: 0,
+          const orderedSaved = data.map((f: FrecuenciaData, idx: number) => {
+            const esPernocta = isPernoctaRetornoFrec(idx, data);
+            const found = saved.find(s => s.estadoId === `${fecha}_${f.id}`) ||
+              saved.find(s => !s.estadoId && (s.frecuenciaId === f.id || s.id === f.id));
+            if (found) {
+              return {
+                ...found,
+                esPernoctaRetorno: found.esPernoctaRetorno ?? esPernocta,
+                diaTurno: found.diaTurno ?? (esPernocta ? 2 : 1),
+              };
+            }
+            return {
+              id: f.id,
+              estadoId: `${fecha}_${f.id}`,
+              frecuenciaId: f.id,
+              nombre: f.nombre,
+              ruta: f.ruta,
+              hora: f.hora,
+              direccion: f.direccion,
+              estado: 'pendiente' as const,
+              ventasCount: 0,
+              totalRecaudado: 0,
+              esPernoctaRetorno: esPernocta,
+              diaTurno: esPernocta ? 2 : 1,
+            };
           });
           setEstados(orderedSaved);
           saveEstadosToLS(session.vtCode, fecha, orderedSaved);
         } else {
           // Create fresh pendiente estados
-          const newEstados: FrecuenciaEstado[] = data.map((f: FrecuenciaData) => ({
-            id: f.id,
-            estadoId: `${fecha}_${f.id}`,
-            frecuenciaId: f.id,
-            nombre: f.nombre,
-            ruta: f.ruta,
-            hora: f.hora,
-            direccion: f.direccion,
-            estado: 'pendiente' as const,
-            ventasCount: 0,
-            totalRecaudado: 0,
-          }));
+          const newEstados: FrecuenciaEstado[] = data.map((f: FrecuenciaData, idx: number) => {
+            const esPernocta = isPernoctaRetornoFrec(idx, data);
+            return {
+              id: f.id,
+              estadoId: `${fecha}_${f.id}`,
+              frecuenciaId: f.id,
+              nombre: f.nombre,
+              ruta: f.ruta,
+              hora: f.hora,
+              direccion: f.direccion,
+              estado: 'pendiente' as const,
+              ventasCount: 0,
+              totalRecaudado: 0,
+              esPernoctaRetorno: esPernocta,
+              diaTurno: esPernocta ? 2 : 1,
+            };
+          });
           setEstados(newEstados);
           saveEstadosToLS(session.vtCode, fecha, newEstados);
         }
@@ -832,6 +858,11 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
                     <div>
                       <span className="font-bold text-[#3A3A3A]">{estado.hora}</span>
                       <span className="text-sm text-gray-500 ml-2">{estado.nombre}</span>
+                      {estado.esPernoctaRetorno && (
+                        <span className="ml-2 bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
+                          🌙 Día 2
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
