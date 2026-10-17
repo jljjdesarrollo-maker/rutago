@@ -34,7 +34,7 @@ export async function PUT(req: NextRequest) {
       tramos: Array.isArray(tramos) ? tramos : memoryConfig.tramos,
       toleranciaDefectoPorciento: typeof toleranciaDefectoPorciento === 'number' ? toleranciaDefectoPorciento : 25,
       toleranciaInferiorPorciento: typeof toleranciaInferiorPorciento === 'number' ? toleranciaInferiorPorciento : 10,
-      maxSaltoDiarioKm: typeof maxSaltoDiarioKm === 'number' ? maxSaltoDiarioKm : 600,
+      maxSaltoDiarioKm: typeof maxSaltoDiarioKm === 'number' ? maxSaltoDiarioKm : 1000,
       updatedAt: new Date().toISOString(),
     };
 

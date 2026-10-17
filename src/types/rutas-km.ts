@@ -13,7 +13,7 @@ export interface ConfiguracionKilometrajeRutas {
   tramos: TramoKilometraje[];
   toleranciaDefectoPorciento: number; // Margen elástico superior (default: 25%)
   toleranciaInferiorPorciento: number; // Margen elástico inferior (default: 10%)
-  maxSaltoDiarioKm: number;           // Tope anti-outlier absoluto (default: 600 km)
+  maxSaltoDiarioKm: number;           // Umbral base anti-outlier para salto absurdo (default: 1000 km)
   updatedAt?: string;
 }
 
@@ -115,6 +115,6 @@ export const DEFAULT_CONFIG_KILOMETRAJE_RUTAS: ConfiguracionKilometrajeRutas = {
   tramos: DEFAULT_TRAMOS_KM,
   toleranciaDefectoPorciento: 25,
   toleranciaInferiorPorciento: 10,
-  maxSaltoDiarioKm: 600,
+  maxSaltoDiarioKm: 1000,
   updatedAt: new Date().toISOString(),
 };
