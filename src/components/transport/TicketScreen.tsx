@@ -52,17 +52,17 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
 
   // ─── Control de Tiempo Prudencial de Venta (85/90 min corta, 135/140 min extendida) ───
   const [tiempoEstado, setTiempoEstado] = useState<EstadoTiempoVenta>(() =>
-    calcularEstadoTiempoVenta(estado.hora, estado.ruta, session.fecha)
+    calcularEstadoTiempoVenta(estado.hora, estado.ruta, session.fecha, undefined, estado.esPernoctaRetorno)
   );
 
   useEffect(() => {
     const update = () => {
-      setTiempoEstado(calcularEstadoTiempoVenta(estado.hora, estado.ruta, session.fecha));
+      setTiempoEstado(calcularEstadoTiempoVenta(estado.hora, estado.ruta, session.fecha, undefined, estado.esPernoctaRetorno));
     };
     update();
     const interval = setInterval(update, 15000); // evaluar cada 15 segundos
     return () => clearInterval(interval);
-  }, [estado.hora, estado.ruta, session.fecha]);
+  }, [estado.hora, estado.ruta, session.fecha, estado.esPernoctaRetorno]);
 
   // ─── Autocomplete paradas ───
   const PARADAS_NOMBRES = Object.keys(PARADA_ZONA);
@@ -369,7 +369,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           <div className="flex-1 text-center">
             <div className="text-sm font-bold leading-tight flex items-center justify-center gap-1.5">
               <span>{estado.hora} · {rutaMatched}</span>{tiempoEstado.minutosTranscurridos > 0 && <span className="text-[9px] font-mono bg-black/20 px-1 py-0.5 rounded text-white/90" title="Minutos transcurridos desde la hora programada de salida">{tiempoEstado.minutosTranscurridos}m</span>}
-              {(session.fecha && getEcuadorDateString() > session.fecha) && (
+              {(estado.esPernoctaRetorno || (session.fecha && getEcuadorDateString() > session.fecha)) && (
                 <span className="bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.2 rounded uppercase">Día 2</span>
               )}
             </div>
@@ -579,8 +579,18 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           </div>
         )}
 
+        {/* Notificación de Compuerta de Anticipación (Venta anticipada / Pernocta) */}
+        {tiempoEstado.bloqueadoPorAnticipacion && (
+          <div className="mb-2 bg-amber-50 border border-amber-300 rounded-xl p-3 text-xs text-amber-950 font-bold flex items-center gap-2 shadow-sm">
+            <Clock className="w-4 h-4 text-amber-700 flex-shrink-0" />
+            <span>
+              ⏳ Salida programada para las {estado.hora}{tiempoEstado.esPernocta ? " (Día 2 · Pernocta)" : ""}. La emisión de boletos se habilitará 45 min antes de la salida.
+            </span>
+          </div>
+        )}
+
         {/* Notificación cuando se alcanza el límite de tiempo */}
-        {tiempoEstado.bloqueado && (
+        {!tiempoEstado.bloqueadoPorAnticipacion && tiempoEstado.bloqueado && (
           <div className="mb-2 bg-red-50 border border-red-300 rounded-xl p-2.5 text-xs text-red-900 font-bold flex items-center gap-2 shadow-sm">
             <Clock className="w-4 h-4 text-red-600 flex-shrink-0" />
             <span>
@@ -589,8 +599,17 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           </div>
         )}
 
-        {/* Botón de Venta o Botón de Transición Constructiva si expiró el tiempo */}
-        {tiempoEstado.bloqueado ? (
+        {/* Botón de Venta o Botón de Transición Constructiva si expiró el tiempo o es muy temprano */}
+        {tiempoEstado.bloqueadoPorAnticipacion ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-4 rounded-xl font-black text-sm sm:text-base bg-amber-600 hover:bg-amber-700 text-white shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
+          >
+            <span>⏳ Salida Programada {estado.hora} • Volver al Selector</span>
+            <ArrowRight className="w-5 h-5 flex-shrink-0" />
+          </button>
+        ) : tiempoEstado.bloqueado ? (
           <button
             type="button"
             onClick={onClose}
