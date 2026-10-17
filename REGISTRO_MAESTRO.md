@@ -5320,3 +5320,67 @@ Para garantizar continuidad ininterrumpida y prevenir cualquier pérdida de avan
   - **Costo Diésel Real:** **`$0.388 / km`**
   - **Media Cooperativa:** **`$0.372 / km`**
   - **Brecha Real:** **`+$0.016 / km`** (rendimiento altamente eficiente y 100% coherente con la flota Hino AK).
+
+
+---
+
+## 🚀 PASO 2: ERRADICACIÓN DEL CANDADO RÍGIDO DE 600 KM Y TOLERANCIA ELÁSTICA DINÁMICA EN ARQUEO DEL AYUDANTE (v3.61.53)
+
+> **ESTADO:** 🟢 IMPLEMENTADA Y CERTIFICADA AL 100% (136/136 TESTS EN VERDE)  
+> **FECHA DE REGISTRO:** 2026-10-17 | **SISTEMA:** RutaGo - Módulo de Arqueo General y Validación de Odómetros  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Diagnóstico de Causa Raíz y Problema Operativo
+* **Incidente Real Reportado:** En el arqueo general del ayudante (`ArqueoGeneralScreen.tsx`), existía una regla estática bloqueante: si el recorrido del día superaba 600 km (`kmRecorridoReal > 600`), el sistema se cerraba en una pantalla roja bloqueante (`esBloqueante: true`, `permiteGuardar: false`).
+* **Consecuencia Negativa:** Cuando el bus realizaba turnos largos (ej. VT1 416 km) combinados con desvíos, fletes o vueltas dobles, el ayudante en la calle quedaba imposibilitado de guardar su liquidación de caja, lo que lo forzaba a digitar números falsos o truncar la lectura a "600 km" planos para desbloquear la pantalla. Esto originó distorsiones severas en los reportes de rendimiento y consumo de diésel de la cooperativa.
+
+### 📍 2. Modificaciones de Ingeniería Implementadas
+1. **Motor Semafórico Dinámico (`src/lib/odometer-validator.ts`):**
+   - **Cálculo Dinámico de Cota Físicamente Absurda (`calcularLimiteAbsurdoKm`):** Sustitución del tope rígido de 600 km por una cota dinámica contextual al turno VT activo:
+     - Si hay un turno con recorrido programado (`kmTeorico > 0`), el límite inverosímil es `Math.max(1000, Math.round(kmTeorico * 2.5))`.
+     - Para turnos estándar (ej. 252 o 294 km), el límite absurdo se sitúa en 1,000 km. Para turnos extendidos (ej. VT1 416 km), sube a 1,040 km.
+     - Si no hay turno asignado (`kmTeorico === 0`), se fija en la cota de sanidad operacional de 1,000 km.
+   - **Transición a Zona Ámbar No Bloqueante:** Recorridos superiores a la tolerancia (+25%) pero inferiores al límite absurdo (ej. 600 km, 650 km, 750 km) ahora entran en **🟡 ÁMBAR (Zero-Locking)**:
+     - `permiteGuardar: true`
+     - `esBloqueante: false`
+     - Mensaje preventivo claro informando la variación respecto al turno programado y ofreciendo registrar la justificación sin obstaculizar la entrega de dinero.
+   - **Preservación de Candados Críticos:** Se mantienen estrictamente como **🔴 ROJO BLOQUEANTE**:
+     - Odómetro invertido (`kmFinal < kmInicial`).
+     - Saltos físicamente absurdos o ceros de más (`kmRecorridoReal > limiteAbsurdoKm`, ej. anomalías de 5,667 km).
+
+2. **Ergonomía Táctil en Arqueo General (`src/components/transport/ArqueoGeneralScreen.tsx`):**
+   - Inyección de **Chips Táctiles Rápidos** de un solo toque para el ayudante en móvil (`[Vuelta extra / Turno especial]`, `[Desvío vial / Derrumbe]`, `[Paso por Taller / Mecánica]`, `[Lavadora / Engrasadora]`, `[Tránsito urbano / Terminal]`, `[Recorrido en vacío]`).
+   - El ayudante puede pulsar un chip con un solo dedo para dejar asentada la novedad, o guardar directamente su liquidación sin pantallas rojas bloqueantes.
+   - Indicador visual claro: *«Tolerancia elástica activa: Puedes continuar y guardar tu liquidación sin bloqueos»*.
+
+3. **Configuración de Flota y Rutas (`src/types/rutas-km.ts`, `src/app/api/config/rutas-km/route.ts`, `VTConfigScreen.tsx`):**
+   - Actualización de `maxSaltoDiarioKm` de fábrica a 1,000 km.
+   - Clarificación en interfaz administrativa de que este valor actúa como cota operacional base anti-error tipográfico y no como candado arbitrario sobre el turno.
+
+4. **Suite de Pruebas Unitarias (`tests/odometro-tolerancia-dinamica.test.ts`):**
+   - 8 pruebas unitarias en Bun que validan:
+     - Rango verde sin fricción dentro de tolerancia.
+     - Erradicación del candado de 600 km: 600 km, 650 km y 800 km se procesan en ÁMBAR permitiendo guardar.
+     - Variaciones por jornadas parciales en ÁMBAR.
+     - Detección y bloqueo inmediato de odómetro invertido.
+     - Bloqueo de saltos absurdos con cero de más (5,667 km).
+     - Escalamiento automático de cota dinámica en turnos pesados (VT1).
+
+### 📍 3. Certificación Técnica
+* **Pruebas Unitarias:** **136 de 136 pruebas aprobadas al 100% en verde** (17 suites ejecutadas con `bun test`).
+* **Sincronización:** Ramas `main` y `staging` listas para despliegue y trazabilidad.
+
+---
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA DE GOOGLE AI STUDIO)
+1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago`
+2. **Estado Actual:**
+   - **v3.61.53:** Culminada y certificada al 100% (Paso 2 completado: Erradicación del candado rígido de 600 km, tolerancia elástica dinámica por VT, chips táctiles de justificación, y 136/136 tests en verde).
+3. **Próxima Tarea (Paso 3):**
+   - **🔹 PASO 3: Blindaje y Botón Inteligente en la Carga Histórica del Socio.**
+     - Enlace cronológico inteligente (busca el día anterior por calendario, no por orden de creación).
+     - Botón `[ ⚡ Usar Km Oficial del Turno ]` para autocompletar si no hay odómetro en papel.
+     - Alerta preventiva ante digitación de ceros adicionales.
+4. **Protocolo de Seguridad:**
+   - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
+   - Cero almacenamiento fijo de tokens en archivos locales o de configuración.

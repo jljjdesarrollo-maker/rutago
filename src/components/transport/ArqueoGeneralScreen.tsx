@@ -17,7 +17,7 @@ import { type BusItem } from '../types/fleet';
 import {
   ChevronLeft, DollarSign, Camera, X, Save, Loader2,
   CheckCircle2, Send, AlertTriangle, Plus, Trash2, ImagePlus, Sparkles, Pencil, XCircle, Gauge,
-  CalendarDays, Bus, Zap, Info, Wrench, Check
+  CalendarDays, Bus, Zap, Info, Wrench, Check, ShieldCheck
 } from 'lucide-react';
 import { getLocalRutasKmConfig, syncRutasKmConfig } from '@/lib/rutas-km-storage';
 import {
@@ -1212,28 +1212,58 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                     </span>
                   </div>
 
-                  {/* Selector de Justificación (Zero-Locking) */}
-                  <div className="bg-white/80 rounded-lg p-2 border border-amber-200 space-y-1.5">
-                    <label className="text-[11px] font-bold text-amber-900 flex items-center justify-between">
-                      <span>Motivo del desfase (Obligatorio para guardar)</span>
+                  {/* Selector y Chips Táctiles de Justificación (Tolerancia Elástica Zero-Locking) */}
+                  <div className="bg-white/90 rounded-xl p-2.5 border border-amber-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-amber-950 flex items-center gap-1">
+                        <span>Motivo de la variación:</span>
+                        <span className="text-[10px] font-normal text-amber-800">(Toca para registrar novedad)</span>
+                      </span>
                       {motivoDesfaseKm && (
-                        <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-0.5">
-                          <CheckCircle2 className="w-3 h-3" /> Justificado
+                        <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-0.5 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Registrado
                         </span>
                       )}
-                    </label>
-                    <select
-                      value={motivoDesfaseKm}
-                      onChange={e => setMotivoDesfaseKm(e.target.value)}
-                      className="w-full h-9 text-xs rounded-md border border-amber-300 bg-white font-medium text-gray-800 px-2"
-                    >
-                      <option value="">-- Seleccione una justificación --</option>
-                      {MOTIVOS_DESFASE_ODOMETRO.map((motivo, idx) => (
-                        <option key={idx} value={motivo}>{motivo}</option>
-                      ))}
-                    </select>
-                    <p className="text-[10px] text-amber-700">
-                      Zero-Locking: Puedes continuar el arqueo seleccionando la razón del desfase.
+                    </div>
+
+                    {/* Chips táctiles rápidos de 1 toque para el ayudante en ruta */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {MOTIVOS_DESFASE_ODOMETRO.map((motivo, idx) => {
+                        const seleccionado = motivoDesfaseKm === motivo;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setMotivoDesfaseKm(seleccionado ? '' : motivo)}
+                            className={`text-[10px] font-bold px-2.5 py-1.5 rounded-lg transition-all active:scale-95 flex items-center gap-1 cursor-pointer ${
+                              seleccionado
+                                ? 'bg-amber-600 text-white shadow-xs ring-2 ring-amber-400'
+                                : 'bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900'
+                            }`}
+                          >
+                            {seleccionado && <Check className="w-3 h-3" />}
+                            {motivo}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="pt-1">
+                      <select
+                        value={motivoDesfaseKm}
+                        onChange={e => setMotivoDesfaseKm(e.target.value)}
+                        className="w-full h-8 text-[11px] rounded-lg border border-amber-300 bg-white font-medium text-gray-800 px-2"
+                      >
+                        <option value="">-- O selecciona de la lista desplegable --</option>
+                        {MOTIVOS_DESFASE_ODOMETRO.map((motivo, idx) => (
+                          <option key={idx} value={motivo}>{motivo}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <p className="text-[10px] text-amber-800 font-medium flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      Tolerancia elástica activa: Puedes continuar y guardar tu liquidación sin bloqueos.
                     </p>
                   </div>
                 </div>

@@ -892,14 +892,14 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
                   <span className="text-[10px] text-gray-500">Umbral verde antes de advertencia</span>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium text-gray-700">Tope Máximo Jornada (km)</Label>
+                  <Label className="text-[11px] font-medium text-gray-700">Umbral Base Absurdo (km)</Label>
                   <Input
                     type="number"
                     value={rutasKmConfig.maxSaltoDiarioKm}
-                    onChange={e => setRutasKmConfig(prev => ({ ...prev, maxSaltoDiarioKm: parseInt(e.target.value) || 600 }))}
+                    onChange={e => setRutasKmConfig(prev => ({ ...prev, maxSaltoDiarioKm: parseInt(e.target.value) || 1000 }))}
                     className="h-8 rounded-lg text-xs font-bold bg-white border-gray-300"
                   />
-                  <span className="text-[10px] text-gray-500">Candado rojo bloqueante (default: 600)</span>
+                  <span className="text-[10px] text-gray-500">Cota base operacional anti-error tipográfico (default: 1,000 km)</span>
                 </div>
               </div>
             </div>

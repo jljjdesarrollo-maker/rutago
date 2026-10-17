@@ -122,11 +122,33 @@ export const MOTIVOS_DESFASE_ODOMETRO = [
 ];
 
 /**
- * Motor Semafórico de 3 Niveles:
+ * Motor Semafórico de 3 Niveles con Tolerancia Elástica Dinámica:
  * 🟢 VERDE (Rango Óptimo): Dentro de tolerancia elástica (-10% a +25%). Válido sin fricción.
- * 🟡 ÁMBAR (Advertencia Elástica / Zero-Locking): Fuera de tolerancia pero físicamente plausible (< 600 km y > kmInicial). Permite guardar con chips rápidos de justificación.
- * 🔴 ROJO (Candado Bloqueante): kmFinal < kmInicial o salto > maxSaltoDiarioKm (600 km). Bloquea guardado.
+ * 🟡 ÁMBAR (Advertencia Elástica / Zero-Locking): Variación operativa (vueltas extras, desvíos, talleres o fletes especiales hasta el límite operacional). Permite guardar con chips rápidos de justificación.
+ * 🔴 ROJO (Candado Bloqueante): kmFinal < kmInicial o salto físicamente absurdo / cero de más (> limiteAbsurdoKm dinámico). Bloquea guardado.
  */
+
+/**
+ * Calcula el umbral de bloqueo estricto (físicamente absurdo) para una jornada.
+ * Erradica el candado estático rígido de 600 km y lo sustituye por una cota dinámica:
+ * - Si hay un VT activo con kmTeorico > 0, el límite absurdo es el mayor entre:
+ *   el umbral base de seguridad (config.maxSaltoDiarioKm o 1000 km) y 2.5 veces el teórico del turno.
+ * - Para un VT de 252 km: hasta 315 km es VERDE; de 315 a 1,000 km es ÁMBAR (permite guardar con aviso/justificación);
+ *   y sólo > 1,000 km es ROJO bloqueante (error grosero de tipeo como un cero o dígito de más).
+ * - Para un VT largo de 416 km (VT1): hasta 520 km es VERDE; de 520 a 1,040 km es ÁMBAR; y > 1,040 km es ROJO.
+ * - Si no hay teórico (kmTeorico === 0): el límite es config.maxSaltoDiarioKm o 1,000 km.
+ */
+export function calcularLimiteAbsurdoKm(
+  kmTeorico: number,
+  config: ConfiguracionKilometrajeRutas = DEFAULT_CONFIG_KILOMETRAJE_RUTAS
+): number {
+  const baseSanidad = Math.max(config.maxSaltoDiarioKm || 1000, 1000);
+  if (kmTeorico > 0) {
+    return Math.max(baseSanidad, Math.round(kmTeorico * 2.5));
+  }
+  return baseSanidad;
+}
+
 export function validarLecturaOdometro(
   kmInicialStr: string,
   kmFinalStr: string,
@@ -215,16 +237,17 @@ export function validarLecturaOdometro(
     };
   }
 
-  // 🔴 CANDADO BLOQUEANTE 2: Salto diario absurdo / Cero extra (> maxSaltoDiarioKm)
-  const maxKm = config.maxSaltoDiarioKm || 600;
-  if (kmRecorridoReal > maxKm) {
+  // 🔴 CANDADO BLOQUEANTE 2: Salto extremo físicamente absurdo / Cero extra (> limiteAbsurdoKm)
+  // Reemplaza el tope estático ciego de 600 km por una tolerancia elástica contextual al turno VT
+  const limiteAbsurdoKm = calcularLimiteAbsurdoKm(kmTeorico, config);
+  if (kmRecorridoReal > limiteAbsurdoKm) {
     return {
       estado: 'ROJO',
       kmTeorico,
       kmRecorridoReal,
-      desfaseKm: kmRecorridoReal - kmTeorico,
-      desfasePorcentaje: kmTeorico > 0 ? ((kmRecorridoReal - kmTeorico) / kmTeorico) * 100 : null,
-      mensaje: `Salto extremo (${kmRecorridoReal.toLocaleString()} km): Supera el límite diario de ${maxKm} km. Verifica si digitaste un cero de más.`,
+      desfaseKm: kmTeorico > 0 ? Math.round((kmRecorridoReal - kmTeorico) * 10) / 10 : kmRecorridoReal,
+      desfasePorcentaje: kmTeorico > 0 ? Math.round(((kmRecorridoReal - kmTeorico) / kmTeorico) * 100) : null,
+      mensaje: `Salto extremo (${kmRecorridoReal.toLocaleString()} km): Supera el límite diario operacional (${limiteAbsurdoKm.toLocaleString()} km). Revisa si digitaste un cero o dígito de más.`,
       motivosSugeridos: [],
       permiteGuardar: false,
       esBloqueante: true,
@@ -239,7 +262,7 @@ export function validarLecturaOdometro(
       kmRecorridoReal,
       desfaseKm: kmRecorridoReal,
       desfasePorcentaje: null,
-      mensaje: `Recorrido registrado: ${kmRecorridoReal.toLocaleString()} km.`,
+      mensaje: `Recorrido registrado: ${kmRecorridoReal.toLocaleString()} km (sin turno oficial asignado).`,
       motivosSugeridos: [],
       permiteGuardar: true,
       esBloqueante: false,
@@ -260,14 +283,15 @@ export function validarLecturaOdometro(
       kmRecorridoReal,
       desfaseKm,
       desfasePorcentaje,
-      mensaje: `Recorrido óptimo: ${kmRecorridoReal.toLocaleString()} km (Teórico: ${kmTeorico.toLocaleString()} km, Δ ${desfaseKm >= 0 ? '+' : ''}${desfaseKm} km).`,
+      mensaje: `Recorrido óptimo: ${kmRecorridoReal.toLocaleString()} km (Teórico: ~${kmTeorico.toLocaleString()} km, Δ ${desfaseKm >= 0 ? '+' : ''}${desfaseKm} km).`,
       motivosSugeridos: [],
       permiteGuardar: true,
       esBloqueante: false,
     };
   }
 
-  // 🟡 ÁMBAR: Desfase justificado (Zero-Locking)
+  // 🟡 ÁMBAR: Desfase justificado con tolerancia elástica dinámica (Zero-Locking)
+  // Acepta variaciones operativas (vueltas extras, desvíos, talleres, fletes) sin bloquear al ayudante
   const esExceso = desfasePorcentaje > tolSuperior;
   return {
     estado: 'AMBAR',
@@ -276,8 +300,8 @@ export function validarLecturaOdometro(
     desfaseKm,
     desfasePorcentaje,
     mensaje: esExceso
-      ? `Exceso de recorrido: +${desfaseKm} km (${desfasePorcentaje}%) sobre el teórico de ${kmTeorico} km. Selecciona motivo si aplica.`
-      : `Recorrido inferior al teórico: ${desfaseKm} km (${desfasePorcentaje}%). Selecciona motivo o confirma.`,
+      ? `Variación de recorrido: +${desfaseKm} km (+${desfasePorcentaje}%) sobre el turno habitual (~${kmTeorico} km). Selecciona motivo o confirma para guardar.`
+      : `Recorrido inferior al programado: ${desfaseKm} km (${desfasePorcentaje}%). Selecciona motivo o confirma para guardar.`,
     motivosSugeridos: MOTIVOS_DESFASE_ODOMETRO,
     permiteGuardar: true,
     esBloqueante: false,
