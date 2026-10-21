@@ -120,7 +120,7 @@ export function AyudanteJornadaCard({ user, busNumero, onGoToBoletos }: Ayudante
         {tieneTurnoActivo ? (
           <>
             <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight drop-shadow-sm">
-              ${resumenTurno.totalRecaudado.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${(resumenTurno?.totalRecaudado ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div className="text-xs sm:text-sm font-black uppercase tracking-widest text-emerald-200/90 mt-1">
               EN CAJA DE RUTA

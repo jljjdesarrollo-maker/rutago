@@ -3443,7 +3443,7 @@ export function MantenimientoScreen({
                         </span>
                       </div>
                       <p className="text-[10px] text-slate-600 font-medium">
-                        • El tacómetro del autobús se mantendrá en <strong>{kmActual.toLocaleString()} km</strong>
+                        • El tacómetro del autobús se mantendrá en <strong>{(kmActual ?? 0).toLocaleString()} km</strong>
                       </p>
                     </div>
                   );
@@ -3800,7 +3800,7 @@ export function MantenimientoScreen({
                                 </span>
                               </div>
                               <p className="text-[10px] text-slate-600 font-medium">
-                                • El odómetro del autobús se mantendrá en <strong>{odoBus.toLocaleString()} km</strong>
+                                • El odómetro del autobús se mantendrá en <strong>{(odoBus ?? 0).toLocaleString()} km</strong>
                               </p>
                               {calculo.advertencia && (
                                 <p className="text-[10px] text-amber-800 font-bold mt-1">
@@ -4119,7 +4119,7 @@ export function MantenimientoScreen({
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-black text-slate-900 font-mono text-sm">
-                    {kmActual.toLocaleString()} km
+                    {(kmActual ?? 0).toLocaleString()} km
                   </span>
                   <button
                     type="button"

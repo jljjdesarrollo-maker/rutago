@@ -1,11 +1,23 @@
 'use client';
 
-function isPernoctaRetornoFrec(idx: number, list: FrecuenciaData[]): boolean {
-  if (idx === 0) return false;
+export function isPernoctaRetornoFrec(idx: number, list: FrecuenciaData[]): boolean {
+  if (idx <= 0 || !list || idx >= list.length) return false;
   const prev = list[idx - 1];
   const curr = list[idx];
-  if (prev?.hora && curr?.hora && curr.hora < prev.hora) return true;
-  return idx === list.length - 1 && list.length >= 6;
+  if (!prev?.hora || !curr?.hora) return false;
+
+  const toMinutes = (timeStr: string): number => {
+    const [h, m] = timeStr.trim().split(':').map(Number);
+    return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+  };
+
+  const prevMin = toMinutes(prev.hora);
+  const currMin = toMinutes(curr.hora);
+
+  // Inversión horaria matemática: si la hora de salida es numéricamente menor a la anterior
+  // (ej. 06:55 AM tras 17:25 PM del día previo), es fehacientemente un retorno tras pernocta (Día 2).
+  // Si la hora avanza en el día (ej. 19:25 tras 17:45 en VT2), es un turno 100% diurno sin pernocta.
+  return currMin < prevMin;
 }
 
 
@@ -187,8 +199,8 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
             if (found) {
               return {
                 ...found,
-                esPernoctaRetorno: found.esPernoctaRetorno ?? esPernocta,
-                diaTurno: found.diaTurno ?? (esPernocta ? 2 : 1),
+                esPernoctaRetorno: esPernocta,
+                diaTurno: esPernocta ? 2 : 1,
               };
             }
             return {

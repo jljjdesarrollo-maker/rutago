@@ -558,7 +558,7 @@ export function HomeScreen({
             {/* Número Rey: Ganancia en Limpio */}
             <div className={`text-center py-2 transition-opacity duration-300 ${balanceStatus === "loading" ? "opacity-70" : "opacity-100"}`}>
               <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight drop-shadow-sm">
-                ${ownerSummary.netProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${(ownerSummary?.netProfit ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div className="text-xs sm:text-sm font-black uppercase tracking-widest text-emerald-200/90 mt-1">
                 EN LIMPIO

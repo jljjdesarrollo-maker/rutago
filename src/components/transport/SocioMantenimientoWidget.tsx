@@ -846,7 +846,7 @@ export function SocioMantenimientoWidget({
                       Próximo a Vencer: {proximos[0]?.nombre}
                     </span>
                     <span className="text-[10px] font-mono bg-amber-500 text-slate-950 px-2 py-0.2 rounded font-black shrink-0">
-                      Restan {proximos[0]?.kmRestantes.toLocaleString()} km
+                      Restan {(proximos[0]?.kmRestantes ?? 0).toLocaleString()} km
                     </span>
                   </div>
                   {tareasViablesHoy.length > 0 && tareasViablesHoy[0].ventanaSugerida ? (
@@ -913,7 +913,7 @@ export function SocioMantenimientoWidget({
                   <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
                     <span className="flex items-center gap-1">
                       <Gauge className="w-3 h-3 text-slate-400 shrink-0" />
-                      Tacómetro: <strong className="text-slate-800">{kmActual.toLocaleString()} km</strong>
+                      Tacómetro: <strong className="text-slate-800">{(kmActual ?? 0).toLocaleString()} km</strong>
                     </span>
                     <span>•</span>
                     {/* Luz intermitente sutil del régimen */}
@@ -1194,12 +1194,12 @@ export function SocioMantenimientoWidget({
                                 {item.esVencido ? (
                                   <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-600 text-white shrink-0 shadow-xs flex items-center gap-1">
                                     <AlertTriangle className="w-3 h-3" />
-                                    Excedido por {Math.abs(item.kmRestantes).toLocaleString()} km
+                                    Excedido por {(Math.abs(item.kmRestantes) || 0).toLocaleString()} km
                                   </span>
                                 ) : (
                                   <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 shrink-0 shadow-xs flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
-                                    Restan {item.kmRestantes.toLocaleString()} km
+                                    Restan {(item.kmRestantes ?? 0).toLocaleString()} km
                                   </span>
                                 )}
                               </div>

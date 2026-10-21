@@ -149,7 +149,7 @@ export function ChoferJornadaCard({
         <div className="flex items-center gap-1.5 truncate">
           <Droplets className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
           <span>
-            Aceite: <strong>{kmRestanteAceite.toLocaleString()} km</strong>
+            Aceite: <strong>{(kmRestanteAceite ?? 0).toLocaleString()} km</strong>
           </span>
         </div>
 
