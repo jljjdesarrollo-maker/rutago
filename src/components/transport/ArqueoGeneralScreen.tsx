@@ -1180,7 +1180,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
                     <div className="flex items-center gap-1.5">
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                       <p className="text-xs font-bold text-emerald-900">
-                        Odómetro Válido: {kmRecorridos.toLocaleString()} km
+                        Odómetro Válido: {(kmRecorridos ?? 0).toLocaleString()} km
                       </p>
                     </div>
                     <p className="text-[10px] text-emerald-700 mt-0.5">

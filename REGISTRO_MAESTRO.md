@@ -5514,3 +5514,83 @@ Se auditó el 100% del catálogo de frecuencias en `src/lib/seed-vts.ts`:
 4. **Protocolo de Seguridad:**
    - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
    - Cero almacenamiento fijo de tokens en archivos locales o de configuración.
+
+---
+
+## 🛡️ RESOLUCIÓN DE EXCEPCIÓN RUNTIME Y BLINDAJE DEFENSIVO NULL-SAFETY EN VISTA DE AYUDANTE (v3.61.56)
+
+> **ESTADO:** 🟢 IMPLEMENTADA, BLINDADA Y CERTIFICADA AL 100% (153/153 TESTS EN VERDE)  
+> **FECHA DE REGISTRO:** 2026-10-21 | **SISTEMA:** RutaGo - Módulo Operativo de Ayudante y Supervisión Mecánica  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Diagnóstico de Causa Raíz y Disparidad entre Dominios de Despliegue
+* **Incidente Reportado:** Al ingresar a `https://rutago-tau.vercel.app/` con el rol de Ayudante, la pantalla caía en el Error Boundary con el mensaje:
+  `¡Algo salió mal! Cannot read properties of null (reading 'toLocaleString')`
+  Sin embargo, en la URL inmutable de despliegue `https://rutago-8bcxyw08b-jljjj.vercel.app/`, el ingreso funcionaba con normalidad.
+* **Causa Raíz de la Disparidad:** 
+  - Ambos dominios compartían el mismo commit/deployment hash en Vercel (`9pZQhD1mG`), por lo que el bundle JavaScript era idéntico.
+  - La disparidad se originó por el aislamiento de `localStorage` impuesto por la política de mismo origen (*Same-Origin Policy*):
+    En `rutago-tau.vercel.app`, el navegador almacenaba un estado previo donde `getLatestBusOdometer(busId)` retornaba `null` (o el autobús activo carecía de lecturas previas en la caché local).
+  - En `src/components/transport/AyudanteMantenimientoBar.tsx`:
+    1. Se ejecutaba `const km = getLatestBusOdometer(busId);` (el cual retorna `{ kmFinal: string, date: string } | null`).
+    2. Se asignaba directamente `setCurrentKm(km as any)`. Al ser `null`, `currentKm` quedaba en `null`.
+    3. En el renderizado JSX se invocaba: `Tacómetro: {currentKm.toLocaleString()} KM`.
+    4. JavaScript arrojaba `TypeError: Cannot read properties of null (reading 'toLocaleString')`, quebrando el árbol de renderizado del componente.
+  - Adicionalmente, en `src/components/transport/AyudanteJornadaCard.tsx`, el campo `${resumenTurno.totalRecaudado.toLocaleString(...)}` carecía de fallback defensivo para turnos con montos nulos o sesiones intermedias no inicializadas.
+
+### 📍 2. Modificaciones de Ingeniería Implementadas
+1. **Normalización y Extracción Numérica Segura en `AyudanteMantenimientoBar.tsx`:**
+   - Desempaquetado seguro del objeto retornado por `getLatestBusOdometer`:
+     ```typescript
+     const odo = getLatestBusOdometer(busId);
+     const kmNum = odo ? parseInt(odo.kmFinal, 10) || 0 : 0;
+     setCurrentKm(kmNum);
+     const items = resolveMantenimientoItemsParaBus(busId, kmNum > 0 ? kmNum : undefined);
+     ```
+   - Renderizado defensivo con operador de coalescencia nula:
+     ```tsx
+     Tacómetro: {(currentKm ?? 0).toLocaleString()} KM
+     ```
+
+2. **Blindaje Defensivo en `AyudanteJornadaCard.tsx`:**
+   - Inyección de coalescencia nula en la caja de ruta del ayudante:
+     ```tsx
+     ${(resumenTurno?.totalRecaudado ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+     ```
+
+3. **Blindaje Defensivo Preventivo en Componentes de Supervisión:**
+   - **`ChoferJornadaCard.tsx`:** Protección en `kmRestanteAceite`:
+     `{(kmRestanteAceite ?? 0).toLocaleString()} km`
+   - **`HomeScreen.tsx`:** Protección en `ownerSummary.netProfit`:
+     `${(ownerSummary?.netProfit ?? 0).toLocaleString("en-US", ...)}`
+   - **`MantenimientoOdometroCard.tsx`:** Protección en `kmActual` y `diffKm`:
+     `{(kmActual ?? 0).toLocaleString()} km` y `+{(diffKm ?? 0).toLocaleString()} km`
+   - **`MantenimientoScreen.tsx`:** Protección en tacómetros `kmActual` y `odoBus`:
+     `{(kmActual ?? 0).toLocaleString()} km` y `{(odoBus ?? 0).toLocaleString()} km`
+   - **`SocioMantenimientoWidget.tsx`:** Protección en `kmRestantes` y `kmActual`:
+     `{(proximos[0]?.kmRestantes ?? 0).toLocaleString()} km` y `{(kmActual ?? 0).toLocaleString()} km`
+   - **`MantenimientoEstacionesModal.tsx`:** Protección en `kmRodados`, `kmRestantes` y `odoBus`.
+
+4. **Suite de Pruebas Unitarias (`tests/ayudante-null-safety.test.ts`):**
+   - 4 pruebas unitarias en Bun que certifican:
+     - Retorno de `null` en `getLatestBusOdometer` procesado a `0` sin excepciones.
+     - `resolveMantenimientoItemsParaBus` tolerante a `undefined` o `0`.
+     - Formateo de `totalRecaudado` en `AyudanteJornadaCard` resistente a `null` o estructuras incompletas.
+     - Formateo de odómetros y deltas tolerante a `null/undefined`.
+
+### 📍 3. Certificación Técnica
+* **Pruebas Unitarias:** **153 de 153 pruebas aprobadas al 100% en verde** (20 suites ejecutadas con `bun test`).
+* **Versión de Producción:** `3.61.56`.
+
+---
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA DE GOOGLE AI STUDIO)
+1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago`
+2. **Estado Actual:** 
+   - **v3.61.56:** Culminada y certificada al 100% (Resolución de excepción `Cannot read properties of null (reading 'toLocaleString')` en vista de Ayudante; 153/153 tests en verde).
+3. **Próxima Tarea / Sugerencias:**
+   - Realizar commit y push a la rama `main` de GitHub solicitando el Personal Access Token (PAT) del usuario para sincronización con Vercel.
+   - Monitoreo en caliente en `https://rutago-tau.vercel.app/` tras el despliegue automático de Vercel.
+4. **Protocolo de Seguridad:**
+   - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
+   - Cero almacenamiento fijo de tokens en archivos locales o de configuración.

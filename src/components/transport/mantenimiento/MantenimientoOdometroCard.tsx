@@ -186,7 +186,7 @@ export function MantenimientoOdometroCard({
               <div className="flex items-center justify-between text-xs text-slate-400">
                 <span>Lectura auditada actual:</span>
                 <span className="font-mono font-black text-amber-400 text-sm">
-                  {kmActual.toLocaleString()} km
+                  {(kmActual ?? 0).toLocaleString()} km
                 </span>
               </div>
 
@@ -221,14 +221,14 @@ export function MantenimientoOdometroCard({
                     <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
                       <TrendingUp className="w-4 h-4 shrink-0 text-emerald-400" />
                       <span>
-                        <strong>+{diffKm.toLocaleString()} km de avance</strong> respecto al último registro.
+                        <strong>+{(diffKm ?? 0).toLocaleString()} km de avance</strong> respecto al último registro.
                       </span>
                     </div>
                   ) : (
                     <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs space-y-1">
                       <div className="flex items-center gap-2 font-bold text-rose-200">
                         <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
-                        <span>Ajuste menor al actual ({diffKm.toLocaleString()} km)</span>
+                        <span>Ajuste menor al actual ({(diffKm ?? 0).toLocaleString()} km)</span>
                       </div>
                       <p className="text-[11px] text-rose-200/90 leading-tight">
                         Válido ante cambio físico de tablero, sensor nuevo o tacómetro reemplazado en fosa.

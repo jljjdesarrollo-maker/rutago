@@ -28,9 +28,10 @@ export function AyudanteMantenimientoBar({ busId, busNumero }: AyudanteMantenimi
 
   useEffect(() => {
     try {
-      const km = getLatestBusOdometer(busId);
-      setCurrentKm(km);
-      const items = resolveMantenimientoItemsParaBus(busId, km);
+      const odo = getLatestBusOdometer(busId);
+      const kmNum = odo ? parseInt(odo.kmFinal, 10) || 0 : 0;
+      setCurrentKm(kmNum);
+      const items = resolveMantenimientoItemsParaBus(busId, kmNum > 0 ? kmNum : undefined);
       const criticos = items.filter(it => it.estadoSemaforo === 'critico');
       const advertencias = items.filter(it => it.estadoSemaforo === 'advertencia');
 
@@ -119,7 +120,7 @@ export function AyudanteMantenimientoBar({ busId, busNumero }: AyudanteMantenimi
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-                Tacómetro: {currentKm.toLocaleString()} KM
+                Tacómetro: {(currentKm ?? 0).toLocaleString()} KM
               </span>
               <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-900">
                 {alertaMantenimiento.tipo === 'normal' ? 'Al día Chofer' : 'Aviso Chofer'}

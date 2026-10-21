@@ -1016,16 +1016,16 @@ export function MantenimientoEstacionesModal({
                                 <div className="flex items-center justify-between font-black text-[11px]">
                                   <span className="flex items-center gap-1 text-emerald-800">
                                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />✓ Hace{' '}
-                                    {calculo.kmRodados.toLocaleString()} km
+                                    {(calculo?.kmRodados ?? 0).toLocaleString()} km
                                   </span>
                                   <span className="text-emerald-900 bg-emerald-200/80 px-2 py-0.5 rounded-full text-[10px]">
-                                    Restan {calculo.kmRestantes.toLocaleString()} km (
+                                    Restan {(calculo?.kmRestantes ?? 0).toLocaleString()} km (
                                     {calculo.porcentajeRestante}%)
                                   </span>
                                 </div>
                                 <p className="text-[10px] text-slate-600 font-medium">
                                   • El odómetro del autobús se mantendrá en{' '}
-                                  <strong>{odoBus.toLocaleString()} km</strong>
+                                  <strong>{(odoBus ?? 0).toLocaleString()} km</strong>
                                 </p>
                                 {calculo.advertencia && (
                                   <p className="text-[10px] text-amber-800 font-bold mt-1">
