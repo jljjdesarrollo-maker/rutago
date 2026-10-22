@@ -5594,3 +5594,69 @@ Se auditó el 100% del catálogo de frecuencias en `src/lib/seed-vts.ts`:
 4. **Protocolo de Seguridad:**
    - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
    - Cero almacenamiento fijo de tokens en archivos locales o de configuración.
+
+
+---
+
+## 🏛️ BOTONERA INTELIGENTE DE CIERRES DIRECTOS Y RANGOS PERSONALIZADOS EN AUDITORÍA DEL SOCIO (v3.61.57)
+
+> **ESTADO:** 🟢 IMPLEMENTADA, BLINDADA Y CERTIFICADA AL 100% (165/165 TESTS EN VERDE)  
+> **FECHA DE REGISTRO:** 2026-10-22 | **SISTEMA:** RutaGo - Módulo de Auditoría Financiera del Socio Propietario  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Diagnóstico, Deliberación de Expertos y Decisión de Arquitectura
+* **Problema Identificado con la Ventana Semanal (7 Días):**
+  - **Sesgo Muestral Elevado:** En transporte interparroquial y troncal (circuito Hino AK), una ventana de 7 días posee alta varianza ($\sigma^2$) y mala relación señal/ruido. Si a una unidad le tocan turnos valle con lluvias entre semana, su rendimiento decae artificialmente; si le toca el fin de semana de feria, sale inflado.
+  - **Ruptura de la Periodicidad Natural ($T = 15$ días):** La cooperativa rota sobre una rueda estricta de **15 Turnos Principales (VT 01 a VT 15)**. Evaluar 7 días solo cubre el 46% de los turnos, rompiendo la equidad comparativa entre socios.
+  - **El Fenómeno de los Baches y Arqueos Retrasados:** En la realidad de campo, los ayudantes a menudo se ponen al día con retraso de 2 o 3 días. En una ventana de 7 días, un atraso de 3 días pierde el ~43% de la data, arrojando falsos diagnósticos de $/km de diésel y faltantes de caja.
+* **Propuesta y Decisión Estratégica ("Botonera de Cierres Directos Inteligentes"):**
+  Se erradica la opción fija de 7 días y se sustituye por una arquitectura táctil a un solo toque con 4 opciones operativas:
+  1. **`15 Días (Rueda VT)`**: Los últimos 15 días móviles cerrados (corte a ayer), evaluando la rueda completa de los 15 turnos de la cooperativa.
+  2. **`Mes Anterior` (Cierre Definitivo Conciliado)**: Del día 1 al último día del mes pasado (ej. si estamos en octubre, audita el 100% de septiembre: 1 al 30 de septiembre). Información 100% conciliada y libre de baches.
+  3. **`Mes en Curso`**: Del día 1 del mes actual al día de ayer (corte a ayer). Permite ver el acumulado de ingresos y combustible del mes en marcha.
+  4. **`📅 Rango (Máx 60d)`**: Selector de fecha flexible para auditorías extraordinarias (festividades, pruebas de choferes nuevos), protegido con blindaje estricto de máximo 60 días para garantizar el rendimiento móvil.
+
+### 📍 2. Modificaciones de Ingeniería Implementadas
+1. **Motor Canónico Temporal (`src/lib/reporte-calendario-socio.ts`):**
+   - Incorporación del tipo `ModoAuditoriaSocio = '15_DIAS' | 'MES_ANTERIOR' | 'MES_ACTUAL' | 'PERSONALIZADO'` y la interfaz `RangoAuditoriaResultado`.
+   - Función determinista `calcularRangoAuditoriaSocio(modo, opciones)`:
+     * **`15_DIAS`**: Desde ayer - 14 días hasta ayer (15 días cerrados exactos).
+     * **`MES_ANTERIOR`**: Cálculo exacto del primer y último día del mes previo, con soporte para cambio de año (ej. Enero retrocede a Diciembre 31) y meses de 28, 30 o 31 días.
+     * **`MES_ACTUAL`**: Del día 1 del mes actual hasta ayer (con blindaje si hoy es día 1).
+     * **`PERSONALIZADO`**: Validación estricta que clampa al día de ayer (anti-fechas futuras) y recorta el rango a un máximo de 60 días si el usuario excede la ventana permitida.
+   - Actualización de `ReporteSocioPayload` y snapshots SWR (`getReporteCalendarioSnapshot`, `saveReporteCalendarioSnapshot`) permitiendo claves de caché alfanuméricas compuestas (`number | string`) para carga en 0 ms.
+2. **Endpoint API (`src/app/api/socio/reporte-calendario/route.ts`):**
+   - Soporte para parámetros `modo`, `fechaInicio`, `fechaFin` y retrocompatibilidad con `ventana`.
+   - Inyección de metadatos de auditoría en la respuesta: `modo`, `label`, `descripcionPeriodo` y `esPeriodoCerrado`.
+3. **Modal Táctil de Auditoría (`src/components/socio/ReporteSocioCalendarioModal.tsx`):**
+   - Reemplazo de los 3 botones antiguos por la cuadrícula horizontal de 4 botones:
+     `[ 15 Días (Rueda VT) ]` `[ Mes Anterior ]` `[ Mes en Curso ]` `[ 📅 Rango (Máx 60d) ]`.
+   - **Cinta de Micro-Feedback Dinámico:** Notificación visual inmediata con punto indicador (verde para período cerrado y ámbar parpadeante para cierre parcial en marcha), mostrando las fechas exactas auditadas y el conteo de días.
+   - **Selector de Rango Colapsable:** Panel desplegable al seleccionar `📅 Rango`, con inputs `Desde` y `Hasta` con restricciones nativas `min` y `max` (límite 60 días y corte a ayer) y botón `[ Aplicar Rango ]`.
+4. **Tarjetas de Acceso en Dashboard (`HomeScreen.tsx` y `ReportsScreen.tsx`):**
+   - Actualización de títulos a: `Auditoría Calendario (15 Días • Mensual • Rango)`.
+   - Subtítulo explicativo: `15 Días • Mes Anterior cerrado • Mes en curso • Rango máx. 60d`.
+5. **Suite de Pruebas Unitarias Automatizadas (`tests/auditoria-mes-anterior-rango.test.ts`):**
+   - 12 pruebas unitarias nuevas con Bun que verifican:
+     * Generación de los 15 días exactos con corte a ayer.
+     * Cálculo perfecto del mes anterior para Octubre (Septiembre 1 al 30), Enero (Diciembre 1 al 31) y Febrero (28 días).
+     * Límite estricto de 60 días en rangos personalizados.
+     * Rechazo y clámpeo automático de fechas futuras.
+     * Persistencia SWR de snapshots con claves en texto.
+
+### 📍 3. Certificación Técnica
+* **Pruebas Unitarias:** **165 de 165 pruebas aprobadas al 100% en verde** (21 suites ejecutadas con `bun test` en 216ms).
+* **Versión de Producción:** `3.61.57`.
+
+---
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA DE GOOGLE AI STUDIO)
+1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago`
+2. **Estado Actual:** 
+   - **v3.61.57:** Culminada y certificada al 100% (Botonera inteligente de cierres directos: 15 Días, Mes Anterior, Mes en Curso y Rango Personalizado de 60d; 165/165 tests en verde).
+3. **Próxima Tarea / Sugerencias:**
+   - Realizar commit y push a la rama `main` de GitHub con el Personal Access Token (PAT) del usuario para sincronización con Vercel.
+   - Monitorear en producción `https://rutago-tau.vercel.app/` en el Dashboard del Socio (`HomeScreen`).
+4. **Protocolo de Seguridad:**
+   - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
+   - Cero almacenamiento fijo de tokens en archivos locales o de configuración.

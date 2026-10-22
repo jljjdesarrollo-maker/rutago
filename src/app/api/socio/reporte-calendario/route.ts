@@ -1,20 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import {
-  generarRangoFechasCalendario,
+  calcularRangoAuditoriaSocio,
   procesarReporteCalendarioSocio,
+  type ModoAuditoriaSocio,
 } from '@/lib/reporte-calendario-socio';
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const busId = searchParams.get('busId') || 'BUS-01';
-    const rawVentana = Number(searchParams.get('ventana')) || 15;
-    const diasVentana = [7, 15, 30].includes(rawVentana) ? rawVentana : 15;
+    const modoParam = (searchParams.get('modo') || searchParams.get('ventana') || '15_DIAS') as ModoAuditoriaSocio | string;
+    const fechaInicioParam = searchParams.get('fechaInicio') || undefined;
+    const fechaFinParam = searchParams.get('fechaFin') || undefined;
     const fechaBase = searchParams.get('fechaBase') || undefined;
 
-    // 1. Obtener ventana de calendario fija estricta
-    const { fechaInicio, fechaFin } = generarRangoFechasCalendario(diasVentana, fechaBase);
+    // 1. Obtener ventana de calendario inteligente y blindada
+    const rango = calcularRangoAuditoriaSocio(modoParam, {
+      fechaInicio: fechaInicioParam,
+      fechaFin: fechaFinParam,
+      fechaBaseReferencia: fechaBase,
+    });
+
+    const { fechaInicio, fechaFin, diasVentana, label, descripcionPeriodo, esPeriodoCerrado, modo } = rango;
 
     // 2. Resolver número de disco de la unidad solicitada
     const cleanDisco = busId.replace(/^BUS-/i, '').replace(/\D/g, '').padStart(2, '0');
@@ -67,6 +75,12 @@ export async function GET(req: NextRequest) {
       tipoCircuito,
       registros: records,
     });
+
+    // Adjuntar metadatos de contexto de auditoría
+    resultado.ventana.modo = modo;
+    resultado.ventana.label = label;
+    resultado.ventana.descripcionPeriodo = descripcionPeriodo;
+    resultado.ventana.esPeriodoCerrado = esPeriodoCerrado;
 
     return NextResponse.json(resultado);
   } catch (error) {

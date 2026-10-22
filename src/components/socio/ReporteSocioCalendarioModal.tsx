@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import {
   type ReporteSocioPayload,
+  type ModoAuditoriaSocio,
   getReporteCalendarioSnapshot,
   saveReporteCalendarioSnapshot,
 } from '@/lib/reporte-calendario-socio';
@@ -36,7 +37,9 @@ interface Props {
 }
 
 export function ReporteSocioCalendarioModal({ isOpen, onClose, busId, numeroDisco }: Props) {
-  const [ventana, setVentana] = useState<7 | 15 | 30>(15);
+  const [modo, setModo] = useState<ModoAuditoriaSocio>('15_DIAS');
+  const [customDesde, setCustomDesde] = useState<string>('');
+  const [customHasta, setCustomHasta] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [reporte, setReporte] = useState<ReporteSocioPayload | null>(null);
@@ -44,11 +47,54 @@ export function ReporteSocioCalendarioModal({ isOpen, onClose, busId, numeroDisc
   const [lastSyncTime, setLastSyncTime] = useState<string>('');
   const [showRanking, setShowRanking] = useState(false);
 
+  // Fechas de límite defensivo para calendario personalizado (Máx 60 días, corte a ayer)
+  const { ayerIso, limite60DiasIso, defaultDesdeIso } = React.useMemo(() => {
+    const hoy = new Date();
+    const ayer = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 1, 12, 0, 0);
+    const y = ayer.getFullYear();
+    const m = String(ayer.getMonth() + 1).padStart(2, '0');
+    const d = String(ayer.getDate()).padStart(2, '0');
+    const ay = `${y}-${m}-${d}`;
+
+    const lim = new Date(ayer);
+    lim.setDate(ayer.getDate() - 59); // 60 días máximo
+    const ly = lim.getFullYear();
+    const lm = String(lim.getMonth() + 1).padStart(2, '0');
+    const ld = String(lim.getDate()).padStart(2, '0');
+    const limIso = `${ly}-${lm}-${ld}`;
+
+    const def = new Date(ayer);
+    def.setDate(ayer.getDate() - 29);
+    const dy = def.getFullYear();
+    const dm = String(def.getMonth() + 1).padStart(2, '0');
+    const dd = String(def.getDate()).padStart(2, '0');
+    const defIso = `${dy}-${dm}-${dd}`;
+
+    return { ayerIso: ay, limite60DiasIso: limIso, defaultDesdeIso: defIso };
+  }, []);
+
+  // Inicializar inputs personalizados con valores seguros por defecto
+  useEffect(() => {
+    if (!customHasta && ayerIso) setCustomHasta(ayerIso);
+    if (!customDesde && defaultDesdeIso) setCustomDesde(defaultDesdeIso);
+  }, [ayerIso, defaultDesdeIso, customHasta, customDesde]);
+
   // Función de carga con estrategia Offline-First (SWR)
   const cargarReporte = useCallback(
-    async (diasVentana: 7 | 15 | 30, forzarRed = false) => {
+    async (
+      modoSel: ModoAuditoriaSocio,
+      opciones?: { desde?: string; hasta?: string; forzarRed?: boolean }
+    ) => {
+      const forzarRed = opciones?.forzarRed || false;
+      const fIni = opciones?.desde || customDesde || defaultDesdeIso;
+      const fFin = opciones?.hasta || customHasta || ayerIso;
+      const claveCache =
+        modoSel === 'PERSONALIZADO'
+          ? `CUSTOM_${fIni}_${fFin}`
+          : modoSel;
+
       // 1. Carga inmediata de 0 ms desde caché local
-      const cached = getReporteCalendarioSnapshot(busId, diasVentana);
+      const cached = getReporteCalendarioSnapshot(busId, claveCache);
       if (cached && !forzarRed) {
         setReporte(cached.payload);
         const fechaCach = new Date(cached.cachedAt);
@@ -65,12 +111,17 @@ export function ReporteSocioCalendarioModal({ isOpen, onClose, busId, numeroDisc
       setNetworkStatus('syncing');
 
       try {
-        const res = await fetch(`/api/socio/reporte-calendario?busId=${busId}&ventana=${diasVentana}`);
+        let url = `/api/socio/reporte-calendario?busId=${encodeURIComponent(busId)}&modo=${encodeURIComponent(modoSel)}`;
+        if (modoSel === 'PERSONALIZADO') {
+          url += `&fechaInicio=${encodeURIComponent(fIni)}&fechaFin=${encodeURIComponent(fFin)}`;
+        }
+
+        const res = await fetch(url);
         if (!res.ok) throw new Error('Respuesta no satisfactoria del servidor');
 
         const data: ReporteSocioPayload = await res.json();
         setReporte(data);
-        saveReporteCalendarioSnapshot(busId, diasVentana, data);
+        saveReporteCalendarioSnapshot(busId, claveCache, data);
 
         const ahora = new Date();
         setLastSyncTime(
@@ -88,14 +139,26 @@ export function ReporteSocioCalendarioModal({ isOpen, onClose, busId, numeroDisc
         setIsRefreshing(false);
       }
     },
-    [busId]
+    [busId, customDesde, customHasta, defaultDesdeIso, ayerIso]
   );
+
+  const handleSeleccionarModo = (nuevoModo: ModoAuditoriaSocio) => {
+    setModo(nuevoModo);
+    if (nuevoModo !== 'PERSONALIZADO') {
+      cargarReporte(nuevoModo);
+    } else {
+      cargarReporte('PERSONALIZADO', {
+        desde: customDesde || defaultDesdeIso,
+        hasta: customHasta || ayerIso,
+      });
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
-      cargarReporte(ventana);
+      cargarReporte(modo);
     }
-  }, [isOpen, ventana, cargarReporte]);
+  }, [isOpen, modo, cargarReporte]);
 
   if (!isOpen) return null;
 
@@ -158,7 +221,7 @@ export function ReporteSocioCalendarioModal({ isOpen, onClose, busId, numeroDisc
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => cargarReporte(ventana, true)}
+              onClick={() => cargarReporte(modo, { forzarRed: true })}
               disabled={isRefreshing}
               className="w-9 h-9 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 flex items-center justify-center active:scale-95 transition cursor-pointer"
               title="Refrescar datos de la nube"
@@ -175,37 +238,124 @@ export function ReporteSocioCalendarioModal({ isOpen, onClose, busId, numeroDisc
           </div>
         </div>
 
-        {/* Selector Táctil de Ventanas de Calendario */}
-        <div className="px-4 py-3 bg-slate-900/60 border-b border-slate-800/60 flex items-center justify-between gap-2">
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <div className="flex items-center gap-1.5 text-xs text-slate-300 font-semibold truncate">
-              <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>
-                {reporte?.ventana
-                  ? `${reporte.ventana.fechaInicio} — ${reporte.ventana.fechaFin}`
-                  : 'Ventana de tiempo'}
-              </span>
-            </div>
-            <span className="text-[10px] text-amber-400/90 font-medium">
-              Jornadas cerradas (corte a ayer)
-            </span>
+        {/* Selector Inteligente de Cierres de Calendario */}
+        <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800/80 space-y-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-950 rounded-2xl border border-slate-800 shadow-inner">
+            <button
+              type="button"
+              onClick={() => handleSeleccionarModo('15_DIAS')}
+              className={`px-2.5 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer text-center ${
+                modo === '15_DIAS'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+              }`}
+            >
+              15 Días (Rueda VT)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSeleccionarModo('MES_ANTERIOR')}
+              className={`px-2.5 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer text-center ${
+                modo === 'MES_ANTERIOR'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+              }`}
+            >
+              Mes Anterior
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSeleccionarModo('MES_ACTUAL')}
+              className={`px-2.5 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer text-center ${
+                modo === 'MES_ACTUAL'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+              }`}
+            >
+              Mes en Curso
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSeleccionarModo('PERSONALIZADO')}
+              className={`px-2.5 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer text-center ${
+                modo === 'PERSONALIZADO'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+              }`}
+            >
+              📅 Rango (Máx 60d)
+            </button>
           </div>
 
-          <div className="inline-flex bg-slate-950 p-1 rounded-xl border border-slate-800 shadow-inner">
-            {([7, 15, 30] as const).map((dias) => (
+          {/* Formulario Desplegable para Rango Personalizado */}
+          {modo === 'PERSONALIZADO' && (
+            <div className="p-2.5 bg-slate-950/70 border border-slate-800 rounded-xl flex flex-wrap sm:flex-nowrap items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="flex items-center gap-1.5 flex-1 min-w-[130px]">
+                <label className="text-[11px] font-semibold text-slate-400 shrink-0">Desde:</label>
+                <input
+                  type="date"
+                  value={customDesde}
+                  min={limite60DiasIso}
+                  max={customHasta || ayerIso}
+                  onChange={(e) => setCustomDesde(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-lg px-2 py-1 text-xs text-white outline-none"
+                />
+              </div>
+              <div className="flex items-center gap-1.5 flex-1 min-w-[130px]">
+                <label className="text-[11px] font-semibold text-slate-400 shrink-0">Hasta:</label>
+                <input
+                  type="date"
+                  value={customHasta}
+                  min={customDesde || limite60DiasIso}
+                  max={ayerIso}
+                  onChange={(e) => setCustomHasta(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 focus:border-amber-400 rounded-lg px-2 py-1 text-xs text-white outline-none"
+                />
+              </div>
               <button
-                key={dias}
                 type="button"
-                onClick={() => setVentana(dias)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition active:scale-95 cursor-pointer ${
-                  ventana === dias
-                    ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
+                onClick={() =>
+                  cargarReporte('PERSONALIZADO', {
+                    desde: customDesde,
+                    hasta: customHasta,
+                    forzarRed: true,
+                  })
+                }
+                disabled={isRefreshing || !customDesde || !customHasta}
+                className="w-full sm:w-auto px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
               >
-                {dias} Días
+                Aplicar Rango
               </button>
-            ))}
+            </div>
+          )}
+
+          {/* Cinta de Micro-Feedback Dinámico */}
+          <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <span
+                className={`w-2 h-2 rounded-full shrink-0 ${
+                  reporte?.ventana.esPeriodoCerrado !== false
+                    ? 'bg-emerald-400'
+                    : 'bg-amber-400 animate-pulse'
+                }`}
+              />
+              <span className="font-medium text-slate-300 truncate text-[11px] sm:text-xs">
+                {reporte?.ventana.descripcionPeriodo || (
+                  reporte?.ventana
+                    ? `${reporte.ventana.fechaInicio} — ${reporte.ventana.fechaFin} (${reporte.ventana.dias} días)`
+                    : 'Calculando período de auditoría...'
+                )}
+              </span>
+            </div>
+            <span
+              className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 tracking-wide ${
+                reporte?.ventana.esPeriodoCerrado !== false
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+              }`}
+            >
+              {reporte?.ventana.esPeriodoCerrado !== false ? 'Período Cerrado' : 'Cierre Parcial'}
+            </span>
           </div>
         </div>
 

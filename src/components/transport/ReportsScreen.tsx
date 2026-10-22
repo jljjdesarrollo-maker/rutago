@@ -525,12 +525,12 @@ export function ReportsScreen({ onBack, currentUser, activeBusId: propActiveBusI
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <p className="font-bold text-xs sm:text-sm text-white">Auditoría Calendario (7 / 15 / 30 Días)</p>
+                <p className="font-bold text-xs sm:text-sm text-white">Auditoría Calendario (15 Días • Mensual • Rango)</p>
                 <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 tracking-wide">
                   $/km Diésel
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">Ventana temporal fija • Baches de ayudante • Dictamen</p>
+              <p className="text-[11px] text-slate-400">15 Días • Mes Anterior cerrado • Mes en curso • Rango máx. 60d</p>
             </div>
           </div>
           <Button

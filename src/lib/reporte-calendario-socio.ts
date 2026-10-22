@@ -65,11 +65,28 @@ export interface BulletChartMetrics {
   diferenciaPorcentualVsMedia: number; // Ej. -8.5% (ahorro) o +12.0% (sobrecosto)
 }
 
+export type ModoAuditoriaSocio = '15_DIAS' | 'MES_ANTERIOR' | 'MES_ACTUAL' | 'PERSONALIZADO';
+
+export interface RangoAuditoriaResultado {
+  fechaInicio: string;
+  fechaFin: string;
+  diasVentana: number;
+  todasLasFechas: string[];
+  modo: ModoAuditoriaSocio;
+  label: string;
+  descripcionPeriodo: string;
+  esPeriodoCerrado: boolean;
+}
+
 export interface ReporteSocioPayload {
   ventana: {
     dias: number;
     fechaInicio: string;
     fechaFin: string;
+    modo?: ModoAuditoriaSocio;
+    label?: string;
+    descripcionPeriodo?: string;
+    esPeriodoCerrado?: boolean;
   };
   busActual: {
     id: string;
@@ -93,7 +110,7 @@ export interface ReporteSocioPayload {
 
 export interface ReporteCalendarioSnapshot {
   busId: string;
-  ventanaDias: number;
+  ventanaDias: number | string;
   payload: ReporteSocioPayload;
   cachedAt: string;
 }
@@ -155,6 +172,155 @@ export function extraerKmRecorridos(rec: {
  * Genera el arreglo de todas las fechas YYYY-MM-DD en la ventana fija de calendario
  */
 /**
+ * Formatea una fecha local en YYYY-MM-DD sin desfasaje por huso horario UTC
+ */
+function formatearFechaLocalIso(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+const NOMBRES_MESES_ES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
+
+/**
+ * Motor Canónico de Resolución de Ventanas de Auditoría del Socio:
+ * 1. '15_DIAS' (Rueda VT): Ciclo completo de turnos (últimos 15 días cerrados).
+ * 2. 'MES_ANTERIOR': Período 100% cerrado y conciliado (del 1 al último día del mes pasado).
+ * 3. 'MES_ACTUAL': Cierre parcial en marcha (del 1 al corte de ayer).
+ * 4. 'PERSONALIZADO': Selector libre con blindaje estricto de máximo 60 días y corte a ayer.
+ */
+export function calcularRangoAuditoriaSocio(
+  modo: ModoAuditoriaSocio | number | string,
+  opciones?: {
+    fechaInicio?: string;
+    fechaFin?: string;
+    fechaBaseReferencia?: string;
+  }
+): RangoAuditoriaResultado {
+  let hoy: Date;
+  if (opciones?.fechaBaseReferencia) {
+    hoy = new Date(opciones.fechaBaseReferencia + 'T12:00:00');
+  } else {
+    hoy = new Date();
+  }
+
+  // Ayer (corte estricto de jornada cerrada)
+  const ayer = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 1, 12, 0, 0);
+  const ayerIso = formatearFechaLocalIso(ayer);
+
+  // Normalización defensiva de modo
+  let modoNormalizado: ModoAuditoriaSocio = '15_DIAS';
+  if (modo === 'MES_ANTERIOR' || modo === 'MES_ACTUAL' || modo === 'PERSONALIZADO' || modo === '15_DIAS') {
+    modoNormalizado = modo;
+  } else if (modo === 30 || modo === '30') {
+    modoNormalizado = 'MES_ANTERIOR';
+  } else if (modo === 7 || modo === '7') {
+    modoNormalizado = '15_DIAS';
+  }
+
+  let fechaInicio = '';
+  let fechaFin = '';
+  let label = '';
+  let descripcionPeriodo = '';
+  let esPeriodoCerrado = true;
+
+  if (modoNormalizado === '15_DIAS') {
+    const fin = new Date(ayer);
+    const ini = new Date(ayer);
+    ini.setDate(fin.getDate() - 14); // 15 días exactos
+    fechaFin = formatearFechaLocalIso(fin);
+    fechaInicio = formatearFechaLocalIso(ini);
+    label = '15 Días (Rueda VT)';
+    descripcionPeriodo = `Últimos 15 días cerrados (${fechaInicio} — ${fechaFin}) • Ciclo completo de turnos`;
+    esPeriodoCerrado = true;
+  } else if (modoNormalizado === 'MES_ANTERIOR') {
+    const añoActual = hoy.getFullYear();
+    const mesActual = hoy.getMonth(); // 0 = Ene, 11 = Dic
+    const añoAnt = mesActual === 0 ? añoActual - 1 : añoActual;
+    const mesAnt = mesActual === 0 ? 11 : mesActual - 1;
+
+    const primerDia = new Date(añoAnt, mesAnt, 1, 12, 0, 0);
+    const ultimoDia = new Date(añoAnt, mesAnt + 1, 0, 12, 0, 0);
+
+    fechaInicio = formatearFechaLocalIso(primerDia);
+    fechaFin = formatearFechaLocalIso(ultimoDia);
+    label = 'Mes Anterior';
+    descripcionPeriodo = `${NOMBRES_MESES_ES[mesAnt]} ${añoAnt} (${primerDia.getDate()} al ${ultimoDia.getDate()}) • Período cerrado 100% conciliado`;
+    esPeriodoCerrado = true;
+  } else if (modoNormalizado === 'MES_ACTUAL') {
+    const añoActual = hoy.getFullYear();
+    const mesActual = hoy.getMonth();
+    const primerDia = new Date(añoActual, mesActual, 1, 12, 0, 0);
+    fechaInicio = formatearFechaLocalIso(primerDia);
+
+    // Si hoy es el día 1 del mes, ayer es del mes previo, así que se fija en el día 1
+    if (hoy.getDate() === 1) {
+      fechaFin = fechaInicio;
+    } else {
+      fechaFin = ayerIso;
+    }
+    label = 'Mes en Curso';
+    const diaFinNum = new Date(fechaFin + 'T12:00:00').getDate();
+    descripcionPeriodo = `1 al ${diaFinNum} de ${NOMBRES_MESES_ES[mesActual]} ${añoActual} • Cierre parcial en marcha (corte a ayer)`;
+    esPeriodoCerrado = false;
+  } else if (modoNormalizado === 'PERSONALIZADO') {
+    let fIni = opciones?.fechaInicio || '';
+    let fFin = opciones?.fechaFin || ayerIso;
+
+    // Blindaje anti-futuro
+    if (fFin > ayerIso) fFin = ayerIso;
+    if (!fIni || fIni > fFin) {
+      const defaultIni = new Date(new Date(fFin + 'T12:00:00').getTime() - 29 * 86400000);
+      fIni = formatearFechaLocalIso(defaultIni);
+    }
+
+    // Blindaje de seguridad: máximo 60 días
+    const dIni = new Date(fIni + 'T12:00:00');
+    const dFin = new Date(fFin + 'T12:00:00');
+    const diffDias = Math.round((dFin.getTime() - dIni.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+    if (diffDias > 60) {
+      const maxIni = new Date(dFin);
+      maxIni.setDate(dFin.getDate() - 59); // 60 días en total
+      fIni = formatearFechaLocalIso(maxIni);
+    }
+
+    fechaInicio = fIni;
+    fechaFin = fFin;
+    label = 'Personalizado';
+    const diasTotal = Math.round((new Date(fechaFin + 'T12:00:00').getTime() - new Date(fechaInicio + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    descripcionPeriodo = `Rango seleccionado: ${fechaInicio} al ${fechaFin} (${diasTotal} días • Máx. 60)`;
+    esPeriodoCerrado = fechaFin <= ayerIso;
+  }
+
+  // Mapear todas las fechas secuenciales
+  const todasLasFechas: string[] = [];
+  const curr = new Date(fechaInicio + 'T12:00:00');
+  const end = new Date(fechaFin + 'T12:00:00');
+  while (curr <= end) {
+    todasLasFechas.push(formatearFechaLocalIso(curr));
+    curr.setDate(curr.getDate() + 1);
+  }
+
+  const diasVentana = todasLasFechas.length;
+
+  return {
+    fechaInicio,
+    fechaFin,
+    diasVentana,
+    todasLasFechas,
+    modo: modoNormalizado,
+    label,
+    descripcionPeriodo,
+    esPeriodoCerrado,
+  };
+}
+
+/**
  * Genera el arreglo de todas las fechas YYYY-MM-DD en la ventana fija de calendario.
  * REGLA DE NEGOCIO CANÓNICA (TRANSPORTE):
  * Por defecto, la ventana se ancla estrictamente en la última jornada operativa cerrada (Ayer: T - 1),
@@ -173,18 +339,18 @@ export function generarRangoFechasCalendario(diasVentana: number, fechaBaseRefer
     const hoy = new Date();
     base = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - 1, 12, 0, 0);
   }
-  const fechaFin = base.toISOString().split('T')[0];
+  const fechaFin = formatearFechaLocalIso(base);
 
   const inicio = new Date(base);
   inicio.setDate(base.getDate() - (diasVentana - 1));
-  const fechaInicio = inicio.toISOString().split('T')[0];
+  const fechaInicio = formatearFechaLocalIso(inicio);
 
   const todasLasFechas: string[] = [];
   const curr = new Date(fechaInicio + 'T12:00:00');
   const end = new Date(fechaFin + 'T12:00:00');
 
   while (curr <= end) {
-    todasLasFechas.push(curr.toISOString().split('T')[0]);
+    todasLasFechas.push(formatearFechaLocalIso(curr));
     curr.setDate(curr.getDate() + 1);
   }
 
@@ -736,7 +902,7 @@ export function generarDictamenEjecutivo(params: {
 /**
  * Persistencia Offline-First en Almacenamiento Local (Snapshot SWR)
  */
-export function saveReporteCalendarioSnapshot(busId: string, ventanaDias: number, payload: ReporteSocioPayload): void {
+export function saveReporteCalendarioSnapshot(busId: string, ventanaDias: number | string, payload: ReporteSocioPayload): void {
   if (typeof window === 'undefined') return;
   try {
     const key = `rg_reporte_calendario_snapshot_${busId}_${ventanaDias}`;
@@ -755,7 +921,7 @@ export function saveReporteCalendarioSnapshot(busId: string, ventanaDias: number
 /**
  * Recuperación Inmediata de Snapshot (0 ms de latencia)
  */
-export function getReporteCalendarioSnapshot(busId: string, ventanaDias: number): ReporteCalendarioSnapshot | null {
+export function getReporteCalendarioSnapshot(busId: string, ventanaDias: number | string): ReporteCalendarioSnapshot | null {
   if (typeof window === 'undefined') return null;
   try {
     const key = `rg_reporte_calendario_snapshot_${busId}_${ventanaDias}`;
