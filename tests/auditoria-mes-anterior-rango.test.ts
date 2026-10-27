@@ -1,3 +1,14 @@
+
+if (typeof (globalThis as any).window === "undefined") {
+  const store: Record<string, string> = {};
+  (globalThis as any).window = globalThis;
+  (globalThis as any).localStorage = {
+    getItem: (k: string) => store[k] ?? null,
+    setItem: (k: string, v: string) => { store[k] = String(v); },
+    removeItem: (k: string) => { delete store[k]; },
+    clear: () => { Object.keys(store).forEach(k => delete store[k]); },
+  };
+}
 import { describe, expect, it } from 'bun:test';
 import {
   calcularRangoAuditoriaSocio,

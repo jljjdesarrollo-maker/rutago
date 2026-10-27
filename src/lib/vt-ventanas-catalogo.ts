@@ -26,6 +26,11 @@ import {
   TipoVentanaOperativa,
 } from '../types/vt-ventanas';
 import { VT_DATA } from './seed-vts';
+// ─── LISTADO CANÓNICO DE TURNOS CON RETORNO TRAS PERNOCTA OFICIAL (DÍA 2) ───
+export const TURNOS_CON_PERNOCTA_OFICIALES = new Set([
+  "VT1", "VT3", "VT4", "VT5", "VT8", "VT10", "VT11", "VT12", "VT14", "P1", "P2"
+]);
+
 
 // ─── TIEMPOS DE VIAJE OFICIALES (MINUTOS) ───
 export const TIEMPOS_VIAJE_OFICIALES = {
@@ -311,7 +316,7 @@ export function generarCatalogoOficialVTs(): VTConfiguracionItem[] {
         tiempoViajeMinutos: res.tiempoViajeMinutos,
         horaSalidaRealEfectiva: res.horaSalidaRealEfectiva,
         cabeceraSalidaReal: res.cabeceraSalidaReal,
-        esPernoctaRetorno: idx === item.frecuencias.length - 1 && item.frecuencias.length >= 6,
+        esPernoctaRetorno: TURNOS_CON_PERNOCTA_OFICIALES.has(item.codigo) && idx === item.frecuencias.length - 1,
       };
     });
 

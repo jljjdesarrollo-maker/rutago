@@ -241,17 +241,24 @@ export function calcularEstadoTiempoVenta(
   }
   scheduled.setHours(hh, mm, 0, 0);
 
-  // ─── REGLA CANONICA DE RETORNO AL DIA SIGUIENTE (PERNOCTA / DIA 2) ───
-  // Si la frecuencia es retorno de pernocta (esPernoctaRetorno === true) o
-  // la fecha actual de Ecuador ya avanzo al siguiente dia respecto a fechaOperacion:
-  // la hora programada se ancla con precision matematica a fechaOperacion + 1 dia
-  const esPernoctaEfectiva = Boolean(
-    esPernoctaRetorno ||
-    (fechaOperacion && getEcuadorDateString(now) > fechaOperacion && hh < 12)
-  );
-
-  if (esPernoctaEfectiva) {
+  // ─── REGLA CANONICA DE RETORNO AL DIA SIGUIENTE (PERNOCTA / DIA 2) Y SINCRONIZACIÓN OPERATIVA ───
+  let esPernoctaEfectiva = Boolean(esPernoctaRetorno);
+  if (esPernoctaRetorno) {
     scheduled.setDate(scheduled.getDate() + 1);
+  } else if (fechaOperacion) {
+    const todayStr = getEcuadorDateString(now);
+    if (todayStr > fechaOperacion) {
+      // Si la jornada en curso continúa o se opera en la fecha actual (ej. sesión iniciada en fecha previa):
+      // Sincronizar la fecha programada al día real de operación para evitar desfases falsos de +1440 min
+      // en frecuencias vespertinas (12:45, 15:15, 17:10, 18:55, 21:15).
+      const nowParts = todayStr.split("-").map(Number);
+      if (nowParts.length === 3 && !isNaN(nowParts[0])) {
+        scheduled.setFullYear(nowParts[0], nowParts[1] - 1, nowParts[2]);
+      }
+      if (hh < 12) {
+        esPernoctaEfectiva = true;
+      }
+    }
   }
 
   const diffMs = now.getTime() - scheduled.getTime();

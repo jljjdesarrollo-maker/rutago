@@ -5660,3 +5660,84 @@ Se auditó el 100% del catálogo de frecuencias en `src/lib/seed-vts.ts`:
 4. **Protocolo de Seguridad:**
    - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
    - Cero almacenamiento fijo de tokens en archivos locales o de configuración.
+
+
+---
+
+## 🛡️ BLINDAJE OPERATIVO: FRECUENCIAS VESPERTINAS EN TURNOS DIURNOS (VT07 / UNIDAD 01) Y SINCRONIZACIÓN DE JORNADA (v3.61.58)
+
+> **ESTADO:** 🟢 IMPLEMENTADO, BLINDADO Y CERTIFICADO AL 100% (174/174 TESTS EN VERDE)  
+> **FECHA DE REGISTRO:** 2026-10-27 | **SISTEMA:** RutaGo - Motor de Frecuencias y Venta en Ruta  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`  
+> **DISPOSITIVO AFECTADO:** Unidad 01 - Turno VT07 (12:45, 15:15, 17:10, 18:55, 21:15)
+
+### 📍 1. Diagnóstico de Campo y Causa Raíz
+* **Incidente Reportado en Operación:**
+  En la jornada del 27 de octubre de 2026, la Unidad 01 asignada al turno VT07 operó normalmente durante la mañana (06:25, 08:50, 10:45). Al intentar abrir la venta para las frecuencias de la tarde (12:45, 15:15 y 17:10), el sistema bloqueó el botón de emisión con el mensaje:
+  `"🏁 Frecuencia Concluida (90m) • Pasar a Siguiente Vuelta"`.
+  Esto obligó al ayudante a realizar arqueos manuales de emergencia para las vueltas de 12:45 y 15:15.
+* **Aislamiento de la Causa Raíz Matemática:**
+  En `src/components/transport/types-boletos.ts` (`calcularEstadoTiempoVenta`), existía la siguiente lógica:
+  ```typescript
+  const esPernoctaEfectiva = Boolean(
+    esPernoctaRetorno ||
+    (fechaOperacion && getEcuadorDateString(now) > fechaOperacion && hh < 12)
+  );
+  if (esPernoctaEfectiva) {
+    scheduled.setDate(scheduled.getDate() + 1);
+  }
+  ```
+  Cuando una sesión activa conserva una fecha del día anterior (`todayStr > fechaOperacion`):
+  1. Para las frecuencias matutinas (`hh < 12`: 06:25, 08:50, 10:45), la condición se cumplía y la fecha programada se desplazaba a hoy (+1 día), permitiendo la venta.
+  2. A partir de las 12:45 (`hh = 12 >= 12`), la condición resultaba `false`, dejando la fecha programada anclada en el día de ayer.
+  3. El cálculo de `diffMs = now - scheduled` arrojaba un desfase ficticio de más de 1440 minutos (~24 horas). Al superar ampliamente el `tiempoLimite` (90 minutos), el sistema activaba `bloqueadoPorTiempoLimite = true`, impidiendo vender boletos.
+* **Falsa Pernocta en Catálogo:**
+  En `src/lib/vt-ventanas-catalogo.ts` (línea 314), se marcaba `esPernoctaRetorno: true` a toda última frecuencia de cualquier turno con $\ge 6$ vueltas, lo que afectaba erróneamente a la vuelta 8 (21:15) de VT07 y a turnos diurnos como VT02 (19:25).
+
+---
+
+### 📍 2. Modificaciones de Ingeniería Implementadas
+
+1. **Sincronización Temporal de la Jornada en `calcularEstadoTiempoVenta` (`src/components/transport/types-boletos.ts`):**
+   - Si la fecha de la sesión precede a la fecha actual de Ecuador (`todayStr > fechaOperacion`) y no es un retorno de pernocta oficial (`esPernoctaRetorno = false`), la fecha programada se sincroniza al día en curso (`todayStr`).
+   - Esto permite que todas las frecuencias vespertinas y nocturnas (12:45, 15:15, 17:10, 18:55, 21:15) se evalúen con precisión en tiempo real sin desfases espurios de 24 horas.
+   - Las frecuencias matutinas conservan el flag de día 2 (`esPernoctaEfectiva = true`).
+
+2. **Catálogo Canónico de Turnos con Pernocta Oficial (`src/lib/vt-ventanas-catalogo.ts`):**
+   - Declaración de `TURNOS_CON_PERNOCTA_OFICIALES = new Set([VT1, VT3, VT4, VT5, VT8, VT10, VT11, VT12, VT14, P1, P2])`.
+   - Únicamente los turnos pertenecientes a este conjunto oficial reciben `esPernoctaRetorno: true` en su última vuelta.
+   - Los turnos 100% diurnos (`VT2`, `VT6`, `VT7`, `VT9`, `VT13`, `VT15`, `P3`) tienen garantizado `esPernoctaRetorno: false` en la totalidad de sus frecuencias.
+
+3. **Preservación Íntegra de Ventas Matutinas de la Unidad 01:**
+   - La corrección opera exclusivamente sobre el cálculo en memoria de ventanas de venta en `calcularEstadoTiempoVenta`.
+   - No se toca el almacenamiento persistente de IndexedDB (`rg_boletos`) ni de localStorage (`rg_estados_VT7_...`).
+   - Los boletos emitidos en las frecuencias de 06:25, 08:50 y 10:45 quedan 100% protegidos e íntegros para el Arqueo General al final de la jornada.
+
+4. **Suite de Pruebas Unitarias Automatizadas (`tests/vt07-bloqueo-tarde-fix.test.ts`):**
+   - 9 pruebas deterministas que verifican:
+     * Frecuencia 12:45 habilitada para venta a las 12:40 con sesión arrastrada.
+     * Frecuencia 15:15 habilitada para venta a las 15:10.
+     * Frecuencia 17:10 habilitada para venta a las 17:05 (caso de campo).
+     * Frecuencia 17:10 activa durante el viaje a las 17:35.
+     * Frecuencia 18:55 protegida por compuerta de anticipación a las 17:05 y habilitada a las 18:35.
+     * Frecuencia 21:15 habilitada a las 21:00 sin falsa pernocta.
+     * Inmunidad en catálogo para turnos diurnos (`esPernoctaRetorno = false`).
+     * Preservación de retorno de pernocta oficial en VT11 a las 06:40 AM Día 2.
+
+---
+
+### 📍 3. Certificación Técnica
+* **Pruebas Automatizadas:** **174 de 174 pruebas aprobadas al 100% en verde** (22 suites en Bun).
+* **Versión de Producción:** `v3.61.58` (registrada en `package.json` y `HomeScreenVT.tsx`).
+
+---
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA DE GOOGLE AI STUDIO)
+1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago`
+2. **Estado Actual:**
+   - **v3.61.58:** Culminada y certificada al 100% (Blindaje operativo de frecuencias vespertinas en turnos diurnos VT07 y sincronización de jornada; 174/174 tests en verde).
+3. **Próxima Tarea / Sugerencias:**
+   - Monitorear en producción `https://rutago-tau.vercel.app/` la venta de la frecuencia de las 17:10 y subsiguientes (18:55, 21:15) en la Unidad 01.
+4. **Protocolo de Seguridad:**
+   - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
+   - Cero almacenamiento fijo de tokens en archivos locales o de configuración.
