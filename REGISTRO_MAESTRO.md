@@ -6112,7 +6112,7 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
 
 ## 🎁 9. Auditoría Forense y Plan de Sincronización en Base de Datos: Boleto Premiado / Viaje Gratis por Unidad (v3.61.67)
 > **FECHA DE REGISTRO:** 2026-10-28 | **SISTEMA:** RutaGo - Boleto Premiado y Sincronización Multi-Dispositivo por Unidad
-> **ESTADO:** 🟡 AUDITORÍA Y PLAN REGISTRADOS EN ARCHIVO MAESTRO — LISTO PARA APLICACIÓN
+> **ESTADO:** 🟢 COMPLETADA, CERTIFICADA (213 PASS / 30 SUITES) Y DESPLEGADA EN PRODUCCIÓN (v3.61.67)
 > **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
 
 ### 🔍 1. Diagnóstico Forense del Incidente en Unidad 01
@@ -6145,3 +6145,44 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
 * **Acción 5 (Suite de Pruebas Automatizadas y Verificación):**
   - Crear `tests/promo-viaje-gratis-sync.test.ts` validando el estado inicial inactivo, persistencia en API, aislamiento entre buses y descarga hacia la boletera.
   - Ejecutar suite completa con Bun (`206+ tests pass`) y desplegar versión a producción.
+
+
+---
+
+### ✅ 4. Certificación y Ejecución de las 5 Acciones (`v3.61.67` — 2026-10-28)
+* **Estado:** 🟢 **COMPLETADO AL 100% Y CERTIFICADO EN SUITE AUTOMATIZADA**
+* **Detalle de Ejecución:**
+  1. **Acción 1 (Apagado por Defecto y Aislamiento por Unidad):**
+     - En `src/components/transport/types-boletos.ts`: `DEFAULT_PROMO_CONFIG.activa` establecido estrictamente en `false`.
+     - `loadPromoConfig(busIdOrDisco)` refactorizado para priorizar la clave aislada de la unidad (`rg_promo_config_bus_XX`). Si la unidad no tiene configuración local propia, retorna `activa: false` sin heredar el switch activo de claves globales legacy.
+  2. **Acción 2 (Persistencia en PostgreSQL sin Migración de Esquema):**
+     - En `src/app/api/buses/route.ts`: implementadas las funciones `extractPromoConfigFromNotas` e `injectPromoConfigToNotas`. Integrado en los métodos GET, POST y PUT para empaquetar y entregar `promoConfig` limpio sobre el campo estructurado `Bus.notas` mediante la etiqueta `[PromoConfig]:{...}`.
+     - En `src/app/api/buses/odometro/route.ts`: blindada la calibración del odómetro para inspeccionar y preservar cualquier etiqueta `[PromoConfig]` preexistente en `Bus.notas`, evitando que la actualización de kilometraje sobreescriba la política promocional.
+     - En `src/lib/fleet-storage.ts`: auto-sincronización en `saveBus(bus)` y `fetchBusesFromApi()` para persistir el `promoConfig` recibido de la API en el almacenamiento local de cada unidad (`savePromoConfig(bus.promoConfig, bus.numeroDisco)`).
+  3. **Acción 3 (Sincronización Inmediata en la Nube desde Flota):**
+     - En `src/components/transport/FlotaScreen.tsx`: conectados `handleTogglePromo` y `handleSavePromoModal` con `updateBusInApi(bId, updatedBus)` para que cualquier cambio o pausa del socio suba en tiempo real a PostgreSQL.
+     - Sustituidos los fallbacks del formulario y switches táctiles de `true` a `false` (`formData.promoConfig?.activa ?? false`).
+  4. **Acción 4 (Sincronización en Boletera y Trazabilidad en Auditoría):**
+     - En `src/components/transport/HomeScreenVT.tsx` y `src/components/transport/FrecuenciaSelector.tsx`: agregada la invocación silenciosa en background a `fetchBusesFromApi()` al montar componentes, descargando la última política oficial de la flota antes de iniciar la venta de boletos.
+     - En `src/components/transport/VentasReviewScreen.tsx`: boletos con cobro $0.00 ahora despliegan de forma destacada el distintivo `🎁 GRATIS ($0.00)` tanto en la vista agrupada como en el modal de reasignación.
+  5. **Acción 5 (Suite de Pruebas Automatizadas y Certificación):**
+     - Creado `tests/promo-viaje-gratis-sync.test.ts` con 7 pruebas que validan:
+       * Estado inactivo por defecto (`activa: false`).
+       * Retorno seguro en dispositivos nuevos/limpios.
+       * Aislamiento total (activar Bus 01 no afecta Bus 08 ni otras unidades).
+       * Serialización e inyección bidireccional en `Bus.notas` de PostgreSQL.
+       * Tolerancia y preservación frente a notas nulas o calibraciones de odómetro.
+       * Sincronización automática offline-first en `saveBus`.
+     - **Resultado de la Suite:** **213 pass, 0 fail en 30 archivos de prueba (100% verde)**.
+
+---
+
+## 🔄 10. Handover de Sesión y Verificación de Continuidad (2026-10-28)
+* **Estado:** 🟢 **ACTIVO - REPOSITORIO SINCRONIZADO Y TEST SUITE AL 100%**
+* **Versión Oficial:** `v3.61.67`
+* **Contexto de Sesión:**
+  - Repositorio: `https://github.com/jljjdesarrollo-maker/rutago`
+  - Rama: `main`
+  - Token PAT de GitHub recibido en memoria para commits y push autorizados.
+  - Incidente del boleto #7 en Unidad 01 erradicado de raíz con arquitectura de persistencia en PostgreSQL por unidad, apagado por defecto y sincronización bidireccional.
+  - Pruebas Automatizadas: 30 suites ejecutadas con Bun (`bun test tests/`), resultado: **213 pass, 0 fail (100% en verde)**.

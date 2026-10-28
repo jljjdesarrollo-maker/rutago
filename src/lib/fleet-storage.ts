@@ -1,4 +1,5 @@
 import { BusItem } from '../types/fleet';
+import { savePromoConfig } from '../components/transport/types-boletos';
 export type { BusItem };
 
 const STORAGE_KEY = 'rutago_fleet_buses_v1';
@@ -267,6 +268,14 @@ export function saveBus(bus: BusItem): BusItem[] {
         saveBusOdometer(discoClean, bus.odometroInicial, new Date().toISOString().split('T')[0]);
       }
     }
+
+    // Auto-sincronizar promoConfig si viene en el objeto de la unidad
+    if (bus.promoConfig) {
+      const discoOrId = bus.numeroDisco || bus.id;
+      if (discoOrId) {
+        savePromoConfig(bus.promoConfig, discoOrId);
+      }
+    }
     return buses;
   } catch (err) {
     console.error('Error guardando unidad de flota:', err);
@@ -301,6 +310,12 @@ export async function fetchBusesFromApi(): Promise<BusItem[]> {
       // Sincronizar hacia localStorage para disponibilidad offline
       if (typeof window !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(json.data));
+        // Hidratar promoConfig de cada unidad en su almacenamiento aislado
+        json.data.forEach((b: BusItem) => {
+          if (b.promoConfig && (b.numeroDisco || b.id)) {
+            savePromoConfig(b.promoConfig, b.numeroDisco || b.id);
+          }
+        });
       }
       return json.data;
     }

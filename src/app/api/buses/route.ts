@@ -4,6 +4,8 @@ import { INITIAL_PILOT_BUS, getAllBuses } from '@/lib/fleet-storage';
 
 export const dynamic = 'force-dynamic';
 
+import { PromoViajeGratisConfig } from '@/components/transport/types-boletos';
+
 function extractOdometerFromNotas(notas?: string | null): string | undefined {
   if (!notas) return undefined;
   const matchCalib = notas.match(/\[Odómetro (?:Calibrado|Inicial)\]:\s*([0-9,.]+)\s*km/i);
@@ -11,6 +13,33 @@ function extractOdometerFromNotas(notas?: string | null): string | undefined {
     return matchCalib[1].replace(/[^0-9]/g, '');
   }
   return undefined;
+}
+
+export function extractPromoConfigFromNotas(notas?: string | null): PromoViajeGratisConfig | undefined {
+  if (!notas) return undefined;
+  const match = notas.match(/\[PromoConfig\]:\s*(\{.*?\})/);
+  if (match && match[1]) {
+    try {
+      return JSON.parse(match[1]);
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+export function injectPromoConfigToNotas(
+  notas?: string | null,
+  config?: PromoViajeGratisConfig | null
+): string | undefined {
+  let clean = notas ? notas.replace(/\[PromoConfig\]:\s*\{.*?\}/g, '').trim() : '';
+  clean = clean.replace(/^\s*•\s*/, '').replace(/\s*•\s*$/, '').replace(/\s*•\s*•\s*/g, ' • ').trim();
+
+  if (!config) {
+    return clean || undefined;
+  }
+  const tag = `[PromoConfig]:${JSON.stringify(config)}`;
+  return clean ? `${tag} • ${clean}` : tag;
 }
 
 // GET /api/buses
@@ -90,10 +119,12 @@ export async function GET(req: NextRequest) {
       const renova = b.planRenovaMonto !== undefined && b.planRenovaMonto !== null
         ? b.planRenovaMonto
         : (b.numeroDisco === '01' ? 68 : b.numeroDisco === '10' ? 30 : 0);
+      const promo = extractPromoConfigFromNotas(b.notas);
       return {
         ...b,
         planRenovaMonto: renova,
         odometroInicial: odo,
+        promoConfig: promo,
       };
     });
 
@@ -132,6 +163,7 @@ export async function POST(req: NextRequest) {
       activo,
       notas,
       odometroInicial,
+      promoConfig,
     } = body;
 
     if (!numeroDisco || !placa || !marca || !propietario) {
@@ -215,12 +247,14 @@ export async function POST(req: NextRequest) {
     const odoReturn = odometroInicial
       ? String(odometroInicial).replace(/[^0-9]/g, '')
       : extractOdometerFromNotas(savedBus.notas);
+    const promoReturn = promoConfig || extractPromoConfigFromNotas(savedBus.notas);
 
     return NextResponse.json({
       success: true,
       data: {
         ...savedBus,
         odometroInicial: odoReturn,
+        promoConfig: promoReturn,
       },
       message: `Unidad ${cleanDisco} guardada correctamente`,
     });
@@ -292,6 +326,9 @@ export async function PUT(req: NextRequest) {
         }
       }
     }
+    if (fields.promoConfig !== undefined) {
+      notasVal = injectPromoConfigToNotas(notasVal, fields.promoConfig) ?? null;
+    }
     if (notasVal !== undefined) cleanUpdateData.notas = notasVal;
 
     let updated;
@@ -329,12 +366,16 @@ export async function PUT(req: NextRequest) {
     const odoReturn = fields.odometroInicial
       ? String(fields.odometroInicial).replace(/[^0-9]/g, '')
       : extractOdometerFromNotas(updated?.notas);
+    const promoReturn = fields.promoConfig !== undefined
+      ? fields.promoConfig
+      : extractPromoConfigFromNotas(updated?.notas);
 
     return NextResponse.json({
       success: true,
       data: {
         ...updated,
         odometroInicial: odoReturn,
+        promoConfig: promoReturn,
       },
       message: "Unidad actualizada correctamente",
     });

@@ -7,7 +7,7 @@ import { countVentasPendientes, syncVentasSilencioso, deleteVentasByVT, countVen
 import { countPendingArqueos, syncAllPendingArqueos, setupAutoSyncArqueos } from '@/lib/arqueos-sync';
 import { Bus, User, UserCheck, UserPlus, ArrowRight, ArrowLeft, Loader2, CheckCircle, AlertTriangle, Printer, RefreshCw, Wifi, WifiOff, CalendarDays, Clock, Moon, CloudOff, UploadCloud, ShieldCheck } from 'lucide-react';
 import { BusSelector } from './BusSelector';
-import { getActiveBus, setActiveBus, subscribeToActiveBus } from '@/lib/fleet-storage';
+import { getActiveBus, setActiveBus, subscribeToActiveBus, fetchBusesFromApi } from '@/lib/fleet-storage';
 import { getEcuadorDateString, getEcuadorYesterdayDateString } from '@/lib/date-helpers';
 import { getConfiguracionFlotaLocal, subscribeToVTConfig, verificarActualizacionFingerprint } from '@/lib/vt-ventanas-storage';
 
@@ -122,6 +122,13 @@ export function HomeScreenVT({ currentUser, onSessionStart, onBack }: Props) {
     }
     return getActiveBus();
   });
+
+  // Acción 4: Sincronización silenciosa en background de la configuración oficial de flota y promos
+  useEffect(() => {
+    if (typeof window !== 'undefined' && navigator.onLine) {
+      fetchBusesFromApi().catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     if (currentUser?.busId) {

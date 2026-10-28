@@ -1153,15 +1153,20 @@ export function VentasReviewScreen({ onBack, currentUser, activeBusId: propActiv
                             </span>
                           </div>
 
-                          {/* Monto Cobrado */}
-                          <div className="w-14 text-right flex-shrink-0 font-mono">
-                            <span
-                              className={`font-black text-xs ${
-                                b.cobrado === 0 ? 'text-green-600' : 'text-gray-900'
-                              }`}
-                            >
-                              ${b.cobrado.toFixed(2)}
-                            </span>
+                          {/* Monto Cobrado con Distintivo 🎁 GRATIS */}
+                          <div className="w-16 text-right flex-shrink-0 font-mono">
+                            {b.cobrado === 0 ? (
+                              <div className="flex flex-col items-end">
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-black tracking-tight border border-emerald-300">
+                                  <span>🎁</span> GRATIS
+                                </span>
+                                <span className="font-black text-[10px] text-emerald-700">$0.00</span>
+                              </div>
+                            ) : (
+                              <span className="font-black text-xs text-gray-900">
+                                ${b.cobrado.toFixed(2)}
+                              </span>
+                            )}
                           </div>
                         </div>
                       );
@@ -1372,7 +1377,13 @@ export function VentasReviewScreen({ onBack, currentUser, activeBusId: propActiv
                             <span className="font-mono text-[11px] text-gray-700">{b.hora}</span>
                             <span className="font-semibold text-gray-800 text-[11px] truncate max-w-[160px]">{b.parada}</span>
                           </div>
-                          <span className="font-mono font-bold text-gray-900">${b.cobrado.toFixed(2)}</span>
+                          {b.cobrado === 0 ? (
+                            <span className="inline-flex items-center gap-1 font-mono font-bold text-emerald-700 text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                              🎁 GRATIS ($0.00)
+                            </span>
+                          ) : (
+                            <span className="font-mono font-bold text-gray-900">${b.cobrado.toFixed(2)}</span>
+                          )}
                         </div>
                       ))}
                     </div>

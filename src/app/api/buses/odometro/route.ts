@@ -128,7 +128,20 @@ export async function POST(req: NextRequest) {
     let persistidoEnBD = false;
 
     try {
-      const notaAuditoria = `[Odómetro Calibrado]: ${kmNum.toLocaleString()} km el ${fechaHoy} por ${operador} (${motivoFinal})`;
+      let prevNotas = '';
+      try {
+        const existing = await (db as any).bus.findUnique({
+          where: { numeroDisco: cleanDisco },
+          select: { notas: true },
+        });
+        if (existing?.notas) prevNotas = existing.notas;
+      } catch {}
+
+      const promoMatch = prevNotas.match(/\[PromoConfig\]:\s*\{.*?\}/);
+      let notaAuditoria = `[Odómetro Calibrado]: ${kmNum.toLocaleString()} km el ${fechaHoy} por ${operador} (${motivoFinal})`;
+      if (promoMatch) {
+        notaAuditoria = `${promoMatch[0]} • ${notaAuditoria}`;
+      }
 
       busActualizado = await (db as any).bus.upsert({
         where: { numeroDisco: cleanDisco },

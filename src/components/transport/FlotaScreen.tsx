@@ -264,6 +264,12 @@ export function FlotaScreen({ currentUser, activeBusId: propActiveBusId, onBack 
     };
     const updatedLocal = saveBus(updatedBus);
     setBuses(Array.isArray(updatedLocal) ? updatedLocal : getAllBuses());
+    // Sincronización inmediata en la nube hacia PostgreSQL
+    if (typeof window !== 'undefined' && navigator.onLine) {
+      updateBusInApi(bId, updatedBus).catch((err) => {
+        console.warn('Error sincronizando toggle de promoConfig con PostgreSQL:', err);
+      });
+    }
     toast({
       title: updatedPromo.activa ? 'Promoción activada' : 'Promoción pausada',
       description: `Viaje Gratis en Disco ${bus.numeroDisco} ahora está ${updatedPromo.activa ? 'ACTIVO' : 'INACTIVO'}.`,
@@ -303,6 +309,12 @@ export function FlotaScreen({ currentUser, activeBusId: propActiveBusId, onBack 
     };
     const updatedLocal = saveBus(updatedBus);
     setBuses(Array.isArray(updatedLocal) ? updatedLocal : getAllBuses());
+    // Sincronización inmediata en la nube hacia PostgreSQL
+    if (typeof window !== 'undefined' && navigator.onLine) {
+      updateBusInApi(bId, updatedBus).catch((err) => {
+        console.warn('Error sincronizando modal de promoConfig con PostgreSQL:', err);
+      });
+    }
     toast({
       title: 'Política de Viaje Gratis Guardada',
       description: `Disco ${promoModalBus.numeroDisco}: Pasajeros ${minVal} al ${maxVal} • ${finalConfig.activa ? 'ACTIVO' : 'PAUSADO'}`,
@@ -379,7 +391,7 @@ export function FlotaScreen({ currentUser, activeBusId: propActiveBusId, onBack 
     const validMax = Math.max(validMin, isNaN(parsedMax) ? 30 : parsedMax);
 
     const sanitizedPromo: PromoViajeGratisConfig = {
-      activa: formData.promoConfig?.activa ?? true,
+      activa: formData.promoConfig?.activa ?? false,
       rangoMin: validMin,
       rangoMax: validMax,
       textoPublicidad: (formData.promoConfig?.textoPublicidad ?? '').trim() || 'Quieres RutaGo? 0997149000',
@@ -1254,7 +1266,7 @@ export function FlotaScreen({ currentUser, activeBusId: propActiveBusId, onBack 
                     </div>
                   </div>
                   <Switch
-                    checked={formData.promoConfig?.activa ?? true}
+                    checked={formData.promoConfig?.activa ?? false}
                     onCheckedChange={(checked) => setFormData((prev) => ({
                       ...prev,
                       promoConfig: { ...(prev.promoConfig || DEFAULT_PROMO_CONFIG), activa: checked }
@@ -1262,7 +1274,7 @@ export function FlotaScreen({ currentUser, activeBusId: propActiveBusId, onBack 
                   />
                 </div>
 
-                {(formData.promoConfig?.activa ?? true) && (
+                {(formData.promoConfig?.activa ?? false) && (
                   <div className="space-y-2.5 pt-2 border-t border-amber-200/60">
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">

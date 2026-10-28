@@ -23,7 +23,7 @@ export function isPernoctaRetornoFrec(idx: number, list: FrecuenciaData[]): bool
 
 import { useState, useEffect, useCallback } from 'react';
 import { type VTSession, type FrecuenciaEstado, type FrecuenciaData, loadPromoConfig } from './types-boletos';
-import { getActiveBusId } from '@/lib/fleet-storage';
+import { getActiveBusId, fetchBusesFromApi } from '@/lib/fleet-storage';
 import { getVentasByFrecuencia, countVentasPendientes, syncVentasSilencioso, deleteVentasByEstadoId } from '@/lib/indexeddb';
 import { countPendingArqueos, syncAllPendingArqueos } from '@/lib/arqueos-sync';
 import { matchRuta } from '@/lib/tarifas-data';
@@ -150,6 +150,9 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
   const fecha = session.fecha || today();
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && navigator.onLine) {
+      fetchBusesFromApi().catch(() => {});
+    }
     const handle = () => setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
     window.addEventListener('online', handle);
     window.addEventListener('offline', handle);

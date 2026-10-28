@@ -57,7 +57,7 @@ export interface PromoViajeGratisConfig {
 }
 
 export const DEFAULT_PROMO_CONFIG: PromoViajeGratisConfig = {
-  activa: true,
+  activa: false, // Apagado por defecto por seguridad financiera (nunca regalar pasajes sin activación explícita)
   rangoMin: 3,
   rangoMax: 30,
   textoPublicidad: 'Quieres RutaGo? 0997149000',
@@ -95,18 +95,29 @@ export function loadPromoConfig(busIdOrDisco?: string): PromoViajeGratisConfig {
       const busKey = getBusPromoStorageKey(busIdOrDisco);
       const busRaw = localStorage.getItem(busKey);
       if (busRaw) {
-        const busCfg = JSON.parse(busRaw);
-        return {
-          ...DEFAULT_PROMO_CONFIG,
-          ...busCfg,
-          // El texto publicitario siempre está blindado y centralizado por SuperAdmin
-          textoPublicidad: globalTexto,
-        };
+        try {
+          const busCfg = JSON.parse(busRaw);
+          return {
+            ...DEFAULT_PROMO_CONFIG,
+            ...busCfg,
+            // El texto publicitario siempre está blindado y centralizado por SuperAdmin
+            textoPublicidad: globalTexto,
+          };
+        } catch { /* ignore */ }
       }
+      // Si la unidad no tiene configuración local propia, retornar DEFAULT (activa: false)
+      // NUNCA caer a globalRaw.activa porque activaría promociones no autorizadas por el socio
+      return {
+        ...DEFAULT_PROMO_CONFIG,
+        activa: false,
+        textoPublicidad: globalTexto,
+      };
     }
     // 2. Fallback a configuración general
     if (globalRaw) {
-      return { ...DEFAULT_PROMO_CONFIG, ...JSON.parse(globalRaw), textoPublicidad: globalTexto };
+      try {
+        return { ...DEFAULT_PROMO_CONFIG, ...JSON.parse(globalRaw), textoPublicidad: globalTexto };
+      } catch { /* ignore */ }
     }
   } catch { /* ignore */ }
   return { ...DEFAULT_PROMO_CONFIG };
