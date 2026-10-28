@@ -5785,3 +5785,52 @@ Se auditó el 100% del catálogo de frecuencias en `src/lib/seed-vts.ts`:
 4. **Protocolo de Seguridad:**
    - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
    - Cero almacenamiento fijo de tokens en archivos locales o de configuración.
+
+
+---
+
+## 📋 PLAN DE IMPLEMENTACIÓN APROBADO (PENDIENTE DE EJECUCIÓN): COMPROBANTE DE "VUELTO PENDIENTE" EN EMISIÓN DE BOLETOS E IMPRESIÓN TÉRMICA 58MM (v3.61.60)
+
+> **ESTADO:** 🟡 DISEÑO APROBADO EN ESPERA DE ORDEN DE EJECUCIÓN  
+> **FECHA DE REGISTRO:** 2026-10-28 | **SISTEMA:** RutaGo - Emisión de Boletos (`TicketScreen`) e Impresora Térmica ESC/POS (`ticket-escpos`)  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Contexto Operativo de Campo
+Al iniciar la jornada o las primeras frecuencias, es frecuente que los pasajeros paguen con billetes de **$10** o **$20** (o **$5**) y el ayudante aún no disponga de suelto suficiente para entregar el cambio inmediato. Se requiere que el ayudante pueda marcar de forma rápida y con un solo toque que el vuelto queda pendiente, de modo que el ticket impreso sirva al pasajero como comprobante físico exacto para reclamar su vuelto más adelante en el trayecto.
+
+### 📍 2. Detalle Concreto de los Cambios a Realizar (3 Archivos + Pruebas)
+
+1. **`src/components/transport/TicketScreen.tsx` (Interfaz de Emisión de Boletos):**
+   - **Estado Local:** Agregar `billetePendiente: number | null` (por defecto `null`), que se reinicia automáticamente a `null` tras cada venta registrada o al cambiar de parada/monto.
+   - **Cajitas de Vuelto Convertidas en Botones Interactivos (Toggle):**
+     * Las casillas inferiores que muestran los billetes (`Redondeo`, `$5`, `$10`, `$20`) y su vuelto pasan de ser `<div>` estáticos a botones `<button type="button">`.
+     * **Comportamiento al tocar:** Si el ayudante toca una casilla (ej. `$20`), se activa/desactiva (`toggle`). Cuando está seleccionada:
+       - Se resalta visualmente en color ámbar/rojo (`bg-amber-500 text-white ring-2 ring-amber-600 shadow-md`) con el indicador **`⏳ PENDIENTE`**.
+       - El botón principal **REGISTRAR** muestra el recordatorio claro: `REGISTRAR $1.25 (VUELTO PEND. $18.75)`.
+     * **Si NO se toca ninguna casilla:** Funciona exactamente igual que hoy (venta normal sin vuelto pendiente).
+   - **Envío a Impresión y Guardado Local:**
+     * Si `billetePendiente` está seleccionado y no es viaje gratis, se calcula `vueltoPendiente = parseFloat((billetePendiente - totalCobrado).toFixed(2))` y se pasa a `generateTicketBytes({ ..., billeteRecibido: billetePendiente, vueltoPendiente })`.
+     * **Impacto Contable Cero:** El campo `cobrado` de la venta se mantiene intacto con el valor real de la tarifa (ej. `$1.25`) para no alterar cuadres ni arqueos; `billeteRecibido` y `vueltoPendiente` se guardan únicamente como metadatos informativos del boleto.
+
+2. **`src/lib/ticket-escpos.ts` (Generador Térmico ESC/POS 58mm):**
+   - Extender la interfaz `TicketData` con dos campos opcionales:
+     * `billeteRecibido?: number;`
+     * `vueltoPendiente?: number;`
+   - **Impresión Condicional (Solo cuando `vueltoPendiente && vueltoPendiente > 0`):**
+     * Justo debajo de la tarifa cobrada en el ticket normal, imprimir un bloque destacado en negrita y doble altura para que el pasajero reclame su vuelto:
+       ```text
+       --------------------------------
+            PENDIENTE DEVOLUCION
+       Billete: $20.00
+            VUELTO: $18.75
+       --------------------------------
+       ```
+     * Si no se seleccionó ninguna casilla de billete, el ticket impreso no sufre ningún cambio ni agrega líneas extra.
+
+3. **`src/lib/indexeddb.ts` (Tipado de `VentaLocal`):**
+   - Añadir las propiedades opcionales `billeteRecibido?: number` y `vueltoPendiente?: number` a la interfaz `VentaLocal` para trazabilidad local sin afectar la sincronización contable.
+
+4. **Suite de Pruebas Unitarias (`tests/vuelto-pendiente-ticket.test.ts`):**
+   - Verificar que `generateTicketBytes` SIN `vueltoPendiente` genere el ticket estándar sin texto de devolución.
+   - Verificar que `generateTicketBytes` CON `billeteRecibido: 20` y `vueltoPendiente: 18.75` incluya en los bytes ESC/POS las leyendas `PENDIENTE DEVOLUCION`, `Billete: $20.00` y `VUELTO: $18.75`.
+   - Verificar cálculo exacto de vuelto para 1 pasajero y múltiples pasajeros (`cantidad > 1`).
