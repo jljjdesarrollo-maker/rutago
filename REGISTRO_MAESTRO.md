@@ -6096,3 +6096,52 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
   4. **`tests/fase4-indexeddb-boletera-speed.test.ts`:**
      - Suite de 6 pruebas automatizadas validando todas las optimizaciones de la Fase 4 (**206 pass, 0 fail** en las 29 suites del proyecto).
 
+
+---
+
+### 🔄 8. Handover de Sesión y Verificación de Continuidad (2026-10-28)
+* **Estado:** 🟢 **ACTIVO - REPOSITORIO SINCRONIZADO Y TEST SUITE AL 100%**
+* **Contexto de Sesión:**
+  - Archivo maestro sincronizado e inspeccionado.
+  - Repositorio oficial conectado: `https://github.com/jljjdesarrollo-maker/rutago` en rama `main` (`v3.61.66`).
+  - Token de acceso GitHub (PAT) proporcionado por el usuario en chat y habilitado en memoria para operaciones Git sin persistencia en archivos de configuración.
+  - **Pruebas Automatizadas:** 206 pruebas ejecutadas en 29 archivos (`bun test tests/`) con resultado: **206 pass, 0 fail (100% en verde)**.
+  - **Estado de Tareas:** Fase 4 de optimización completada. A la espera de las especificaciones de la nueva tarea o requerimiento para continuar.
+
+---
+
+## 🎁 9. Auditoría Forense y Plan de Sincronización en Base de Datos: Boleto Premiado / Viaje Gratis por Unidad (v3.61.67)
+> **FECHA DE REGISTRO:** 2026-10-28 | **SISTEMA:** RutaGo - Boleto Premiado y Sincronización Multi-Dispositivo por Unidad
+> **ESTADO:** 🟡 AUDITORÍA Y PLAN REGISTRADOS EN ARCHIVO MAESTRO — LISTO PARA APLICACIÓN
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 🔍 1. Diagnóstico Forense del Incidente en Unidad 01
+* **Incidente:** Emisión anómala del boleto #7 ($0.00 - Viaje Gratis) y posterior emisión del boleto #8 ($0.75) con 2 segundos de diferencia en la terminal del Ayudante (Jorge Patiño).
+* **Causa Raíz Identificada:**
+  1. **Encendido por Defecto (`activa: true`):** En `src/components/transport/types-boletos.ts`, `DEFAULT_PROMO_CONFIG` estaba definido con `activa: true`. En cualquier navegador o terminal donde no exista configuración previa en `localStorage`, la app asumía automáticamente que la promoción estaba encendida.
+  2. **Persistencia Huérfana Local (Solo en `localStorage`):** En `FlotaScreen.tsx` (`handleTogglePromo` y `handleSavePromoModal`), al pausar la promoción desde el teléfono o PC del Socio, el cambio solo se guardaba en el almacenamiento local del dispositivo emisor (`rg_promo_config_bus_01`), sin sincronizarlo ni enviarlo a la base de datos PostgreSQL (`/api/buses`).
+  3. **Desconexión entre Dispositivos:** El celular del Ayudante jamás recibía la orden de "PAUSADO" emitida por el Socio. Al inicializar su sesión, leía el `DEFAULT_PROMO_CONFIG` (`activa: true`) y realizaba el sorteo aleatorio (saliendo premiado el boleto #7).
+
+### 🏛️ 2. Directivas de Arquitectura y Gobernanza Aprobadas
+1. **Fuente Única de Verdad en PostgreSQL:** La configuración de la promoción (`activa`, `rangoMin`, `rangoMax`, `textoPublicidad`, `sonidoGanador`) pertenece al autobús físico (`busId`) y debe persistirse en la base de datos en la nube.
+2. **Apagado por Defecto (`activa: false`) por Seguridad Financiera:** Ninguna unidad regalará dinero o pasajes ($0.00) a menos que su Socio Propietario lo active de forma explícita y consciente en su panel de Flota.
+3. **Persistencia Compatible sin Migración de Esquema:** Al igual que el odómetro calibrado (`[Odómetro Calibrado]: ...`), la configuración se empaqueta de forma estructurada en `Bus.notas` mediante `[PromoConfig]:{...}`, aislada de las notas visibles y entregada limpiamente como `bus.promoConfig` en la API REST.
+4. **Sincronización Silenciosa hacia la Boletera con Fallback Offline:** Al ingresar al turno o abrir frecuencia, la app del Ayudante descarga silenciosamente la configuración oficial vigente de su unidad. Si se queda sin cobertura en ruta, opera con la última orden descargada.
+5. **Auditoría y Distintivo en Revisión de Boletos:** Los boletos con tarifa $0.00 se distinguen claramente con la etiqueta `🎁 GRATIS` en `VentasReviewScreen.tsx`.
+
+### 📋 3. Plan de Implementación de 5 Acciones
+* **Acción 1 (Apagado por Defecto y Aislamiento por Unidad):**
+  - En `src/components/transport/types-boletos.ts`: cambiar `DEFAULT_PROMO_CONFIG.activa` de `true` a `false`.
+  - Actualizar `loadPromoConfig(busIdOrDisco)` para que priorice la clave aislada de la unidad (`rg_promo_config_bus_XX`), el objeto `bus.promoConfig` precargado de la flota, o fallback estricto a `activa: false`.
+* **Acción 2 (Persistencia por Unidad en PostgreSQL):**
+  - En `src/app/api/buses/route.ts`: implementar `extractPromoConfigFromNotas` y formateo al guardar para inyectar/extraer `[PromoConfig]:{...}` en `Bus.notas`. Entregar `promoConfig` en GET, POST y PUT.
+  - En `src/app/api/buses/odometro/route.ts`: preservar `[PromoConfig]` al actualizar odómetro para evitar sobreescrituras.
+  - En `src/lib/fleet-storage.ts`: sincronizar `savePromoConfig(bus.promoConfig, bus.id)` automáticamente al recibir datos del servidor.
+* **Acción 3 (Sincronización en la Nube desde FlotaScreen):**
+  - En `src/components/transport/FlotaScreen.tsx`: conectar `handleTogglePromo` y `handleSavePromoModal` con `updateBusInApi(bId, updatedBus)` para reflejar cambios inmediatamente en PostgreSQL. Cambiar valores fallback del modal a `false`.
+* **Acción 4 (Sincronización en Boletera y Trazabilidad en Auditoría):**
+  - En `src/components/transport/HomeScreenVT.tsx` y `src/components/transport/FrecuenciaSelector.tsx`: invocar `fetchBusesFromApi()` en segundo plano al montar pantalla para hidratar la orden oficial antes de la venta.
+  - En `src/components/transport/VentasReviewScreen.tsx`: desplegar insignia `🎁 GRATIS` en tickets con valor $0.00.
+* **Acción 5 (Suite de Pruebas Automatizadas y Verificación):**
+  - Crear `tests/promo-viaje-gratis-sync.test.ts` validando el estado inicial inactivo, persistencia en API, aislamiento entre buses y descarga hacia la boletera.
+  - Ejecutar suite completa con Bun (`206+ tests pass`) y desplegar versión a producción.
