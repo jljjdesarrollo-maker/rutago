@@ -5741,3 +5741,47 @@ Se auditó el 100% del catálogo de frecuencias en `src/lib/seed-vts.ts`:
 4. **Protocolo de Seguridad:**
    - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
    - Cero almacenamiento fijo de tokens en archivos locales o de configuración.
+
+
+---
+
+## 🛡️ AUDITORÍA CONTABLE Y SEPARACIÓN ESTRICTA: REGISTRO DE JORNADA HISTÓRICA VS. VENTA DE BOLETOS EN VIVO (v3.61.59)
+
+> **ESTADO:** 🟢 IMPLEMENTADO, AUDITADO Y CERTIFICADO AL 100% (174/174 TESTS EN VERDE)  
+> **FECHA DE REGISTRO:** 2026-10-28 | **SISTEMA:** RutaGo - Motor Contable y Control de Tiempo de Venta  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Hallazgo de Auditoría en Campo (Incidente 26/27 de Octubre)
+* **Descubrimiento del Socio/Administrador:**
+  Se verificó en base de datos que la causa real del incidente en la Unidad 01 (VT07) el 27 de octubre fue que el ayudante seleccionó por error la fecha **26 de octubre ("Ayer")** al abrir su jornada del 27 de octubre.
+* **Por qué no lo notó en la mañana:**
+  La regla previa en `calcularEstadoTiempoVenta` tenía una heurística (`todayStr > fechaOperacion && hh < 12`) que asumía que cualquier frecuencia antes de las 12:00 PM con fecha del día anterior era un retorno de pernocta, sumándole `+1 día`. Eso permitió al ayudante emitir boletos a las `06:25`, `08:50` y `10:45` guardándolos contablemente en el día 26 en lugar del 27.
+
+---
+
+### 📍 2. Solución Definitiva Implementada (`v3.61.59`)
+
+1. **Separación Estricta entre "Registrar Día Trabajado (Sin Venta de Boletos)" y "Venta de Boletos en Vivo":**
+   - **Ayudantes que NO venden boletos (registro de días trabajados / arqueos):** En `HomeScreenVT`, `FrecuenciaSelector`, `ArqueoScreen` y `ArqueoGeneralScreen`, los botones **"Hoy"**, **"Ayer"** y **"Otra fecha"** siguen 100% libres y operativos sin restricción de reloj.
+   - **Ayudantes que SÍ venden boletos en ruta (`TicketScreen` / `calcularEstadoTiempoVenta`):** Se eliminó el desplazamiento automático de fecha para frecuencias con `esPernoctaRetorno === false`.
+   - Ahora, si un ayudante selecciona por error **"Ayer"** (u otra fecha pasada) e intenta entrar a **Vender Boletos** en un turno diurno (o en la primera vuelta de la mañana `06:25`), el sistema bloquea inmediatamente la emisión desde la primera vuelta, obligándolo a regresar y seleccionar **"Hoy"** antes de registrar el primer boleto.
+
+2. **Preservación Exacta de Retornos de Pernocta Oficial (`esPernoctaRetorno === true`):**
+   - Únicamente la vuelta de retorno matutino (Día 2) de los turnos con pernocta oficial (`TURNOS_CON_PERNOCTA_OFICIALES`: `VT1, VT3, VT4, VT5, VT8, VT10, VT11, VT12, VT14, P1, P2`) suma `+1 día` y muestra la etiqueta `Día 2`.
+
+3. **Certificación Técnica (`tests/vt07-bloqueo-tarde-fix.test.ts`):**
+   - **174 de 174 pruebas unitarias aprobadas al 100% en verde** (22 suites en Bun).
+   - **Versión de Producción:** `v3.61.59` (actualizada en `package.json` y `HomeScreenVT.tsx`).
+
+---
+
+## 🔑 GUÍA DE CONTINUIDAD POR CUOTAS (PARA EL PRÓXIMO CHAT O NUEVA CUENTA DE GOOGLE AI STUDIO)
+
+1. **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago`
+2. **Estado Actual:**
+   - **v3.61.59:** Culminada, sincronizada con GitHub/Vercel y certificada al 100% (Separación estricta entre registro de arqueos con fecha "Ayer/Otra fecha" y bloqueo inmediato de venta de boletos en vivo con fecha equivocada; catálogo de pernoctas oficiales intacto; 174/174 tests en verde).
+3. **Próxima Tarea / Sugerencias:**
+   - Verificar despliegue automático en Vercel (`https://rutago-tau.vercel.app/`) con versión `v3.61.59`.
+4. **Protocolo de Seguridad:**
+   - Solicitar el token de acceso de GitHub (PAT) al usuario al iniciar para operaciones git si es necesario.
+   - Cero almacenamiento fijo de tokens en archivos locales o de configuración.

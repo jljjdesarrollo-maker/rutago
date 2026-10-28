@@ -369,7 +369,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           <div className="flex-1 text-center">
             <div className="text-sm font-bold leading-tight flex items-center justify-center gap-1.5">
               <span>{estado.hora} · {rutaMatched}</span>{tiempoEstado.minutosTranscurridos > 0 && <span className="text-[9px] font-mono bg-black/20 px-1 py-0.5 rounded text-white/90" title="Minutos transcurridos desde la hora programada de salida">{tiempoEstado.minutosTranscurridos}m</span>}
-              {(estado.esPernoctaRetorno || (session.fecha && getEcuadorDateString() > session.fecha)) && (
+              {tiempoEstado.esPernocta && (
                 <span className="bg-amber-400 text-amber-950 text-[9px] font-black px-1.5 py-0.2 rounded uppercase">Día 2</span>
               )}
             </div>

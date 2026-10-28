@@ -241,24 +241,18 @@ export function calcularEstadoTiempoVenta(
   }
   scheduled.setHours(hh, mm, 0, 0);
 
-  // ─── REGLA CANONICA DE RETORNO AL DIA SIGUIENTE (PERNOCTA / DIA 2) Y SINCRONIZACIÓN OPERATIVA ───
-  let esPernoctaEfectiva = Boolean(esPernoctaRetorno);
-  if (esPernoctaRetorno) {
+  // ─── REGLA CANONICA ESTRICTA DE RETORNO AL DIA SIGUIENTE (PERNOCTA OFICIAL / DIA 2) ───
+  // Unicamente cuando la frecuencia es explicitamente un retorno oficial de pernocta (esPernoctaRetorno === true)
+  // o cuando no se definio explicitamente (undefined) en una vuelta matutina (hh < 12) de sesion previa.
+  // Si esPernoctaRetorno === false (turnos diurnos o vueltas del Dia 1), JAMAS se desplaza la fecha,
+  // bloqueando de inmediato desde la primera vuelta matutina cualquier intento de emitir boletos en vivo
+  // con una fecha anterior ("Ayer" / otra fecha), mientras que el registro de dias trabajados y arqueos
+  // sin venta de boletos permanece 100% libre en FrecuenciaSelector / ArqueoScreen.
+  const esPernoctaEfectiva =
+    esPernoctaRetorno === true ||
+    (esPernoctaRetorno === undefined && Boolean(fechaOperacion && getEcuadorDateString(now) > fechaOperacion && hh < 12));
+  if (esPernoctaEfectiva) {
     scheduled.setDate(scheduled.getDate() + 1);
-  } else if (fechaOperacion) {
-    const todayStr = getEcuadorDateString(now);
-    if (todayStr > fechaOperacion) {
-      // Si la jornada en curso continúa o se opera en la fecha actual (ej. sesión iniciada en fecha previa):
-      // Sincronizar la fecha programada al día real de operación para evitar desfases falsos de +1440 min
-      // en frecuencias vespertinas (12:45, 15:15, 17:10, 18:55, 21:15).
-      const nowParts = todayStr.split("-").map(Number);
-      if (nowParts.length === 3 && !isNaN(nowParts[0])) {
-        scheduled.setFullYear(nowParts[0], nowParts[1] - 1, nowParts[2]);
-      }
-      if (hh < 12) {
-        esPernoctaEfectiva = true;
-      }
-    }
   }
 
   const diffMs = now.getTime() - scheduled.getTime();
