@@ -3,30 +3,39 @@
 import { isSuperAdmin as checkIsSuperAdmin } from '@/lib/roles';
 
 import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { HomeScreen } from '@/components/transport/HomeScreen';
-import { RecordForm } from '@/components/transport/RecordForm';
-import { CargaHistoricaScreen } from '@/components/transport/CargaHistoricaScreen';
 import { HistoryScreen } from '@/components/transport/HistoryScreen';
-import { RecordDetail } from '@/components/transport/RecordDetail';
-import { ComprobanteModal } from '@/components/transport/ComprobanteModal';
 import { LoginScreen } from '@/components/transport/LoginScreen';
-import { PersonalScreen } from '@/components/transport/PersonalScreen';
-import { ReportsScreen } from '@/components/transport/ReportsScreen';
-import { ReporteOperativoScreen } from '@/components/transport/ReporteOperativoScreen';
-import { VTConfigScreen } from '@/components/transport/VTConfigScreen';
-import { CompareFrequenciesScreen } from '@/components/transport/CompareFrequenciesScreen';
-import { VentasReviewScreen } from '@/components/transport/VentasReviewScreen';
 import { HomeScreenVT } from '@/components/transport/HomeScreenVT';
 import { FrecuenciaSelector } from '@/components/transport/FrecuenciaSelector';
 import { TicketScreen } from '@/components/transport/TicketScreen';
 import { ArqueoScreen } from '@/components/transport/ArqueoScreen';
-import { ArqueoGeneralScreen } from '@/components/transport/ArqueoGeneralScreen';
-import { SyncScreen } from '@/components/transport/SyncScreen';
-import OwnerExpensesScreen from '@/components/socio/OwnerExpensesScreen';
-import { FlotaScreen } from '@/components/transport/FlotaScreen';
-import { BenchmarkScreen } from '@/components/transport/BenchmarkScreen';
-import { SaaSAdminScreen } from '@/components/transport/SaaSAdminScreen';
-import { MantenimientoScreen } from '@/components/transport/MantenimientoScreen';
+
+// Fase 3: Carga diferida (Code-Splitting) de pantallas secundarias y administrativas
+const DynamicScreenLoader = () => (
+  <div className="flex items-center justify-center min-h-[100dvh] bg-[#F5F5F7]">
+    <div className="w-9 h-9 border-4 border-[#D6D6D6] border-t-[#912D26] rounded-full animate-spin" />
+  </div>
+);
+
+const RecordForm = dynamic(() => import('@/components/transport/RecordForm').then(m => m.RecordForm), { loading: DynamicScreenLoader });
+const CargaHistoricaScreen = dynamic(() => import('@/components/transport/CargaHistoricaScreen').then(m => m.CargaHistoricaScreen), { loading: DynamicScreenLoader });
+const RecordDetail = dynamic(() => import('@/components/transport/RecordDetail').then(m => m.RecordDetail), { loading: DynamicScreenLoader });
+const ComprobanteModal = dynamic(() => import('@/components/transport/ComprobanteModal').then(m => m.ComprobanteModal), { loading: DynamicScreenLoader });
+const PersonalScreen = dynamic(() => import('@/components/transport/PersonalScreen').then(m => m.PersonalScreen), { loading: DynamicScreenLoader });
+const ReportsScreen = dynamic(() => import('@/components/transport/ReportsScreen').then(m => m.ReportsScreen), { loading: DynamicScreenLoader });
+const ReporteOperativoScreen = dynamic(() => import('@/components/transport/ReporteOperativoScreen').then(m => m.ReporteOperativoScreen), { loading: DynamicScreenLoader });
+const VTConfigScreen = dynamic(() => import('@/components/transport/VTConfigScreen').then(m => m.VTConfigScreen), { loading: DynamicScreenLoader });
+const CompareFrequenciesScreen = dynamic(() => import('@/components/transport/CompareFrequenciesScreen').then(m => m.CompareFrequenciesScreen), { loading: DynamicScreenLoader });
+const VentasReviewScreen = dynamic(() => import('@/components/transport/VentasReviewScreen').then(m => m.VentasReviewScreen), { loading: DynamicScreenLoader });
+const ArqueoGeneralScreen = dynamic(() => import('@/components/transport/ArqueoGeneralScreen').then(m => m.ArqueoGeneralScreen), { loading: DynamicScreenLoader });
+const SyncScreen = dynamic(() => import('@/components/transport/SyncScreen').then(m => m.SyncScreen), { loading: DynamicScreenLoader });
+const OwnerExpensesScreen = dynamic(() => import('@/components/socio/OwnerExpensesScreen'), { loading: DynamicScreenLoader });
+const FlotaScreen = dynamic(() => import('@/components/transport/FlotaScreen').then(m => m.FlotaScreen), { loading: DynamicScreenLoader });
+const BenchmarkScreen = dynamic(() => import('@/components/transport/BenchmarkScreen').then(m => m.BenchmarkScreen), { loading: DynamicScreenLoader });
+const SaaSAdminScreen = dynamic(() => import('@/components/transport/SaaSAdminScreen').then(m => m.SaaSAdminScreen), { loading: DynamicScreenLoader });
+const MantenimientoScreen = dynamic(() => import('@/components/transport/MantenimientoScreen').then(m => m.MantenimientoScreen), { loading: DynamicScreenLoader });
 import { SafeErrorBoundary } from '@/components/transport/SafeErrorBoundary';
 import { type AppView, type RecordFormData, type SavedRecord, type UserSession, num } from '@/components/transport/types';
 import { type VTSession, type FrecuenciaEstado } from '@/components/transport/types-boletos';

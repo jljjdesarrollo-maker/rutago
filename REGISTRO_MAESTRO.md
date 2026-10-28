@@ -6061,3 +6061,18 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
      - Hidratación instantánea en `0 ms` de la lista de liquidaciones (`getHistoryRecordsSnapshot`) al entrar a «Liquidaciones de Ruta» o alternar entre filtros (`Semana`, `Hoy`, `Mes`, `3 Meses`), eliminando la pantalla en blanco de bloqueo mientras revalida en segundo plano.
   4. **`tests/fase2-swr-instant-cache.test.ts`:**
      - Suite de 5 pruebas automatizadas verificando el aislamiento por unidad, la limpieza de `photoUrl` en caché y la integración en `HomeScreen` y `HistoryScreen` (**197 pass, 0 fail** en 27 suites).
+
+---
+
+### ✅ 6. Ejecución y Certificación de FASE 3 (`v3.61.65` — 2026-10-28)
+* **Estado:** 🟢 **COMPLETADA Y DESPLEGADA EN PRODUCCIÓN**
+* **Objetivo:** Adelgazar el paquete JavaScript inicial en dispositivos móviles (~1.35 MB de código fuente diferido en chunks bajo demanda) manteniendo en carga síncrona inmediata (`0 ms`) el núcleo operativo diario.
+* **Archivos intervenidos y verificados:**
+  1. **`src/app/page.tsx`:**
+     - **Mantenidos en carga síncrona inmediata (`0 ms`):** `LoginScreen`, `HomeScreen`, `HistoryScreen`, `HomeScreenVT`, `FrecuenciaSelector`, `TicketScreen` y `ArqueoScreen`.
+     - **Migrados a `next/dynamic` (17 pantallas y modales secundarios):** `MantenimientoScreen` (212 KB), `OwnerExpensesScreen` (105 KB), `SaaSAdminScreen` (84 KB), `CargaHistoricaScreen` (81 KB), `FlotaScreen` (80 KB), `ArqueoGeneralScreen` (76 KB), `VentasReviewScreen` (70 KB), `ReportsScreen` (62 KB), `BenchmarkScreen` (51 KB), `VTConfigScreen` (47 KB), `PersonalScreen` (38 KB), `RecordDetail` (36 KB), `RecordForm` (30 KB), `ReporteOperativoScreen` (25 KB), `CompareFrequenciesScreen` (18 KB), `SyncScreen` (10 KB) y `ComprobanteModal`.
+  2. **`src/components/transport/HomeScreen.tsx`:**
+     - **Separación por rol y bajo demanda con `next/dynamic`:** `ChoferMantenimientoWidget` (213 KB — solo se descarga si `user.rol === "CONDUCTOR"`), `SocioMantenimientoWidget` (63 KB — solo se descarga para el panel del Socio/Admin), `ReporteSocioCalendarioModal` (43 KB — `ssr: false`, solo se descarga al abrir el modal de auditoría calendario) y `SuperAdminHomeScreen` (16 KB — solo se descarga si `isSuperAdmin`).
+  3. **`tests/fase3-dynamic-imports.test.ts`:**
+     - Suite de 3 pruebas automatizadas validando la preservación de imports síncronos del núcleo operativo y la conversión completa a `next/dynamic` en `page.tsx` y `HomeScreen.tsx` (**200 pass, 0 fail** en las 28 suites del proyecto).
+

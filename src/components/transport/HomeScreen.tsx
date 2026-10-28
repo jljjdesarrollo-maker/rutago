@@ -42,19 +42,34 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ChoferMantenimientoWidget } from './ChoferMantenimientoWidget';
+import dynamic from 'next/dynamic';
 import { SafeErrorBoundary } from './SafeErrorBoundary';
-import { SocioMantenimientoWidget } from './SocioMantenimientoWidget';
 import { AyudanteMantenimientoBar } from './AyudanteMantenimientoBar';
 import { AyudanteJornadaCard } from './AyudanteJornadaCard';
 import type { UserSession } from './types';
 import { getOwnerExpenses, fetchOwnerExpensesFromApi } from '@/lib/owner-expenses-storage';
-import { SuperAdminHomeScreen } from './SuperAdminHomeScreen';
 import { getAllBuses, getActiveBusId, setActiveBus, subscribeToActiveBus } from '@/lib/fleet-storage';
 import { getCurrentYearMonth, formatMonthName, formatFechaCompletaEcuador } from '@/lib/date-helpers';
 import { getSuscripciones } from '@/lib/saas-storage';
 import { getBusModuloMantenimientoActivo, isBusModuloMantenimientoConfigurado, syncMantenimientoConfigConServidor } from '@/lib/mantenimiento-estaciones';
-import { ReporteSocioCalendarioModal } from '@/components/socio/ReporteSocioCalendarioModal';
+
+// Fase 3: Carga diferida por rol y bajo demanda en HomeScreen
+const ChoferMantenimientoWidget = dynamic(
+  () => import('./ChoferMantenimientoWidget').then(m => m.ChoferMantenimientoWidget),
+  { loading: () => <div className="h-32 rounded-2xl bg-white/60 animate-pulse border border-gray-100" /> }
+);
+const SocioMantenimientoWidget = dynamic(
+  () => import('./SocioMantenimientoWidget').then(m => m.SocioMantenimientoWidget),
+  { loading: () => <div className="h-24 rounded-2xl bg-white/60 animate-pulse border border-gray-100" /> }
+);
+const SuperAdminHomeScreen = dynamic(
+  () => import('./SuperAdminHomeScreen').then(m => m.SuperAdminHomeScreen),
+  { loading: () => <div className="min-h-[60vh] flex items-center justify-center"><div className="w-8 h-8 border-4 border-gray-200 border-t-[#912D26] rounded-full animate-spin" /></div> }
+);
+const ReporteSocioCalendarioModal = dynamic(
+  () => import('@/components/socio/ReporteSocioCalendarioModal').then(m => m.ReporteSocioCalendarioModal),
+  { ssr: false }
+);
 import {
   getHomeSummarySnapshot,
   saveHomeSummarySnapshot,
