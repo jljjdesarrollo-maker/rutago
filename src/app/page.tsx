@@ -327,6 +327,7 @@ export default function Home() {
       <RecordDetail
         record={detailRecord}
         isAdmin={isAdmin}
+        isSocio={Boolean(isAdmin || user?.rol === 'SOCIO' || user?.rol === 'ADMIN')}
         onBack={() => setDetailRecord(null)}
         onRecordUpdated={(updated) => setDetailRecord(updated)}
       />

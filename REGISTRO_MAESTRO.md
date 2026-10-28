@@ -5844,9 +5844,9 @@ Al iniciar la jornada o las primeras frecuencias, es frecuente que los pasajeros
 
 ---
 
-## 📋 PLAN DE IMPLEMENTACIÓN APROBADO (PENDIENTE DE EJECUCIÓN): ARQUEO CIEGO NEUTRO PARA EL AYUDANTE Y DIAGNÓSTICO QUIRÚRGICO DE DESCUADRES EXCLUSIVO PARA EL SOCIO (v3.61.61)
+## 🛡️ IMPLEMENTACIÓN CERTIFICADA: ARQUEO CIEGO NEUTRO PARA EL AYUDANTE Y DIAGNÓSTICO QUIRÚRGICO DE DESCUADRES EXCLUSIVO PARA EL SOCIO (v3.61.61)
 
-> **ESTADO:** 🟡 DISEÑO APROBADO DOCUMENTADO EN ARCHIVO MAESTRO (EN ESPERA DE ORDEN DE EJECUCIÓN)  
+> **ESTADO:** 🟢 IMPLEMENTADO, AUDITADO Y CERTIFICADO AL 100% (183/183 TESTS EN VERDE)  
 > **FECHA DE REGISTRO:** 2026-10-28 | **SISTEMA:** RutaGo - Auditoría Ciega en Ruta (`ArqueoScreen`, `HistoryScreen`, `RecordDetail`)  
 > **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
 
@@ -5885,3 +5885,12 @@ Al iniciar la jornada o las primeras frecuencias, es frecuente que los pasajeros
   - Gracias a la regla de paridad del motor canónico (`buildCanonicalRecordPayload`), cuando `rawIncome === 0`, `income` asume `efectivoReal` (`$40.00`), mostrándose al Socio como `🟢 $0.00 (Cuadrado)` sin falsas alarmas.
 * **Caso 3 (Registro por «Carga Histórica» / Cuaderno Físico):**
   - Si en la planilla/cuaderno se registró un faltante o sobrante (`record.sobrante`) o diferencias por vuelta, el Badge y el Diagnóstico del Socio reflejan exactamente el descuadre asentado (ej. `🔴 Descuadre Neto: -$6.00`).
+
+
+### 📍 3. Certificación Técnica y Continuidad por Cuotas (`v3.61.61`)
+* **Archivos Modificados:**
+  - `src/components/transport/ArqueoScreen.tsx`: Comprobante neutro de recaudación para el ayudante (`Efectivo Declarado: $XX.XX` y `✓ Frecuencia asentada en el turno`), eliminando la exposición del sistema y de las alertas `SOBRANTE`/`FALTANTE`.
+  - `src/components/transport/HistoryScreen.tsx`: Badge de Auditoría (`🟢 Cuadrado $0.00`, `⚠️ Faltante: -$X.XX`, `🔵 Sobrante: +$X.XX`) y Acordeón Desplegable Directo (`🔍 Ver desglose de las X vueltas`) condicionados estrictamente a `isSocio`.
+  - `src/components/transport/RecordDetail.tsx` y `src/app/page.tsx`: Tarjeta Ejecutiva «Diagnóstico de Caja» en la cabecera y etiquetas resaltadas por frecuencia (`⚠️ -$X.XX` / `ℹ️ +$X.XX`) exclusivas para el Socio/Admin.
+* **Pruebas Unitarias Automatizadas:** **183 de 183 pruebas aprobadas al 100% en verde** (24 suites en Bun, incluyendo `tests/arqueo-ciego-socio-audit.test.ts`).
+* **Versión de Producción:** `v3.61.61` (sincronizada en `main`).

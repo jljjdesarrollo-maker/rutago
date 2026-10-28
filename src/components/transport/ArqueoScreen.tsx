@@ -119,40 +119,24 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
           <Check className="w-16 h-16 mb-4" />
           <h1 className="text-2xl font-black mb-2">{esUltima ? 'TURNO COMPLETADO' : 'ARQUEO CONFIRMADO'}</h1>
           <p className="text-white/80 text-sm mb-1">{estado.hora} — {estado.nombre}</p>
-          <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-4 w-full max-w-sm mb-4 text-center space-y-1.5 border border-white/20">
-            <p className="text-white/80 text-[11px] font-black uppercase tracking-wider">Resultado de la Auditoría Ciega</p>
-            <p className="text-white text-sm font-bold">{ventas.length} boletos en ruta · ${totalSistema.toFixed(2)}</p>
+          <div className="bg-white/10 backdrop-blur-xs rounded-2xl p-5 w-full max-w-sm mb-4 text-center space-y-2 border border-white/20">
+            <p className="text-white/80 text-[11px] font-black uppercase tracking-wider">Comprobante de Recaudación</p>
+            <div className="pt-1 flex justify-between items-center text-sm">
+              <span className="text-white/85 font-semibold">Efectivo Declarado:</span>
+              <span className="font-black text-2xl text-white">${efectivoNum.toFixed(2)}</span>
+            </div>
             {cajaComunCount > 0 && cajaComunMonto > 0 && (
-              <p className="text-white/90 text-xs">{cajaComunCount} boletos caja común · ${cajaComunMonto.toFixed(2)}</p>
+              <div className="border-t border-white/20 pt-2 flex justify-between items-center text-xs">
+                <span className="text-white/80 font-medium">Caja Común ({cajaComunCount} bol.):</span>
+                <span className="font-black text-sm text-white">${cajaComunMonto.toFixed(2)}</span>
+              </div>
             )}
-            <div className="border-t border-white/20 pt-2 mt-2 flex justify-between items-center text-xs">
-              <span className="text-white/80 font-medium">Efectivo Declarado:</span>
-              <span className="font-black text-base text-white">${efectivoNum.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-white/80 font-medium">Producción Total:</span>
-              <span className="font-black text-base text-white">${produccionTotal.toFixed(2)}</span>
-            </div>
           </div>
 
-          {cuadra && (
-            <div className="bg-emerald-500/40 border border-emerald-300 rounded-2xl px-5 py-3 mb-2 text-center w-full max-w-sm">
-              <p className="text-emerald-100 font-black text-xl tracking-tight">✓ CAJA CUADRADA ($0.00)</p>
-              <p className="text-xs text-emerald-200 mt-0.5">El dinero físico coincide exactamente con el sistema</p>
-            </div>
-          )}
-          {sobrante && (
-            <div className="bg-blue-500/40 border border-blue-300 rounded-2xl px-5 py-3 mb-2 text-center w-full max-w-sm">
-              <p className="text-blue-100 font-black text-xl tracking-tight">SOBRANTE: +${diferencia.toFixed(2)}</p>
-              <p className="text-xs text-blue-200 mt-0.5">Excedente acreditado íntegro a favor del bus</p>
-            </div>
-          )}
-          {faltante && (
-            <div className="bg-amber-500/40 border border-amber-300 rounded-2xl px-5 py-3 mb-2 text-center w-full max-w-sm">
-              <p className="text-amber-100 font-black text-xl tracking-tight">FALTANTE: -${Math.abs(diferencia).toFixed(2)}</p>
-              <p className="text-xs text-amber-200 mt-0.5">Registrado en arqueo a cargo de la tripulación</p>
-            </div>
-          )}
+          <div className="bg-emerald-500/30 border border-emerald-300/60 rounded-2xl px-5 py-3 mb-2 text-center w-full max-w-sm">
+            <p className="text-emerald-50 font-black text-base tracking-tight">✓ Frecuencia asentada en el turno</p>
+            <p className="text-xs text-emerald-100/90 mt-0.5">El monto declarado ha sido registrado correctamente</p>
+          </div>
 
           {/* Sync visible */}
           <div className="mt-6 w-full max-w-xs">

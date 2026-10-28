@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Trash2, ChevronRight, Calendar, TrendingUp, TrendingDown, Loader2, Download, CloudOff, UploadCloud, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Trash2, ChevronRight, ChevronDown, ChevronUp, Calendar, TrendingUp, TrendingDown, Loader2, Download, CloudOff, UploadCloud, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -97,6 +97,11 @@ export function HistoryScreen({
   onViewRecord,
 }: HistoryScreenProps) {
   const isChofer = userRole === 'CONDUCTOR';
+  const isSocio = Boolean(isAdmin || userRole === 'SOCIO' || userRole === 'ADMIN');
+  const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({});
+  const toggleExpandRecord = (id: string) => {
+    setExpandedRecords(prev => ({ ...prev, [id]: !prev[id] }));
+  };
   const [resolvedBusId, setResolvedBusId] = useState<string | undefined>(propBusId);
 
   useEffect(() => {
@@ -453,7 +458,12 @@ export function HistoryScreen({
           </div>
         ) : (
           <div className="px-4 py-2 space-y-3">
-            {filteredRecords.map(record => (
+            {filteredRecords.map(record => {
+              const tripsDiff = (record.trips || []).reduce((acc, t) => acc + ((t.efectivoReal || 0) - (t.income || 0)), 0);
+              const netDiff = parseFloat((tripsDiff + (record.sobrante || 0)).toFixed(2));
+              const isExpanded = Boolean(expandedRecords[record.id]);
+
+              return (
               <Card
                 key={record.id}
                 className={`rounded-2xl border bg-white cursor-pointer hover:shadow-md transition-shadow ${
@@ -463,7 +473,7 @@ export function HistoryScreen({
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
-                    <div>
+                    <div className="flex-1 min-w-0 pr-2">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <Calendar className="w-4 h-4 text-[#912D26]" />
                         <span className="font-semibold text-[#3A3A3A]">{formatDate(record.date)}</span>
@@ -475,6 +485,21 @@ export function HistoryScreen({
                         )}
                         {record.km && (
                           <span className="text-xs text-[#3A3A3A]/40">• {record.km} km</span>
+                        )}
+                        {isSocio && (
+                          Math.abs(netDiff) < 0.01 ? (
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              🟢 Cuadrado $0.00
+                            </span>
+                          ) : netDiff < 0 ? (
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+                              ⚠️ Faltante: -${Math.abs(netDiff).toFixed(2)}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                              🔵 Sobrante: +${netDiff.toFixed(2)}
+                            </span>
+                          )
                         )}
                       </div>
                       <div className="flex items-center gap-4 mt-2 text-sm">
@@ -509,9 +534,92 @@ export function HistoryScreen({
                       </Button>
                     </div>
                   </div>
+
+                  {/* Acordeón Desplegable Directo (Exclusivo para Socio/Admin) */}
+                  {isSocio && record.trips && record.trips.length > 0 && (
+                    <div
+                      className="mt-3 pt-2.5 border-t border-slate-100"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleExpandRecord(record.id)}
+                        className="w-full py-1.5 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-xs font-bold text-slate-700 flex items-center justify-between transition active:scale-[0.99]"
+                      >
+                        <span>🔍 Ver desglose de las {record.trips.length} vueltas</span>
+                        {isExpanded ? (
+                          <ChevronUp className="w-4 h-4 text-slate-500" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-slate-500" />
+                        )}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="mt-2 space-y-1.5 bg-slate-50/70 rounded-xl p-2 border border-slate-200/60">
+                          {record.trips.map((t, idx) => {
+                            const tDiff = parseFloat(((t.efectivoReal || 0) - (t.income || 0)).toFixed(2));
+                            const hasTDiff = Math.abs(tDiff) >= 0.01;
+                            const isNoReal = t.tipo === 'no_realizada' && !t.income && !t.efectivoReal;
+                            return (
+                              <div
+                                key={t.id || idx}
+                                className={`flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-lg border ${
+                                  isNoReal
+                                    ? 'bg-slate-100/70 border-slate-200 text-slate-500'
+                                    : hasTDiff
+                                    ? tDiff < 0
+                                      ? 'bg-red-50/80 border-red-200 text-slate-800'
+                                      : 'bg-blue-50/80 border-blue-200 text-slate-800'
+                                    : 'bg-white border-slate-200/70 text-slate-700'
+                                }`}
+                              >
+                                <div className="flex-1 min-w-0 pr-2 truncate font-semibold">
+                                  <span className="text-slate-400 mr-1">{idx + 1}.</span>
+                                  {t.time ? `${t.time} ` : ''}{t.routeFrom} → {t.routeTo}
+                                </div>
+                                {isNoReal ? (
+                                  <span className="text-[10px] font-bold text-orange-600 shrink-0">No realizada</span>
+                                ) : (
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-slate-500">
+                                      Sist. <strong className="text-slate-700">${(t.income || 0).toFixed(2)}</strong>
+                                    </span>
+                                    <span className="text-slate-300">|</span>
+                                    <span className="text-slate-500">
+                                      Decl. <strong className="text-slate-800">${(t.efectivoReal || 0).toFixed(2)}</strong>
+                                    </span>
+                                    <span className="w-16 text-right font-extrabold">
+                                      {!hasTDiff ? (
+                                        <span className="text-emerald-700">🟢 $0.00</span>
+                                      ) : tDiff < 0 ? (
+                                        <span className="text-red-600">🔴 -${Math.abs(tDiff).toFixed(2)}</span>
+                                      ) : (
+                                        <span className="text-blue-600">🔵 +${tDiff.toFixed(2)}</span>
+                                      )}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {Math.abs(record.sobrante || 0) >= 0.01 && (
+                            <div className="flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-lg bg-amber-50/80 border border-amber-200 font-bold text-amber-950">
+                              <span>Ajuste / Descuadre en Planilla de Cierre:</span>
+                              <span className={(record.sobrante || 0) < 0 ? 'text-red-600' : 'text-blue-700'}>
+                                {(record.sobrante || 0) < 0
+                                  ? `🔴 -${Math.abs(record.sobrante || 0).toFixed(2)}`
+                                  : `🔵 +${(record.sobrante || 0).toFixed(2)}`}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>

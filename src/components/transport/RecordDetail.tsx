@@ -26,10 +26,12 @@ interface RecordDetailProps {
   record: SavedRecord;
   onBack: () => void;
   isAdmin?: boolean;
+  isSocio?: boolean;
   onRecordUpdated?: (updated: SavedRecord) => void;
 }
 
-export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: RecordDetailProps) {
+export function RecordDetail({ record, onBack, isAdmin, isSocio, onRecordUpdated }: RecordDetailProps) {
+  const showSocioAudit = Boolean(isSocio || isAdmin);
   const [editingDate, setEditingDate] = useState(false);
   const [newDate, setNewDate] = useState(record.date);
   const [savingDate, setSavingDate] = useState(false);
@@ -358,6 +360,56 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
           </div>
         </div>
 
+        {/* Tarjeta Ejecutiva Diagnóstico de Caja (Exclusiva para el Socio/Admin) */}
+        {showSocioAudit && (() => {
+          const trips = rec.trips || [];
+          const vueltasFaltante = trips.filter(t => (t.efectivoReal - t.income) <= -0.01);
+          const vueltasSobrante = trips.filter(t => (t.efectivoReal - t.income) >= 0.01);
+          const diffTrips = trips.reduce((s, t) => s + (t.efectivoReal - t.income), 0);
+          const netDiff = parseFloat((diffTrips + (rec.sobrante || 0)).toFixed(2));
+
+          if (Math.abs(netDiff) < 0.01 && vueltasFaltante.length === 0 && vueltasSobrante.length === 0) {
+            return (
+              <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4 shadow-2xs">
+                <p className="text-sm font-extrabold text-emerald-900">
+                  🟢 Caja de Ruta Cuadrada al 100%
+                </p>
+                <p className="text-xs text-emerald-700 mt-0.5">
+                  $0.00 de diferencia en todas las vueltas registradas de la jornada.
+                </p>
+              </div>
+            );
+          }
+
+          if (netDiff < 0) {
+            return (
+              <div className="rounded-2xl bg-red-50 border border-red-200 p-4 shadow-2xs">
+                <p className="text-sm font-extrabold text-red-900">
+                  🔴 Alerta de Auditoría: Faltante de -${Math.abs(netDiff).toFixed(2)} en la jornada
+                </p>
+                <p className="text-xs text-red-700 mt-0.5">
+                  {vueltasFaltante.length > 0
+                    ? `Se detectaron ${vueltasFaltante.length} vuelta(s) con faltante${vueltasSobrante.length > 0 ? ` y ${vueltasSobrante.length} con sobrante` : ''}.`
+                    : `Faltante asentado en el cierre de planilla (-${Math.abs(rec.sobrante || 0).toFixed(2)}).`}
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4 shadow-2xs">
+              <p className="text-sm font-extrabold text-blue-900">
+                🔵 Auditoría de Caja: Excedente de +${netDiff.toFixed(2)} a favor del bus
+              </p>
+              <p className="text-xs text-blue-700 mt-0.5">
+                {vueltasSobrante.length > 0
+                  ? `Registrado en ${vueltasSobrante.length} vuelta(s) con sobrante${vueltasFaltante.length > 0 ? ` y ${vueltasFaltante.length} con faltante` : ''}.`
+                  : `Excedente registrado en cierre de jornada.`}
+              </p>
+            </div>
+          );
+        })()}
+
         {/* Frecuencias */}
         <Card className="rounded-2xl border border-[#D6D6D6] bg-white">
           <CardHeader className="pb-2 pt-4 px-4">
@@ -370,20 +422,25 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
               <div className="flex-1">Frecuencia</div>
               <div className="w-16 text-right">Sistema</div>
               <div className="w-16 text-right">Real</div>
-              <div className="w-14 text-right">Dif.</div>
+              <div className="w-20 text-right">Dif.</div>
             </div>
             {(rec.trips || []).map((trip, i) => {
               const odd = (i + 1) % 2 !== 0;
               const diff = trip.efectivoReal - trip.income;
               const hasDiff = Math.abs(diff) >= 0.01;
+              const highlightClass =
+                showSocioAudit && hasDiff
+                  ? diff < 0
+                    ? 'bg-red-50/70 border-l-4 border-red-600 ring-1 ring-red-200'
+                    : 'bg-blue-50/70 border-l-4 border-blue-600 ring-1 ring-blue-200'
+                  : odd
+                  ? 'bg-[#912D26]/5 border-l-4 border-[#912D26]'
+                  : 'bg-[#3A3A3A]/5 border-l-4 border-[#3A3A3A]';
+
               return (
                 <div
-                  key={trip.id}
-                  className={`flex items-center gap-3 p-2.5 rounded-xl ${
-                    odd
-                      ? 'bg-[#912D26]/5 border-l-4 border-[#912D26]'
-                      : 'bg-[#3A3A3A]/5 border-l-4 border-[#3A3A3A]'
-                  }`}
+                  key={trip.id || i}
+                  className={`flex items-center gap-3 p-2.5 rounded-xl ${highlightClass}`}
                 >
                   <span
                     className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
@@ -404,12 +461,24 @@ export function RecordDetail({ record, onBack, isAdmin, onRecordUpdated }: Recor
                   <div className="text-right shrink-0">
                     <p className="text-sm font-bold text-green-700">${trip.efectivoReal.toFixed(2)}</p>
                   </div>
-                  <div className="w-14 text-right shrink-0">
+                  <div className="w-20 text-right shrink-0">
                     {hasDiff ? (
-                      <span className={`text-xs font-bold ${diff > 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                        {diff > 0 ? '+' : ''}
-                        {diff.toFixed(2)}
-                      </span>
+                      showSocioAudit ? (
+                        <span
+                          className={`inline-block text-[10px] font-extrabold px-1.5 py-0.5 rounded-md ${
+                            diff > 0
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : 'bg-red-100 text-red-800 border border-red-200'
+                          }`}
+                        >
+                          {diff > 0 ? `ℹ️ +${diff.toFixed(2)}` : `⚠️ -${Math.abs(diff).toFixed(2)}`}
+                        </span>
+                      ) : (
+                        <span className={`text-xs font-bold ${diff > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                          {diff > 0 ? '+' : ''}
+                          {diff.toFixed(2)}
+                        </span>
+                      )
                     ) : (
                       <span className="text-xs text-gray-400">—</span>
                     )}
