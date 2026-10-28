@@ -34,8 +34,11 @@ export interface VentaLocal {
 const DB_NAME = 'RutaGoOffline';
 const DB_VERSION = 4;
 
+let cachedDbPromise: Promise<IDBDatabase> | null = null;
+
 function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (cachedDbPromise) return cachedDbPromise;
+  cachedDbPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = (event) => {
@@ -66,9 +69,21 @@ function openDB(): Promise<IDBDatabase> {
       }
     };
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onclose = () => { cachedDbPromise = null; };
+      db.onversionchange = () => {
+        db.close();
+        cachedDbPromise = null;
+      };
+      resolve(db);
+    };
+    request.onerror = () => {
+      cachedDbPromise = null;
+      reject(request.error);
+    };
   });
+  return cachedDbPromise;
 }
 
 export async function saveVenta(venta: VentaLocal): Promise<void> {
@@ -81,17 +96,45 @@ export async function saveVenta(venta: VentaLocal): Promise<void> {
   });
 }
 
+/** Fase 4: Guardado atómico en lote (1 sola transacción readwrite para múltiples pasajeros) */
+export async function saveVentasBatch(ventas: VentaLocal[]): Promise<void> {
+  if (!ventas || ventas.length === 0) return;
+  if (ventas.length === 1) return saveVenta(ventas[0]);
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('ventas_pendientes', 'readwrite');
+    const store = tx.objectStore('ventas_pendientes');
+    for (const venta of ventas) {
+      store.put(venta);
+    }
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function getVentasPendientes(): Promise<VentaLocal[]> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction('ventas_pendientes', 'readonly');
     const store = tx.objectStore('ventas_pendientes');
-    const request = store.getAll();
-    request.onsuccess = () => {
-      const all: VentaLocal[] = request.result;
-      resolve(all.filter(v => v.syncStatus === 'pending' || v.syncStatus === 'error'));
-    };
-    request.onerror = () => reject(request.error);
+    if (store.indexNames.contains('syncStatus')) {
+      const index = store.index('syncStatus');
+      const reqPending = index.getAll('pending');
+      const reqError = index.getAll('error');
+      let pendingRes: VentaLocal[] = [];
+      let errorRes: VentaLocal[] = [];
+      reqPending.onsuccess = () => { pendingRes = reqPending.result || []; };
+      reqError.onsuccess = () => { errorRes = reqError.result || []; };
+      tx.oncomplete = () => resolve([...pendingRes, ...errorRes]);
+      tx.onerror = () => reject(tx.error);
+    } else {
+      const request = store.getAll();
+      request.onsuccess = () => {
+        const all: VentaLocal[] = request.result;
+        resolve(all.filter(v => v.syncStatus === 'pending' || v.syncStatus === 'error'));
+      };
+      request.onerror = () => reject(request.error);
+    }
   });
 }
 
@@ -146,7 +189,10 @@ export async function getVentasByFrecuencia(estadoId: string): Promise<VentaLoca
       request.onerror = () => reject(request.error);
     } else {
       const request = store.getAll();
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        const all: VentaLocal[] = request.result || [];
+        resolve(all.filter(v => v.estadoId === estadoId || v.frecuenciaId === estadoId));
+      };
       request.onerror = () => reject(request.error);
     }
   });
@@ -197,12 +243,24 @@ export async function countVentasPendientes(): Promise<number> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction('ventas_pendientes', 'readonly');
     const store = tx.objectStore('ventas_pendientes');
-    const request = store.getAll();
-    request.onsuccess = () => {
-      const all: VentaLocal[] = request.result;
-      resolve(all.filter(v => v.syncStatus === 'pending' || v.syncStatus === 'error').length);
-    };
-    request.onerror = () => reject(request.error);
+    if (store.indexNames.contains('syncStatus')) {
+      const index = store.index('syncStatus');
+      const reqPending = index.count('pending');
+      const reqError = index.count('error');
+      let countPending = 0;
+      let countError = 0;
+      reqPending.onsuccess = () => { countPending = reqPending.result || 0; };
+      reqError.onsuccess = () => { countError = reqError.result || 0; };
+      tx.oncomplete = () => resolve(countPending + countError);
+      tx.onerror = () => reject(tx.error);
+    } else {
+      const request = store.getAll();
+      request.onsuccess = () => {
+        const all: VentaLocal[] = request.result;
+        resolve(all.filter(v => v.syncStatus === 'pending' || v.syncStatus === 'error').length);
+      };
+      request.onerror = () => reject(request.error);
+    }
   });
 }
 

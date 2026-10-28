@@ -261,22 +261,34 @@ export function FrecuenciaSelector({ session, onOpenFrequency, onGoToArqueo, onG
     } catch { /* ignore */ }
   }, []);
 
-  // Reload ventas counts from IndexedDB periodically
+  // Fase 4: Lectura en paralelo con Promise.all y actualización consolidada de estados
   const refreshVentasCounts = useCallback(async () => {
-    for (const estado of estados) {
-      try {
-        const ventas = await getVentasByFrecuencia(estado.estadoId);
-        // Count ALL ventas (including synced) for display in arqueo
-        const newCount = ventas.length;
-        const newTotal = ventas.reduce((s, v) => s + v.cobrado, 0);
-        if (newCount !== estado.ventasCount || Math.abs(newTotal - estado.totalRecaudado) > 0.01) {
-          updateEstadoInLS(session.vtCode, fecha, estado.estadoId, { ventasCount: newCount, totalRecaudado: newTotal });
-          setEstados(prev => prev.map(e =>
-            e.estadoId === estado.estadoId ? { ...e, ventasCount: newCount, totalRecaudado: newTotal } : e
-          ));
-        }
-      } catch { /* ignore */ }
-    }
+    if (!estados.length) return;
+    try {
+      const results = await Promise.all(
+        estados.map(async (estado) => {
+          try {
+            const ventas = await getVentasByFrecuencia(estado.estadoId);
+            const newCount = ventas.length;
+            const newTotal = ventas.reduce((s, v) => s + v.cobrado, 0);
+            const changed = newCount !== estado.ventasCount || Math.abs(newTotal - estado.totalRecaudado) > 0.01;
+            if (changed) {
+              updateEstadoInLS(session.vtCode, fecha, estado.estadoId, { ventasCount: newCount, totalRecaudado: newTotal });
+            }
+            return { estadoId: estado.estadoId, newCount, newTotal, changed };
+          } catch {
+            return { estadoId: estado.estadoId, newCount: estado.ventasCount, newTotal: estado.totalRecaudado, changed: false };
+          }
+        })
+      );
+      if (results.some(r => r.changed)) {
+        const byId = new Map(results.map(r => [r.estadoId, r]));
+        setEstados(prev => prev.map(e => {
+          const r = byId.get(e.estadoId);
+          return r && r.changed ? { ...e, ventasCount: r.newCount, totalRecaudado: r.newTotal } : e;
+        }));
+      }
+    } catch { /* ignore */ }
   }, [estados, session.vtCode, fecha]);
 
   useEffect(() => {

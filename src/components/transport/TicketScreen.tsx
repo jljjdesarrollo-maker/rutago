@@ -6,7 +6,9 @@ import { getTarifa, TARIFA_MINIMA, getParadasByRutaAndTipo, matchRuta, type Tipo
          getZonaParada, isParadaPrincipal, ZONA_COLORS, type ZonaColor, PARADA_ZONA } from '@/lib/tarifas-data';
 import { getActiveBusId } from '@/lib/fleet-storage';
 import { getEcuadorDateString } from '@/lib/date-helpers';
-import { saveVenta } from '@/lib/indexeddb';
+import { saveVenta, saveVentasBatch, getVentasByFrecuencia, type VentaLocal } from '@/lib/indexeddb';
+import { isBluetoothAvailable, getPrinterDevice, printTicket } from '@/lib/printer';
+import { generateTicketBytes } from '@/lib/ticket-escpos';
 import { type ConnectionInfo } from '@/hooks/use-connection';
 import { Check, User, UserRound, Printer, Bluetooth, Clock, AlertTriangle, ArrowRight } from 'lucide-react';
 import { usePrinterStatus } from '@/hooks/use-printer-status';
@@ -104,20 +106,9 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     .slice(0, 3);
   const hasFrecuentes = frecCounts && Object.values(frecCounts).some(c => c > 0);
 
-  // Load existing ventas count to determine position for Viaje Gratis
-  useEffect(() => {
-    (async () => {
-      try {
-        const { getVentasByFrecuencia } = await import('@/lib/indexeddb');
-        const ventas = await getVentasByFrecuencia(estado.estadoId);
-        setContadorVentasFrecuencia(ventas.length);
-      } catch { /* ignore */ }
-    })();
-  }, [estado.estadoId]);
-
+  // Fase 4: 1 sola lectura indexada al montar o refrescar (elimina doble consulta en apertura)
   const loadStats = useCallback(async () => {
     try {
-      const { getVentasByFrecuencia } = await import('@/lib/indexeddb');
       const ventas = await getVentasByFrecuencia(estado.estadoId);
       setVentasHoy(ventas.length);
       setTotalHoy(ventas.reduce((sum, v) => sum + v.cobrado, 0));
@@ -215,10 +206,11 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
         : undefined;
     const billeteRecibidoEfectivo = vueltoPendienteEfectivo ? billetePendiente! : undefined;
 
-    // ─── Crear N registros (uno por pasajero) ───
+    // ─── Fase 4: Crear N registros y guardarlos en 1 sola transacción atómica (saveVentasBatch) ───
     const baseId = Date.now();
+    const nuevasVentas: VentaLocal[] = [];
     for (let i = 0; i < cantidadEfectiva; i++) {
-      const venta = {
+      nuevasVentas.push({
         id: `local_${baseId}_${i}_${Math.random().toString(36).slice(2, 8)}`,
         fecha: fechaOperacion,
         fechaOperacion,
@@ -232,8 +224,6 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
         tipo,
         pasajeroTipo,
         tarifaOficial: tarifaAuto || cobradoNum,
-        esViajeGratis: esGanador,
-        tarifaOriginal: esGanador ? tarifaAuto || cobradoNum : cobradoNum,
         cobrado: esGanador ? 0 : cobradoNum,
         ...(i === 0 && billeteRecibidoEfectivo ? { billeteRecibido: billeteRecibidoEfectivo, vueltoPendiente: vueltoPendienteEfectivo } : {}),
         hora,
@@ -244,16 +234,14 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
         busId: session.busId,
         numeroDisco: session.numeroDisco,
         syncStatus: 'pending' as const,
-      };
-      await saveVenta(venta);
+      });
     }
+    await saveVentasBatch(nuevasVentas);
     incrementParadaFrec(session.vtCode, parada.trim());
 
-    // ─── Imprimir boleto (no bloquea la venta) ───
+    // ─── Imprimir boleto (no bloquea la venta, sin await import repetitivo) ───
     const imprimirBoleto = async () => {
       try {
-        const { isBluetoothAvailable, getPrinterDevice, printTicket } = await import('@/lib/printer');
-        const { generateTicketBytes } = await import('@/lib/ticket-escpos');
         if (!isBluetoothAvailable()) return;
         const device = await getPrinterDevice();
         if (!device) return;
@@ -296,13 +284,15 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     } else {
       setLastSale({ parada: parada.trim(), monto: cobradoNum * cantidadEfectiva, tipo: pasajeroTipo === 'normal' ? 'ENTERO' : 'MEDIA', cantidad: cantidadEfectiva });
     }
-    // Optimistic counter increment (antes del async loadStats)
+    // Fase 4: Actualización optimista instantánea (0 ms) de cabecera y contador de frecuencia
+    const montoCobradoEfectivo = esGanador ? 0 : cobradoNum * cantidadEfectiva;
+    setVentasHoy(prev => prev + cantidadEfectiva);
+    setTotalHoy(prev => prev + montoCobradoEfectivo);
     setContadorVentasFrecuencia(prev => prev + cantidadEfectiva);
     setParada('');
     setCobrado('');
     setCantidad(1);
     setBilletePendiente(null);
-    loadStats();
     setTimeout(() => setLastSale(null), esGanador ? 2500 : 1200);
     } finally {
       setTimeout(() => { submitLockRef.current = false; }, 400); // Cooldown 400ms

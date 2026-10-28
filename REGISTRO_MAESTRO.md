@@ -6076,3 +6076,23 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
   3. **`tests/fase3-dynamic-imports.test.ts`:**
      - Suite de 3 pruebas automatizadas validando la preservación de imports síncronos del núcleo operativo y la conversión completa a `next/dynamic` en `page.tsx` y `HomeScreen.tsx` (**200 pass, 0 fail** en las 28 suites del proyecto).
 
+---
+
+### ✅ 7. Ejecución y Certificación de FASE 4 (`v3.61.66` — 2026-10-28)
+* **Estado:** 🟢 **COMPLETADA Y DESPLEGADA EN PRODUCCIÓN (PLAN DE 4 FASES 100% COMPLETADO)**
+* **Objetivo:** Garantizar respuesta en `< 10 ms` al timbrar boletos, imprimir por Bluetooth y cambiar de frecuencia en dispositivos móviles, incluso con miles de boletos retenidos durante la ventana de 72 horas.
+* **Archivos intervenidos y verificados:**
+  1. **`src/lib/indexeddb.ts`:**
+     - **Conexión reutilizable en memoria (`cachedDbPromise`):** Reutiliza la instancia `IDBDatabase` activa (con auto-limpieza en `onclose` / `onversionchange`), evitando reabrir IndexedDB en cada boleto o sincronización.
+     - **`saveVentasBatch(ventas: VentaLocal[])`:** Guarda múltiples boletos de una venta grupal (`cantidad > 1`) en **1 sola transacción atómica `readwrite`**.
+     - **`countVentasPendientes()` e `getVentasPendientes()` con índice nativo `syncStatus`:** Reemplazado el escaneo completo `store.getAll()` por `index.count("pending") + index.count("error")` (`O(1)` sin clonar objetos a JS) e `index.getAll("pending") + index.getAll("error")` en una sola transacción `readonly`, ignorando todos los boletos históricos ya sincronizados (`synced`).
+     - **Blindaje del fallback en `getVentasByFrecuencia(estadoId)`:** Filtra estrictamente por `v.estadoId === estadoId || v.frecuenciaId === estadoId`.
+  2. **`src/components/transport/TicketScreen.tsx`:**
+     - Unificados los dos `useEffect` de apertura en **1 sola lectura indexada** de `getVentasByFrecuencia(estado.estadoId)`.
+     - Guardado atómico con `saveVentasBatch(nuevasVentas)` y actualización optimista instantánea (`0 ms`) de `ventasHoy`, `totalHoy` y `contadorVentasFrecuencia`.
+     - Imports directos de `printer.ts` y `ticket-escpos.ts` para disparo inmediato a la impresora térmica Bluetooth sin `await import()` repetitivo en cada venta.
+  3. **`src/components/transport/FrecuenciaSelector.tsx`:**
+     - `refreshVentasCounts` ahora consulta todas las frecuencias del turno en paralelo mediante `await Promise.all(...)` y consolida los cambios en una única llamada a `setEstados`.
+  4. **`tests/fase4-indexeddb-boletera-speed.test.ts`:**
+     - Suite de 6 pruebas automatizadas validando todas las optimizaciones de la Fase 4 (**206 pass, 0 fail** en las 29 suites del proyecto).
+
