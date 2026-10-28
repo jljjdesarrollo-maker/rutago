@@ -48,6 +48,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
   const [contadorVentasFrecuencia, setContadorVentasFrecuencia] = useState(0);
   const [tab, setTab] = useState<'principal' | 'intermedia'>('principal');
   const [cantidad, setCantidad] = useState(1);
+  const [billetePendiente, setBilletePendiente] = useState<number | null>(null);
   const printer = usePrinterStatus();
 
   // ─── Control de Tiempo Prudencial de Venta (85/90 min corta, 135/140 min extendida) ───
@@ -130,6 +131,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     setParada(paradaName);
     const tarifa = pasajeroTipo === 'media' ? media : normal;
     setCobrado(tarifa.toString());
+    setBilletePendiente(null);
   };
 
   const handleParadaManualChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -206,6 +208,13 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     const hora = now.toTimeString().slice(0, 5);
     const fechaEmisionStr = now.toISOString();
 
+    const totalTransaccion = cobradoNum * cantidadEfectiva;
+    const vueltoPendienteEfectivo =
+      !esGanador && billetePendiente && billetePendiente > totalTransaccion
+        ? parseFloat((billetePendiente - totalTransaccion).toFixed(2))
+        : undefined;
+    const billeteRecibidoEfectivo = vueltoPendienteEfectivo ? billetePendiente! : undefined;
+
     // ─── Crear N registros (uno por pasajero) ───
     const baseId = Date.now();
     for (let i = 0; i < cantidadEfectiva; i++) {
@@ -226,6 +235,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
         esViajeGratis: esGanador,
         tarifaOriginal: esGanador ? tarifaAuto || cobradoNum : cobradoNum,
         cobrado: esGanador ? 0 : cobradoNum,
+        ...(i === 0 && billeteRecibidoEfectivo ? { billeteRecibido: billeteRecibidoEfectivo, vueltoPendiente: vueltoPendienteEfectivo } : {}),
         hora,
         fechaEmision: fechaEmisionStr,
         createdAt: fechaEmisionStr,
@@ -262,6 +272,8 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           boletoNum: contadorVentasFrecuencia + 1,
           esViajeGratis: esGanador,
           tarifaOriginal: esGanador ? tarifaAuto || cobradoNum : undefined,
+          billeteRecibido: billeteRecibidoEfectivo,
+          vueltoPendiente: vueltoPendienteEfectivo,
           textoPublicidad: promoConfig.textoPublicidad || 'Quieres RutaGo? 0997149000',
         });
         await printTicket(device, bytes);
@@ -289,6 +301,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
     setParada('');
     setCobrado('');
     setCantidad(1);
+    setBilletePendiente(null);
     loadStats();
     setTimeout(() => setLastSale(null), esGanador ? 2500 : 1200);
     } finally {
@@ -624,16 +637,23 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
             disabled={!canRegister}
             className={`w-full py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 transition-all active:scale-95 ${
               canRegister
-                ? 'bg-green-600 text-white shadow-lg shadow-green-200'
+                ? billetePendiente && billetePendiente > totalCobrado
+                  ? 'bg-amber-600 text-white shadow-lg shadow-amber-200'
+                  : 'bg-green-600 text-white shadow-lg shadow-green-200'
                 : 'bg-[#D6D6D6] text-gray-400 cursor-not-allowed'
             }`}
           >
             <Check className="w-5 h-5" />
-            REGISTRAR {cantidad > 1 ? `${cantidad}x $${cobrado ? parseFloat(cobrado).toFixed(2) : '0.00'} = $${totalCobrado.toFixed(2)}` : `$${cobrado ? parseFloat(cobrado).toFixed(2) : '0.00'}`}
+            <span>
+              REGISTRAR {cantidad > 1 ? `${cantidad}x ${cobrado ? parseFloat(cobrado).toFixed(2) : '0.00'} = ${totalCobrado.toFixed(2)}` : `${cobrado ? parseFloat(cobrado).toFixed(2) : '0.00'}`}
+              {billetePendiente && billetePendiente > totalCobrado
+                ? " • VUELTO PEND. $" + (billetePendiente - totalCobrado).toFixed(2)
+                : ''}
+            </span>
           </button>
         )}
 
-        {/* ─── Guía visual de vuelto (zero toques) ─── */}
+        {/* ─── Botones de Vuelto / Vuelto Pendiente en Ticket (1 toque opcional) ─── */}
         {canRegister && totalCobrado > 0 && (() => {
           const total = totalCobrado;
           const redondeo = Math.ceil(total);
@@ -651,13 +671,36 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
 
           if (opciones.length === 0) return null;
           return (
-            <div className="mt-2 flex gap-1.5 justify-center">
-              {opciones.map(o => (
-                <div key={o.paga} className="bg-[#912D26]/10 rounded-lg px-2 py-1 flex flex-col items-center min-w-[60px]">
-                  <span className="text-[10px] text-[#912D26] font-bold">${o.paga}</span>
-                  <span className="text-sm font-black text-[#912D26]">${o.vuelto.toFixed(2)}</span>
+            <div className="mt-2">
+              <div className="flex gap-1.5 justify-center">
+                {opciones.map(o => {
+                  const isSelected = billetePendiente === o.paga;
+                  return (
+                    <button
+                      key={o.paga}
+                      type="button"
+                      onClick={() => setBilletePendiente(prev => (prev === o.paga ? null : o.paga))}
+                      className={`rounded-lg px-2.5 py-1 flex flex-col items-center min-w-[64px] transition-all active:scale-95 border ${
+                        isSelected
+                          ? 'bg-amber-500 text-white border-amber-600 ring-2 ring-amber-300 shadow-md'
+                          : 'bg-[#912D26]/10 text-[#912D26] border-transparent hover:bg-[#912D26]/15'
+                      }`}
+                    >
+                      <span className={`text-[10px] font-bold ${isSelected ? 'text-white' : 'text-[#912D26]'}`}>
+                        ${o.paga} {isSelected ? '⏳' : ''}
+                      </span>
+                      <span className={`text-sm font-black ${isSelected ? 'text-white' : 'text-[#912D26]'}`}>
+                        ${o.vuelto.toFixed(2)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {billetePendiente && billetePendiente > total && (
+                <div className="mt-1.5 text-center text-[11px] font-extrabold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg py-1 px-2">
+                  ⏳ Se imprimirá en el recibo: PENDIENTE DEVOLUCIÓN VUELTO ${(billetePendiente - total).toFixed(2)} (Billete ${billetePendiente})
                 </div>
-              ))}
+              )}
             </div>
           );
         })()}

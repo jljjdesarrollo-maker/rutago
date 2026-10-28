@@ -12,7 +12,7 @@ import { getEcuadorDateString, getEcuadorYesterdayDateString } from '@/lib/date-
 import { getConfiguracionFlotaLocal, subscribeToVTConfig, verificarActualizacionFingerprint } from '@/lib/vt-ventanas-storage';
 
 // Version build — se actualiza con cada deploy
-const APP_VERSION = 'v3.61.59';
+const APP_VERSION = 'v3.61.60';
 
 interface Props {
   currentUser?: UserSession;

@@ -14,6 +14,8 @@ export interface VentaLocal {
   pasajeroTipo: string;
   tarifaOficial: number;
   cobrado: number;
+  billeteRecibido?: number;    // Billete entregado por pasajero cuando queda vuelto pendiente
+  vueltoPendiente?: number;    // Monto de vuelto pendiente de devolución impreso en ticket
   hora: string;
   fechaEmision?: string;       // Timestamp exacto de emisión
   createdAt: string;

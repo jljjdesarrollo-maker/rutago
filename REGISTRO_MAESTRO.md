@@ -5789,9 +5789,9 @@ Se auditó el 100% del catálogo de frecuencias en `src/lib/seed-vts.ts`:
 
 ---
 
-## 📋 PLAN DE IMPLEMENTACIÓN APROBADO (PENDIENTE DE EJECUCIÓN): COMPROBANTE DE "VUELTO PENDIENTE" EN EMISIÓN DE BOLETOS E IMPRESIÓN TÉRMICA 58MM (v3.61.60)
+## 💵 IMPLEMENTACIÓN CERTIFICADA: COMPROBANTE DE "VUELTO PENDIENTE" EN EMISIÓN DE BOLETOS E IMPRESIÓN TÉRMICA 58MM (v3.61.60)
 
-> **ESTADO:** 🟡 DISEÑO APROBADO EN ESPERA DE ORDEN DE EJECUCIÓN  
+> **ESTADO:** 🟢 IMPLEMENTADO, PROBADO Y CERTIFICADO AL 100% (178/178 TESTS EN VERDE)  
 > **FECHA DE REGISTRO:** 2026-10-28 | **SISTEMA:** RutaGo - Emisión de Boletos (`TicketScreen`) e Impresora Térmica ESC/POS (`ticket-escpos`)  
 > **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
 
@@ -5834,3 +5834,9 @@ Al iniciar la jornada o las primeras frecuencias, es frecuente que los pasajeros
    - Verificar que `generateTicketBytes` SIN `vueltoPendiente` genere el ticket estándar sin texto de devolución.
    - Verificar que `generateTicketBytes` CON `billeteRecibido: 20` y `vueltoPendiente: 18.75` incluya en los bytes ESC/POS las leyendas `PENDIENTE DEVOLUCION`, `Billete: $20.00` y `VUELTO: $18.75`.
    - Verificar cálculo exacto de vuelto para 1 pasajero y múltiples pasajeros (`cantidad > 1`).
+
+
+### 📍 3. Certificación Técnica y Continuidad por Cuotas (`v3.61.60`)
+* **Pruebas Unitarias Automatizadas:** **178 de 178 pruebas aprobadas al 100% en verde** (23 suites en Bun, incluyendo `tests/vuelto-pendiente-ticket.test.ts`).
+* **Versión de Producción:** `v3.61.60` (actualizada en `package.json` y `HomeScreenVT.tsx`).
+* **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago` (rama `main` sincronizada con Vercel).

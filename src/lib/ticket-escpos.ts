@@ -18,6 +18,8 @@ export interface TicketData {
   boletoNum: number;     // 47
   esViajeGratis: boolean;
   tarifaOriginal?: number; // what they would have paid
+  billeteRecibido?: number; // billete recibido (ej. 10, 20) si queda vuelto pendiente
+  vueltoPendiente?: number; // vuelto pendiente de devolver al pasajero
   textoPublicidad: string; // "Quieres RutaGo? 0997149000"
 }
 
@@ -170,10 +172,35 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
     }
     push(BOLD_ON);
     push(DBL);
-    push(centerDbl(`$${totalStr}`));
+    push(centerDbl("$" + totalStr));
     push(NORM);
     push(BOLD_OFF);
     push(NEWLINE);
+
+    // Bloque condicional de Vuelto Pendiente (solo si fue seleccionado por el ayudante)
+    if (t.vueltoPendiente && t.vueltoPendiente > 0) {
+      push(NEWLINE);
+      push("--------------------------------");
+      push(NEWLINE);
+      push(BOLD_ON);
+      push(DBL_H);
+      push(center("PENDIENTE DEVOLUCION"));
+      push(NORM);
+      push(BOLD_OFF);
+      push(NEWLINE);
+      if (t.billeteRecibido && t.billeteRecibido > 0) {
+        push(center("Billete: $" + t.billeteRecibido.toFixed(2)));
+        push(NEWLINE);
+      }
+      push(BOLD_ON);
+      push(DBL_H);
+      push(center("VUELTO: $" + t.vueltoPendiente.toFixed(2)));
+      push(NORM);
+      push(BOLD_OFF);
+      push(NEWLINE);
+      push("--------------------------------");
+      push(NEWLINE);
+    }
 
     // Line 7: Espacio
     push(NEWLINE);
