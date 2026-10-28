@@ -258,7 +258,10 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
       for (const e of estadosLS) {
         if (e.estado === 'cerrada') {
           const ventas = await getVentasByFrecuencia(e.estadoId);
-          const sistemaTotal = ventas.reduce((s, v) => s + v.cobrado, 0);
+          const ventasSum = parseFloat(ventas.reduce((s, v) => s + v.cobrado, 0).toFixed(2));
+          const arqueoSistemaGuardado = parseFloat((Number((e as any).arqueoSistema) || 0).toFixed(2));
+          const sistemaTotal = ventasSum > 0 ? ventasSum : arqueoSistemaGuardado;
+          const ventasCountReal = ventas.length > 0 ? ventas.length : (Number((e as any).arqueoBoletos) || 0);
           const efectivo = (e as any).arqueoEfectivo ?? sistemaTotal;
           const diff = efectivo - sistemaTotal;
           const ccCount = (e as any).cajaComunCount || 0;
@@ -269,7 +272,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
             ruta: e.ruta,
             hora: e.hora,
             direccion: e.direccion,
-            ventasCount: ventas.length,
+            ventasCount: ventasCountReal,
             totalRecaudado: sistemaTotal,
             efectivoContado: efectivo,
             diferencia: diff,
@@ -605,7 +608,7 @@ export function ArqueoGeneralScreen({ session, connection, onClose, onGoToSync, 
           time: f.hora,
           income: f.totalRecaudado,
           efectivoReal: f.efectivoContado,
-          boletos: 0,
+          boletos: f.ventasCount || 0,
           cajaComunPasajeros: f.boletosCaja,
           cajaComunMonto: f.cajaComunMonto || 0,
           tipo: f.isIngresoEspecial ? 'ingreso_especial' : f.isNoRealizada ? 'no_realizada' : 'frecuencia',

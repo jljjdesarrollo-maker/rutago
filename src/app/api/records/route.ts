@@ -4,6 +4,10 @@ import {
   formatCanonicalConductor,
   resolveCanonicalOdometro,
 } from '@/lib/canonical-record-payload';
+import {
+  matchVentasForTrip,
+  resolveCanonicalTripIncomeFromVentas,
+} from '@/lib/reconcile-ventas-trips';
 
 export async function GET(req: NextRequest) {
   try {
@@ -279,7 +283,28 @@ export async function GET(req: NextRequest) {
         include: { trips: { orderBy: { order: 'asc' } }, expenses: { orderBy: { order: 'asc' } } },
       });
 
-      // Auto-saneamiento de trips (income === 0 con efectivoReal > 0) y typos conocidos en gastos
+      // Consultar boletos reales en VentaBoleto para las fechas de los registros (Fuente Única de Verdad)
+      const uniqueDates = Array.from(new Set(withRelations.map(r => r.date).filter(Boolean)));
+      const allVentasForDates = uniqueDates.length > 0
+        ? await db.ventaBoleto.findMany({
+            where: {
+              OR: [
+                { fechaOperacion: { in: uniqueDates } },
+                { fecha: { in: uniqueDates } },
+              ],
+            },
+            select: {
+              vtCode: true,
+              frecuenciaId: true,
+              fecha: true,
+              fechaOperacion: true,
+              cobrado: true,
+              frecuencia: { select: { hora: true } },
+            },
+          }).catch(() => [])
+        : [];
+
+      // Auto-saneamiento y conciliación directa de trips con VentaBoleto y typos conocidos en gastos
       for (const rec of withRelations) {
         // Preservar campos saneados en cabecera
         const headerMatch = clean.find(c => c.id === rec.id);
@@ -288,12 +313,29 @@ export async function GET(req: NextRequest) {
           rec.kmInicial = headerMatch.kmInicial;
           rec.conductor = headerMatch.conductor;
         }
-        for (const t of rec.trips) {
-          if (t.income === 0 && t.efectivoReal > 0 && t.tipo !== 'no_realizada') {
-            t.income = t.efectivoReal;
+        for (let idx = 0; idx < rec.trips.length; idx++) {
+          const t = rec.trips[idx];
+          const tripIndexZero = (typeof t.order === 'number' && t.order > 0) ? t.order - 1 : idx;
+          const matchedVentas = matchVentasForTrip(
+            allVentasForDates,
+            rec.date,
+            rec.vtCode,
+            t.time,
+            tripIndexZero
+          );
+          const resolved = resolveCanonicalTripIncomeFromVentas(
+            t.income,
+            t.efectivoReal,
+            t.boletos,
+            t.tipo,
+            matchedVentas
+          );
+          if (resolved.changed) {
+            t.income = resolved.income;
+            t.boletos = resolved.boletos;
             await db.trip.update({
               where: { id: t.id },
-              data: { income: t.efectivoReal },
+              data: { income: resolved.income, boletos: resolved.boletos },
             }).catch(() => {});
           }
         }
@@ -427,6 +469,24 @@ export async function POST(req: NextRequest) {
     }
     const entregaCompania = cajaComun > 0 ? cajaComun - ticketsNum : 0;
 
+    // Consultar boletos reales en VentaBoleto para este día y turno antes de crear los trips
+    const ventasDelDia = await db.ventaBoleto.findMany({
+      where: {
+        OR: [
+          { fechaOperacion: recordDate },
+          { fecha: recordDate },
+        ],
+      },
+      select: {
+        vtCode: true,
+        frecuenciaId: true,
+        fecha: true,
+        fechaOperacion: true,
+        cobrado: true,
+        frecuencia: { select: { hora: true } },
+      },
+    }).catch(() => []);
+
     const record = await db.dailyRecord.create({
       data: {
         date: recordDate,
@@ -448,15 +508,29 @@ export async function POST(req: NextRequest) {
           create: (trips || []).map((t: { routeFrom: string; routeTo: string; time?: string; income?: number | string; efectivoReal?: number | string; boletos?: number | string; cajaComunPasajeros?: number | string; cajaComunMonto?: number | string; tipo?: string; motivo?: string; notaEspecial?: string }, i: number) => {
             const rawEfectivo = Number(t.efectivoReal) || 0;
             const rawIncome = Number(t.income) || 0;
-            const normalizedIncome = rawIncome > 0 ? rawIncome : rawEfectivo;
+            const rawBoletos = Number(t.boletos) || 0;
+            const matchedVentas = matchVentasForTrip(
+              ventasDelDia,
+              recordDate,
+              vtCode ? String(vtCode).trim() : null,
+              t.time || null,
+              i
+            );
+            const resolved = resolveCanonicalTripIncomeFromVentas(
+              rawIncome,
+              rawEfectivo,
+              rawBoletos,
+              t.tipo || 'frecuencia',
+              matchedVentas
+            );
             return {
               order: i + 1,
               routeFrom: (t.routeFrom || '').trim(),
               routeTo: (t.routeTo || '').trim(),
               time: t.time || null,
-              income: normalizedIncome,
+              income: resolved.income,
               efectivoReal: rawEfectivo,
-              boletos: Number(t.boletos) || 0,
+              boletos: resolved.boletos,
               cajaComunPasajeros: Number(t.cajaComunPasajeros) || 0,
               cajaComunMonto: Number(t.cajaComunMonto) || 0,
               tipo: t.tipo || 'frecuencia',

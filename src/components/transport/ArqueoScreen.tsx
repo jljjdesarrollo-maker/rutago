@@ -71,6 +71,7 @@ export function ArqueoScreen({ session, estado, connection, esUltima, onArqueoCo
             all[idx].estado = 'cerrada';
             all[idx].arqueoEfectivo = efectivoNum;
             all[idx].arqueoSistema = totalSistema;
+            all[idx].arqueoBoletos = ventas.length;
             all[idx].arqueoDiferencia = diferencia;
             all[idx].arqueoFecha = new Date().toISOString();
             // Preserve caja común data

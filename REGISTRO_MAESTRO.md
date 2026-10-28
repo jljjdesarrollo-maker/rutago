@@ -5939,3 +5939,12 @@ Al auditar la base de datos de producción en PostgreSQL para el turno **VT6 del
 4. **Suite de Pruebas Unitarias (`tests/reconciliacion-ventaboleto-records.test.ts`):**
    - Verificar la reconciliación exacta del caso real del **26 de octubre de 2026 (VT6)**: `14:45 ($71.90 vs $76.00 -> +$4.10)`, `16:50 ($59.65 vs $71.00 -> +$11.35)`, `18:40 ($38.90 vs $46.00 -> +$7.10)` y `20:45 ($20.40 vs $22.25 -> +$1.85)`.
    - Verificar que cuando una vuelta tiene `0 boletos` en `VentaBoleto` (Modo Papel / Carga Histórica), se conserva intacta la paridad `income === efectivoReal`.
+
+### 📍 3. Certificación Técnica y Continuidad por Cuotas (`v3.61.62`)
+* **Archivos Modificados / Creados:**
+  - `src/lib/reconcile-ventas-trips.ts`: Motor puro de conciliación (`normalizeVtCode`, `matchVentasForTrip`, `resolveCanonicalTripIncomeFromVentas`) que cruza cada vuelta del registro diario contra `VentaBoleto` en PostgreSQL y preserva la paridad en Modo Papel (`0` boletos digitales).
+  - `src/app/api/records/route.ts`: Integración en `GET /api/records` (con auto-saneamiento en PostgreSQL mediante `db.trip.update`) y en `POST /api/records` para garantizar que la columna `SISTEMA` refleje siempre los boletos reales de `VentaBoleto`.
+  - `src/lib/indexeddb.ts`: Retención local en `deleteOldSyncedVentas()` ampliada de 1 hora a **72 horas (3 días)**.
+  - `src/components/transport/ArqueoScreen.tsx` y `src/components/transport/ArqueoGeneralScreen.tsx`: Respaldo de `arqueoSistema` y `arqueoBoletos` para cierres sin conexión.
+* **Pruebas Unitarias Automatizadas:** **186 de 186 pruebas aprobadas al 100% en verde** (25 suites en Bun, incluyendo `tests/reconciliacion-ventaboleto-records.test.ts`).
+* **Versión de Producción:** `v3.61.62` (sincronizada en `main`).

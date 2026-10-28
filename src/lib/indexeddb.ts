@@ -551,7 +551,7 @@ export async function syncVentasSilencioso(): Promise<{ synced: number; failed: 
 /** Delete ventas synced more than 1 hour ago */
 async function deleteOldSyncedVentas(): Promise<void> {
   const db = await openDB();
-  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+  const oneHourAgo = Date.now() - 72 * 60 * 60 * 1000; // Retención de 72 horas (3 días) para cubrir turnos completos y pernoctas
   return new Promise((resolve, reject) => {
     const tx = db.transaction('ventas_pendientes', 'readwrite');
     const store = tx.objectStore('ventas_pendientes');
