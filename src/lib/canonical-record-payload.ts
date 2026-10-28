@@ -310,3 +310,27 @@ export function buildCanonicalRecordPayload(
       : {}),
   };
 }
+
+/**
+ * Selección liviana de DailyRecord a nivel SQL (excluye photoUrl Base64 de 138.54 MB)
+ * para evitar lecturas TOAST innecesarias en listados y reportes.
+ */
+export const DAILY_RECORD_LIST_SELECT = {
+  id: true,
+  date: true,
+  km: true,
+  kmInicial: true,
+  kmFinal: true,
+  conductor: true,
+  ayudanteNombre: true,
+  vtCode: true,
+  production: true,
+  cajaComun: true,
+  sobrante: true,
+  tickets: true,
+  entregaAyudante: true,
+  entregaCompania: true,
+  totalGastos: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;

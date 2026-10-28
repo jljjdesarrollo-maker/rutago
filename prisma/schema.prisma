@@ -44,6 +44,7 @@ model DailyRecord {
   expenses Expense[]
 
   @@index([date, vtCode])
+  @@index([conductor, date])
 }
 
 model Trip {
@@ -63,6 +64,8 @@ model Trip {
   notaEspecial       String? // nota del ingreso especial
 
   record DailyRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([recordId])
 }
 
 model Expense {
@@ -73,6 +76,8 @@ model Expense {
   amount      Float   @default(0)
 
   record DailyRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+
+  @@index([recordId])
 }
 
 model Persona {

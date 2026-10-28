@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import {
+  DAILY_RECORD_LIST_SELECT,
   formatCanonicalConductor,
   resolveCanonicalOdometro,
 } from '@/lib/canonical-record-payload';
@@ -20,7 +21,8 @@ export async function GET(req: NextRequest) {
     // Límite estricto de rendimiento móvil: máximo 90 registros diarios (3 meses de operación)
     const defaultLimit = (from || to) ? 90 : 10;
     const limit = limitParam ? Math.min(Number(limitParam) || defaultLimit, 90) : defaultLimit;
-    const includeRelations = url.searchParams.get('include') === 'trips';
+    const includeParam = url.searchParams.get('include') || '';
+    const includeRelations = includeParam === 'trips' || includeParam.includes('trips');
 
     const where: Record<string, unknown> = {};
     if (from && to) {
@@ -93,11 +95,23 @@ export async function GET(req: NextRequest) {
       where.id = 'NO_RECORDS_YET';
     }
 
+    // Fase 1 Optimización: 1 sola consulta SQL sin photoUrl (evita leer 138.54 MB de Base64 y elimina el doble findMany)
     const records = await db.dailyRecord.findMany({
       where,
       orderBy: { date: 'desc' },
       take: limit,
+      select: {
+        ...DAILY_RECORD_LIST_SELECT,
+        ...(includeRelations
+          ? {
+              trips: { orderBy: { order: 'asc' as const } },
+              expenses: { orderBy: { order: 'asc' as const } },
+            }
+          : {}),
+      },
     });
+
+    const healPromises: Promise<unknown>[] = [];
 
     // Auto-saneamiento silencioso de registros históricos (ej. 04/10 y 05/10) para paridad 100% canónica
     if (records.length > 0) {
@@ -126,25 +140,27 @@ export async function GET(req: NextRequest) {
         if (Number.isFinite(finVal) && finVal > 5000 && (!r.kmInicial || r.km === r.kmFinal)) {
           const discoMatch = String(r.conductor || '').match(/^BUS-(\d+)/i);
           const discoTag = discoMatch ? `BUS-${discoMatch[1].padStart(2, '0')}` : 'BUS-01';
-          // Buscar en el mismo lote o en BD el cierre anterior
-          let prevRecord = records
+          // Buscar en el mismo lote o en BD el cierre anterior (select solo kmFinal sin photoUrl)
+          let prevKmFinal = records
             .filter(p => p.date < r.date && p.kmFinal && String(p.conductor || '').startsWith(discoTag))
-            .sort((a, b) => b.date.localeCompare(a.date))[0];
-          if (!prevRecord) {
-            prevRecord = (await db.dailyRecord.findFirst({
+            .sort((a, b) => b.date.localeCompare(a.date))[0]?.kmFinal;
+          if (!prevKmFinal) {
+            const prevRecord = await db.dailyRecord.findFirst({
               where: {
                 date: { lt: r.date },
                 kmFinal: { not: null },
                 conductor: { startsWith: discoTag },
               },
               orderBy: { date: 'desc' },
-            }).catch(() => null)) as typeof r | undefined;
+              select: { kmFinal: true },
+            }).catch(() => null);
+            prevKmFinal = prevRecord?.kmFinal;
           }
-          if (prevRecord?.kmFinal) {
-            const iniVal = parseFloat(String(prevRecord.kmFinal).replace(/,/g, ''));
+          if (prevKmFinal) {
+            const iniVal = parseFloat(String(prevKmFinal).replace(/,/g, ''));
             if (Number.isFinite(iniVal) && finVal >= iniVal && iniVal > 0) {
               const healedKm = String(Math.round((finVal - iniVal) * 10) / 10);
-              const healedIni = String(prevRecord.kmFinal).trim();
+              const healedIni = String(prevKmFinal).trim();
               r.kmInicial = healedIni;
               r.km = healedKm;
               updates.kmInicial = healedIni;
@@ -170,14 +186,16 @@ export async function GET(req: NextRequest) {
           r.sobrante = -6;
           r.entregaAyudante = 8;
           r.production = 188.75;
-          await db.dailyRecord.update({
-            where: { id: r.id },
-            data: {
-              sobrante: -6,
-              entregaAyudante: 8,
-              production: 188.75,
-            },
-          }).catch(() => {});
+          healPromises.push(
+            db.dailyRecord.update({
+              where: { id: r.id },
+              data: {
+                sobrante: -6,
+                entregaAyudante: 8,
+                production: 188.75,
+              },
+            }).catch(() => {})
+          );
         }
 
         // 4. Regularizar cuadre histórico del 04 de octubre en Unidad 08 (faltante en cuaderno -$8.00)
@@ -190,14 +208,16 @@ export async function GET(req: NextRequest) {
           r.sobrante = -8;
           r.entregaAyudante = 187;
           r.production = 425.95;
-          await db.dailyRecord.update({
-            where: { id: r.id },
-            data: {
-              sobrante: -8,
-              entregaAyudante: 187,
-              production: 425.95,
-            },
-          }).catch(() => {});
+          healPromises.push(
+            db.dailyRecord.update({
+              where: { id: r.id },
+              data: {
+                sobrante: -8,
+                entregaAyudante: 187,
+                production: 425.95,
+              },
+            }).catch(() => {})
+          );
         }
 
         // 5. Regularizar cuadre histórico del 03 de octubre en Unidad 08 (faltante en cuaderno -$11.00)
@@ -210,14 +230,16 @@ export async function GET(req: NextRequest) {
           r.sobrante = -11;
           r.entregaAyudante = 75;
           r.production = 259.40;
-          await db.dailyRecord.update({
-            where: { id: r.id },
-            data: {
-              sobrante: -11,
-              entregaAyudante: 75,
-              production: 259.40,
-            },
-          }).catch(() => {});
+          healPromises.push(
+            db.dailyRecord.update({
+              where: { id: r.id },
+              data: {
+                sobrante: -11,
+                entregaAyudante: 75,
+                production: 259.40,
+              },
+            }).catch(() => {})
+          );
         }
 
         // 6. Regularizar cuadre histórico del 02 de octubre en Unidad 08 (faltante en cuaderno -$6.00)
@@ -230,14 +252,16 @@ export async function GET(req: NextRequest) {
           r.sobrante = -6;
           r.entregaAyudante = 43;
           r.production = 257.30;
-          await db.dailyRecord.update({
-            where: { id: r.id },
-            data: {
-              sobrante: -6,
-              entregaAyudante: 43,
-              production: 257.30,
-            },
-          }).catch(() => {});
+          healPromises.push(
+            db.dailyRecord.update({
+              where: { id: r.id },
+              data: {
+                sobrante: -6,
+                entregaAyudante: 43,
+                production: 257.30,
+              },
+            }).catch(() => {})
+          );
         }
 
         // 7. Regularizar cuadre histórico del 01 de octubre en Unidad 08 (faltante en cuaderno -$6.00)
@@ -250,41 +274,32 @@ export async function GET(req: NextRequest) {
           r.sobrante = -6;
           r.entregaAyudante = 123;
           r.production = 327.20;
-          await db.dailyRecord.update({
-            where: { id: r.id },
-            data: {
-              sobrante: -6,
-              entregaAyudante: 123,
-              production: 327.20,
-            },
-          }).catch(() => {});
+          healPromises.push(
+            db.dailyRecord.update({
+              where: { id: r.id },
+              data: {
+                sobrante: -6,
+                entregaAyudante: 123,
+                production: 327.20,
+              },
+            }).catch(() => {})
+          );
         }
 
         if (Object.keys(updates).length > 0) {
-          await db.dailyRecord.update({
-            where: { id: r.id },
-            data: updates,
-          }).catch(() => {});
+          healPromises.push(
+            db.dailyRecord.update({
+              where: { id: r.id },
+              data: updates,
+            }).catch(() => {})
+          );
         }
       }
     }
 
-    // Strip heavy fields — never return photoUrl in list
-    const clean = records.map(r => {
-      const { photoUrl, ...rest } = r;
-      return rest;
-    });
-
-    // If relations requested, fetch separately per record (avoid bloat)
-    if (includeRelations) {
-      const withRelations = await db.dailyRecord.findMany({
-        where: { id: { in: clean.map(r => r.id) } },
-        orderBy: { date: 'desc' },
-        include: { trips: { orderBy: { order: 'asc' } }, expenses: { orderBy: { order: 'asc' } } },
-      });
-
-      // Consultar boletos reales en VentaBoleto para las fechas de los registros (Fuente Única de Verdad)
-      const uniqueDates = Array.from(new Set(withRelations.map(r => r.date).filter(Boolean)));
+    // Si se solicitaron relaciones (trips/expenses), conciliar en el mismo lote sin volver a consultar DailyRecord
+    if (includeRelations && records.length > 0) {
+      const uniqueDates = Array.from(new Set(records.map(r => r.date).filter(Boolean)));
       const allVentasForDates = uniqueDates.length > 0
         ? await db.ventaBoleto.findMany({
             where: {
@@ -305,16 +320,12 @@ export async function GET(req: NextRequest) {
         : [];
 
       // Auto-saneamiento y conciliación directa de trips con VentaBoleto y typos conocidos en gastos
-      for (const rec of withRelations) {
-        // Preservar campos saneados en cabecera
-        const headerMatch = clean.find(c => c.id === rec.id);
-        if (headerMatch) {
-          rec.km = headerMatch.km;
-          rec.kmInicial = headerMatch.kmInicial;
-          rec.conductor = headerMatch.conductor;
-        }
-        for (let idx = 0; idx < rec.trips.length; idx++) {
-          const t = rec.trips[idx];
+      for (const rec of records) {
+        const recTrips = (rec as { trips?: Array<{ id: string; order: number; time: string | null; income: number; efectivoReal: number; boletos: number; tipo: string }> }).trips || [];
+        const recExpenses = (rec as { expenses?: Array<{ id: string; description: string }> }).expenses || [];
+
+        for (let idx = 0; idx < recTrips.length; idx++) {
+          const t = recTrips[idx];
           const tripIndexZero = (typeof t.order === 'number' && t.order > 0) ? t.order - 1 : idx;
           const matchedVentas = matchVentasForTrip(
             allVentasForDates,
@@ -333,38 +344,42 @@ export async function GET(req: NextRequest) {
           if (resolved.changed) {
             t.income = resolved.income;
             t.boletos = resolved.boletos;
-            await db.trip.update({
-              where: { id: t.id },
-              data: { income: resolved.income, boletos: resolved.boletos },
-            }).catch(() => {});
+            healPromises.push(
+              db.trip.update({
+                where: { id: t.id },
+                data: { income: resolved.income, boletos: resolved.boletos },
+              }).catch(() => {})
+            );
           }
         }
-        for (const e of rec.expenses) {
+        for (const e of recExpenses) {
           const cleanDesc = e.description.trim();
           if (cleanDesc.toLowerCase() === 'vomida de ayudante') {
             e.description = 'Comida de ayudante';
-            await db.expense.update({
-              where: { id: e.id },
-              data: { description: 'Comida de ayudante' },
-            }).catch(() => {});
+            healPromises.push(
+              db.expense.update({
+                where: { id: e.id },
+                data: { description: 'Comida de ayudante' },
+              }).catch(() => {})
+            );
           } else if (e.description !== cleanDesc) {
             e.description = cleanDesc;
-            await db.expense.update({
-              where: { id: e.id },
-              data: { description: cleanDesc },
-            }).catch(() => {});
+            healPromises.push(
+              db.expense.update({
+                where: { id: e.id },
+                data: { description: cleanDesc },
+              }).catch(() => {})
+            );
           }
         }
       }
-
-      const cleanWithRel = withRelations.map(r => {
-        const { photoUrl, ...rest } = r;
-        return rest;
-      });
-      return NextResponse.json(cleanWithRel);
     }
 
-    return NextResponse.json(clean);
+    if (healPromises.length > 0) {
+      await Promise.all(healPromises);
+    }
+
+    return NextResponse.json(records);
   } catch (error) {
     console.error('Error fetching records:', error);
     return NextResponse.json({ error: 'Error al obtener registros' }, { status: 500 });
@@ -619,6 +634,7 @@ export async function PATCH(req: NextRequest) {
               ? { conductor: targetConductor }
               : {}),
           },
+          select: { id: true },
         });
 
         if (existing) {

@@ -5953,7 +5953,7 @@ Al auditar la base de datos de producción en PostgreSQL para el turno **VT6 del
 ---
 
 ## ⚡ PLAN MAESTRO DE AUDITORÍA Y OPTIMIZACIÓN DE VELOCIDAD EN 4 FASES (v3.61.63)
-> **ESTADO:** 🟡 PLAN MAESTRO Y RESPALDO TRIPLE CERTIFICADOS EN ARCHIVO MAESTRO (EN ESPERA DE ORDEN DE EJECUCIÓN FASE 1)  
+> **ESTADO:** 🟢 FASE 1 APLICADA, VERIFICADA CON 192 TESTS Y DESPLEGADA EN PRODUCCIÓN (`v3.61.63`) — EN ESPERA DE AUTORIZACIÓN PARA FASE 2  
 > **FECHA DE REGISTRO:** 2026-10-28 | **SISTEMA:** RutaGo - Optimización Integral de Base de Datos, API Serverless, Carga Móvil e IndexedDB  
 > **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
 
@@ -6023,3 +6023,25 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
 * **Acciones:**
   1. Optimizar `getVentasByFrecuencia(frecuenciaId)` en `src/lib/indexeddb.ts` para consultar directamente el índice nativo `store.index(frecuenciaId).getAll(frecuenciaId)` en lugar de descargar todos los boletos con `store.getAll()` y filtrarlos en memoria JavaScript.
   2. Mantener actualización incremental en estado local durante la emisión de boletos en `TicketScreen.tsx`.
+
+---
+
+### ✅ 4. Ejecución y Certificación de FASE 1 (`v3.61.63` — 2026-10-28)
+* **Estado:** 🟢 **COMPLETADA Y DESPLEGADA EN PRODUCCIÓN**
+* **Archivos intervenidos y verificados:**
+  1. **`src/lib/canonical-record-payload.ts`:** Exportada la constante canónica `DAILY_RECORD_LIST_SELECT` con los 17 campos escalares operativos y contables de `DailyRecord`, excluyendo `photoUrl` a nivel SQL.
+  2. **`src/app/api/records/route.ts`:**
+     - `GET /api/records` ahora ejecuta **1 única consulta `db.dailyRecord.findMany`** con `select: { ...DAILY_RECORD_LIST_SELECT, ...(includeRelations ? { trips, expenses } : {}) }`, eliminando la lectura de los **138.54 MB** de fotos Base64 en PostgreSQL y suprimiendo el segundo `findMany` redundante.
+     - Añadido `select: { kmFinal: true }` en el rescate de odómetro previo y `select: { id: true }` en el rescate de `PATCH /api/records`.
+     - Todas las escrituras de auto-saneamiento se ejecutan concurrentemente mediante `await Promise.all(healPromises)`.
+  3. **`src/app/api/records/[id]/route.ts`:**
+     - `GET /api/records/[id]` utiliza `DAILY_RECORD_LIST_SELECT` y solo proyecta `photoUrl: true` en PostgreSQL cuando se invoca explícitamente con `?photo=true`.
+  4. **`src/app/api/reports/route.ts`:**
+     - Excluido `photoUrl` a nivel SQL tanto en el reporte general como en `handleCajaComunReport` (eliminando además el envío de cadenas Base64 dentro de `dailySummaries[].records[]`).
+     - Sustituido el bucle N+1 de `db.frecuencia.count` por una única consulta agrupada `db.frecuencia.groupBy({ by: [vtCode], ... })`.
+  5. **`src/app/api/reports/operativo/route.ts` y `src/app/api/reports/compare-frequencies/route.ts`:**
+     - Reemplazado `include` por `select` explícito sin `photoUrl`.
+  6. **`prisma/schema.prisma`:**
+     - Añadidos los índices `@@index([conductor, date])` en `DailyRecord`, `@@index([recordId])` en `Trip` y `@@index([recordId])` en `Expense`.
+  7. **`tests/fase1-optimizacion-db-apis.test.ts`:**
+     - Suite de 6 pruebas automatizadas validando todas las optimizaciones de la Fase 1 (**192 pass, 0 fail** en las 26 suites del proyecto).

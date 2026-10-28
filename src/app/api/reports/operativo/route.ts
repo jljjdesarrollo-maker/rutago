@@ -90,11 +90,17 @@ export async function GET(req: NextRequest) {
       where.id = 'NO_RECORDS_YET';
     }
 
-    // Query: daily records with trips in date range
+    // Query: daily records with trips in date range (sin photoUrl Base64 a nivel SQL)
     const records = await db.dailyRecord.findMany({
       where,
       orderBy: { date: 'asc' },
-      include: { trips: { orderBy: { order: 'asc' } } },
+      select: {
+        id: true,
+        date: true,
+        vtCode: true,
+        ayudanteNombre: true,
+        trips: { orderBy: { order: 'asc' } },
+      },
     });
 
     // Flat list of trips

@@ -107,7 +107,9 @@ export async function GET(req: NextRequest) {
 
     const records = await db.dailyRecord.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        date: true,
         trips: { orderBy: { order: 'asc' } },
       },
     });

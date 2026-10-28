@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { DAILY_RECORD_LIST_SELECT } from '@/lib/canonical-record-payload';
 
 export async function GET(req: NextRequest) {
   try {
@@ -128,11 +129,12 @@ export async function GET(req: NextRequest) {
       where.id = 'NO_RECORDS_YET';
     }
 
-    // Fetch records with trips and expenses
+    // Fetch records with trips and expenses (sin photoUrl Base64 a nivel SQL)
     const records = await db.dailyRecord.findMany({
       where,
       orderBy: { date: 'asc' },
-      include: {
+      select: {
+        ...DAILY_RECORD_LIST_SELECT,
         trips: { orderBy: { order: 'asc' } },
         expenses: { orderBy: { order: 'asc' } },
       },
@@ -150,14 +152,13 @@ export async function GET(req: NextRequest) {
     const uniqueVtCodes = [...new Set(records.map(r => r.vtCode).filter((v): v is string => !!v))];
     const vtFrecCounts: Record<string, number> = {};
     if (uniqueVtCodes.length > 0) {
-      // 1. Intentar desde tabla Frecuencia
-      const frecCounts = await Promise.all(
-        uniqueVtCodes.map(vt =>
-          db.frecuencia.count({ where: { vtCode: vt, activo: true } })
-            .then(c => ({ vt, count: c }))
-        )
-      );
-      frecCounts.forEach(f => { vtFrecCounts[f.vt] = f.count; });
+      // 1. Intentar desde tabla Frecuencia (1 sola consulta agrupada en lugar de N consultas por VT)
+      const frecGroups = await db.frecuencia.groupBy({
+        by: ['vtCode'],
+        where: { vtCode: { in: uniqueVtCodes }, activo: true },
+        _count: { id: true },
+      });
+      frecGroups.forEach(g => { vtFrecCounts[g.vtCode] = g._count.id; });
 
       // 2. Fallback: para VTs con count=0, leer del JSON de BusVT.frecuencias
       const vtsWithoutFrec = uniqueVtCodes.filter(vt => (vtFrecCounts[vt] || 0) === 0);
@@ -465,7 +466,16 @@ async function handleCajaComunReport(from: string, to: string, socioId: string =
   const records = await db.dailyRecord.findMany({
     where,
     orderBy: { date: 'asc' },
-    include: { trips: { orderBy: { order: 'asc' } } },
+    select: {
+      id: true,
+      date: true,
+      vtCode: true,
+      ayudanteNombre: true,
+      cajaComun: true,
+      entregaCompania: true,
+      tickets: true,
+      trips: { orderBy: { order: 'asc' } },
+    },
   });
 
   const groups: CajaComunDayGroup[] = [];
