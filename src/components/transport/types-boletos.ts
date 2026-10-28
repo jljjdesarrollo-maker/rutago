@@ -100,8 +100,8 @@ export function loadPromoConfig(busIdOrDisco?: string): PromoViajeGratisConfig {
           return {
             ...DEFAULT_PROMO_CONFIG,
             ...busCfg,
-            // El texto publicitario siempre está blindado y centralizado por SuperAdmin
-            textoPublicidad: globalTexto,
+            // Priorizar texto específico de la unidad si fue definido; fallback al central SaaS
+            textoPublicidad: busCfg.textoPublicidad || globalTexto,
           };
         } catch { /* ignore */ }
       }

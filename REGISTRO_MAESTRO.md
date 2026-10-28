@@ -6174,6 +6174,16 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
        * Tolerancia y preservación frente a notas nulas o calibraciones de odómetro.
        * Sincronización automática offline-first en `saveBus`.
      - **Resultado de la Suite:** **213 pass, 0 fail en 30 archivos de prueba (100% verde)**.
+  6. **Validación E2E Completa (Activación Socio -> Sincronización Ayudante):**
+     - Creado `tests/socio-activa-promo-ayudante-e2e.test.ts` con 7 pasos de integración certificando:
+       * **Paso 1:** Dispositivo limpio del ayudante arranca con Viaje Gratis APAGADO (`activa: false`).
+       * **Paso 2:** El socio activa la promoción en su panel de Flota (`activa: true`, rango 3-15, texto publicitario) y se persiste a PostgreSQL en `Bus.notas` mediante `[PromoConfig]:{...}`.
+       * **Paso 3:** Preservación inmutable de la política ante calibraciones de odómetro simultáneas.
+       * **Paso 4:** El ayudante descarga la configuración oficial al abrir turno/frecuencia vía `fetchBusesFromApi()` y su boletera adopta la orden activa.
+       * **Paso 5:** Emisión de boleto ganador $0.00 con impresión térmica ESC/POS certificada (`VIAJE GRATIS`, `NO DEBE PAGAR`, `Paga $0.00`).
+       * **Paso 6:** Aislamiento multi-tenant estricto: la Unidad 08 no regala pasajes.
+       * **Paso 7:** El socio pausa la promoción y la terminal del ayudante se desactiva de inmediato en la siguiente frecuencia.
+     - **Resultado Final:** **220 pass, 0 fail en 31 suites (1164 expect calls, 100% verde)**.
 
 ---
 
@@ -6185,4 +6195,5 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
   - Rama: `main`
   - Token PAT de GitHub recibido en memoria para commits y push autorizados.
   - Incidente del boleto #7 en Unidad 01 erradicado de raíz con arquitectura de persistencia en PostgreSQL por unidad, apagado por defecto y sincronización bidireccional.
-  - Pruebas Automatizadas: 30 suites ejecutadas con Bun (`bun test tests/`), resultado: **213 pass, 0 fail (100% en verde)**.
+  - Validación E2E del ciclo Socio-Ayudante completada y certificada.
+  - Pruebas Automatizadas: 31 suites ejecutadas con Bun (`bun test tests/`), resultado: **220 pass, 0 fail (100% en verde)**.
