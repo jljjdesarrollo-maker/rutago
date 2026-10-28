@@ -23,6 +23,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { getActiveBusId } from '@/lib/fleet-storage';
+import {
+  buildHistoryFilterKey,
+  getHistoryRecordsSnapshot,
+  saveHistoryRecordsSnapshot,
+  fetchBusesCached,
+} from '@/lib/swr-fast-cache';
 
 type FilterType = 'todos' | 'hoy' | 'semana' | 'mes';
 
@@ -111,10 +117,8 @@ export function HistoryScreen({
     }
     // Blindaje Multi-Tenant Defensivo: Si no vino busId pero sí socioId, resolver unidad del socio
     if (propSocioId && propSocioId !== "TODOS" && typeof window !== "undefined" && navigator.onLine) {
-      fetch(`/api/buses?socioId=${propSocioId}`)
-        .then((r) => r.json())
-        .then((d) => {
-          const list = d?.data || d;
+      fetchBusesCached(propSocioId)
+        .then((list) => {
           if (Array.isArray(list) && list.length > 0) {
             setResolvedBusId(list[0].id || list[0].numeroDisco);
           }
@@ -124,12 +128,17 @@ export function HistoryScreen({
   }, [propBusId, propSocioId]);
 
   const effectiveBusId = resolvedBusId || propBusId || (typeof window !== 'undefined' ? getActiveBusId() : undefined);
-  const [allRecords, setAllRecords] = useState<SavedRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('semana');
   const currentMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
   const [monthValue, setMonthValue] = useState<string>(currentMonthStr);
+  const historyCacheKey = useMemo(
+    () => buildHistoryFilterKey(effectiveBusId, isChofer, filter, monthValue),
+    [effectiveBusId, isChofer, filter, monthValue]
+  );
+  const initialCachedRecords = typeof window !== 'undefined' ? getHistoryRecordsSnapshot(historyCacheKey) : null;
+  const [allRecords, setAllRecords] = useState<SavedRecord[]>(() => initialCachedRecords || []);
+  const [loading, setLoading] = useState<boolean>(() => !initialCachedRecords);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [syncingOffline, setSyncingOffline] = useState(false);
 
@@ -141,7 +150,13 @@ export function HistoryScreen({
   }, [filter, monthValue, isChofer]);
 
   const fetchRecords = async () => {
-    setLoading(true);
+    const cachedSnapshot = getHistoryRecordsSnapshot(historyCacheKey);
+    if (cachedSnapshot) {
+      setAllRecords(cachedSnapshot);
+      setLoading(false);
+    } else if (allRecords.length === 0) {
+      setLoading(true);
+    }
     try {
       const localPending = getLocalPendingSavedRecords(effectiveBusId);
 
@@ -206,7 +221,9 @@ export function HistoryScreen({
       });
 
       // Presentar primero los locales pendientes (más recientes) y luego los de la nube
-      setAllRecords([...unmergedPending, ...cloudRecords]);
+      const mergedRecords = [...unmergedPending, ...cloudRecords];
+      setAllRecords(mergedRecords);
+      saveHistoryRecordsSnapshot(historyCacheKey, mergedRecords);
     } catch {
       console.error('Error loading records');
       const localPending = getLocalPendingSavedRecords(effectiveBusId);

@@ -55,6 +55,12 @@ import { getCurrentYearMonth, formatMonthName, formatFechaCompletaEcuador } from
 import { getSuscripciones } from '@/lib/saas-storage';
 import { getBusModuloMantenimientoActivo, isBusModuloMantenimientoConfigurado, syncMantenimientoConfigConServidor } from '@/lib/mantenimiento-estaciones';
 import { ReporteSocioCalendarioModal } from '@/components/socio/ReporteSocioCalendarioModal';
+import {
+  getHomeSummarySnapshot,
+  saveHomeSummarySnapshot,
+  fetchBusesCached,
+  fetchPersonasCached,
+} from '@/lib/swr-fast-cache';
 
 interface HomeScreenProps {
   user: UserSession;
@@ -133,10 +139,8 @@ export function HomeScreen({
       const sId = user.socioId || user.id;
       if (sId) {
         try {
-          const res = await fetch(`/api/buses?socioId=${sId}`);
-          if (res.ok) {
-            const data = await res.json();
-            const busList = data?.data || data;
+          const busList = await fetchBusesCached(sId);
+          if (busList) {
             if (Array.isArray(busList) && busList.length > 0) {
               const miBus = busList[0];
               if (miBus?.id || miBus?.numeroDisco) {
@@ -168,30 +172,51 @@ export function HomeScreen({
   }, [user?.id, user?.socioId, user?.busId, isSocioOwner]);
   const defaultYearMonth = getCurrentYearMonth();
   const currentYearMonth = defaultYearMonth;
-  const [displayYearMonth, setDisplayYearMonth] = useState<string>(defaultYearMonth);
+  const initialSnapshot = typeof window !== 'undefined' ? getHomeSummarySnapshot(activeBusId) : null;
+  const [displayYearMonth, setDisplayYearMonth] = useState<string>(
+    initialSnapshot?.displayYearMonth || defaultYearMonth
+  );
 
   const [ownerSummary, setOwnerSummary] = useState<{
     routeIncome: number;
     busExpenses: number;
     netProfit: number;
     pendingDebts: number;
-  }>({
-    routeIncome: 0,
-    busExpenses: 0,
-    netProfit: 0,
-    pendingDebts: 0,
-  });
-  const [balanceStatus, setBalanceStatus] = useState<'loading' | 'live' | 'stale' | 'error'>('loading');
+  }>(() =>
+    initialSnapshot
+      ? {
+          routeIncome: initialSnapshot.routeIncome,
+          busExpenses: initialSnapshot.busExpenses,
+          netProfit: initialSnapshot.netProfit,
+          pendingDebts: initialSnapshot.pendingDebts,
+        }
+      : {
+          routeIncome: 0,
+          busExpenses: 0,
+          netProfit: 0,
+          pendingDebts: 0,
+        }
+  );
+  const [balanceStatus, setBalanceStatus] = useState<'loading' | 'live' | 'stale' | 'error'>(
+    initialSnapshot ? 'live' : 'loading'
+  );
   const [isRefreshingBalance, setIsRefreshingBalance] = useState<boolean>(false);
 
   // Tripulación activa del día (Conductor y Ayudante)
   const [crewInfo, setCrewInfo] = useState<{
     conductorNombre: string;
     ayudanteNombre: string;
-  }>({
-    conductorNombre: 'No asignado',
-    ayudanteNombre: 'No asignado',
-  });
+  }>(() =>
+    initialSnapshot
+      ? {
+          conductorNombre: initialSnapshot.conductorNombre || 'No asignado',
+          ayudanteNombre: initialSnapshot.ayudanteNombre || 'No asignado',
+        }
+      : {
+          conductorNombre: 'No asignado',
+          ayudanteNombre: 'No asignado',
+        }
+  );
 
   // Estado de suscripción SaaS del bus activo
   const [saasSubscription, setSaasSubscription] = useState<{
@@ -247,24 +272,25 @@ export function HomeScreen({
       /* ignore */
     }
 
-    // 2. Cargar tripulación activa del día (/api/personas) aislada por socio
-    const personasUrl = (user?.socioId) ? `/api/personas?socioId=${user.socioId}` : '/api/personas';
-    fetch(personasUrl)
-      .then(res => res.ok ? res.json() : [])
-      .then(personas => {
-        if (Array.isArray(personas)) {
-          const conductor = personas.find((p: any) => p.rol === 'CONDUCTOR' && p.esActual);
-          const ayudante = personas.find((p: any) => p.rol === 'AYUDANTE' && p.esActual);
-          setCrewInfo({
-            conductorNombre: conductor ? conductor.nombre : 'No asignado',
-            ayudanteNombre: ayudante ? ayudante.nombre : 'No asignado',
-          });
-        }
-      })
-      .catch(() => {});
+    // 2. Hidratación Instantánea Offline-First (0 ms SWR) por Unidad
+    const cachedHome = getHomeSummarySnapshot(activeBusId);
+    if (cachedHome) {
+      setDisplayYearMonth(cachedHome.displayYearMonth || defaultYearMonth);
+      setOwnerSummary({
+        routeIncome: cachedHome.routeIncome,
+        busExpenses: cachedHome.busExpenses,
+        netProfit: cachedHome.netProfit,
+        pendingDebts: cachedHome.pendingDebts,
+      });
+      setCrewInfo({
+        conductorNombre: cachedHome.conductorNombre || 'No asignado',
+        ayudanteNombre: cachedHome.ayudanteNombre || 'No asignado',
+      });
+      setBalanceStatus('live');
+    }
 
-    // 3. Sincronización de balance financiero en vivo con Semáforo de Estado
-    const calculateForMonth = (targetMonth: string, expenses: any[], income: number) => {
+    // 3. Sincronización en paralelo (Promise.all) de tripulación, gastos e ingresos del mes
+    const computeSummaryMetrics = (targetMonth: string, expenses: any[], income: number) => {
       const monthExpenses = expenses.filter(
         e => e.expenseDate && e.expenseDate.startsWith(targetMonth)
       );
@@ -286,37 +312,50 @@ export function HomeScreen({
         .filter(e => e.pendingBalance > 0)
         .reduce((sum, e) => sum + e.pendingBalance, 0);
 
-      setOwnerSummary({
+      return {
         routeIncome: income,
         busExpenses: totalCost,
         netProfit: income - totalCost,
         pendingDebts: debts,
-      });
+      };
     };
 
     const runSync = async () => {
-      setBalanceStatus("loading");
+      if (!cachedHome) {
+        setBalanceStatus("loading");
+      }
       try {
-        // Cargar caché local primero para respuesta inmediata
         let localExpenses: any[] = [];
         try {
           localExpenses = getOwnerExpenses(activeBusId);
         } catch {}
 
-        let expensesToUse = localExpenses;
+        const effectiveSocioId = user?.socioId || user?.id || '';
+        const busParam = activeBusId ? `&busId=${encodeURIComponent(activeBusId)}` : '';
+        const socioParam = effectiveSocioId ? `&socioId=${encodeURIComponent(effectiveSocioId)}` : '';
 
-        // Intentar traer los gastos oficiales de la API
-        try {
-          const onlineExpenses = await fetchOwnerExpensesFromApi(activeBusId);
-          if (onlineExpenses && onlineExpenses.length > 0) {
-            expensesToUse = onlineExpenses;
-          }
-        } catch {
-          // Mantener caché local si falla la red
+        // Ejecutar las 3 consultas en paralelo en lugar de secuencialmente
+        const [personas, onlineExpenses, reportRes] = await Promise.all([
+          fetchPersonasCached(user?.socioId).catch(() => []),
+          fetchOwnerExpensesFromApi(activeBusId).catch(() => null),
+          fetch(`/api/reports?type=mensual&month=${defaultYearMonth}${busParam}${socioParam}`).catch(() => null),
+        ]);
+
+        let resolvedConductor = cachedHome?.conductorNombre || 'No asignado';
+        let resolvedAyudante = cachedHome?.ayudanteNombre || 'No asignado';
+        if (Array.isArray(personas) && personas.length > 0) {
+          const conductor = personas.find((p: any) => p.rol === 'CONDUCTOR' && p.esActual);
+          const ayudante = personas.find((p: any) => p.rol === 'AYUDANTE' && p.esActual);
+          resolvedConductor = conductor ? conductor.nombre : 'No asignado';
+          resolvedAyudante = ayudante ? ayudante.nombre : 'No asignado';
+          setCrewInfo({
+            conductorNombre: resolvedConductor,
+            ayudanteNombre: resolvedAyudante,
+          });
         }
 
-        // Determinar mes objetivo: Para socios propietarios SIEMPRE el mes actual en curso (defaultYearMonth)
-        // Solo para cuentas fundadoras en modo demo se permite saltar a meses anteriores si no hay datos actuales
+        const expensesToUse = (onlineExpenses && onlineExpenses.length > 0) ? onlineExpenses : localExpenses;
+
         let targetMonth = defaultYearMonth;
         if (user?.esFundadorSaaS) {
           const hasCurrent = expensesToUse.some(e => e.expenseDate && e.expenseDate.startsWith(defaultYearMonth));
@@ -331,34 +370,47 @@ export function HomeScreen({
         }
         setDisplayYearMonth(targetMonth);
 
-        // Consultar ingresos de ruta reales del mes aislados por socio y unidad
         let initialIncome = (user?.esFundadorSaaS && targetMonth === "2026-08") ? 3915.25 : 0;
         let apiSuccess = false;
-        try {
-          const effectiveSocioId = user?.socioId || user?.id || '';
-          const busParam = activeBusId ? `&busId=${encodeURIComponent(activeBusId)}` : '';
-          const socioParam = effectiveSocioId ? `&socioId=${encodeURIComponent(effectiveSocioId)}` : '';
-          const res = await fetch(`/api/reports?type=mensual&month=${targetMonth}${busParam}${socioParam}`);
-          if (res.ok) {
-            const reportData = await res.json();
+
+        if (targetMonth === defaultYearMonth && reportRes && reportRes.ok) {
+          const reportData = await reportRes.json();
+          if (reportData && reportData.totals) {
+            const t = reportData.totals;
+            const ay = t.entregaAyudante || 0;
+            const cia = t.entregaCompania || 0;
+            initialIncome = t.totalEntregado || (ay + cia);
+          }
+          apiSuccess = true;
+        } else if (targetMonth !== defaultYearMonth) {
+          const fallbackRes = await fetch(`/api/reports?type=mensual&month=${targetMonth}${busParam}${socioParam}`).catch(() => null);
+          if (fallbackRes && fallbackRes.ok) {
+            const reportData = await fallbackRes.json();
             if (reportData && reportData.totals) {
               const t = reportData.totals;
               const ay = t.entregaAyudante || 0;
               const cia = t.entregaCompania || 0;
-              const total = t.totalEntregado || (ay + cia);
-              initialIncome = total;
+              initialIncome = t.totalEntregado || (ay + cia);
             }
             apiSuccess = true;
           }
-        } catch {
-          apiSuccess = false;
         }
 
-        calculateForMonth(targetMonth, expensesToUse, initialIncome);
+        const computed = computeSummaryMetrics(targetMonth, expensesToUse, initialIncome);
+        setOwnerSummary(computed);
         setBalanceStatus(apiSuccess || expensesToUse.length > 0 ? "live" : "stale");
+
+        if (apiSuccess || expensesToUse.length > 0) {
+          saveHomeSummarySnapshot(activeBusId, {
+            displayYearMonth: targetMonth,
+            ...computed,
+            conductorNombre: resolvedConductor,
+            ayudanteNombre: resolvedAyudante,
+          });
+        }
       } catch (err) {
         console.error("Error en balance:", err);
-        setBalanceStatus("stale");
+        if (!cachedHome) setBalanceStatus("stale");
       } finally {
         setIsRefreshingBalance(false);
       }

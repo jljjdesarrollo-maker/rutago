@@ -5953,7 +5953,7 @@ Al auditar la base de datos de producción en PostgreSQL para el turno **VT6 del
 ---
 
 ## ⚡ PLAN MAESTRO DE AUDITORÍA Y OPTIMIZACIÓN DE VELOCIDAD EN 4 FASES (v3.61.63)
-> **ESTADO:** 🟢 FASE 1 APLICADA, VERIFICADA CON 192 TESTS Y DESPLEGADA EN PRODUCCIÓN (`v3.61.63`) — EN ESPERA DE AUTORIZACIÓN PARA FASE 2  
+> **ESTADO:** 🟢 FASES 1 Y 2 APLICADAS, VERIFICADAS CON 197 TESTS Y DESPLEGADAS EN PRODUCCIÓN (`v3.61.64`) — EN ESPERA DE AUTORIZACIÓN PARA FASE 3  
 > **FECHA DE REGISTRO:** 2026-10-28 | **SISTEMA:** RutaGo - Optimización Integral de Base de Datos, API Serverless, Carga Móvil e IndexedDB  
 > **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
 
@@ -6045,3 +6045,19 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
      - Añadidos los índices `@@index([conductor, date])` en `DailyRecord`, `@@index([recordId])` en `Trip` y `@@index([recordId])` en `Expense`.
   7. **`tests/fase1-optimizacion-db-apis.test.ts`:**
      - Suite de 6 pruebas automatizadas validando todas las optimizaciones de la Fase 1 (**192 pass, 0 fail** en las 26 suites del proyecto).
+
+---
+
+### ✅ 5. Ejecución y Certificación de FASE 2 (`v3.61.64` — 2026-10-28)
+* **Estado:** 🟢 **COMPLETADA Y DESPLEGADA EN PRODUCCIÓN**
+* **Archivos intervenidos y verificados:**
+  1. **`src/lib/swr-fast-cache.ts` (Nuevo):**
+     - Motor de caché instantáneo (`0 ms` SWR en memoria + `localStorage`) aislado herméticamente por unidad (`busId`) y filtro (`buildHistoryFilterKey`).
+     - Funciones `getHomeSummarySnapshot`, `saveHomeSummarySnapshot`, `getHistoryRecordsSnapshot`, `saveHistoryRecordsSnapshot`, `fetchBusesCached` y `fetchPersonasCached`.
+  2. **`src/components/transport/HomeScreen.tsx`:**
+     - Hidratación instantánea en `0 ms` del resumen financiero mensual (`ownerSummary`), mes activo (`displayYearMonth`) y tripulación (`crewInfo`) al abrir o regresar a la pantalla de inicio.
+     - Reemplazo de las llamadas secuenciales por ejecución concurrente con `Promise.all([fetchPersonasCached, fetchOwnerExpensesFromApi, fetch(/api/reports)])`.
+  3. **`src/components/transport/HistoryScreen.tsx`:**
+     - Hidratación instantánea en `0 ms` de la lista de liquidaciones (`getHistoryRecordsSnapshot`) al entrar a «Liquidaciones de Ruta» o alternar entre filtros (`Semana`, `Hoy`, `Mes`, `3 Meses`), eliminando la pantalla en blanco de bloqueo mientras revalida en segundo plano.
+  4. **`tests/fase2-swr-instant-cache.test.ts`:**
+     - Suite de 5 pruebas automatizadas verificando el aislamiento por unidad, la limpieza de `photoUrl` en caché y la integración en `HomeScreen` y `HistoryScreen` (**197 pass, 0 fail** en 27 suites).
