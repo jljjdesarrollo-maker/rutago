@@ -5840,3 +5840,48 @@ Al iniciar la jornada o las primeras frecuencias, es frecuente que los pasajeros
 * **Pruebas Unitarias Automatizadas:** **178 de 178 pruebas aprobadas al 100% en verde** (23 suites en Bun, incluyendo `tests/vuelto-pendiente-ticket.test.ts`).
 * **Versión de Producción:** `v3.61.60` (actualizada en `package.json` y `HomeScreenVT.tsx`).
 * **Repositorio:** `https://github.com/jljjdesarrollo-maker/rutago` (rama `main` sincronizada con Vercel).
+
+
+---
+
+## 📋 PLAN DE IMPLEMENTACIÓN APROBADO (PENDIENTE DE EJECUCIÓN): ARQUEO CIEGO NEUTRO PARA EL AYUDANTE Y DIAGNÓSTICO QUIRÚRGICO DE DESCUADRES EXCLUSIVO PARA EL SOCIO (v3.61.61)
+
+> **ESTADO:** 🟡 DISEÑO APROBADO DOCUMENTADO EN ARCHIVO MAESTRO (EN ESPERA DE ORDEN DE EJECUCIÓN)  
+> **FECHA DE REGISTRO:** 2026-10-28 | **SISTEMA:** RutaGo - Auditoría Ciega en Ruta (`ArqueoScreen`, `HistoryScreen`, `RecordDetail`)  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Principio Arquitectónico y Operativo (Separación entre Cierre Operativo y Diagnóstico de Auditoría)
+1. **En el teléfono del Ayudante (`ArqueoScreen.tsx` - Cierre por Frecuencia):**
+   - **Problema detectado en auditoría visual:** La pantalla verde de `ARQUEO CONFIRMADO` revelaba al ayudante los boletos timbrados en el sistema (`5 boletos en ruta · $12.50`) y le informaba si tenía `SOBRANTE: +$2.50` o `FALTANTE: -$X.XX`, rompiendo el secreto del Arqueo Ciego y mostrando falsos sobrantes cuando el ayudante cobraba con talonario físico (sin timbrar digitalmente en la app).
+   - **Solución:** Al confirmar el arqueo de una vuelta, el ayudante recibe únicamente un **Comprobante de Recaudación Neutro**:
+     * Muestra **`Efectivo Declarado: $XX.XX`** (y Caja Común de oficina si aplica).
+     * **Oculta al 100%** el conteo/monto del sistema y las alertas de `SOBRANTE`, `FALTANTE` o `CAJA CUADRADA`.
+     * En segundo plano (`localStorage`), el sistema continúa guardando intactos `arqueoEfectivo`, `arqueoSistema` y `arqueoDiferencia` para la auditoría del Socio.
+   - **Al final del día (`ArqueoGeneralScreen.tsx`):** El ayudante solo ve los números consolidados de liquidación (total recaudado, gastos pagados en ruta y efectivo líquido a entregar al dueño en el sobre), nunca el desglose de diferencias vuelta por vuelta.
+
+2. **Exclusivo en el teléfono del Socio Propietario / Admin (`isSocio = true`):**
+   - **Chofer y Ayudante:** Siguen viendo sus pantallas habituales sin ningún cambio (`!isSocio` oculta todos los indicadores de auditoría).
+   - **En «Liquidación de Hoy» (`HistoryScreen.tsx`):**
+     * **Badge de Auditoría en cada Tarjeta del Día:**
+       - `🟢 Cuadrado $0.00` si todas las vueltas y la planilla cuadraron.
+       - `🔴 Faltante: -$X.XX` si existe diferencia negativa en vueltas o en planilla (`sobrante < 0`).
+       - `🔵 Sobrante: +$X.XX` si existe excedente a favor del bus.
+     * **Acordeón Desplegable Directo (`[ 🔍 Ver desglose de las X vueltas ▼ ]`):**
+       - Sin salir de la pantalla, un toque con el pulgar expande la tarjeta del día y muestra fila por fila cada frecuencia:
+         `Hora y Ruta | Sistema $XX.XX | Declaró $XX.XX | Semáforo (🟢 $0.00 / 🔴 -$X.XX / 🔵 +$X.XX)`.
+   - **En el Detalle del Registro (`RecordDetail.tsx` y `src/app/page.tsx`):**
+     * Se inyecta `isSocio` desde `page.tsx`.
+     * **Tarjeta Ejecutiva «Diagnóstico de Caja»** en la parte superior (exclusiva para Socio/Admin) con el dictamen automático del día (cuántas vueltas tuvieron faltante o sobrante y el descuadre neto).
+     * **Marcado Visual por Vuelta:** Resaltado de borde y etiqueta explícita `[ ⚠️ Faltan -$X.XX ]` o `[ ℹ️ Sobran +$X.XX ]` en la vuelta exacta donde ocurrió la novedad.
+
+---
+
+### 📍 2. Cobertura de los 3 Escenarios Reales de Operación en la Cooperativa
+* **Caso 1 (Flujo Digital - Ayudante timbra boletos en la App):**
+  - El ayudante declara su efectivo a ciegas y ve su comprobante neutro (`Efectivo Declarado: $40.00`).
+  - El Socio ve en su panel la comparación contra los boletos timbrados (ej. Sistema `$42.00` vs Declaró `$40.00` $\rightarrow$ `🔴 -$2.00 Faltante`).
+* **Caso 2 (Modo Papel / Frecuencia Directa - Ayudante NO timbra boletos en la App y solo arquea la vuelta):**
+  - El ayudante digita `$40.00` y ve `Efectivo Declarado: $40.00` (sin el falso mensaje de *"Sobrante +$40.00"*).
+  - Gracias a la regla de paridad del motor canónico (`buildCanonicalRecordPayload`), cuando `rawIncome === 0`, `income` asume `efectivoReal` (`$40.00`), mostrándose al Socio como `🟢 $0.00 (Cuadrado)` sin falsas alarmas.
+* **Caso 3 (Registro por «Carga Histórica» / Cuaderno Físico):**
+  - Si en la planilla/cuaderno se registró un faltante o sobrante (`record.sobrante`) o diferencias por vuelta, el Badge y el Diagnóstico del Socio reflejan exactamente el descuadre asentado (ej. `🔴 Descuadre Neto: -$6.00`).
