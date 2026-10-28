@@ -5894,3 +5894,48 @@ Al iniciar la jornada o las primeras frecuencias, es frecuente que los pasajeros
   - `src/components/transport/RecordDetail.tsx` y `src/app/page.tsx`: Tarjeta Ejecutiva «Diagnóstico de Caja» en la cabecera y etiquetas resaltadas por frecuencia (`⚠️ -$X.XX` / `ℹ️ +$X.XX`) exclusivas para el Socio/Admin.
 * **Pruebas Unitarias Automatizadas:** **183 de 183 pruebas aprobadas al 100% en verde** (24 suites en Bun, incluyendo `tests/arqueo-ciego-socio-audit.test.ts`).
 * **Versión de Producción:** `v3.61.61` (sincronizada en `main`).
+
+
+---
+
+## 📋 PLAN DE IMPLEMENTACIÓN APROBADO (PENDIENTE DE EJECUCIÓN): CRUCE DIRECTO CON `VentaBoleto` EN POSTGRESQL COMO FUENTE ÚNICA DE VERDAD PARA LA COLUMNA SISTEMA Y RETENCIÓN DE 72H EN TELÉFONO (v3.61.62)
+
+> **ESTADO:** 🟡 DISEÑO APROBADO DOCUMENTADO EN ARCHIVO MAESTRO (EN ESPERA DE ORDEN DE EJECUCIÓN)  
+> **FECHA DE REGISTRO:** 2026-10-28 | **SISTEMA:** RutaGo - Motor de Conciliación de Boletos en Nube (`/api/records`, `indexeddb.ts`, `ArqueoGeneralScreen.tsx`)  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 📍 1. Diagnóstico Forense de Base de Datos Real (Caso 26 de Octubre de 2026 - VT6 / Unidad 01)
+Al auditar la base de datos de producción en PostgreSQL para el turno **VT6 del 26 de octubre de 2026** (Ayudante: *Fray Anthony Maldonado Yanez*), se comprobó que en la tabla `VentaBoleto` están perfectamente almacenados todos los boletos emitidos en ruta:
+* **Vuelta 3 (`14:45` Loja → Vilcabamba):** **60 boletos = `$71.90`** (efectivo declarado: `$76.00`).
+* **Vuelta 4 (`16:50` Vilcabamba → Loja):** **40 boletos = `$59.65`** (efectivo declarado: `$71.00`).
+* **Vuelta 5 (`18:40` Loja → Vilcabamba):** **25 boletos = `$38.90`** (efectivo declarado: `$46.00`).
+* **Vuelta 6 (`20:45` Vilcabamba → Loja):** **11 boletos = `$20.40`** (efectivo declarado: `$22.25`).
+
+**Causa Raíz de la Discrepancia en `DailyRecord / Trip`:**
+1. En `src/lib/indexeddb.ts`, la función `deleteOldSyncedVentas()` eliminaba de la memoria local del teléfono los boletos sincronizados con más de **1 hora** de antigüedad (`60 * 60 * 1000`).
+2. Cuando el ayudante abrió `ArqueoGeneralScreen.tsx` al final de la noche (22:36), `getVentasByFrecuencia(e.estadoId)` leyó la memoria local del teléfono —donde las vueltas de las 14:45, 16:50 y 18:40 ya habían sido purgadas tras 1 hora y de la vuelta de las 20:45 solo quedaban los últimos 3 boletos (`$2.15`)— e ignoró el `arqueoSistema` guardado en `localStorage`.
+3. Al recibir `income: 0` en las vueltas de las 14:45, 16:50 y 18:40, el servidor aplicó la regla de paridad (`income = efectivoReal`) y guardó `$76.00`, `$71.00` y `$46.00` en la columna `SISTEMA`, sin consultar la tabla `VentaBoleto` de la misma base de datos PostgreSQL.
+
+---
+
+### 📍 2. Detalle Concreto de los Cambios a Realizar (3 Archivos + Pruebas)
+
+1. **`src/app/api/records/route.ts` (Cruce Directo con `VentaBoleto` en PostgreSQL en `GET` y `POST`):**
+   - **En `GET /api/records` (Auto-reconciliación histórica y en vivo con `VentaBoleto`):**
+     * Cuando se consultan los registros con sus vueltas (`include=trips`), realizar una consulta agrupada a `db.ventaBoleto.findMany` para las fechas de los registros listados.
+     * Para cada vuelta (`trip`) de un registro (`rec`), buscar los boletos en `VentaBoleto` que correspondan a la misma fecha (`fechaOperacion === rec.date || fecha === rec.date`), mismo turno (`vtCode` normalizado, ej. `VT6` / `VT06`) y misma frecuencia (coincidencia por hora de salida `frecuencia.hora === trip.time` o por índice de vuelta `frecuenciaId` `_frec_${trip.order - 1}`).
+     * **Regla de Oro de Fuente Única de Verdad:**
+       - **Si existen boletos en `VentaBoleto` para esa vuelta (`count > 0`):** La suma exacta de `cobrado` de esos boletos (`realIncome`) y su cantidad (`realBoletos`) mandan. Si `trip.income` o `trip.boletos` difiere en la tabla `Trip`, se actualiza inmediatamente en memoria y se persiste en PostgreSQL (`db.trip.update`).
+       - **Si NO existen boletos en `VentaBoleto` para esa vuelta (`count === 0`):** Se respeta la regla de paridad (`income = efectivoReal`) para los turnos operados con talonario físico de papel o ingresados por Carga Histórica.
+   - **En `POST /api/records` (Al crear un nuevo Arqueo General):**
+     * Consultar los boletos de `db.ventaBoleto` para ese `date` y `vtCode` antes de insertar los `trips`, garantizando que desde el primer instante quede asentada la suma exacta real de `VentaBoleto`.
+
+2. **`src/lib/indexeddb.ts` (Ampliación de Retención Local de 1 Hora a 72 Horas):**
+   - En `deleteOldSyncedVentas()`, cambiar la ventana de retención de `60 * 60 * 1000` (1 hora) a **`72 * 60 * 60 * 1000` (72 horas / 3 días)**, asegurando que ningún boleto del turno en curso (incluyendo turnos con pernocta de 2 días) sea purgado del teléfono antes de cerrar el Arqueo General.
+
+3. **`src/components/transport/ArqueoGeneralScreen.tsx` (Respaldo Offline con `arqueoSistema`):**
+   - En `loadData()`, calcular `sistemaTotal` tomando `ventasSum > 0 ? ventasSum : (Number((e as any).arqueoSistema) || 0)`, y guardar también `arqueoBoletos = ventas.length` en `ArqueoScreen.tsx` al cerrar cada vuelta para máxima resiliencia cuando el ayudante cierra el turno sin conexión a internet.
+
+4. **Suite de Pruebas Unitarias (`tests/reconciliacion-ventaboleto-records.test.ts`):**
+   - Verificar la reconciliación exacta del caso real del **26 de octubre de 2026 (VT6)**: `14:45 ($71.90 vs $76.00 -> +$4.10)`, `16:50 ($59.65 vs $71.00 -> +$11.35)`, `18:40 ($38.90 vs $46.00 -> +$7.10)` y `20:45 ($20.40 vs $22.25 -> +$1.85)`.
+   - Verificar que cuando una vuelta tiene `0 boletos` en `VentaBoleto` (Modo Papel / Carga Histórica), se conserva intacta la paridad `income === efectivoReal`.
