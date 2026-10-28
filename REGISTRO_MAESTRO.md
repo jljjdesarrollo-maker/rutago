@@ -5948,3 +5948,78 @@ Al auditar la base de datos de producción en PostgreSQL para el turno **VT6 del
   - `src/components/transport/ArqueoScreen.tsx` y `src/components/transport/ArqueoGeneralScreen.tsx`: Respaldo de `arqueoSistema` y `arqueoBoletos` para cierres sin conexión.
 * **Pruebas Unitarias Automatizadas:** **186 de 186 pruebas aprobadas al 100% en verde** (25 suites en Bun, incluyendo `tests/reconciliacion-ventaboleto-records.test.ts`).
 * **Versión de Producción:** `v3.61.62` (sincronizada en `main`).
+
+
+---
+
+## ⚡ PLAN MAESTRO DE AUDITORÍA Y OPTIMIZACIÓN DE VELOCIDAD EN 4 FASES (v3.61.63)
+> **ESTADO:** 🟡 PLAN MAESTRO Y RESPALDO TRIPLE CERTIFICADOS EN ARCHIVO MAESTRO (EN ESPERA DE ORDEN DE EJECUCIÓN FASE 1)  
+> **FECHA DE REGISTRO:** 2026-10-28 | **SISTEMA:** RutaGo - Optimización Integral de Base de Datos, API Serverless, Carga Móvil e IndexedDB  
+> **REPOSITORIO:** `https://github.com/jljjdesarrollo-maker/rutago`
+
+### 🛡️ 1. Punto de Restauración y Respaldo Triple Pre-Optimización (100% Verificado)
+Previo a cualquier modificación de código o esquema, se generó y verificó un respaldo completo de la aplicación y de las 16 tablas de la base de datos de producción:
+1. **Respaldo de Código Fuente en GitHub:**
+   - **Commit base certificado:** `9db1e69` (`v3.61.62`)
+   - **Rama de respaldo inmutable:** `backup/v3.61.62-pre-optimizacion`
+   - **Tag inmutable:** `backup-v3.61.62-pre-optimizacion`
+2. **Respaldo Íntegro de Base de Datos PostgreSQL de Producción (16 Tablas):**
+   - **Bóveda en GitHub Releases:** `https://github.com/jljjdesarrollo-maker/rutago/releases/tag/backup-v3.61.62-pre-optimizacion`
+   - **Archivo adjunto descargable:** `rutago_bd_v3.61.62_pre_optimizacion.json.gz` (`106 MB` comprimido / `140.69 MB` descomprimido).
+   - **Inventario certificado en el volcado:** `305` registros diarios (`DailyRecord` con `trips` y `expenses`), `2,182` boletos (`VentaBoleto`), `53` gastos de socio (`OwnerExpense`), `114` frecuencias, `19` turnos VT, `11` tripulantes (`Persona`), `4` cuentas de socio, `3` autobuses, `3` suscripciones y `3` pagos.
+
+---
+
+### 🔬 2. Diagnóstico Forense de Peso en Base de Datos e Historial de Optimizaciones Previas
+1. **Revisión de lo YA ejecutado en versiones previas del Archivo Maestro:**
+   - **`v3.60.94`, `v3.61.08` y `v3.61.38`:** Configuración de `POOLED_DATABASE_URL` (`PgBouncer`), singleton Prisma en `globalThis`, `pool_timeout=15`, `connect_timeout=15` y `select` ligero puntual únicamente en `POST /api/personas`.
+   - **`v3.61.47`:** Consulta ligera (`select` sin `photoUrl`) y patrón **Offline-First SWR (`0 ms`)** aplicados exclusivamente al modal `ReporteSocioCalendarioModal.tsx` (`/api/socio/reporte-calendario`).
+2. **Hallazgo Forense Crítico en el Volcado de Producción (`138.54 MB` en `photoUrl`):**
+   - **Peso total de las 16 tablas de PostgreSQL:** **`140.69 MB`**.
+   - **Peso exclusivo de la columna `photoUrl` (298 fotos Base64 en `DailyRecord`):** **`138.54 MB` (98.5% de toda la base de datos)**.
+   - **Peso de todos los datos numéricos y de texto de las 16 tablas juntas:** **`2.15 MB` (1.5%)**.
+   - **Causa raíz de lentitud actual:** Los endpoints principales (`GET /api/records`, `GET /api/reports`, `GET /api/reports/operativo` y `GET /api/reports/compare-frequencies`) ejecutan `db.dailyRecord.findMany()` sin `select`, obligando a PostgreSQL a leer del disco y transmitir por red interna hacia Vercel entre **40 MB y 138 MB de cadenas Base64** en cada consulta (y por duplicado en `GET /api/records?include=trips`), para luego descartarlas en memoria JavaScript.
+
+---
+
+### 📋 3. Desglose Técnico de las 4 Fases de Optimización
+
+#### 🔹 FASE 1: Optimización Quirúrgica de Consultas Prisma e Índices en Base de Datos (Backend API)
+* **Objetivo:** Reducir en **99.8%** el tráfico de datos entre PostgreSQL y Vercel (de `~83 MB - 138 MB` a `< 150 KB` por petición) sin alterar ninguna respuesta JSON ni borrar ninguna foto.
+* **Archivos a intervenir (5 archivos + suite de pruebas):**
+  1. **`prisma/schema.prisma`:**
+     - Agregar `@@index([conductor, date])` en `DailyRecord`.
+     - Agregar `@@index([recordId])` en `Trip` y en `Expense` (evita *Sequential Scans* en PostgreSQL al hacer `include/select` de vueltas y gastos).
+  2. **`src/app/api/records/route.ts`:**
+     - Definir proyección explícita sin `photoUrl` para los listados (`GET /api/records`), manteniendo intacta la carga de `photoUrl` en `GET /api/records/[id]` cuando se abre el detalle de un registro.
+     - Unificar la **doble consulta `db.dailyRecord.findMany`** cuando `include=trips` en **1 sola consulta directa** con `select`.
+     - Paralelizar con `Promise.all` las actualizaciones puntuales de auto-saneamiento.
+  3. **`src/app/api/reports/route.ts`:**
+     - Excluir `photoUrl` mediante `select` explícito en las dos consultas `db.dailyRecord.findMany` (reporte general y `handleCajaComunReport`).
+     - Reemplazar el bucle de hasta 18 consultas `db.frecuencia.count` por **1 sola consulta agrupada** `db.frecuencia.groupBy({ by: [vtCode], ... })`.
+  4. **`src/app/api/reports/operativo/route.ts`:**
+     - Usar `select` explícito (`date, vtCode, ayudanteNombre, conductor, trips`) excluyendo `photoUrl`.
+  5. **`src/app/api/reports/compare-frequencies/route.ts`:**
+     - Usar `select` explícito (`date, vtCode, conductor, trips`) excluyendo `photoUrl`.
+
+#### 🔹 FASE 2: Respuesta Instantánea (`0 ms` SWR) y Reducción de Peticiones en Inicio y Liquidación del Socio
+* **Objetivo:** Llevar la misma velocidad instantánea del modal de *Auditoría Calendario* (`v3.61.47`) a la pantalla principal del Socio (`HomeScreen.tsx`) y a «Liquidación de Hoy / Historial» (`HistoryScreen.tsx`).
+* **Archivos a intervenir:** `src/components/transport/HomeScreen.tsx`, `src/components/transport/HistoryScreen.tsx` y helper de caché en `src/lib/`.
+* **Acciones:**
+  1. Pintar en **`0 ms`** el último snapshot local validado por unidad (`busId`) al abrir o volver a `HomeScreen` y `HistoryScreen`, refrescando en segundo plano sin pantallas de bloqueo *"Cargando..."*.
+  2. Cachear en memoria de sesión con revalidación suave el padrón de `/api/buses` y `/api/personas` para evitar pedirlos repetidamente al cambiar entre pestañas.
+  3. Optimizar las llamadas de resumen mensual en `HomeScreen.tsx` para evitar ráfagas redundantes de peticiones al servidor.
+
+#### 🔹 FASE 3: Adelgazamiento del Arranque Móvil con Carga Diferida (`next/dynamic`) en `src/app/page.tsx`
+* **Objetivo:** Reducir el tamaño del paquete JavaScript inicial que descarga el celular en redes móviles (3G/4G) al abrir la aplicación.
+* **Archivo a intervenir:** `src/app/page.tsx`.
+* **Acciones:**
+  1. Conservar en carga síncrona inmediata las vistas de entrada críticas (`LoginScreen`, `HomeScreen`, `HomeScreenVT`, `FrecuenciaSelector`, `TicketScreen`).
+  2. Convertir a carga diferida bajo demanda (`next/dynamic`) las pantallas secundarias y administrativas pesadas (`SaaSAdminScreen`, `MantenimientoScreen`, `OwnerExpensesScreen`, `ReportsScreen`, `ReporteOperativoScreen`, `CompareFrequenciesScreen`, `CargaHistoricaScreen`, `FlotaScreen`, `VTConfigScreen`, `BenchmarkScreen`, `VentasReviewScreen`).
+
+#### 🔹 FASE 4: Optimización de Velocidad en Ruta para el Ayudante (`IndexedDB` y `TicketScreen`)
+* **Objetivo:** Garantizar respuesta en `< 10 ms` al timbrar boletos y cambiar de frecuencia en teléfonos de gama media/baja incluso con miles de boletos retenidos durante 72 horas.
+* **Archivos a intervenir:** `src/lib/indexeddb.ts`, `src/components/transport/TicketScreen.tsx` y `src/components/transport/FrecuenciaSelector.tsx`.
+* **Acciones:**
+  1. Optimizar `getVentasByFrecuencia(frecuenciaId)` en `src/lib/indexeddb.ts` para consultar directamente el índice nativo `store.index(frecuenciaId).getAll(frecuenciaId)` en lugar de descargar todos los boletos con `store.getAll()` y filtrarlos en memoria JavaScript.
+  2. Mantener actualización incremental en estado local durante la emisión de boletos en `TicketScreen.tsx`.
