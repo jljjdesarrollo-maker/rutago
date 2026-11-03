@@ -33,7 +33,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, subscribeToActiveBus, subscribeToBusOdometer, syncBusOdometerWithServer } from '@/lib/fleet-storage';
+import { getAllBuses, getActiveBusId, getLatestBusOdometer, saveBusOdometer, subscribeToActiveBus, subscribeToBusOdometer, syncBusOdometerWithServer, getBusOdometerForDate } from '@/lib/fleet-storage';
 import { getCatalogoMaestroGlobal } from '@/lib/mantenimiento-catalogo';
 import { saveOwnerExpense, saveOwnerExpenseToApi } from '@/lib/owner-expenses-storage';
 import { type PaymentMethod, type PaymentAbono } from '@/types/expenses';
@@ -445,6 +445,57 @@ export function ChoferMantenimientoWidget({
   const [registroCosto, setRegistroCosto] = useState<string>('');
   const [registroTaller, setRegistroTaller] = useState<string>('');
   const [pagadorRegistroRapido, setPagadorRegistroRapido] = useState<'AYUDANTE' | 'SOCIO'>('AYUDANTE');
+  const [ayudanteKmRefModal, setAyudanteKmRefModal] = useState<{ date: string; kmFinal: number | null; esExacto: boolean } | null>(null);
+  const [ayudanteKmRefEstacion, setAyudanteKmRefEstacion] = useState<{ date: string; kmFinal: number | null; esExacto: boolean } | null>(null);
+  const [ayudanteKmRefCombo, setAyudanteKmRefCombo] = useState<{ date: string; kmFinal: number | null; esExacto: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!modalItem || !registroFecha) {
+      setAyudanteKmRefModal(null);
+      return;
+    }
+    let cancelled = false;
+    getBusOdometerForDate(disco, registroFecha).then((res) => {
+      if (!cancelled && res && res.kmFinal) {
+        setAyudanteKmRefModal({ date: res.date, kmFinal: res.kmFinal, esExacto: res.esExacto });
+      } else if (!cancelled) {
+        setAyudanteKmRefModal(null);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [modalItem, registroFecha, disco]);
+
+  useEffect(() => {
+    if (!estacionModalOpen || !estacionFechaServicioChofer) {
+      setAyudanteKmRefEstacion(null);
+      return;
+    }
+    let cancelled = false;
+    getBusOdometerForDate(disco, estacionFechaServicioChofer).then((res) => {
+      if (!cancelled && res && res.kmFinal) {
+        setAyudanteKmRefEstacion({ date: res.date, kmFinal: res.kmFinal, esExacto: res.esExacto });
+      } else if (!cancelled) {
+        setAyudanteKmRefEstacion(null);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [estacionModalOpen, estacionFechaServicioChofer, disco]);
+
+  useEffect(() => {
+    if (!comboModalOpen || !comboFechaServicio) {
+      setAyudanteKmRefCombo(null);
+      return;
+    }
+    let cancelled = false;
+    getBusOdometerForDate(disco, comboFechaServicio).then((res) => {
+      if (!cancelled && res && res.kmFinal) {
+        setAyudanteKmRefCombo({ date: res.date, kmFinal: res.kmFinal, esExacto: res.esExacto });
+      } else if (!cancelled) {
+        setAyudanteKmRefCombo(null);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [comboModalOpen, comboFechaServicio, disco]);
 
   const handleGuardarRegistroChofer = () => {
     if (!modalItem) return;
@@ -500,11 +551,9 @@ export function ChoferMantenimientoWidget({
       )
     );
 
-    // Regla Inmutable: El odómetro del bus nunca retrocede
-    if (km > kmActual) {
-      saveBusOdometer(disco, km.toString(), 'Mantenimiento ' + modalItem.nombre);
-      setKmActual(km);
-    }
+    // BLINDAJE DE AUTORIDAD: El chofer registra el kilometraje de la pieza para calcular el próximo
+    // cambio (odometroServicio), pero NUNCA muta el odómetro general del autobús.
+    // El odómetro oficial del bus solo avanza con el cierre del ayudante o calibración del socio.
 
     // Persistir parada técnica en historial y sincronizar a BD central
     const paradaId = `parada-chofer-${Date.now()}`;
@@ -520,7 +569,7 @@ export function ChoferMantenimientoWidget({
       taller: tallerFinal,
       odometroKm: km,
       odometroServicio: km,
-      odometroActualBus: Math.max(kmActual, km),
+      odometroActualBus: kmActual,
       esRetroactivo: km < kmActual || fechaFinal < today,
       kmRodadosDesdeServicio: Math.max(0, kmActual - km),
       costoTotal: costoNum,
@@ -952,11 +1001,7 @@ export function ChoferMantenimientoWidget({
 
     localStorage.setItem(storageKey, JSON.stringify(fullList));
 
-    // REGLA INMUTABLE: El odómetro del bus NUNCA retrocede. Solo se actualiza si el tablero actual supera kmActual
-    if (kmTablero > kmActual) {
-      saveBusOdometer(disco, kmTablero.toString(), 'Taller ' + config.nombre);
-      setKmActual(kmTablero);
-    }
+    // BLINDAJE DE AUTORIDAD: El odómetro oficial del autobús permanece inmutable ante mantenimientos del chofer.
 
     // Actualizar lista en pantalla del chofer
     setItems(fullList.filter(it => it.asignadoChofer && it.activo));
@@ -1330,11 +1375,7 @@ export function ChoferMantenimientoWidget({
 
     localStorage.setItem(storageKey, JSON.stringify(fullList));
 
-    // REGLA INMUTABLE: El odómetro del bus NUNCA retrocede. Solo se actualiza si el tablero actual supera kmActual
-    if (kmTablero > kmActual) {
-      saveBusOdometer(disco, kmTablero.toString(), 'Lubricadora Combo');
-      setKmActual(kmTablero);
-    }
+    // BLINDAJE DE AUTORIDAD: El odómetro oficial del autobús permanece inmutable ante combos del chofer.
 
     // Actualizar lista local del widget
     setItems(fullList.filter(it => it.asignadoChofer && it.activo));
@@ -1511,11 +1552,7 @@ export function ChoferMantenimientoWidget({
     setArregloIsSaving(true);
 
     try {
-      // 1. Si el tacómetro ingresado es superior al actual, avanzar odómetro del bus
-      if (kmNum > kmActual) {
-        saveBusOdometer(disco, kmNum.toString(), `Arreglo: ${descTrim}`);
-        setKmActual(kmNum);
-      }
+      // BLINDAJE DE AUTORIDAD: El chofer no altera el odómetro oficial del autobús.
 
       const paradaId = `parada-arreglo-${Date.now()}`;
       const expenseId = `gasto-arreglo-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
@@ -2366,17 +2403,63 @@ export function ChoferMantenimientoWidget({
             </div>
 
             <div className="space-y-3">
-              <div>
-                <Label className="text-xs font-bold text-slate-700 block mb-1">
-                  Kilometraje del Tacómetro al Cambiar *
-                </Label>
-                <Input
-                  type="number"
-                  value={registroKm}
-                  onChange={e => setRegistroKm(e.target.value)}
-                  className="h-11 rounded-xl text-base font-black bg-slate-50 border-slate-300"
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs font-bold text-slate-700 block mb-1">
+                    Fecha del Servicio *
+                  </Label>
+                  <Input
+                    type="date"
+                    value={registroFecha}
+                    onChange={e => setRegistroFecha(e.target.value)}
+                    className="h-10 rounded-xl text-xs font-bold bg-slate-50 border-slate-300"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-bold text-slate-700 block mb-1">
+                    Km Tacómetro *
+                  </Label>
+                  <Input
+                    type="number"
+                    value={registroKm}
+                    onChange={e => setRegistroKm(e.target.value)}
+                    placeholder={kmActual.toString()}
+                    className="h-10 rounded-xl text-sm font-black bg-slate-50 border-slate-300"
+                  />
+                </div>
               </div>
+              {ayudanteKmRefModal?.kmFinal && (
+                <div className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-center justify-between">
+                  <span className="text-[11px] font-semibold">
+                    📍 Ayudante en esa fecha ({ayudanteKmRefModal.date}): <strong>{ayudanteKmRefModal.kmFinal.toLocaleString()} km</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setRegistroKm(ayudanteKmRefModal.kmFinal!.toString())}
+                    className="text-[10px] font-bold bg-white text-blue-800 px-2 py-0.5 rounded border border-blue-300 shadow-2xs hover:bg-blue-100 cursor-pointer"
+                  >
+                    Usar este km
+                  </button>
+                </div>
+              )}
+              {(() => {
+                const kmNum = parseInt(registroKm, 10);
+                if (ayudanteKmRefModal?.kmFinal && kmNum > 0) {
+                  const diff = Math.abs(kmNum - ayudanteKmRefModal.kmFinal);
+                  if (diff > 250) {
+                    return (
+                      <div className="p-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-[10px] leading-snug flex items-start gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <strong className="font-bold">Aviso de variación: </strong>
+                          El ayudante registró {ayudanteKmRefModal.kmFinal.toLocaleString()} km ({diff.toLocaleString()} km de diferencia). Si hubo recorridos fuera de ruta o traslado a taller, puedes continuar.
+                        </div>
+                      </div>
+                    );
+                  }
+                }
+                return null;
+              })()}
 
               <div>
                 <Label className="text-xs font-bold text-slate-700 block mb-1">
@@ -2599,6 +2682,38 @@ export function ChoferMantenimientoWidget({
                             />
                           </div>
                         </div>
+                        {ayudanteKmRefEstacion?.kmFinal && (
+                          <div className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-center justify-between">
+                            <span className="text-[11px] font-semibold">
+                              📍 Ayudante en esa fecha ({ayudanteKmRefEstacion.date}): <strong>{ayudanteKmRefEstacion.kmFinal.toLocaleString()} km</strong>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setEstacionKmServicioChofer(ayudanteKmRefEstacion.kmFinal!.toString())}
+                              className="text-[10px] font-bold bg-white text-blue-800 px-2 py-0.5 rounded border border-blue-300 shadow-2xs hover:bg-blue-100 cursor-pointer"
+                            >
+                              Usar este km
+                            </button>
+                          </div>
+                        )}
+                        {(() => {
+                          const kmNum = parseInt(estacionKmServicioChofer, 10);
+                          if (ayudanteKmRefEstacion?.kmFinal && kmNum > 0) {
+                            const diff = Math.abs(kmNum - ayudanteKmRefEstacion.kmFinal);
+                            if (diff > 250) {
+                              return (
+                                <div className="p-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-[10px] leading-snug flex items-start gap-1.5">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                                  <div>
+                                    <strong className="font-bold">Aviso de variación: </strong>
+                                    El ayudante registró {ayudanteKmRefEstacion.kmFinal.toLocaleString()} km ({diff.toLocaleString()} km de diferencia). Si hubo recorridos fuera de ruta o traslado a taller, puedes continuar.
+                                  </div>
+                                </div>
+                              );
+                            }
+                          }
+                          return null;
+                        })()}
 
                         {/* Tarjeta de Cálculo en Vivo y Candado de Seguridad */}
                         {odoServicio > 0 && (
@@ -3162,6 +3277,38 @@ export function ChoferMantenimientoWidget({
                         />
                       </div>
                     </div>
+                    {ayudanteKmRefCombo?.kmFinal && (
+                      <div className="p-2 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-center justify-between">
+                        <span className="text-[11px] font-semibold">
+                          📍 Ayudante en esa fecha ({ayudanteKmRefCombo.date}): <strong>{ayudanteKmRefCombo.kmFinal.toLocaleString()} km</strong>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setComboKmServicio(ayudanteKmRefCombo.kmFinal!.toString())}
+                          className="text-[10px] font-bold bg-white text-blue-800 px-2 py-0.5 rounded border border-blue-300 shadow-2xs hover:bg-blue-100 cursor-pointer"
+                        >
+                          Usar este km
+                        </button>
+                      </div>
+                    )}
+                    {(() => {
+                      const kmNum = parseInt(comboKmServicio, 10);
+                      if (ayudanteKmRefCombo?.kmFinal && kmNum > 0) {
+                        const diff = Math.abs(kmNum - ayudanteKmRefCombo.kmFinal);
+                        if (diff > 250) {
+                          return (
+                            <div className="p-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-[10px] leading-snug flex items-start gap-1.5">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                              <div>
+                                <strong className="font-bold">Aviso de variación: </strong>
+                                El ayudante registró {ayudanteKmRefCombo.kmFinal.toLocaleString()} km ({diff.toLocaleString()} km de diferencia). Si hubo recorridos fuera de ruta o traslado a taller, puedes continuar.
+                              </div>
+                            </div>
+                          );
+                        }
+                      }
+                      return null;
+                    })()}
 
                     {/* Tarjeta de Cálculo en Vivo y Candado de Seguridad */}
                     {odoServicio > 0 && (

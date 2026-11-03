@@ -6197,3 +6197,36 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
   - Incidente del boleto #7 en Unidad 01 erradicado de raíz con arquitectura de persistencia en PostgreSQL por unidad, apagado por defecto y sincronización bidireccional.
   - Validación E2E del ciclo Socio-Ayudante completada y certificada.
   - Pruebas Automatizadas: 31 suites ejecutadas con Bun (`bun test tests/`), resultado: **220 pass, 0 fail (100% en verde)**.
+
+### ✅ 3. Certificación y Ejecución del Blindaje de Odometría (`v3.61.68` — 2026-11-03)
+* **Estado:** 🟢 **COMPLETADO AL 100% Y CERTIFICADO EN SUITE AUTOMATIZADA (224 TESTS)**
+* **Detalle de Ejecución:**
+  1. **Blindaje de Autoridad en Chofer (`ChoferMantenimientoWidget.tsx`):**
+     - Eliminadas todas las mutaciones no autorizadas de odómetro (`saveBusOdometer`) en modales de mantenimiento rápido, talleres por estación, combos de lubricadora y arreglos imprevistos.
+     - El chofer almacena fielmente `odometroServicio` y `odometroActualBus` en la ficha técnica (`saveParadaPago`) para calcular el desgaste de repuestos (`kmRodadosDesdeServicio`) sin perturbar el tacómetro del vehículo.
+  2. **Asistencia Inteligente y Detección de Desviación Elástica:**
+     - Integrado `getBusOdometerForDate(disco, fecha)` para sugerir al chofer el odómetro oficial del ayudante en la fecha del servicio con botón táctil `[Usar este km]`.
+     - Implementada alerta preventiva informativa (semáforo amarillo, no bloqueante) ante desviaciones > 250 km entre la lectura del chofer y el registro del ayudante de esa fecha.
+  3. **Fuente Única de Verdad en Backend (`/api/buses/odometro`):**
+     - La API ahora cruza dinámicamente el `kmFinal` del último `DailyRecord` del ayudante con las calibraciones del socio en `Bus.notas`.
+     - Si el socio calibra manualmente por necesidad justificada con fecha/valor superior, prevalece el socio; de lo contrario, el odómetro vigente es el registrado por el ayudante en sus arqueos.
+     - Soporte para consulta referencial por fecha (`?disco=XX&fecha=YYYY-MM-DD`).
+  4. **Visibilidad Transparente para el Ayudante (`HistoryScreen.tsx` y `RecordDetail.tsx`):**
+     - `HistoryScreen.tsx` ahora despliega en el listado de arqueos el tacómetro acumulado de llegada (`kmFinal`, ej. `893,750 km`) complementado con los km recorridos (`+165 km`).
+     - `RecordDetail.tsx` desglosa detalladamente el Odómetro de Llegada, Odómetro de Salida y Recorrido de la jornada.
+  5. **Suite de Pruebas Automatizadas (`tests/odometro-blindaje-chofer-ayudante.test.ts`):**
+     - 4 pruebas certificando: inmutabilidad ante servicios pasados del chofer, cálculo exacto de desgaste técnico, alerta ante desviaciones > 250 km, y jerarquía superior de calibración del socio.
+     - **Resultado Global:** **224 pass, 0 fail en 32 suites (1176 expect calls, 100% verde)**.
+
+---
+
+## 🔄 12. Handover de Sesión y Verificación de Continuidad (2026-11-03)
+* **Estado:** 🟢 **ACTIVO - REPOSITORIO SINCRONIZADO Y TEST SUITE AL 100%**
+* **Versión Oficial:** `v3.61.68`
+* **Contexto de Sesión:**
+  - Repositorio: `https://github.com/jljjdesarrollo-maker/rutago`
+  - Rama: `main`
+  - Token PAT de GitHub autenticado y verificado en memoria para push a `origin/main`.
+  - Inconsistencia de odómetros erradicada: el chofer no sobrescribe el kilometraje del ayudante; el socio mantiene la potestad de calibración; y el ayudante visualiza su odómetro total acumulado.
+  - Pruebas Automatizadas: 32 suites ejecutadas con Bun (`bun test tests/`), resultado: **224 pass, 0 fail (100% en verde)**.
+  - Compilación Next.js Turbopack: Exitosa (24/24 rutas generadas).

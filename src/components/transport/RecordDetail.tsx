@@ -352,9 +352,25 @@ export function RecordDetail({ record, onBack, isAdmin, isSocio, onRecordUpdated
               <span className="font-semibold text-slate-800">{rec.ayudanteNombre || 'No asignado'}</span>
             </div>
             <div>
-              <span className="text-gray-400 block text-[10px] uppercase font-bold">Kilometraje</span>
+              <span className="text-gray-400 block text-[10px] uppercase font-bold">Odómetro / Kilometraje</span>
               <span className="font-semibold text-slate-800">
-                {rec.km ? `${rec.km} km` : rec.kmInicial && rec.kmFinal ? `${rec.kmInicial} - ${rec.kmFinal}` : '—'}
+                {rec.kmFinal ? (
+                  <div>
+                    <span className="text-slate-900 font-extrabold text-sm">
+                      {parseInt(String(rec.kmFinal).replace(/[^0-9]/g, ""), 10).toLocaleString()} km
+                    </span>
+                    <span className="text-slate-500 font-medium text-[11px] block">
+                      {rec.kmInicial ? `Salida: ${parseInt(String(rec.kmInicial).replace(/[^0-9]/g, ""), 10).toLocaleString()} km • ` : ""}
+                      {rec.km ? `Recorrido: +${rec.km} km` : ""}
+                    </span>
+                  </div>
+                ) : rec.km ? (
+                  `${rec.km} km`
+                ) : rec.kmInicial && rec.kmFinal ? (
+                  `${rec.kmInicial} - ${rec.kmFinal}`
+                ) : (
+                  "—"
+                )}
               </span>
             </div>
           </div>

@@ -658,6 +658,36 @@ export function getLatestBusOdometer(busIdOrDisco: string): { kmFinal: string; d
 /**
  * Descarga y sincroniza la última calibración del odómetro desde la nube (/api/buses/odometro).
  */
+/**
+ * Consulta en la API central el odómetro oficial del ayudante en una fecha específica (o el más cercano anterior)
+ * para asistir al chofer al registrar mantenimientos antiguos.
+ */
+export async function getBusOdometerForDate(
+  busIdOrDisco: string,
+  fecha: string
+): Promise<{
+  date: string;
+  kmFinal: number | null;
+  kmInicial: number | null;
+  kmRecorrido: number | null;
+  esExacto: boolean;
+  ayudante: string;
+} | null> {
+  if (typeof window === "undefined" || !fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return null;
+  try {
+    const cleanDisco = busIdOrDisco.replace(/^BUS-/i, "").padStart(2, "0");
+    const res = await fetch(`/api/buses/odometro?disco=${cleanDisco}&fecha=${fecha}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json.success && json.data?.odometroFecha) {
+      return json.data.odometroFecha;
+    }
+  } catch (err) {
+    console.warn("[getBusOdometerForDate] Error consultando odómetro de fecha:", err);
+  }
+  return null;
+}
+
 export async function syncBusOdometerWithServer(busIdOrDisco: string): Promise<number | null> {
   if (typeof window === 'undefined' || !navigator.onLine) return null;
   try {

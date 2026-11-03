@@ -500,9 +500,13 @@ export function HistoryScreen({
                             Guardado en Teléfono (Pendiente)
                           </span>
                         )}
-                        {record.km && (
+                        {record.kmFinal ? (
+                          <span className="text-xs font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                            🧭 {parseInt(String(record.kmFinal).replace(/[^0-9]/g, ""), 10).toLocaleString()} km {record.km ? <span className="font-normal text-slate-500">(+{record.km} km)</span> : ""}
+                          </span>
+                        ) : record.km ? (
                           <span className="text-xs text-[#3A3A3A]/40">• {record.km} km</span>
-                        )}
+                        ) : null}
                         {isSocio && (
                           Math.abs(netDiff) < 0.01 ? (
                             <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">

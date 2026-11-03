@@ -12,12 +12,14 @@ interface OdometroRequestBody {
   actualizadoPor?: string;
 }
 
-// GET /api/buses/odometro?disco=01
+// GET /api/buses/odometro?disco=01&fecha=2026-10-15
+// Fuente de verdad unificada: cruza arqueos del ayudante (DailyRecord) y calibraciones del socio (Bus.notas)
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const disco = searchParams.get('disco');
     const busId = searchParams.get('busId');
+    const fechaParam = searchParams.get('fecha');
 
     if (!disco && !busId) {
       return NextResponse.json(
@@ -26,7 +28,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const cleanDisco = String(disco || busId || '').replace(/^BUS-/, '').padStart(2, '0');
+    const cleanDisco = String(disco || busId || '').replace(/^BUS-/i, '').padStart(2, '0');
 
     let busData = null;
     try {
@@ -45,32 +47,163 @@ export async function GET(req: NextRequest) {
       console.warn('Consulta de bus en BD con advertencia (fallback memoria):', dbErr);
     }
 
-    let kmCalibrado: number | null = null;
-    let fechaCalibrada: string | null = null;
-    let motivoCalibrado: string | null = null;
+    // 1. Extraer calibración manual previa del socio / administrador desde notas
+    let kmCalibradoSocio: number | null = null;
+    let fechaCalibradaSocio: string | null = null;
+    let motivoCalibradoSocio: string | null = null;
 
     if (busData?.notas) {
       const matchKm = busData.notas.match(/\[Odómetro (?:Calibrado|Inicial)\]:\s*([0-9,.]+)\s*km/i);
       if (matchKm) {
-        kmCalibrado = parseInt(matchKm[1].replace(/[^0-9]/g, ''), 10);
+        kmCalibradoSocio = parseInt(matchKm[1].replace(/[^0-9]/g, ''), 10);
       }
       const matchFecha = busData.notas.match(/el\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/);
       if (matchFecha) {
-        fechaCalibrada = matchFecha[1];
+        fechaCalibradaSocio = matchFecha[1];
       }
       const matchMotivo = busData.notas.match(/\(([^()]+)\)$/);
       if (matchMotivo) {
-        motivoCalibrado = matchMotivo[1];
+        motivoCalibradoSocio = matchMotivo[1];
       }
+    }
+
+    // 2. Consultar el último arqueo oficial del ayudante para este bus
+    let ultimoArqueoAyudante = null;
+    try {
+      ultimoArqueoAyudante = await (db as any).dailyRecord.findFirst({
+        where: {
+          conductor: { startsWith: `BUS-${cleanDisco}` },
+          kmFinal: { not: null },
+        },
+        orderBy: [
+          { date: 'desc' },
+          { createdAt: 'desc' },
+        ],
+        select: {
+          id: true,
+          date: true,
+          kmFinal: true,
+          kmInicial: true,
+          km: true,
+          conductor: true,
+          ayudanteNombre: true,
+          vtCode: true,
+        },
+      });
+    } catch (recErr) {
+      console.warn('Consulta de último arqueo en BD con advertencia:', recErr);
+    }
+
+    // 3. Si se pidió una fecha específica (ej. para validar un mantenimiento del chofer)
+    let odometroEnFecha = null;
+    if (fechaParam && /^\d{4}-\d{2}-\d{2}$/.test(fechaParam)) {
+      try {
+        // Primero buscar registro exacto en esa fecha
+        const recExacto = await (db as any).dailyRecord.findFirst({
+          where: {
+            conductor: { startsWith: `BUS-${cleanDisco}` },
+            date: fechaParam,
+            kmFinal: { not: null },
+          },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            date: true,
+            kmFinal: true,
+            kmInicial: true,
+            km: true,
+            ayudanteNombre: true,
+          },
+        });
+
+        if (recExacto) {
+          odometroEnFecha = {
+            date: recExacto.date,
+            kmFinal: parseInt(String(recExacto.kmFinal).replace(/[^0-9]/g, ''), 10) || null,
+            kmInicial: parseInt(String(recExacto.kmInicial || '').replace(/[^0-9]/g, ''), 10) || null,
+            kmRecorrido: parseInt(String(recExacto.km || '').replace(/[^0-9]/g, ''), 10) || null,
+            esExacto: true,
+            ayudante: recExacto.ayudanteNombre || 'Ayudante',
+          };
+        } else {
+          // Si no hay registro en esa fecha exacta, buscar el más cercano anterior
+          const recAnterior = await (db as any).dailyRecord.findFirst({
+            where: {
+              conductor: { startsWith: `BUS-${cleanDisco}` },
+              date: { lte: fechaParam },
+              kmFinal: { not: null },
+            },
+            orderBy: { date: 'desc' },
+            select: {
+              id: true,
+              date: true,
+              kmFinal: true,
+              kmInicial: true,
+              km: true,
+              ayudanteNombre: true,
+            },
+          });
+
+          if (recAnterior) {
+            odometroEnFecha = {
+              date: recAnterior.date,
+              kmFinal: parseInt(String(recAnterior.kmFinal).replace(/[^0-9]/g, ''), 10) || null,
+              kmInicial: parseInt(String(recAnterior.kmInicial || '').replace(/[^0-9]/g, ''), 10) || null,
+              kmRecorrido: parseInt(String(recAnterior.km || '').replace(/[^0-9]/g, ''), 10) || null,
+              esExacto: false,
+              ayudante: recAnterior.ayudanteNombre || 'Ayudante',
+            };
+          }
+        }
+      } catch (fechaErr) {
+        console.warn('Error consultando odómetro por fecha específica:', fechaErr);
+      }
+    }
+
+    // 4. Determinar Odómetro Oficial Vigente (Jerarquía: Calibración Socio > Arqueo Ayudante)
+    const kmAyudanteNum = ultimoArqueoAyudante?.kmFinal
+      ? parseInt(String(ultimoArqueoAyudante.kmFinal).replace(/[^0-9]/g, ''), 10)
+      : 0;
+
+    let kmOficial = kmCalibradoSocio || kmAyudanteNum || null;
+    let fechaOficial = fechaCalibradaSocio || ultimoArqueoAyudante?.date || null;
+    let fuenteOficial: 'SOCIO_CALIBRACION' | 'AYUDANTE_ARQUEO' | 'FICHA_TECNICA' = 'FICHA_TECNICA';
+
+    if (kmCalibradoSocio && kmAyudanteNum) {
+      // Si la calibración del socio es más reciente que el arqueo o tiene kilometraje superior
+      const socioEsMasReciente = fechaCalibradaSocio && ultimoArqueoAyudante?.date
+        ? fechaCalibradaSocio >= ultimoArqueoAyudante.date
+        : false;
+
+      if (socioEsMasReciente || kmCalibradoSocio > kmAyudanteNum) {
+        kmOficial = kmCalibradoSocio;
+        fechaOficial = fechaCalibradaSocio;
+        fuenteOficial = 'SOCIO_CALIBRACION';
+      } else {
+        kmOficial = kmAyudanteNum;
+        fechaOficial = ultimoArqueoAyudante.date;
+        fuenteOficial = 'AYUDANTE_ARQUEO';
+      }
+    } else if (kmAyudanteNum > 0) {
+      kmOficial = kmAyudanteNum;
+      fechaOficial = ultimoArqueoAyudante?.date || null;
+      fuenteOficial = 'AYUDANTE_ARQUEO';
+    } else if (kmCalibradoSocio && kmCalibradoSocio > 0) {
+      kmOficial = kmCalibradoSocio;
+      fechaOficial = fechaCalibradaSocio;
+      fuenteOficial = 'SOCIO_CALIBRACION';
     }
 
     return NextResponse.json({
       success: true,
       data: {
         disco: cleanDisco,
-        kmCalibrado,
-        fechaCalibrada,
-        motivoCalibrado,
+        kmCalibrado: kmOficial,
+        fechaCalibrada: fechaOficial,
+        fuente: fuenteOficial,
+        motivoCalibrado: motivoCalibradoSocio,
+        ultimoArqueo: ultimoArqueoAyudante,
+        odometroFecha: odometroEnFecha,
         bus: busData,
       },
     });
@@ -87,7 +220,7 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/buses/odometro
-// Calibra oficialmente el tacómetro de una unidad y persiste en base de datos
+// Calibra oficialmente el tacómetro de una unidad y persiste en base de datos (Exclusivo Socio / Admin)
 export async function POST(req: NextRequest) {
   try {
     const body: OdometroRequestBody = await req.json();
@@ -103,6 +236,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
     const kmNum = Math.floor(rawNum);
 
     if (!numeroDisco && !busId) {
@@ -115,7 +249,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const cleanDisco = String(numeroDisco || busId || '').replace(/^BUS-/, '').padStart(2, '0');
+    const cleanDisco = String(numeroDisco || busId || '').replace(/^BUS-/i, '').padStart(2, '0');
     const motivoFinal = observacion && observacion.trim()
       ? `${motivo || 'Calibración extraordinaria'} • ${observacion.trim()}`
       : (motivo || 'Calibración extraordinaria');
