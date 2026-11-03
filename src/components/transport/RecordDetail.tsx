@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { type SavedRecord } from './types';
+import { healRecordOdometroQuincena } from '@/lib/odometro-calibracion-quincena';
 
 interface RecordDetailProps {
   record: SavedRecord;
@@ -35,7 +36,7 @@ export function RecordDetail({ record, onBack, isAdmin, isSocio, onRecordUpdated
   const [editingDate, setEditingDate] = useState(false);
   const [newDate, setNewDate] = useState(record.date);
   const [savingDate, setSavingDate] = useState(false);
-  const [liveRecord, setLiveRecord] = useState<SavedRecord>(record);
+  const [liveRecord, setLiveRecord] = useState<SavedRecord>(() => healRecordOdometroQuincena(record).record);
 
   // Estados para descarga, visor y reemplazo de foto
   const [showZoomModal, setShowZoomModal] = useState(false);
@@ -47,7 +48,8 @@ export function RecordDetail({ record, onBack, isAdmin, isSocio, onRecordUpdated
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const rec = liveRecord;
+  const rec = healRecordOdometroQuincena(liveRecord).record;
+
 
   const formatDate = (dateStr: string) => {
     const [y, m, d] = dateStr.split('-');

@@ -40,3 +40,53 @@ export const CALIBRACION_OCT_NOV_2026: CalibracionJornada[] = [
 export const KM_BASE_INICIAL_OCT14 = 900853;
 export const KM_BASE_FINAL_NOV02 = 907085;
 export const DELTA_TOTAL_QUINCENA = 6232;
+
+export function isRecordBus01(r: { conductor?: string | null; numeroDisco?: string | null; busId?: string | null }): boolean {
+  if (r.conductor && (/BUS-0?1\b/i.test(r.conductor) || r.conductor === '01' || r.conductor === '1')) return true;
+  if (r.numeroDisco === '01' || r.numeroDisco === '1') return true;
+  if (r.busId === 'BUS-01' || r.busId === '1') return true;
+  return false;
+}
+
+export function getCalibracionParaFecha(fecha: string): CalibracionJornada | undefined {
+  return CALIBRACION_OCT_NOV_2026.find(c => c.fecha === fecha);
+}
+
+export function healRecordOdometroQuincena<T extends {
+  date?: string;
+  conductor?: string | null;
+  numeroDisco?: string | null;
+  busId?: string | null;
+  kmInicial?: string | null;
+  kmFinal?: string | null;
+  km?: string | null;
+  odometroKmTeorico?: number | null;
+  odometroEstado?: string | null;
+  odometroDesfaseKm?: number | null;
+}>(record: T): { record: T; healed: boolean } {
+  if (!record || !record.date || !isRecordBus01(record)) {
+    return { record, healed: false };
+  }
+  const cal = getCalibracionParaFecha(record.date);
+  if (!cal) {
+    return { record, healed: false };
+  }
+
+  const currentFinal = record.kmFinal ? parseInt(String(record.kmFinal).replace(/\D/g, ''), 10) : 0;
+  if (currentFinal === cal.kmLlegada && record.kmInicial === String(cal.kmSalida) && record.km === String(cal.kmDia)) {
+    return { record, healed: false };
+  }
+
+  const updated = {
+    ...record,
+    kmInicial: String(cal.kmSalida),
+    kmFinal: String(cal.kmLlegada),
+    km: String(cal.kmDia),
+    odometroKmTeorico: cal.kmDia,
+    odometroEstado: 'VERDE',
+    odometroDesfaseKm: 0,
+  };
+
+  return { record: updated, healed: true };
+}
+

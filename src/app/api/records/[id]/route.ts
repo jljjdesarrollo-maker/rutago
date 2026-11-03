@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { DAILY_RECORD_LIST_SELECT } from '@/lib/canonical-record-payload';
+import { healRecordOdometroQuincena } from '@/lib/odometro-calibracion-quincena';
 
 export async function GET(
   req: NextRequest,
@@ -24,7 +25,24 @@ export async function GET(
       return NextResponse.json({ error: 'Registro no encontrado' }, { status: 404 });
     }
 
+    const quincenaResult = healRecordOdometroQuincena(record);
+    if (quincenaResult.healed) {
+      await db.dailyRecord.update({
+        where: { id },
+        data: {
+          kmInicial: quincenaResult.record.kmInicial,
+          kmFinal: quincenaResult.record.kmFinal,
+          km: quincenaResult.record.km,
+          odometroKmTeorico: quincenaResult.record.odometroKmTeorico,
+          odometroEstado: quincenaResult.record.odometroEstado,
+          odometroDesfaseKm: quincenaResult.record.odometroDesfaseKm,
+        },
+      }).catch(() => {});
+      return NextResponse.json(quincenaResult.record);
+    }
+
     return NextResponse.json(record);
+
   } catch (error) {
     console.error('Error fetching record:', error);
     return NextResponse.json({ error: 'Error al obtener registro' }, { status: 500 });

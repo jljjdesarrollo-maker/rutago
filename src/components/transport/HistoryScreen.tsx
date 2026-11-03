@@ -29,6 +29,8 @@ import {
   saveHistoryRecordsSnapshot,
   fetchBusesCached,
 } from '@/lib/swr-fast-cache';
+import { healRecordOdometroQuincena } from '@/lib/odometro-calibracion-quincena';
+
 
 type FilterType = 'todos' | 'hoy' | 'semana' | 'mes';
 
@@ -221,16 +223,17 @@ export function HistoryScreen({
       });
 
       // Presentar primero los locales pendientes (más recientes) y luego los de la nube
-      const mergedRecords = [...unmergedPending, ...cloudRecords];
+      const mergedRecords = [...unmergedPending, ...cloudRecords].map(r => healRecordOdometroQuincena(r).record);
       setAllRecords(mergedRecords);
       saveHistoryRecordsSnapshot(historyCacheKey, mergedRecords);
     } catch {
       console.error('Error loading records');
-      const localPending = getLocalPendingSavedRecords(effectiveBusId);
+      const localPending = getLocalPendingSavedRecords(effectiveBusId).map(r => healRecordOdometroQuincena(r).record);
       setAllRecords(localPending);
     } finally {
       setLoading(false);
     }
+
   };
 
   useEffect(() => {

@@ -9,6 +9,8 @@ import {
   matchVentasForTrip,
   resolveCanonicalTripIncomeFromVentas,
 } from '@/lib/reconcile-ventas-trips';
+import { healRecordOdometroQuincena } from '@/lib/odometro-calibracion-quincena';
+
 
 export async function GET(req: NextRequest) {
   try {
@@ -175,6 +177,25 @@ export async function GET(req: NextRequest) {
           r.conductor = healedCond;
           updates.conductor = healedCond;
         }
+
+        // 2.b Calibración Oficial Odómetro Unidad 01 (Quincena 14-Oct al 02-Nov-2026)
+        const quincenaResult = healRecordOdometroQuincena(r);
+        if (quincenaResult.healed) {
+          r.kmInicial = quincenaResult.record.kmInicial;
+          r.kmFinal = quincenaResult.record.kmFinal;
+          r.km = quincenaResult.record.km;
+          r.odometroKmTeorico = quincenaResult.record.odometroKmTeorico;
+          r.odometroEstado = quincenaResult.record.odometroEstado;
+          r.odometroDesfaseKm = quincenaResult.record.odometroDesfaseKm;
+
+          updates.kmInicial = quincenaResult.record.kmInicial;
+          updates.kmFinal = quincenaResult.record.kmFinal;
+          updates.km = quincenaResult.record.km;
+          updates.odometroKmTeorico = quincenaResult.record.odometroKmTeorico;
+          updates.odometroEstado = quincenaResult.record.odometroEstado;
+          updates.odometroDesfaseKm = quincenaResult.record.odometroDesfaseKm;
+        }
+
 
         // 3. Regularizar cuadre histórico del 05 de octubre en Unidad 08 (faltante en cuaderno -$6.00)
         if (

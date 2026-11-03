@@ -1,4 +1,6 @@
 import type { SavedRecord } from '@/components/transport/types';
+import { healRecordOdometroQuincena } from '@/lib/odometro-calibracion-quincena';
+
 
 export interface HomeSummarySnapshot {
   busId: string;
@@ -86,7 +88,9 @@ export function saveHomeSummarySnapshot(
 
 export function getHistoryRecordsSnapshot(filterKey: string): SavedRecord[] | null {
   const mem = memoryHistoryCache.get(filterKey);
-  if (mem) return mem;
+  if (mem) {
+    return mem.map(r => healRecordOdometroQuincena(r).record);
+  }
 
   if (typeof window === 'undefined') return null;
   try {
@@ -94,8 +98,9 @@ export function getHistoryRecordsSnapshot(filterKey: string): SavedRecord[] | nu
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      memoryHistoryCache.set(filterKey, parsed);
-      return parsed;
+      const normalized = parsed.map(r => healRecordOdometroQuincena(r).record);
+      memoryHistoryCache.set(filterKey, normalized);
+      return normalized;
     }
   } catch {
     /* ignore */

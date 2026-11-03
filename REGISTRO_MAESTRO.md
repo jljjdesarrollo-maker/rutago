@@ -6303,3 +6303,30 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
 4. `scripts/sanear-odometros-quincena-oct2026.ts`: Script ejecutable en base de datos PostgreSQL para asentar los 19 registros de `DailyRecord` y `Bus.notas`.
 5. `tests/saneamiento-quincena-oct-nov.test.ts`: Suite de 8 pruebas unitarias automatizadas certificando el anclaje inicial, anclaje final, suma de 6,232 km, continuidad y límites de consumo (**232 pass, 0 fail en 33 suites**).
 
+---
+
+### 🏛️ 15. Auto-Saneamiento Reactivo de Odómetros en Registros Históricos y Caché Rápida (v3.61.70)
+* **Fecha de Implementación:** 2026-11-03
+* **Estado:** 🟢 **APLICADO, CERTIFICADO Y COMPILADO AL 100% (235 TESTS PASS)**
+* **Diagnóstico del Problema del Ayudante:**
+  - Al ingresar como Ayudante de la Unidad 01 y abrir "Mis Registros" (`HistoryScreen.tsx`), el 02/11/2026 aún mostraba `901,490 km` en lugar de los `907,085 km` calibrados.
+  - **Causa Raíz:**
+    1. En PostgreSQL, la fila `DailyRecord` del 02/11/2026 fue guardada originalmente por el dispositivo del ayudante con `kmFinal: "901490"`.
+    2. El endpoint `GET /api/records` devolvía los datos de PostgreSQL sin pasar por el saneamiento de la quincena de Unidad 01.
+    3. El almacenamiento local del teléfono del ayudante (`localStorage`) mantenía en caché SWR (`rg_swr_history_v1_...`) la versión previa con `901,490 km`.
+* **Solución Integral de 4 Capas Implementada:**
+  1. **Auto-Saneamiento en Endpoint `GET /api/records` (`src/app/api/records/route.ts`):**
+     - Se integró `healRecordOdometroQuincena(r)` en el bucle principal de saneamiento.
+     - Corrige inmediatamente el payload JSON entregado al cliente (`kmInicial: "906797"`, `kmFinal: "907085"`, `km: "288"`, `odometroKmTeorico: 288`, `odometroEstado: "VERDE"`).
+     - Persiste de manera asíncrona y transparente (`healPromises`) a la tabla `DailyRecord` en PostgreSQL.
+  2. **Auto-Saneamiento en Endpoint `GET /api/records/[id]` (`src/app/api/records/[id]/route.ts`):**
+     - Saneamiento y persistencia en la consulta individual de un registro.
+  3. **Purificación de la Caché SWR Rápida (`src/lib/swr-fast-cache.ts`):**
+     - En `getHistoryRecordsSnapshot`, cada registro recuperado del `localStorage` o memoria se pasa por `healRecordOdometroQuincena(r).record`, eliminando instantáneamente valores obsoletos en los teléfonos.
+  4. **Blindaje en Interfaz de Usuario (`HistoryScreen.tsx` y `RecordDetail.tsx`):**
+     - Se normaliza la lista al fusionar locales y nube, garantizando que el ayudante, chofer y socio vean de inmediato `🧭 907,085 km (+288 km)` sin necesidad de borrar datos ni reinstalar la aplicación.
+  5. **Pruebas Automatizadas:**
+     - 3 nuevas pruebas unitarias añadidas en `tests/saneamiento-quincena-oct-nov.test.ts` (11/11 pass, 235 tests totales en 33 suites).
+     - Build de producción con Next.js 16 (Turbopack) ejecutado con éxito total.
+
+
