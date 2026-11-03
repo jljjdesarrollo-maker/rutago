@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { CALIBRACION_OCT_NOV_2026 } from '@/lib/odometro-calibracion-quincena';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +66,13 @@ export async function GET(req: NextRequest) {
       if (matchMotivo) {
         motivoCalibradoSocio = matchMotivo[1];
       }
+    }
+
+    // Calibración oficial para Unidad 01 (Llegada 02-Nov: 907,085 km)
+    if (cleanDisco === '01' && (!kmCalibradoSocio || kmCalibradoSocio < 907085)) {
+      kmCalibradoSocio = 907085;
+      fechaCalibradaSocio = '2026-11-03';
+      motivoCalibradoSocio = 'Calibración oficial VT: 900,853 km (14/10) a 907,085 km (02/11)';
     }
 
     // 2. Consultar el último arqueo oficial del ayudante para este bus
@@ -157,6 +165,21 @@ export async function GET(req: NextRequest) {
         }
       } catch (fechaErr) {
         console.warn('Error consultando odómetro por fecha específica:', fechaErr);
+      }
+    }
+
+    // Saneamiento de consulta de fecha para Bus 01 en la quincena 15-Oct a 02-Nov
+    if (cleanDisco === '01' && fechaParam) {
+      const saneado = CALIBRACION_OCT_NOV_2026.find(c => c.fecha === fechaParam);
+      if (saneado && (!odometroEnFecha || (odometroEnFecha.kmFinal && odometroEnFecha.kmFinal < 900000))) {
+        odometroEnFecha = {
+          date: saneado.fecha,
+          kmFinal: saneado.kmLlegada,
+          kmInicial: saneado.kmSalida,
+          kmRecorrido: saneado.kmDia,
+          esExacto: true,
+          ayudante: odometroEnFecha?.ayudante || 'Ayudante',
+        };
       }
     }
 

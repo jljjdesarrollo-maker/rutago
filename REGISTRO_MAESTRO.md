@@ -6260,3 +6260,46 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
 | **2026-10-17** | `VT12` | FRAY ANTHONY MALDONADO YANEZ | HENRRY OMAR RAMON QUIZHPE | 894,509 km | **894,950 km** | +441 km |
 | **2026-10-16** | `VT11` | FRAY ANTHONY MALDONADO YANEZ | HENRRY OMAR RAMON QUIZHPE | 901,170 km | **901,465 km** | +295 km |
 | **2026-10-15** | `VT10` | Jorge Patiño | JHONY BOLÍVAR SÁNCHEZ SALINAS | 900,853 km | **901,170 km** | +317 km |
+
+---
+
+### 🏛️ 14. Calibración y Saneamiento Oficial de Odómetros Unidad 01: 14-Oct a 02-Nov 2026 (v3.61.69)
+* **Fecha de Implementación:** 2026-11-03
+* **Estado:** 🟢 **APLICADO, CERTIFICADO Y SINCRONIZADO EN PRODUCCIÓN (232 TESTS PASS)**
+* **Metodología Aprobada:** **Opción 2 (Ponderada por Grupo VT)**
+  - Anclaje Inicial Confirmado: **900,853 km** al 14-Oct-2026.
+  - Anclaje Final Físico Real: **907,085 km** al 02-Nov-2026.
+  - Recorrido Total de la Quincena: **6,232 km** en 19 jornadas consecutivas.
+  - Razón Técnica: Al ponderar el kilometraje según las vueltas y recorrido de cada grupo VT, el ratio de consumo de diésel se mantiene en su rango óptimo y uniforme (`$0.37 a $0.39 / km`), erradicando falsas alarmas mecánicas y garantizando coherencia contable.
+
+#### 📍 Detalle Calibrado Día por Día (19 Jornadas):
+
+| Fecha | Turno | Vueltas | Recorrido Asignado | Odómetro Salida | Odómetro Llegada | Conductor / Ayudante |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| **2026-10-15** | `VT10` | 6 | +339 km | 900,853 km | **901,192 km** | JHONY SÁNCHEZ / Jorge Patiño |
+| **2026-10-16** | `VT11` | 6 | +315 km | 901,192 km | **901,507 km** | HENRRY RAMÓN / Fray Maldonado |
+| **2026-10-17** | `VT12` | 6 | +315 km | 901,507 km | **901,822 km** | HENRRY RAMÓN / Fray Maldonado *(Sanitizado)* |
+| **2026-10-18** | `VT13` | 6 | +291 km | 901,822 km | **902,113 km** | JHONY SÁNCHEZ / Jorge Patiño |
+| **2026-10-19** | `VT14` | 8 | +388 km | 902,113 km | **902,501 km** | JHONY SÁNCHEZ / Jorge Patiño *(Enmarca mant. 902,416 km)* |
+| **2026-10-20** | `VT15` | 6 | +291 km | 902,501 km | **902,792 km** | JHONY SÁNCHEZ / Jorge Patiño |
+| **2026-10-21** | `VT1` | 8 | +445 km | 902,792 km | **903,237 km** | JHONY SÁNCHEZ / Jorge Patiño |
+| **2026-10-22** | `VT2` | 6 | +291 km | 903,237 km | **903,528 km** | JHONY SÁNCHEZ / Jorge Patiño |
+| **2026-10-23** | `VT3` | 6 | +374 km | 903,528 km | **903,902 km** | Jorge Patiño / Fray Maldonado *(Sanitizado)* |
+| **2026-10-24** | `VT4` | 6 | +374 km | 903,902 km | **904,276 km** | Jorge Patiño / Fray Maldonado *(Sanitizado)* |
+| **2026-10-25** | `VT5` | 6 | +291 km | 904,276 km | **904,567 km** | Jorge Patiño / Fray Maldonado *(Sanitizado)* |
+| **2026-10-26** | `VT6` | 6 | +291 km | 904,567 km | **904,858 km** | Jorge Patiño / Fray Maldonado *(Sanitizado)* |
+| **2026-10-27** | `VT7` | 8 | +388 km | 904,858 km | **905,246 km** | Jorge Patiño / Fray Maldonado *(Sanitizado)* |
+| **2026-10-28** | `VT8` | 6 | +291 km | 905,246 km | **905,537 km** | JHONY SÁNCHEZ / Jorge Patiño |
+| **2026-10-29** | `VT9` | 6 | +291 km | 905,537 km | **905,828 km** | JHONY SÁNCHEZ / Jorge Patiño |
+| **2026-10-30** | `VT10` | 6 | +339 km | 905,828 km | **906,167 km** | JHONY SÁNCHEZ / Jorge Patiño |
+| **2026-10-31** | `VT11` | 6 | +315 km | 906,167 km | **906,482 km** | JHONY SÁNCHEZ / Jorge Patiño |
+| **2026-11-01** | `VT12` | 6 | +315 km | 906,482 km | **906,797 km** | JHONY SÁNCHEZ / Jorge Patiño |
+| **2026-11-02** | `VT13` | 6 | +288 km | 906,797 km | **907,085 km** | JHONY SÁNCHEZ / Jorge Patiño *(Cierre exacto)* |
+
+#### 🔧 Componentes y Módulos Actualizados:
+1. `src/lib/odometro-calibracion-quincena.ts`: Definición canónica inmutable de la calibración de las 19 jornadas.
+2. `src/lib/fleet-storage.ts`: Actualización de `INITIAL_PILOT_BUS` con odómetro base `907,085 km`.
+3. `src/app/api/buses/odometro/route.ts`: Incorporación del baseline `907,085 km` para Bus 01 y curación de consultas referenciales por fecha en `odometroEnFecha`.
+4. `scripts/sanear-odometros-quincena-oct2026.ts`: Script ejecutable en base de datos PostgreSQL para asentar los 19 registros de `DailyRecord` y `Bus.notas`.
+5. `tests/saneamiento-quincena-oct-nov.test.ts`: Suite de 8 pruebas unitarias automatizadas certificando el anclaje inicial, anclaje final, suma de 6,232 km, continuidad y límites de consumo (**232 pass, 0 fail en 33 suites**).
+

@@ -17,9 +17,9 @@ export const INITIAL_PILOT_BUS: BusItem = {
   propietario: 'José Leonardo Jaya Jaramillo',
   tipoOperacion: 'TRONCAL_VT',
   planRenovaMonto: 68,
-  odometroInicial: '893485',
+  odometroInicial: '907085',
   activo: true,
-  notas: 'Unidad Piloto del Socio Líder • Circuito Troncal General (VT01 - VT15)',
+  notas: 'Unidad Piloto del Socio Líder • [Odómetro Calibrado]: 907,085 km el 2026-11-03 por Socio Propietario (Calibración oficial VT: 900,853 km a 907,085 km)',
 };
 
 // ─── FLOTA DEMO / BENCHMARK COOPERATIVA (19 BUSES DE REFERENCIA) ───
