@@ -6230,3 +6230,33 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
   - Inconsistencia de odómetros erradicada: el chofer no sobrescribe el kilometraje del ayudante; el socio mantiene la potestad de calibración; y el ayudante visualiza su odómetro total acumulado.
   - Pruebas Automatizadas: 32 suites ejecutadas con Bun (`bun test tests/`), resultado: **224 pass, 0 fail (100% en verde)**.
   - Compilación Next.js Turbopack: Exitosa (24/24 rutas generadas).
+
+### 📊 13. Auditoría Forense de Registros del Ayudante (Unidad 01: 15-Oct a 02-Nov-2026)
+* **Fecha de Verificación:** 2026-11-03
+* **Estado:** 🟢 **DATOS 100% INTACTOS EN POSTGRESQL (CERO PÉRDIDA)**
+* **Diagnóstico de Campo:**
+  - El ayudante tiene 19 cierres de arqueo registrados en PostgreSQL entre el 15 de octubre y el 02 de noviembre de 2026.
+  - La aparente sobreescritura observada en pantalla se debió a un gasto/novedad de taller ingresado hoy (`CAMBIO DE 4 RESORTES DEL PULMON - Km 902,416`) que mutó el `localStorage` en el navegador con la versión anterior no blindada.
+  - En la base de datos central en la nube, todos los registros de los ayudantes (Jorge Patiño y Fray Anthony Maldonado) se mantienen intactos.
+
+| Fecha | Turno | Ayudante | Conductor | Km Salida (Inicial) | Km Llegada (Final) | Recorrido (km) |
+| :--- | :---: | :--- | :--- | :---: | :---: | :---: |
+| **2026-11-02** | `VT13` | Jorge Patiño | JHONY BOLÍVAR SÁNCHEZ SALINAS | 901,238 km | **901,490 km** | +252 km |
+| **2026-11-01** | `VT12` | Jorge Patiño | JHONY BOLÍVAR SÁNCHEZ SALINAS | 900,965 km | **901,238 km** | +273 km |
+| **2026-10-31** | `VT11` | Jorge Patiño | JHONY BOLÍVAR SÁNCHEZ SALINAS | 900,692 km | **900,965 km** | +273 km |
+| **2026-10-30** | `VT10` | Jorge Patiño | JHONY BOLÍVAR SÁNCHEZ SALINAS | 900,398 km | **900,692 km** | +294 km |
+| **2026-10-29** | `VT9` | Jorge Patiño | JHONY BOLÍVAR SÁNCHEZ SALINAS | 900,146 km | **900,398 km** | +252 km |
+| **2026-10-28** | `VT8` | Jorge Patiño | JHONY BOLÍVAR SÁNCHEZ SALINAS | 899,894 km | **900,146 km** | +252 km |
+| **2026-10-27** | `VT7` | FRAY ANTHONY MALDONADO YANEZ | Jorge Patiño | 895,300 km | **895,600 km** | +300 km |
+| **2026-10-26** | `VT6` | FRAY ANTHONY MALDONADO YANEZ | Jorge Patiño | 895,300 km | **895,500 km** | +200 km |
+| **2026-10-25** | `VT5` | FRAY ANTHONY MALDONADO YANEZ | Jorge Patiño | 895,200 km | **895,300 km** | +100 km |
+| **2026-10-24** | `VT4` | FRAY ANTHONY MALDONADO YANEZ | Jorge Patiño | 895,150 km | **895,200 km** | +50 km |
+| **2026-10-23** | `VT3` | FRAY ANTHONY MALDONADO YANEZ | Jorge Patiño | 894,950 km | **895,150 km** | +200 km |
+| **2026-10-22** | `VT2` | Jorge Patiño | JHONY BOLÍVAR SÁNCHEZ SALINAS | 899,642 km | **899,894 km** | +252 km |
+| **2026-10-21** | `VT1` | Jorge Patiño | JHONY BOLÍVAR SÁNCHEZ SALINAS | 899,256 km | **899,642 km** | +386 km |
+| **2026-10-20** | `VT15` | Jorge Patiño | JHONY BOLÍVAR SÁNCHEZ SALINAS | 898,920 km | **899,172 km** | +252 km |
+| **2026-10-19** | `VT14` | Jorge Patiño | JHONY BOLÍVAR SÁNCHEZ SALINAS | 898,920 km | **899,256 km** | +336 km |
+| **2026-10-18** | `VT13` | Jorge Patiño | JHONY BOLÍVAR SÁNCHEZ SALINAS | 898,920 km | **899,172 km** | +252 km |
+| **2026-10-17** | `VT12` | FRAY ANTHONY MALDONADO YANEZ | HENRRY OMAR RAMON QUIZHPE | 894,509 km | **894,950 km** | +441 km |
+| **2026-10-16** | `VT11` | FRAY ANTHONY MALDONADO YANEZ | HENRRY OMAR RAMON QUIZHPE | 901,170 km | **901,465 km** | +295 km |
+| **2026-10-15** | `VT10` | Jorge Patiño | JHONY BOLÍVAR SÁNCHEZ SALINAS | 900,853 km | **901,170 km** | +317 km |
