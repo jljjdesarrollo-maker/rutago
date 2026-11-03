@@ -6418,3 +6418,27 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
      - Suite integral de 7 pruebas unitarias cubriendo catálogo maestro, purga y fusión, estación de frenos, niveles de control, calibración matemática para Unidad 01 y autonomía operativa de cada lado.
      - **Resultado:** **247 pruebas aprobadas al 100% (35 suites, 0 fallas, 1402 assertions en verde)**.
 
+---
+
+### 🏛️ 19. Optimización de Legibilidad de Nombres de Tareas en Asentamiento de Taller (ChoferMantenimientoWidget) (v3.61.74)
+* **Fecha de Implementación:** 2026-11-03
+* **Estado:** 🟢 **APLICADO, CERTIFICADO Y COMPILADO AL 100% (248 TESTS PASS EN 35 SUITES)**
+* **Diagnóstico y Requerimiento del Usuario:**
+  - Tras el desdoblamiento canónico de zapatas y tambores en 4 componentes independientes (*Delanteros Izq/Der*, *Posteriores Izq/Der*), los nombres largos oficiales (`Zapatas y tambores delanteros lado izquierdo`, etc.) quedaban severamente truncados en el modal de asentamiento de taller (`ChoferMantenimientoWidget.tsx`).
+  - Al renderizarse en un grid de 2 columnas (`sm:grid-cols-2`) con la clase `truncate` y competir horizontalmente contra el checkbox y el badge (`[Extra Fosa]` / `[Receta Socio]`), los cuatro ítems se mostraban visualmente idénticos como `Zapatas y tam...`, imposibilitando al chofer o mecánico distinguir el eje o el lado físico intervenido.
+  - **Decisión del Usuario:** Mantener íntegros los nombres oficiales de catálogo sin recortar vocabulario técnico, transformando el contenedor de 2 columnas a 1 sola columna vertical con ancho completo y flujo de texto natural sin truncamiento.
+* **Solución de Ingeniería Aplicada:**
+  1. **Conversión de Cuadrícula a Lista Vertical (`ChoferMantenimientoWidget.tsx`):**
+     - Se reemplazó el contenedor rígido `grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56` por una lista vertical fluida `flex flex-col gap-2 max-h-64 overflow-y-auto p-1`.
+     - Cada tarjeta ocupa el 100% del ancho del modal (~380-480px), garantizando amplitud suficiente para nombres técnicos compuestos.
+  2. **Erradicación del Truncamiento y Salto de Línea Natural:**
+     - Se retiró la directiva `truncate` en el título del ítem.
+     - Se aplicó tipografía ergonómica `text-xs font-bold block leading-snug break-words` con subtítulo `text-[10px] text-slate-500 font-medium`.
+     - Todos los ítems exhiben su nombre completo (ej. *"Zapatas y tambores delanteros lado izquierdo"*, *"Zapatas y tambores posteriores lado derecho"*, *"Calibración de frenos (raches)"*, *"Engrase Bocines y Rodamientos"*) con claridad absoluta.
+  3. **Alineación Simétrica de Badges Institucionales:**
+     - Se mantuvieron los distintivos `[Receta Socio]` y `[Extra Fosa]` alineados a la derecha (`shrink-0`), conservando la distinción visual de tareas pre-aprobadas por el socio sin comprimir el nombre.
+  4. **Certificación y Pruebas Automatizadas:**
+     - Prueba unitaria añadida en `tests/frenos-zapatas-izq-der.test.ts` (Prueba #8: *Tareas en 1 columna vertical sin truncate para lectura integral*).
+     - **Resultado Global:** **248 pruebas aprobadas (0 fallas en 35 suites, 1405 assertions en verde)**.
+
+

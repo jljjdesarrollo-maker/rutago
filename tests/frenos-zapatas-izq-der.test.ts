@@ -175,4 +175,21 @@ describe("🛑 DESDOBLAMIENTO OFICIAL DE ZAPATAS Y TAMBORES EN 4 ÍTEMS (IZQ / D
     // El derecho se mantiene intacto con sus 10,000 km restantes
     expect(kmRestantesDer).toBe(10000);
   });
+
+  test("8. Presentación en ChoferMantenimientoWidget: Tareas en 1 columna vertical sin truncate para lectura integral", () => {
+    const fs = require("fs");
+    const path = require("path");
+    const widgetCode = fs.readFileSync(
+      path.resolve(__dirname, "../src/components/transport/ChoferMantenimientoWidget.tsx"),
+      "utf8"
+    );
+
+    // Certificar que el bloque de tareas de receta NO usa 2 columnas (sm:grid-cols-2) que comprimen el texto
+    expect(widgetCode).not.toContain("grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto");
+    expect(widgetCode).toContain("flex flex-col gap-2 max-h-64 overflow-y-auto");
+
+    // Certificar que el nombre de la tarea no está mutilado con truncate en este contenedor
+    expect(widgetCode).toContain("text-xs font-bold block leading-snug break-words");
+  });
 });
+

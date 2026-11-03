@@ -2820,15 +2820,15 @@ export function ChoferMantenimientoWidget({
                     </button>
                   </div>
 
-                  {/* Grid Responsive de Micro-Cards (1 col en pantallas muy estrechas, 2 cols estándar) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1">
+                  {/* Lista de Tareas en 1 Sola Columna para Legibilidad Total de Nombres */}
+                  <div className="flex flex-col gap-2 max-h-64 overflow-y-auto p-1">
                     {estacionItemsChofer.map(it => {
                       const estaActivo = !!estacionChecksChofer[it.codigo];
                       return (
                         <div
                           key={it.codigo}
                           onClick={() => handleToggleItemChofer(it.codigo)}
-                          className={`min-h-[54px] p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 select-none active:scale-[0.99] ${
+                          className={`min-h-[50px] p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none active:scale-[0.99] ${
                             estaActivo
                               ? isRuta
                                 ? 'bg-emerald-50 border-emerald-400 text-emerald-950 ring-1 ring-emerald-400/40 shadow-2xs'
@@ -2836,7 +2836,7 @@ export function ChoferMantenimientoWidget({
                               : 'bg-white border-slate-200 text-slate-500 opacity-70 hover:opacity-100 hover:border-slate-300'
                           }`}
                         >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
                             <div
                               className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-all ${
                                 estaActivo
@@ -2849,21 +2849,21 @@ export function ChoferMantenimientoWidget({
                               {estaActivo && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <span className={`text-xs font-black block truncate leading-tight ${estaActivo ? 'text-slate-900' : 'text-slate-600'}`}>
+                              <span className={`text-xs font-bold block leading-snug break-words ${estaActivo ? 'text-slate-900' : 'text-slate-700'}`}>
                                 {it.nombre}
                               </span>
-                              <span className="text-[10px] text-slate-500 block truncate leading-tight mt-0.5">
+                              <span className="text-[10px] text-slate-500 block leading-tight mt-0.5 font-medium">
                                 {it.intervaloKm.toLocaleString()} km {it.opcionalTexto ? '• ' + it.opcionalTexto : ''}
                               </span>
                             </div>
                           </div>
 
                           {it.preMarcado ? (
-                            <Badge className={`text-[8px] py-0 px-1 font-bold shrink-0 border-0 ${isRuta ? 'bg-emerald-100 text-emerald-900' : 'bg-blue-100 text-blue-900'}`}>
+                            <Badge className={`text-[9px] py-0.5 px-2 font-bold shrink-0 border-0 ${isRuta ? 'bg-emerald-100 text-emerald-900' : 'bg-blue-100 text-blue-900'}`}>
                               Receta Socio
                             </Badge>
                           ) : (
-                            <Badge className="bg-slate-100 text-slate-600 border-0 text-[8px] py-0 px-1 font-medium shrink-0">
+                            <Badge className="bg-slate-100 text-slate-600 border-0 text-[9px] py-0.5 px-2 font-medium shrink-0">
                               Extra Fosa
                             </Badge>
                           )}
