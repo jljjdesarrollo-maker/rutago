@@ -94,7 +94,7 @@ export function SuperAdminMantenimientoTab() {
     setCatalogo(defaultData);
     toast({
       title: 'Restablecido a Fábrica',
-      description: 'Se restablecieron los 31 mantenimientos oficiales de fábrica Hino AK.',
+      description: 'Se restablecieron los 33 mantenimientos oficiales de fábrica Hino AK.',
     });
   };
 

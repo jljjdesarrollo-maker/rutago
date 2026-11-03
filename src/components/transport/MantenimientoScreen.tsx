@@ -359,6 +359,44 @@ export function MantenimientoScreen({
           activo: true,
         };
       }
+      // Zapatas y tambores delanteros izq/der
+      if (c.codigo === 'MNT-ZAPATAS-DEL-IZQ' || c.codigo === 'MNT-ZAPATAS-DEL-DER') {
+        const esBus01 = busId === 'BUS-01' || busId === '01';
+        const uKm = esBus01 ? 904885 : Math.max(0, baseKm - Math.floor(c.intervaloKmOficial * 0.2));
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
+          ultimoKm: uKm,
+          fechaUltimo: '2026-09-10',
+          costoEstimado: 60,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: false,
+          activo: true,
+        };
+      }
+      // Zapatas y tambores posteriores izq/der
+      if (c.codigo === 'MNT-ZAPATAS-POST-IZQ' || c.codigo === 'MNT-ZAPATAS-POST-DER') {
+        const esBus01 = busId === 'BUS-01' || busId === '01';
+        const uKm = esBus01 ? 904585 : Math.max(0, baseKm - Math.floor(c.intervaloKmOficial * 0.2));
+        return {
+          id: `mbus-${c.id}-calibrado`,
+          catalogoId: c.id,
+          codigo: c.codigo,
+          nombre: c.nombre,
+          categoria: c.categoria,
+          intervaloKm: getIntervaloFinal(c.codigo, c.intervaloKmOficial),
+          ultimoKm: uKm,
+          fechaUltimo: '2026-09-10',
+          costoEstimado: 70,
+          repuestoDetalle: c.especificacionLubricanteRepuesto,
+          asignadoChofer: false,
+          activo: true,
+        };
+      }
       // Rotación mensual de baterías (8,600 km ciclo / 30 días - Chofer sh)
       if (c.codigo === 'MNT-ROTACION-BATERIAS') {
         return {
@@ -464,6 +502,47 @@ export function MantenimientoScreen({
       } catch (e) {
         console.error('Error parseando mantenimientos:', e);
       }
+    }
+
+    // Desdoblamiento transparente de zapatas consolidadas hacia Izq/Der
+    if (itemsExistentes.length > 0) {
+      const itemsMigrados: MantenimientoBusItem[] = [];
+      for (const it of itemsExistentes) {
+        if (it.codigo === 'MNT-ZAPATAS-DEL') {
+          itemsMigrados.push({
+            ...it,
+            id: `mbus-hino-zapatas-del-izq-${busId}`,
+            codigo: 'MNT-ZAPATAS-DEL-IZQ',
+            nombre: 'Zapatas y tambores delanteros lado izquierdo',
+            costoEstimado: 60,
+          });
+          itemsMigrados.push({
+            ...it,
+            id: `mbus-hino-zapatas-del-der-${busId}`,
+            codigo: 'MNT-ZAPATAS-DEL-DER',
+            nombre: 'Zapatas y tambores delanteros lado derecho',
+            costoEstimado: 60,
+          });
+        } else if (it.codigo === 'MNT-ZAPATAS-POST') {
+          itemsMigrados.push({
+            ...it,
+            id: `mbus-hino-zapatas-post-izq-${busId}`,
+            codigo: 'MNT-ZAPATAS-POST-IZQ',
+            nombre: 'Zapatas y tambores posteriores lado izquierdo',
+            costoEstimado: 70,
+          });
+          itemsMigrados.push({
+            ...it,
+            id: `mbus-hino-zapatas-post-der-${busId}`,
+            codigo: 'MNT-ZAPATAS-POST-DER',
+            nombre: 'Zapatas y tambores posteriores lado derecho',
+            costoEstimado: 70,
+          });
+        } else {
+          itemsMigrados.push(it);
+        }
+      }
+      itemsExistentes = itemsMigrados;
     }
 
     // Sincronizar fielmente con el catálogo oficial de fábrica (nombres, categorías y calibración de montaña)
@@ -1247,14 +1326,15 @@ export function MantenimientoScreen({
 
     // Filtrar ítems legados/en reserva (Secador, Compresor, Intercooler) y migrar legados
     const actualizadosExistentes = items.map(it => {
-      if (it.codigo === 'MNT-BANDAS-FRENO') {
+      if (it.codigo === 'MNT-BANDAS-FRENO' || it.codigo === 'MNT-ZAPATAS-POST') {
         return {
           ...it,
-          codigo: 'MNT-ZAPATAS-POST',
-          nombre: 'Zapatas y Tambores Posteriores',
+          codigo: 'MNT-ZAPATAS-POST-IZQ',
+          nombre: 'Zapatas y tambores posteriores lado izquierdo',
           categoria: 'FRENOS' as const,
-          intervaloKm: 8000,
-          repuestoDetalle: 'Visita al maestro de frenos: remachado de zapatas traseras (compuesto pesado) y rebaje de ceja en tambores',
+          intervaloKm: 12500,
+          costoEstimado: 70,
+          repuestoDetalle: 'Visita al maestro de frenos: remachado de zapatas traseras lado izquierdo (compuesto pesado) y rebaje de ceja en tambor',
         };
       }
       if (it.codigo === 'MNT-RACHES-FRENO') {
@@ -1265,28 +1345,25 @@ export function MantenimientoScreen({
           repuestoDetalle: 'Ajuste manual de tuercas en matracas/raches con llave para mantener pedal alto y sensible',
         };
       }
-      if (it.codigo === 'MNT-ZAPATAS-POST') {
-        return {
-          ...it,
-          intervaloKm: 8000,
-          repuestoDetalle: 'Visita al maestro de frenos: remachado de zapatas traseras (compuesto pesado) y rebaje de ceja en tambores',
-        };
-      }
       if (it.codigo === 'MNT-ZAPATAS-DEL') {
         return {
           ...it,
+          codigo: 'MNT-ZAPATAS-DEL-IZQ',
+          nombre: 'Zapatas y tambores delanteros lado izquierdo',
+          categoria: 'FRENOS' as const,
           intervaloKm: 11000,
-          repuestoDetalle: 'Visita al maestro de frenos: remachado de zapatas delanteras y rebaje de ceja en tambores delanteros',
+          costoEstimado: 60,
+          repuestoDetalle: 'Visita al maestro de frenos: remachado de zapatas delanteras lado izquierdo y rebaje de ceja en tambor delantero',
         };
       }
       return it;
-    }).filter(it => it.codigo !== 'MNT-SECADOR-AIRE' && it.codigo !== 'MNT-COMPRESOR-AIRE' && it.codigo !== 'MNT-LAVADO-INTERCOOLER');
+    }).filter(it => it.codigo !== 'MNT-SECADOR-AIRE' && it.codigo !== 'MNT-COMPRESOR-AIRE' && it.codigo !== 'MNT-LAVADO-INTERCOOLER' && it.codigo !== 'MNT-ZAPATAS-POST' && it.codigo !== 'MNT-ZAPATAS-DEL');
 
     const codigosActualizados = new Set(actualizadosExistentes.map(it => it.codigo));
 
     frenosItemsCatalogo.forEach(c => {
       if (!codigosActualizados.has(c.codigo)) {
-        const ultimoKmCalculado = (c.codigo === 'MNT-ZAPATAS-DEL' && bandaPrevia)
+        const ultimoKmCalculado = (c.codigo.startsWith('MNT-ZAPATAS') && bandaPrevia)
           ? bandaPrevia.ultimoKm
           : (c.codigo === 'MNT-RACHES-FRENO')
           ? Math.max(0, kmActual - 400)
@@ -1301,7 +1378,7 @@ export function MantenimientoScreen({
           intervaloKm: c.intervaloKmOficial,
           ultimoKm: ultimoKmCalculado,
           fechaUltimo: bandaPrevia?.fechaUltimo || new Date().toISOString().split('T')[0],
-          costoEstimado: c.codigo === 'MNT-RACHES-FRENO' ? 0 : c.codigo === 'MNT-ZAPATAS-POST' ? 140 : 120,
+          costoEstimado: c.codigo === 'MNT-RACHES-FRENO' ? 0 : c.codigo.includes('POST') ? 70 : 60,
           repuestoDetalle: c.especificacionLubricanteRepuesto,
           asignadoChofer: c.asignadoChoferPorDefecto,
           activo: true,
@@ -1314,7 +1391,7 @@ export function MantenimientoScreen({
 
     toast({
       title: '🛑 Bloque Frenos Homologado',
-      description: `Los 3 ítems oficiales de Frenos (Raches 800 km Chofer, Zapatas Post 8k y Zapatas Del 11k) quedaron calibrados.`,
+      description: `Los 5 ítems oficiales de Frenos (Raches 800 km Chofer, Zapatas Del Izq/Der 11k y Zapatas Post Izq/Der 12.5k) quedaron calibrados.`,
     });
   };
 

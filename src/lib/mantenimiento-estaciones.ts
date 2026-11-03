@@ -21,48 +21,50 @@ export interface PlantillaNivelControl {
 }
 
 export const CODIGOS_NIVEL_BASICO: string[] = [
-  'MNT-ACEITE-MOT',       // Aceite de Motor (5,000 km)
-  'MNT-FILT-ACEITE',      // Filtro de Aceite (5,000 km)
-  'MNT-FILT-TRAMPA',      // Filtro Trampa de Agua (5,000 km)
-  'MNT-FILT-DIESEL-SEC',  // Filtro Diésel Secundario (5,000 km)
-  'MNT-ENGRASE-CHASIS',   // Engrase de Chasis (1,500 km)
-  'MNT-RACHES-FRENO',     // Calibración de Raches (800 km)
-  'MNT-ZAPATAS-POST',     // Zapatas Posteriores (8,000 km)
+  'MNT-ACEITE-MOT',           // Aceite de Motor (5,000 km)
+  'MNT-FILT-ACEITE',          // Filtro de Aceite (5,000 km)
+  'MNT-FILT-TRAMPA',          // Filtro Trampa de Agua (5,000 km)
+  'MNT-FILT-DIESEL-SEC',      // Filtro Diésel Secundario (5,000 km)
+  'MNT-ENGRASE-CHASIS',       // Engrase de Chasis (1,500 km)
+  'MNT-RACHES-FRENO',         // Calibración de Raches (800 km)
+  'MNT-ZAPATAS-POST-IZQ',     // Zapatas Posteriores Lado Izquierdo (12,500 km)
+  'MNT-ZAPATAS-POST-DER',     // Zapatas Posteriores Lado Derecho (12,500 km)
 ];
 
 export const CODIGOS_NIVEL_MEDIO: string[] = [
   ...CODIGOS_NIVEL_BASICO,
-  'MNT-ROTACION-BATERIAS',  // Rotación Mensual de Baterías Chofer (8,600 km / 30 días)
-  'MNT-ACEITE-CAJA',        // Valvulina de Caja (30,000 km)
-  'MNT-ACEITE-CORONA',      // Valvulina de Corona (30,000 km)
-  'MNT-SOPLADO-AIRE',       // Soplado de Filtro de Aire (5,000 km)
-  'MNT-FILT-AIRE-SEC',      // Filtro Aire Pequeño / Seguridad (20,000 km)
-  'MNT-FILT-AIRE-GRANDE',   // Filtro Aire Grande / Exterior (40,000 km)
-  'MNT-MANGUERAS-ADMISION', // Ajuste Mangueras Admisión (10,000 km)
-  'MNT-BOCINAS-POST',       // Bocinas Posteriores (50,000 km)
-  'MNT-ZAPATAS-DEL',        // Zapatas Delanteras (11,000 km)
+  'MNT-ROTACION-BATERIAS',    // Rotación Mensual de Baterías Chofer (8,600 km / 30 días)
+  'MNT-ACEITE-CAJA',          // Valvulina de Caja (30,000 km)
+  'MNT-ACEITE-CORONA',        // Valvulina de Corona (30,000 km)
+  'MNT-SOPLADO-AIRE',         // Soplado de Filtro de Aire (5,000 km)
+  'MNT-FILT-AIRE-SEC',        // Filtro Aire Pequeño / Seguridad (20,000 km)
+  'MNT-FILT-AIRE-GRANDE',     // Filtro Aire Grande / Exterior (40,000 km)
+  'MNT-MANGUERAS-ADMISION',   // Ajuste Mangueras Admisión (10,000 km)
+  'MNT-BOCINAS-POST',         // Bocinas Posteriores (50,000 km)
+  'MNT-ZAPATAS-DEL-IZQ',      // Zapatas Delanteras Lado Izquierdo (11,000 km)
+  'MNT-ZAPATAS-DEL-DER',      // Zapatas Delanteras Lado Derecho (11,000 km)
 ];
 
 export const PLANTILLAS_NIVEL_CONTROL: Record<NivelControlMantenimiento, PlantillaNivelControl> = {
   BASICO: {
     id: 'BASICO',
-    nombre: 'Control Básico (7)',
+    nombre: 'Control Básico (8)',
     badge: 'Vital & Preventivo',
-    descripcion: 'Lo indispensable: fluidos de motor, filtros de combustible, engrase y frenos.',
+    descripcion: 'Lo indispensable: fluidos de motor, filtros de combustible, engrase y zapatas traseras izq/der.',
     color: 'emerald',
     codigosRecomendados: CODIGOS_NIVEL_BASICO,
   },
   MEDIO: {
     id: 'MEDIO',
-    nombre: 'Control Medio (16)',
+    nombre: 'Control Medio (18)',
     badge: 'Operativo & Rodaje',
-    descripcion: 'Básico + rotación mensual de baterías, valvulinas, sistema de aire, bocinas y zapatas.',
+    descripcion: 'Básico + rotación mensual de baterías, valvulinas, sistema de aire, bocinas y zapatas delanteras izq/der.',
     color: 'amber',
     codigosRecomendados: CODIGOS_NIVEL_MEDIO,
   },
   TOTAL: {
     id: 'TOTAL',
-    nombre: 'Control Total (31)',
+    nombre: 'Control Total (33)',
     badge: 'Full Hino AK',
     descripcion: 'Auditoría integral de los 5 bloques mecánicos, baterías 24V, transmisión mayor y metales.',
     color: 'blue',
@@ -535,15 +537,27 @@ export const ESTACIONES_SERVICIO_CONFIG: Record<EstacionServicioId, EstacionServ
     colorBg: "bg-red-50",
     items: [
       {
-        codigo: "MNT-ZAPATAS-POST",
-        nombre: "Zapatas y Tambores Posteriores",
+        codigo: "MNT-ZAPATAS-DEL-IZQ",
+        nombre: "Zapatas y tambores delanteros lado izquierdo",
+        intervaloKm: 11000,
+        preMarcado: false,
+      },
+      {
+        codigo: "MNT-ZAPATAS-DEL-DER",
+        nombre: "Zapatas y tambores delanteros lado derecho",
+        intervaloKm: 11000,
+        preMarcado: false,
+      },
+      {
+        codigo: "MNT-ZAPATAS-POST-IZQ",
+        nombre: "Zapatas y tambores posteriores lado izquierdo",
         intervaloKm: 12500,
         preMarcado: false,
       },
       {
-        codigo: "MNT-ZAPATAS-DEL",
-        nombre: "Zapatas y Tambores Delanteros",
-        intervaloKm: 11000,
+        codigo: "MNT-ZAPATAS-POST-DER",
+        nombre: "Zapatas y tambores posteriores lado derecho",
+        intervaloKm: 12500,
         preMarcado: false,
       },
       {
@@ -734,6 +748,10 @@ export const MAPA_ESTACION_NATURAL: Record<string, EstacionServicioId> = {
   "MNT-ROTACION-BATERIAS": "CHOFER_RUTINA",
 
   // 3. FRENOS_RUEDAS
+  "MNT-ZAPATAS-DEL-IZQ": "FRENOS_RUEDAS",
+  "MNT-ZAPATAS-DEL-DER": "FRENOS_RUEDAS",
+  "MNT-ZAPATAS-POST-IZQ": "FRENOS_RUEDAS",
+  "MNT-ZAPATAS-POST-DER": "FRENOS_RUEDAS",
   "MNT-ZAPATAS-POST": "FRENOS_RUEDAS",
   "MNT-ZAPATAS-DEL": "FRENOS_RUEDAS",
   "MNT-BOCINAS-POST": "FRENOS_RUEDAS",
@@ -1502,6 +1520,16 @@ export function reconciliarMantenimientosConHistorial(
           coincide = true;
         } else if (item.codigo === 'MNT-ENGRASE-CHASIS' && desc.includes('engrase')) {
           coincide = true;
+        } else if (
+          (item.codigo === 'MNT-ZAPATAS-DEL-IZQ' || item.codigo === 'MNT-ZAPATAS-DEL-DER') &&
+          (codigos.includes('MNT-ZAPATAS-DEL') || desc.includes('zapatas del') || desc.includes('tambor del'))
+        ) {
+          coincide = true;
+        } else if (
+          (item.codigo === 'MNT-ZAPATAS-POST-IZQ' || item.codigo === 'MNT-ZAPATAS-POST-DER') &&
+          (codigos.includes('MNT-ZAPATAS-POST') || desc.includes('zapatas post') || desc.includes('tambor post') || desc.includes('zapatas tras'))
+        ) {
+          coincide = true;
         }
       }
 
@@ -1643,18 +1671,20 @@ export function resolveMantenimientoItemsParaBus(
 
   // 4. Leer estado previo guardado en el bus para preservar calibraciones manuales, históricas y de taller
   const itemsGuardadosMap = new Map<string, any>();
-  try {
-    const rawSaved = localStorage.getItem(`rg_mantenimientos_v2_${busId}`);
-    if (rawSaved) {
-      const parsedList = JSON.parse(rawSaved);
-      if (Array.isArray(parsedList)) {
-        parsedList.forEach((it: any) => {
-          if (it.codigo) itemsGuardadosMap.set(it.codigo, it);
-        });
+  if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
+    try {
+      const rawSaved = localStorage.getItem(`rg_mantenimientos_v2_${busId}`);
+      if (rawSaved) {
+        const parsedList = JSON.parse(rawSaved);
+        if (Array.isArray(parsedList)) {
+          parsedList.forEach((it: any) => {
+            if (it.codigo) itemsGuardadosMap.set(it.codigo, it);
+          });
+        }
       }
+    } catch (err) {
+      console.warn("Aviso al leer estado guardado en resolveMantenimientoItemsParaBus:", err);
     }
-  } catch (err) {
-    console.warn("Aviso al leer estado guardado en resolveMantenimientoItemsParaBus:", err);
   }
 
   // Ensamblar los ítems combinando catálogo base con personalizaciones del socio
@@ -1667,7 +1697,14 @@ export function resolveMantenimientoItemsParaBus(
 
     const esChofer = Boolean(c.asignadoChoferPorDefecto);
     const estaActivo = itemsActivosConfig[c.id] !== false && itemsActivosConfig[c.codigo] !== false;
-    const itemGuardado = itemsGuardadosMap.get(c.codigo);
+    let itemGuardado = itemsGuardadosMap.get(c.codigo);
+    if (!itemGuardado) {
+      if (c.codigo === 'MNT-ZAPATAS-DEL-IZQ' || c.codigo === 'MNT-ZAPATAS-DEL-DER') {
+        itemGuardado = itemsGuardadosMap.get('MNT-ZAPATAS-DEL');
+      } else if (c.codigo === 'MNT-ZAPATAS-POST-IZQ' || c.codigo === 'MNT-ZAPATAS-POST-DER') {
+        itemGuardado = itemsGuardadosMap.get('MNT-ZAPATAS-POST');
+      }
+    }
 
     // Si ya existe un estado guardado con calibración (ej. servicio histórico o taller), preservarlo
     if (itemGuardado && typeof itemGuardado.ultimoKm === "number" && itemGuardado.ultimoKm > 0) {
@@ -1820,6 +1857,48 @@ export function resolveMantenimientoItemsParaBus(
         ultimoKm: Math.max(0, odometroActual - 250),
         fechaUltimo: "2026-09-20",
         costoEstimado: 0,
+        repuestoDetalle: c.especificacionLubricanteRepuesto,
+        asignadoChofer: esChofer,
+        activo: estaActivo,
+      };
+    }
+
+    if (c.codigo === "MNT-ZAPATAS-DEL-IZQ" || c.codigo === "MNT-ZAPATAS-DEL-DER") {
+      const esBus01 = busId === "BUS-01" || busId === "01";
+      const uKm = esBus01
+        ? 904885
+        : Math.max(0, odometroActual - Math.floor(intervaloFinal * 0.2));
+      return {
+        id: `mbus-${c.id}-${busId}`,
+        catalogoId: c.id,
+        codigo: c.codigo,
+        nombre: c.nombre,
+        categoria: c.categoria,
+        intervaloKm: intervaloFinal,
+        ultimoKm: uKm,
+        fechaUltimo: "2026-09-10",
+        costoEstimado: 60,
+        repuestoDetalle: c.especificacionLubricanteRepuesto,
+        asignadoChofer: esChofer,
+        activo: estaActivo,
+      };
+    }
+
+    if (c.codigo === "MNT-ZAPATAS-POST-IZQ" || c.codigo === "MNT-ZAPATAS-POST-DER") {
+      const esBus01 = busId === "BUS-01" || busId === "01";
+      const uKm = esBus01
+        ? 904585
+        : Math.max(0, odometroActual - Math.floor(intervaloFinal * 0.2));
+      return {
+        id: `mbus-${c.id}-${busId}`,
+        catalogoId: c.id,
+        codigo: c.codigo,
+        nombre: c.nombre,
+        categoria: c.categoria,
+        intervaloKm: intervaloFinal,
+        ultimoKm: uKm,
+        fechaUltimo: "2026-09-10",
+        costoEstimado: 70,
         repuestoDetalle: c.especificacionLubricanteRepuesto,
         asignadoChofer: esChofer,
         activo: estaActivo,

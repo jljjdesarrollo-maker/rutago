@@ -332,28 +332,56 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
     observacionesMecanica: 'Ajuste manual rápido del chofer cada 4-5 días (~800 km) para compensar el desgaste de zapatas y evitar que el pedal se vaya al fondo en bajadas.',
   },
   {
-    id: 'hino-zapatas-post',
-    codigo: 'MNT-ZAPATAS-POST',
-    nombre: 'Zapatas y Tambores Posteriores',
+    id: 'hino-zapatas-post-izq',
+    codigo: 'MNT-ZAPATAS-POST-IZQ',
+    nombre: 'Zapatas y tambores posteriores lado izquierdo',
     categoria: 'FRENOS',
     intervaloKmOficial: 12500,
     intervaloDiasAprox: 50,
-    especificacionLubricanteRepuesto: 'Visita al maestro de frenos: remachado de zapatas traseras (compuesto pesado) y rebaje de ceja en tambores',
-    codigoRepuestoReferencia: 'Zapatas Posteriores + Torno Tambores',
+    especificacionLubricanteRepuesto: 'Visita al maestro de frenos: remachado de zapatas traseras lado izquierdo (compuesto pesado) y rebaje de ceja en tambor',
+    codigoRepuestoReferencia: 'Zapatas Posteriores Izquierdas + Torno Tambor',
     asignadoChoferPorDefecto: false,
     activoBiblioteca: true,
     prioridad: 'CRITICA',
-    observacionesMecanica: 'Visita al maestro de frenos cada 7 a 8 semanas (~8,000 km). Soportan el 70% del peso del bus y calor de fricción en bajadas Loja - Vilcabamba.',
+    observacionesMecanica: 'Visita al maestro de frenos cada 7 a 8 semanas (~12,500 km). Soportan el 70% del peso del bus y calor de fricción en bajadas Loja - Vilcabamba.',
   },
   {
-    id: 'hino-zapatas-del',
-    codigo: 'MNT-ZAPATAS-DEL',
-    nombre: 'Zapatas y Tambores Delanteros',
+    id: 'hino-zapatas-post-der',
+    codigo: 'MNT-ZAPATAS-POST-DER',
+    nombre: 'Zapatas y tambores posteriores lado derecho',
+    categoria: 'FRENOS',
+    intervaloKmOficial: 12500,
+    intervaloDiasAprox: 50,
+    especificacionLubricanteRepuesto: 'Visita al maestro de frenos: remachado de zapatas traseras lado derecho (compuesto pesado) y rebaje de ceja en tambor',
+    codigoRepuestoReferencia: 'Zapatas Posteriores Derechas + Torno Tambor',
+    asignadoChoferPorDefecto: false,
+    activoBiblioteca: true,
+    prioridad: 'CRITICA',
+    observacionesMecanica: 'Visita al maestro de frenos cada 7 a 8 semanas (~12,500 km). Soportan el 70% del peso del bus y calor de fricción en bajadas Loja - Vilcabamba.',
+  },
+  {
+    id: 'hino-zapatas-del-izq',
+    codigo: 'MNT-ZAPATAS-DEL-IZQ',
+    nombre: 'Zapatas y tambores delanteros lado izquierdo',
     categoria: 'FRENOS',
     intervaloKmOficial: 11000,
     intervaloDiasAprox: 75,
-    especificacionLubricanteRepuesto: 'Visita al maestro de frenos: remachado de zapatas delanteras y rebaje de ceja en tambores delanteros',
-    codigoRepuestoReferencia: 'Zapatas Delanteras + Torno Tambores',
+    especificacionLubricanteRepuesto: 'Visita al maestro de frenos: remachado de zapatas delanteras lado izquierdo y rebaje de ceja en tambor delantero',
+    codigoRepuestoReferencia: 'Zapatas Delanteras Izquierdas + Torno Tambor',
+    asignadoChoferPorDefecto: false,
+    activoBiblioteca: true,
+    prioridad: 'CRITICA',
+    observacionesMecanica: 'Visita al maestro de frenos cada 10 a 11 semanas (~11,000 km, 40% más de vida que traseras). Desgaste menor al eje posterior.',
+  },
+  {
+    id: 'hino-zapatas-del-der',
+    codigo: 'MNT-ZAPATAS-DEL-DER',
+    nombre: 'Zapatas y tambores delanteros lado derecho',
+    categoria: 'FRENOS',
+    intervaloKmOficial: 11000,
+    intervaloDiasAprox: 75,
+    especificacionLubricanteRepuesto: 'Visita al maestro de frenos: remachado de zapatas delanteras lado derecho y rebaje de ceja en tambor delantero',
+    codigoRepuestoReferencia: 'Zapatas Delanteras Derechas + Torno Tambor',
     asignadoChoferPorDefecto: false,
     activoBiblioteca: true,
     prioridad: 'CRITICA',
@@ -490,17 +518,24 @@ export const CATALOGO_MAESTRO_HINO_AK: MantenimientoCatalogoItem[] = [
   },
 ];
 
-const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v3_60_35';
+const STORAGE_KEY_CATALOGO = 'rutago_mantenimiento_catalogo_maestro_v3_61_73';
 
 /**
  * Fusión inteligente y blindaje del catálogo maestro:
- * - Asegura la presencia inmutable de los 31 ítems oficiales de fábrica Hino AK.
+ * - Asegura la presencia inmutable de los 33 ítems oficiales de fábrica Hino AK.
  * - Sincroniza nombres, categorías, prioridades y efectos cascada oficiales.
  * - Actualiza intervalos base oficiales (ej: Overhaul Caja 280.000 km, Bronces 140.000 km).
  * - Preserva ítems personalizados creados por el SuperAdministrador.
  */
 export function mergeConCatalogoFabrica(listaCandidata: any[]): { items: MantenimientoCatalogoItem[]; modificado: boolean } {
-  const codigosExcluidos = new Set(['MNT-SECADOR-AIRE', 'MNT-COMPRESOR-AIRE', 'MNT-BANDAS-FRENO', 'MNT-LAVADO-INTERCOOLER']);
+  const codigosExcluidos = new Set([
+    'MNT-SECADOR-AIRE',
+    'MNT-COMPRESOR-AIRE',
+    'MNT-BANDAS-FRENO',
+    'MNT-LAVADO-INTERCOOLER',
+    'MNT-ZAPATAS-POST',
+    'MNT-ZAPATAS-DEL',
+  ]);
   const listaBase = (Array.isArray(listaCandidata) ? listaCandidata : []).filter(
     (p: any) => p && p.codigo && !codigosExcluidos.has(p.codigo)
   );

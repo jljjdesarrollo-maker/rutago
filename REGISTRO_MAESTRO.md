@@ -6383,3 +6383,38 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
      - Nueva suite de 4 pruebas unitarias en `tests/historial-chofer-arreglos-novedades.test.ts`.
      - **Resultado Global:** **240 pruebas aprobadas (0 fallas en 34 suites, 1335 assertions en verde)**.
      - Compilación de producción Next.js 16 (Turbopack) ejecutada con éxito total (24/24 rutas generadas).
+
+---
+
+### 🏛️ 18. Desdoblamiento Canónico de Frenos en 4 Componentes (Izquierdo / Derecho) a nivel de Superadministrador (v3.61.73)
+* **Fecha de Implementación:** 2026-11-03
+* **Estado:** 🟢 **APLICADO, CERTIFICADO Y COMPILADO AL 100% (247 TESTS PASS EN 35 SUITES)**
+* **Motivación y Requerimiento de Negocio:**
+  - Optimizar la gestión de inventario y mantenimiento de frenos de la flota Hino AK mediante el desdoblamiento de los dos ítems consolidados ("Zapatas y Tambores Delanteros" y "Zapatas y Tambores Posteriores") en cuatro componentes independientes por lado físico:
+    1. `Zapatas y tambores delanteros lado izquierdo` (`MNT-ZAPATAS-DEL-IZQ` — 11,000 km, 75 días, Prioridad CRÍTICA).
+    2. `Zapatas y tambores delanteros lado derecho` (`MNT-ZAPATAS-DEL-DER` — 11,000 km, 75 días, Prioridad CRÍTICA).
+    3. `Zapatas y tambores posteriores lado izquierdo` (`MNT-ZAPATAS-POST-IZQ` — 12,500 km, 50 días, Prioridad CRÍTICA).
+    4. `Zapatas y tambores posteriores lado derecho` (`MNT-ZAPATAS-POST-DER` — 12,500 km, 50 días, Prioridad CRÍTICA).
+  - Gobernanza estricta desde el **Superadministrador (9999)** para su propagación automática y consistente hacia todos los perfiles (**Socios**, **Choferes** y **Ayudantes**).
+* **Solución de Ingeniería Aplicada:**
+  1. **Actualización de Biblioteca Canónica y Catálogo Maestro (`src/lib/mantenimiento-catalogo.ts`):**
+     - Reemplazados los códigos legados `MNT-ZAPATAS-DEL` y `MNT-ZAPATAS-POST` por los 4 ítems oficiales en `CATALOGO_MAESTRO_HINO_AK` (total 33 ítems institucionales).
+     - Actualizada la clave de caché institucional a `rutago_mantenimiento_catalogo_maestro_v3_61_73`.
+     - Inclusión de los códigos legados en `codigosExcluidos` dentro de `mergeConCatalogoFabrica` para purgar automáticamente cualquier versión previa guardada en clientes sin perder personalizaciones.
+  2. **Estructuración de Niveles de Control y Estaciones de Servicio (`src/lib/mantenimiento-estaciones.ts`):**
+     - **Control Básico (8):** Integra `MNT-ZAPATAS-POST-IZQ` y `MNT-ZAPATAS-POST-DER`.
+     - **Control Medio (18):** Integra `MNT-ZAPATAS-DEL-IZQ` y `MNT-ZAPATAS-DEL-DER`.
+     - **Control Total (33):** Molde integral de fábrica Hino AK.
+     - **Estación FRENOS_RUEDAS:** Incorpora los 4 ítems permitiendo al mecánico, socio o chofer asentar trabajos en un solo lado (izquierdo o derecho) o ambos a la vez.
+     - **Mapa Estación Natural:** Mapeo de los 4 códigos a `FRENOS_RUEDAS`.
+     - **Reconciliación Automática (Self-Healing):** Soporte retroactivo para asociar paradas históricas previas con los nuevos lados izquierdo/derecho.
+     - **Calibración Auditada:** En `resolveMantenimientoItemsParaBus`, herencia de odómetros (`904,885 km` para delanteros y `904,585 km` para posteriores al 10/09/2026 en Bus 01), logrando coincidencia exacta con el estado real de la unidad.
+  3. **Migración Transparente y Homologación en Panel del Socio (`MantenimientoScreen.tsx`):**
+     - Desdoblamiento automático en caliente de `itemsExistentes` si el almacenamiento local aún conservaba los códigos antiguos.
+     - Actualizado `calibrarItem` y `handleSincronizarBloqueFrenos` para homologar los 5 ítems de frenos (Raches + 4 zapatas).
+  4. **Panel del Superadministrador (`SuperAdminMantenimientoTab.tsx`):**
+     - Sincronización del restablecimiento de fábrica a 33 ítems oficiales.
+  5. **Certificación y Pruebas Automatizadas (`tests/frenos-zapatas-izq-der.test.ts`):**
+     - Suite integral de 7 pruebas unitarias cubriendo catálogo maestro, purga y fusión, estación de frenos, niveles de control, calibración matemática para Unidad 01 y autonomía operativa de cada lado.
+     - **Resultado:** **247 pruebas aprobadas al 100% (35 suites, 0 fallas, 1402 assertions en verde)**.
+
