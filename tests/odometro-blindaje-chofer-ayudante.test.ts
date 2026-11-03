@@ -144,4 +144,22 @@ describe('🛡️ BLINDAJE DE ODOMETRÍA: JERARQUÍA AYUDANTE / SOCIO Y BLINDAJE
     const actual = getLatestBusOdometer(disco);
     expect(actual?.kmFinal).toBe(kmCalibradoSocio);
   });
+
+  it('5. ChoferMantenimientoWidget se monta y renderiza para Conductor de Unidad 01 sin ReferenceError de disco ni modales', () => {
+    const React = require('react');
+    const { renderToString } = require('react-dom/server');
+    const { ChoferMantenimientoWidget } = require('@/components/transport/ChoferMantenimientoWidget');
+
+    expect(() => {
+      const html = renderToString(
+        React.createElement(ChoferMantenimientoWidget, {
+          user: { id: 'c1', rol: 'CONDUCTOR', nombre: 'JHONY BOLÍVAR SÁNCHEZ SALINAS' },
+          recordCount: 19,
+        })
+      );
+      expect(html).toBeDefined();
+      expect(html.length).toBeGreaterThan(1000);
+    }).not.toThrow();
+  });
 });
+

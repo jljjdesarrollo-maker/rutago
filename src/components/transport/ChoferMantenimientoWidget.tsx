@@ -208,6 +208,10 @@ export function ChoferMantenimientoWidget({
     return getActiveBusId();
   });
 
+  const buses = getAllBuses();
+  const currentBus = buses.find(b => b.id === activeBusId);
+  const disco = currentBus?.numeroDisco || '01';
+
   const resolverKmActual = useCallback((busId: string): number => {
     if (typeof window === 'undefined') return 187420;
     const busesList = getAllBuses();
@@ -465,38 +469,6 @@ export function ChoferMantenimientoWidget({
     return () => { cancelled = true; };
   }, [modalItem, registroFecha, disco]);
 
-  useEffect(() => {
-    if (!estacionModalOpen || !estacionFechaServicioChofer) {
-      setAyudanteKmRefEstacion(null);
-      return;
-    }
-    let cancelled = false;
-    getBusOdometerForDate(disco, estacionFechaServicioChofer).then((res) => {
-      if (!cancelled && res && res.kmFinal) {
-        setAyudanteKmRefEstacion({ date: res.date, kmFinal: res.kmFinal, esExacto: res.esExacto });
-      } else if (!cancelled) {
-        setAyudanteKmRefEstacion(null);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [estacionModalOpen, estacionFechaServicioChofer, disco]);
-
-  useEffect(() => {
-    if (!comboModalOpen || !comboFechaServicio) {
-      setAyudanteKmRefCombo(null);
-      return;
-    }
-    let cancelled = false;
-    getBusOdometerForDate(disco, comboFechaServicio).then((res) => {
-      if (!cancelled && res && res.kmFinal) {
-        setAyudanteKmRefCombo({ date: res.date, kmFinal: res.kmFinal, esExacto: res.esExacto });
-      } else if (!cancelled) {
-        setAyudanteKmRefCombo(null);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [comboModalOpen, comboFechaServicio, disco]);
-
   const handleGuardarRegistroChofer = () => {
     if (!modalItem) return;
     const km = parseInt(registroKm, 10);
@@ -642,6 +614,22 @@ export function ChoferMantenimientoWidget({
   const [pagadorChofer, setPagadorChofer] = useState<ParadaPagador>('AYUDANTE');
   const [socioModalidadChofer, setSocioModalidadChofer] = useState<SocioModalidadPago>('TRANSFERENCIA_TOTAL');
   const [socioAbonoChofer, setSocioAbonoChofer] = useState<string>('');
+
+  useEffect(() => {
+    if (!estacionSeleccionadaChofer || !estacionFechaServicioChofer) {
+      setAyudanteKmRefEstacion(null);
+      return;
+    }
+    let cancelled = false;
+    getBusOdometerForDate(disco, estacionFechaServicioChofer).then((res) => {
+      if (!cancelled && res && res.kmFinal) {
+        setAyudanteKmRefEstacion({ date: res.date, kmFinal: res.kmFinal, esExacto: res.esExacto });
+      } else if (!cancelled) {
+        setAyudanteKmRefEstacion(null);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [estacionSeleccionadaChofer, estacionFechaServicioChofer, disco]);
 
   // FASE 2: Micro-Modal de Rutina Propia $0 del Chofer
   const [itemRutinaModal, setItemRutinaModal] = useState<MantenimientoBusItem | null>(null);
@@ -1189,6 +1177,22 @@ export function ChoferMantenimientoWidget({
     filtroAirePrimario: false,   // Desmarcado por defecto según indicación del usuario
   });
 
+  useEffect(() => {
+    if (!isComboModalOpen || !comboFechaServicio) {
+      setAyudanteKmRefCombo(null);
+      return;
+    }
+    let cancelled = false;
+    getBusOdometerForDate(disco, comboFechaServicio).then((res) => {
+      if (!cancelled && res && res.kmFinal) {
+        setAyudanteKmRefCombo({ date: res.date, kmFinal: res.kmFinal, esExacto: res.esExacto });
+      } else if (!cancelled) {
+        setAyudanteKmRefCombo(null);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [isComboModalOpen, comboFechaServicio, disco]);
+
   const handleAbrirComboLubricadora = () => {
     setComboKm(kmActual.toString());
     setComboModoRetroactivo(false);
@@ -1696,10 +1700,6 @@ export function ChoferMantenimientoWidget({
       setArregloIsSaving(false);
     }
   };
-
-  const buses = getAllBuses();
-  const currentBus = buses.find(b => b.id === activeBusId);
-  const disco = currentBus?.numeroDisco || '01';
 
   // Helper de badges para categorías mecánicas
   const getCategoriaBadge = (categoria?: string) => {

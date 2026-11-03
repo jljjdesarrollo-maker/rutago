@@ -6329,4 +6329,27 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
      - 3 nuevas pruebas unitarias añadidas en `tests/saneamiento-quincena-oct-nov.test.ts` (11/11 pass, 235 tests totales en 33 suites).
      - Build de producción con Next.js 16 (Turbopack) ejecutado con éxito total.
 
+---
 
+### 🏛️ 16. Resolución de Error de Inicialización TDZ y Scope en Panel de Mantenimiento del Conductor (v3.61.71)
+* **Fecha de Implementación:** 2026-11-03
+* **Estado:** 🟢 **APLICADO, CERTIFICADO Y COMPILADO AL 100% (236 TESTS PASS)**
+* **Diagnóstico del Problema del Conductor del Bus 01:**
+  - Al ingresar a la aplicación con el rol de Conductor de la Unidad 01 (`user.rol === "CONDUCTOR"`), la vista se bloqueaba mostrando la pantalla de protección de `SafeErrorBoundary`:
+    > *"Panel de Mantenimiento del Conductor: Se protegió tu sesión para evitar cierres inesperados. Puedes reintentar o volver al inicio sin perder ningún registro."*
+  - **Causa Raíz:**
+    1. En `src/components/transport/ChoferMantenimientoWidget.tsx`, las constantes `buses`, `currentBus` y `disco` (`const disco = currentBus?.numeroDisco || '01'`) estaban declaradas en la línea 1702.
+    2. Sin embargo, en las líneas 466, 482 y 498, tres hooks `useEffect` intentaban acceder a `disco` en sus dependencias (`[modalItem, registroFecha, disco]`).
+    3. En JavaScript/TypeScript, las variables declaradas con `const` no pueden ser accedidas antes de su declaración física por estar en la Zona Muerta Temporal (TDZ), arrojando de inmediato `ReferenceError: Cannot access 'disco' before initialization` durante el montaje inicial del componente.
+    4. Adicionalmente, los hooks de referencia de odómetro del ayudante para Estaciones y Combos se encontraban declarados antes de los estados `estacionSeleccionadaChofer` y `isComboModalOpen`, referenciando variables con nombres no alineados (`estacionModalOpen`, `comboModalOpen`).
+* **Solución de Ingeniería Aplicada:**
+  1. **Reubicación Léxica de `disco` en la Cabecera:**
+     - Se ubicaron `buses`, `currentBus` y `disco` al inicio del componente (inmediatamente después de `activeBusId`), garantizando que esté disponible para todos los hooks y cálculos descendentes.
+     - Se eliminó la redeclaración redundante de la línea 1700.
+  2. **Alineación de Hooks `useEffect` con sus Estados Correspondientes:**
+     - El hook para `ayudanteKmRefEstacion` se reubicó inmediatamente después de `estacionSeleccionadaChofer` y `estacionFechaServicioChofer`, validando `!estacionSeleccionadaChofer || !estacionFechaServicioChofer`.
+     - El hook para `ayudanteKmRefCombo` se reubicó inmediatamente después de `isComboModalOpen` y `comboFechaServicio`, validando `!isComboModalOpen || !comboFechaServicio`.
+  3. **Certificación con Pruebas Automatizadas:**
+     - Se agregó la prueba unitaria 5 en `tests/odometro-blindaje-chofer-ayudante.test.ts` certificando el montaje y renderizado libre de `ReferenceError` de `ChoferMantenimientoWidget` para el conductor del Bus 01.
+     - **Resultado:** **236 pruebas aprobadas (0 fallas en 33 suites)**.
+     - Compilación Next.js 16 (Turbopack) ejecutada con éxito total (24/24 rutas generadas).
