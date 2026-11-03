@@ -11,7 +11,7 @@ import {
   getDeletedExpenseIds,
 } from './owner-expenses-storage';
 
-export type ParadaPagador = 'AYUDANTE' | 'SOCIO';
+export type ParadaPagador = 'AYUDANTE' | 'SOCIO' | 'CHOFER';
 export type SocioModalidadPago = 'TRANSFERENCIA_TOTAL' | 'TRANSFERENCIA_PARCIAL' | 'CREDITO_FIADO';
 
 export interface ParadaPagoRegistro {
@@ -163,10 +163,15 @@ export function syncRetroactiveParadasFromExpenses(busId?: string): number {
       // Evaluar si es un gasto de mantenimiento / taller
       const esPrefijoTaller =
         exp.id.startsWith('gasto-lubricadora-') ||
+        exp.id.startsWith('gasto-arreglo-') ||
+        exp.id.startsWith('parada-arreglo-') ||
+        exp.id.startsWith('gasto-mnt-') ||
+        exp.id.startsWith('parada-chofer-') ||
         exp.id.startsWith('EXP-PARADA-') ||
         exp.id.startsWith('EXP-COMBO-') ||
         exp.id.startsWith('EXP-ESTACION-') ||
-        exp.id.startsWith('EXP-MNT-');
+        exp.id.startsWith('EXP-MNT-') ||
+        exp.id.startsWith('EXP-ARREGLO-');
 
       const esCategoriaMantenimiento = categoriasTaller.has(exp.category);
 
@@ -194,8 +199,27 @@ export function syncRetroactiveParadasFromExpenses(busId?: string): number {
         desc.includes('taller') ||
         desc.includes('fosa') ||
         desc.includes('combo') ||
+        desc.includes('novedad') ||
+        desc.includes('arreglo') ||
+        desc.includes('revisión') ||
+        desc.includes('revision') ||
+        desc.includes('garantía') ||
+        desc.includes('garantia') ||
+        desc.includes('enlainar') ||
+        desc.includes('soldadura') ||
+        desc.includes('cruceta') ||
+        desc.includes('fusible') ||
+        desc.includes('foco') ||
+        desc.includes('terminal') ||
+        desc.includes('parchada') ||
+        desc.includes('mano de obra') ||
+        desc.includes('chofer') ||
+        desc.includes('conductor') ||
         prov.includes('lubricador') ||
-        prov.includes('taller');
+        prov.includes('taller') ||
+        prov.includes('mecánic') ||
+        prov.includes('mecanic') ||
+        prov.includes('chofer');
 
       if (!esPrefijoTaller && !esCategoriaMantenimiento && !tienePalabrasClave) {
         continue;
@@ -206,6 +230,24 @@ export function syncRetroactiveParadasFromExpenses(busId?: string): number {
       let estacionNombre = 'Lubricadora (Combo)';
 
       if (
+        exp.id.startsWith('gasto-arreglo-') ||
+        exp.id.startsWith('parada-arreglo-') ||
+        exp.id.startsWith('EXP-ARREGLO-') ||
+        desc.includes('novedad / arreglo') ||
+        desc.includes('revisión / garantía') ||
+        desc.includes('revision / garantia') ||
+        desc.includes('arreglo extraordinario') ||
+        desc.includes('enlainar') ||
+        desc.includes('soldadura') ||
+        desc.includes('cruceta') ||
+        desc.includes('fusible') ||
+        desc.includes('foco') ||
+        desc.includes('terminales') ||
+        desc.includes('parchada')
+      ) {
+        estacionId = 'ARREGLO_EXTRAORDINARIO';
+        estacionNombre = 'Arreglo / Novedad Extraordinaria';
+      } else if (
         desc.includes('radiador') ||
         desc.includes('coolant') ||
         desc.includes('enfriamiento') ||
@@ -281,10 +323,23 @@ export function syncRetroactiveParadasFromExpenses(busId?: string): number {
       }
 
       // Deducir pagador y modalidades
+      const esDeChofer =
+        exp.origenPago === 'CHOFER' ||
+        exp.id.startsWith('parada-chofer-') ||
+        exp.id.startsWith('gasto-arreglo-') ||
+        exp.id.startsWith('parada-arreglo-') ||
+        desc.includes('chofer') ||
+        desc.includes('conductor') ||
+        desc.includes('mano de obra propia') ||
+        desc.includes('mano de obra') ||
+        (Number(exp.totalAmount) === 0 && Number(exp.paidAmount) === 0);
+
       const esPagadoPorAyudante =
+        !esDeChofer &&
         exp.paymentMethod === 'EFECTIVO' &&
-        (desc.includes('ayudante') || desc.includes('ruta') || notas.includes('ayudante'));
-      const pagador: ParadaPagador = esPagadoPorAyudante ? 'AYUDANTE' : 'SOCIO';
+        (desc.includes('ayudante') || desc.includes('ruta') || notas.includes('ayudante') || exp.origenPago === 'AYUDANTE_RUTA');
+
+      const pagador: ParadaPagador = esDeChofer ? 'CHOFER' : (esPagadoPorAyudante ? 'AYUDANTE' : 'SOCIO');
 
       const total = Number(exp.totalAmount) || 0;
       const pagado = Number(exp.paidAmount) || 0;
@@ -533,6 +588,9 @@ export function filtrarParadasPagoOffline(
         return false;
       }
       if (filtroEstacion === 'MAYOR' && !estId.includes('MAYOR') && !desc.includes('CAJA') && !desc.includes('CORONA') && !desc.includes('EMBRAGUE')) {
+        return false;
+      }
+      if (filtroEstacion === 'ARREGLOS' && !estId.includes('ARREGLO') && !desc.includes('ARREGLO') && !desc.includes('NOVEDAD') && !desc.includes('EXTRAORDINARIO')) {
         return false;
       }
     }

@@ -6353,3 +6353,33 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
      - Se agregó la prueba unitaria 5 en `tests/odometro-blindaje-chofer-ayudante.test.ts` certificando el montaje y renderizado libre de `ReferenceError` de `ChoferMantenimientoWidget` para el conductor del Bus 01.
      - **Resultado:** **236 pruebas aprobadas (0 fallas en 33 suites)**.
      - Compilación Next.js 16 (Turbopack) ejecutada con éxito total (24/24 rutas generadas).
+
+---
+
+### 🏛️ 17. Reconciliación Integral de Arreglos en Ruta y Registros del Conductor en Historial de Mantenimientos (v3.61.72)
+* **Fecha de Implementación:** 2026-11-03
+* **Estado:** 🟢 **APLICADO, CERTIFICADO Y COMPILADO AL 100% (240 TESTS PASS)**
+* **Diagnóstico del Problema del Conductor del Bus 01:**
+  - Al ingresar con la cuenta de Chofer a la interfaz del Historial de Mantenimientos (`isHistorialModalOpen`), no aparecían los arreglos, novedades o mantenimientos registrados en ruta (ej. *Enlainar paquete delantero*, *Soldadura de escape*, reparaciones extraordinarias, mano de obra propia $0.00).
+  - **Causas Raíz Detectadas:**
+    1. **Prefijos y Categorías no reconocidos en Sincronización:** Los arreglos rápidos generan IDs con prefijo `gasto-arreglo-...` o `parada-arreglo-...` y categoría `'OTROS'`. En `src/lib/paradas-vt-storage.ts`, la función `syncRetroactiveParadasFromExpenses` solo evaluaba prefijos rígidos (`gasto-lubricadora-`, `EXP-PARADA-`, etc.) y descartaba `'OTROS'`, ignorando descripciones que no contuvieran palabras fijas de catálogo.
+    2. **Falta de Identidad del Conductor en el Historial:** El tipo `ParadaPagador` solo contemplaba `'AYUDANTE' | 'SOCIO'`, forzando a que cualquier trabajo de cortesía, garantía o mano de obra propia del chofer ($0.00) se clasificara erróneamente como socio o ayudante.
+    3. **Purga Inadvertida en la Reconciliación de Nube:** En `mantenimiento-sync.ts`, el filtro de conciliación local-nube solo protegía a `pagador === 'AYUDANTE'`, provocando que registros locales del chofer fueran purgados si no estaban enlazados a un gasto preexistente de socio en PostgreSQL.
+* **Solución de Ingeniería Aplicada:**
+  1. **Expansión Canónica del Tipo `ParadaPagador`:**
+     - Incorporado `'CHOFER'` en `ParadaPagador = 'AYUDANTE' | 'SOCIO' | 'CHOFER'` en `src/lib/paradas-vt-storage.ts`.
+  2. **Reconocimiento Total de Arreglos Extraordinarios en `syncRetroactiveParadasFromExpenses`:**
+     - Inclusión de prefijos `gasto-arreglo-`, `parada-arreglo-`, `gasto-mnt-`, `parada-chofer-` y `EXP-ARREGLO-`.
+     - Inclusión de vocabulario operativo de ruta (`novedad`, `arreglo`, `revisión`, `garantía`, `mano de obra`, `chofer`, `conductor`, `enlainar`, `soldadura`, `cruceta`, `fusible`, `foco`, `terminal`, `parchada`).
+     - Asignación canónica a la estación `ARREGLO_EXTRAORDINARIO` y pagador `'CHOFER'` para registros con costo $0 o autoría del chofer.
+  3. **Blindaje contra Purgas en Sincronizador Bidireccional (`src/lib/mantenimiento-sync.ts`):**
+     - Se protegen explícitamente paradas con `pagador === 'CHOFER'` y `costoTotal === 0` para preservarlas siempre intactas en el almacenamiento del vehículo.
+  4. **Enriquecimiento Visual y Ergonómico en Modal de Historial (`ChoferMantenimientoWidget.tsx`):**
+     - **Tarjetas Superiores:** Añadida tarjeta ejecutiva **`Chofer / Novedad: $X.XX ({count} arreglos)`** junto a Total, Ayudante y Socio.
+     - **Selector Rápido Táctil (Pulgar):** Pestañas `[Todos]`, `[🔧 Chofer]`, `[🚌 Ruta (Ayud.)]` y `[👤 Socio]`.
+     - **Chip de Filtro:** Añadido chip temático **`[🔧 Arreglos / Novedades]`** (`ARREGLOS`).
+     - **Pie de Tarjeta:** Etiqueta distintiva `[🔧 Conductor (Mano de obra / Novedad en ruta)]`.
+  5. **Certificación y Pruebas Automatizadas:**
+     - Nueva suite de 4 pruebas unitarias en `tests/historial-chofer-arreglos-novedades.test.ts`.
+     - **Resultado Global:** **240 pruebas aprobadas (0 fallas en 34 suites, 1335 assertions en verde)**.
+     - Compilación de producción Next.js 16 (Turbopack) ejecutada con éxito total (24/24 rutas generadas).

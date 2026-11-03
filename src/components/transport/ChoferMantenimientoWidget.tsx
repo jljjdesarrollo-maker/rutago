@@ -75,6 +75,26 @@ function determinarTipoMantenimientoExperto(p: ParadaPagoRegistro): {
   const est = (p.estacionId || '').toUpperCase();
   const desc = ((p.detalleTrabajo || '') + ' ' + (p.notas || '') + ' ' + (p.taller || '')).toLowerCase();
 
+  if (
+    est.includes('ARREGLO') ||
+    desc.includes('novedad / arreglo') ||
+    desc.includes('revisión / garantía') ||
+    desc.includes('revision / garantia') ||
+    desc.includes('arreglo') ||
+    desc.includes('enlainar') ||
+    desc.includes('soldadura') ||
+    desc.includes('cruceta') ||
+    desc.includes('fusible') ||
+    desc.includes('foco') ||
+    desc.includes('terminales') ||
+    desc.includes('parchada')
+  ) {
+    return {
+      tipo: 'Arreglo Rápido / Novedad en Ruta',
+      badgeClass: 'bg-orange-100 text-orange-900 border-orange-300 font-extrabold',
+      icono: '🔧',
+    };
+  }
   if (est === 'LUBRICADORA' || desc.includes('aceite') || desc.includes('lubric') || desc.includes('filtro')) {
     return {
       tipo: 'Preventivo Mayor de Fosa (Fluidos y Filtración)',
@@ -261,7 +281,7 @@ export function ChoferMantenimientoWidget({
   // FASE 2 y 3: Búsqueda, Filtros de Estación y Pagador Offline para el Historial
   const [busquedaHistorial, setBusquedaHistorial] = useState<string>('');
   const [filtroEstacionHistorial, setFiltroEstacionHistorial] = useState<string>('TODAS');
-  const [filtroPagadorHistorial, setFiltroPagadorHistorial] = useState<'TODOS' | 'AYUDANTE' | 'SOCIO'>('TODOS');
+  const [filtroPagadorHistorial, setFiltroPagadorHistorial] = useState<'TODOS' | 'CHOFER' | 'AYUDANTE' | 'SOCIO'>('TODOS');
   const [, setComboSyncCounter] = useState<number>(0);
   const [outboxCount, setOutboxCount] = useState<number>(() => {
     if (typeof window === 'undefined') return 0;
@@ -1628,7 +1648,7 @@ export function ChoferMantenimientoWidget({
         esRetroactivo: esRetro,
         kmRodadosDesdeServicio: Math.max(0, kmActual - kmNum),
         costoTotal: costoNum,
-        pagador: arregloPagador,
+        pagador: costoNum === 0 ? 'CHOFER' : arregloPagador,
         montoCubiertoAyudante: arregloPagador === 'AYUDANTE' ? paidAmount : 0,
         descontadoEnVT: yaDescontado,
         socioModalidad: arregloPagador === 'SOCIO' ? arregloSocioModalidad : undefined,
@@ -1654,7 +1674,7 @@ export function ChoferMantenimientoWidget({
 
       const descContable = costoNum > 0
         ? `${esFechaAnteriorAyudante ? `[HISTÓRICO RUTA LIQUIDADO ${fechaFinal}] ` : ''}Novedad / Arreglo: ${descTrim} (Km ${kmNum.toLocaleString()}) - ${tallerFinal}`
-        : `${esFechaAnteriorAyudante ? `[HISTÓRICO RUTA LIQUIDADO ${fechaFinal}] ` : ''}Revisión / Garantía: ${descTrim} (Km ${kmNum.toLocaleString()}) - ${tallerFinal} [Sin costo]`;
+        : `${esFechaAnteriorAyudante ? `[HISTÓRICO RUTA LIQUIDADO ${fechaFinal}] ` : ''}Revisión / Garantía: ${descTrim} (Km ${kmNum.toLocaleString()}) - ${tallerFinal} [Sin costo / Chofer]`;
 
       await saveOwnerExpenseToApi({
         id: expenseId,
@@ -1670,7 +1690,7 @@ export function ChoferMantenimientoWidget({
         provider: tallerFinal,
         comprobanteRef: facturaFinal ? `Fac: ${facturaFinal}` : undefined,
         abonos: abonosList,
-        origenPago: arregloPagador === 'AYUDANTE' ? 'AYUDANTE_RUTA' : 'SOCIO_DIRECTO',
+        origenPago: costoNum === 0 ? 'CHOFER' : (arregloPagador === 'AYUDANTE' ? 'AYUDANTE_RUTA' : 'SOCIO_DIRECTO'),
         descontadoEnRuta: arregloPagador === 'AYUDANTE',
         createdAt: new Date().toISOString(),
       });
@@ -1809,10 +1829,12 @@ export function ChoferMantenimientoWidget({
   // FASE 2 y 3: Filtrado Offline en memoria del Historial de Paradas con Pagador
   const paradasFiltradas = useMemo(() => {
     let list = filtrarParadasPagoOffline(historialParadas, busquedaHistorial, filtroEstacionHistorial);
-    if (filtroPagadorHistorial === 'AYUDANTE') {
+    if (filtroPagadorHistorial === 'CHOFER') {
+      list = list.filter(p => p.pagador === 'CHOFER' || p.costoTotal === 0 || (p.detalleTrabajo && p.detalleTrabajo.toLowerCase().includes('chofer')));
+    } else if (filtroPagadorHistorial === 'AYUDANTE') {
       list = list.filter(p => p.pagador === 'AYUDANTE');
     } else if (filtroPagadorHistorial === 'SOCIO') {
-      list = list.filter(p => p.pagador !== 'AYUDANTE');
+      list = list.filter(p => p.pagador === 'SOCIO');
     }
     return list;
   }, [historialParadas, busquedaHistorial, filtroEstacionHistorial, filtroPagadorHistorial]);
@@ -1822,13 +1844,18 @@ export function ChoferMantenimientoWidget({
     let totalInvertido = 0;
     let pagadoAyudante = 0;
     let pagadoSocio = 0;
+    let pagadoChofer = 0;
     let countAyudante = 0;
     let countSocio = 0;
+    let countChofer = 0;
 
     historialParadas.forEach(p => {
       const costo = p.costoTotal || 0;
       totalInvertido += costo;
-      if (p.pagador === 'AYUDANTE') {
+      if (p.pagador === 'CHOFER' || p.costoTotal === 0 || (p.detalleTrabajo && p.detalleTrabajo.toLowerCase().includes('chofer'))) {
+        pagadoChofer += costo;
+        countChofer++;
+      } else if (p.pagador === 'AYUDANTE') {
         pagadoAyudante += costo;
         countAyudante++;
       } else {
@@ -1842,8 +1869,10 @@ export function ChoferMantenimientoWidget({
       totalInvertido,
       pagadoAyudante,
       pagadoSocio,
+      pagadoChofer,
       countAyudante,
       countSocio,
+      countChofer,
     };
   }, [historialParadas]);
 
@@ -3819,7 +3848,7 @@ export function ChoferMantenimientoWidget({
 
             {/* FASE 3: TARJETA DE RESUMEN EJECUTIVO (ZONA DEL PULGAR) */}
             <div className="px-3.5 pt-3 pb-2 bg-gradient-to-r from-amber-500/10 via-slate-50 to-emerald-500/10 border-b border-slate-200/80 shrink-0">
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div className="p-2 rounded-xl bg-white border border-slate-200 shadow-2xs text-center">
                   <span className="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Total Gastado</span>
                   <span className="text-xs sm:text-sm font-black text-slate-900 font-mono">
@@ -3827,6 +3856,16 @@ export function ChoferMantenimientoWidget({
                   </span>
                   <span className="text-[9px] text-slate-400 block font-medium">
                     {resumenHistorial.totalServicios} servicios
+                  </span>
+                </div>
+
+                <div className="p-2 rounded-xl bg-orange-50/80 border border-orange-200 shadow-2xs text-center">
+                  <span className="text-[10px] font-bold text-orange-800 block uppercase tracking-wider">Chofer / Novedad</span>
+                  <span className="text-xs sm:text-sm font-black text-orange-950 font-mono">
+                    ${resumenHistorial.pagadoChofer.toFixed(2)}
+                  </span>
+                  <span className="text-[9px] text-orange-700 block font-medium">
+                    {resumenHistorial.countChofer} arreglos
                   </span>
                 </div>
 
@@ -3855,14 +3894,15 @@ export function ChoferMantenimientoWidget({
               <div className="flex items-center gap-1.5 mt-2 bg-slate-200/60 p-1 rounded-xl">
                 {[
                   { id: 'TODOS', label: 'Todos', count: resumenHistorial.totalServicios },
-                  { id: 'AYUDANTE', label: '🚌 Ruta (Ayudante)', count: resumenHistorial.countAyudante },
-                  { id: 'SOCIO', label: '👤 Socio Propietario', count: resumenHistorial.countSocio },
+                  { id: 'CHOFER', label: '🔧 Chofer', count: resumenHistorial.countChofer },
+                  { id: 'AYUDANTE', label: '🚌 Ruta (Ayud.)', count: resumenHistorial.countAyudante },
+                  { id: 'SOCIO', label: '👤 Socio', count: resumenHistorial.countSocio },
                 ].map(tab => (
                   <button
                     key={tab.id}
                     type="button"
                     onClick={() => setFiltroPagadorHistorial(tab.id as any)}
-                    className={`flex-1 py-1 px-2 rounded-lg text-[10px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                    className={`flex-1 py-1 px-1.5 rounded-lg text-[10px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
                       filtroPagadorHistorial === tab.id
                         ? 'bg-white text-slate-900 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
@@ -3901,6 +3941,7 @@ export function ChoferMantenimientoWidget({
               <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar text-xs">
                 {[
                   { id: 'TODAS', label: 'Todos', icon: '📋', count: historialParadas.length },
+                  { id: 'ARREGLOS', label: 'Arreglos / Novedades', icon: '🔧' },
                   { id: 'LUBRICADORA', label: 'Aceite / Filtros', icon: '🛢️' },
                   { id: 'FRENOS', label: 'Frenos y Zapatas', icon: '🛑' },
                   { id: 'AIRE', label: 'Aire y Toberas', icon: '💨' },
@@ -4098,7 +4139,12 @@ export function ChoferMantenimientoWidget({
 
                       {/* Barra de Modalidad / Quién pagó */}
                       <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
-                        {esAyudante ? (
+                        {p.pagador === 'CHOFER' || p.costoTotal === 0 ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-orange-100 text-orange-950 border border-orange-200 flex items-center gap-1">
+                            <span>🔧</span>
+                            <span>Conductor (Mano de obra / Novedad en ruta)</span>
+                          </span>
+                        ) : esAyudante ? (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-blue-100 text-blue-900 border border-blue-200 flex items-center gap-1">
                             <span>🚌</span>
                             <span>Cubierto en Ruta por Ayudante</span>

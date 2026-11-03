@@ -244,8 +244,8 @@ export async function syncMantenimientoBidireccional(busId?: string): Promise<{ 
       if (rawParadas) {
         const localParadas: any[] = JSON.parse(rawParadas);
         const filtered = localParadas.filter(p => {
-          // Si fue pagada por el ayudante o descontada en ruta, conservar SIEMPRE en historial operativo
-          if (p.pagador === 'AYUDANTE' || p.descontadoEnVT) {
+          // Si fue pagada por el ayudante, chofer o descontada en ruta, conservar SIEMPRE en historial operativo
+          if (p.pagador === 'AYUDANTE' || p.pagador === 'CHOFER' || p.descontadoEnVT || p.costoTotal === 0) {
             return true;
           }
           // Si la parada está vinculada a un gasto de socio y la BD central ya no lo tiene, se elimina
