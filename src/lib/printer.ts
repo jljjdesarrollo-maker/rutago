@@ -230,6 +230,8 @@ export async function printTicket(device: BluetoothDevice, commands: Uint8Array)
     }
 
     const success = await sendBytes(char, commands.buffer);
+    // Buffer de drenaje térmico: esperar a que la impresora procese el buffer completo de avances antes de cerrar el enlace GATT
+    await new Promise(resolve => setTimeout(resolve, 400));
     await gatt.disconnect();
     return success;
   } catch (e) {

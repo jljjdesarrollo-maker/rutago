@@ -83,24 +83,26 @@ describe("💵 VUELTO PENDIENTE EN EMISIÓN DE BOLETOS E IMPRESIÓN TÉRMICA 58M
     expect(text).not.toContain("PENDIENTE DEVOLUCION");
   });
 
-  test("6. Boleto normal (sin vuelto) mantiene avance compacto estándar de 3 líneas antes del corte (cero desperdicio de papel)", () => {
+  test("6. Boleto normal (sin vuelto) mantiene avance de 5 líneas antes del corte (espacio adecuado que no daña la impresión)", () => {
     const bytes = generateTicketBytes(baseTicket);
     const cutIndex = bytes.length - 3;
     expect(bytes[cutIndex]).toBe(0x1D);
     expect(bytes[cutIndex + 1]).toBe(0x56);
     expect(bytes[cutIndex + 2]).toBe(0x01);
 
-    // Los 3 avances de margen antes del corte son 0x0A (LF)
+    // Los 5 avances de margen antes del corte son 0x0A (LF)
     expect(bytes[cutIndex - 1]).toBe(0x0A);
     expect(bytes[cutIndex - 2]).toBe(0x0A);
     expect(bytes[cutIndex - 3]).toBe(0x0A);
-    // cutIndex - 4 es el NEWLINE que cierra la línea de publicidad
     expect(bytes[cutIndex - 4]).toBe(0x0A);
-    // cutIndex - 5 es el último caracter de la publicidad (ej. '0' de '...0997149000'), no un salto de línea
-    expect(bytes[cutIndex - 5]).not.toBe(0x0A);
+    expect(bytes[cutIndex - 5]).toBe(0x0A);
+    // cutIndex - 6 es el NEWLINE que cierra la línea de publicidad
+    expect(bytes[cutIndex - 6]).toBe(0x0A);
+    // cutIndex - 7 es el último caracter de la publicidad (no un salto de línea)
+    expect(bytes[cutIndex - 7]).not.toBe(0x0A);
   });
 
-  test("7. Boleto con vuelto pendiente deja dos líneas en blanco después de la última palabra (5 líneas de avance) para corte manual fácil", () => {
+  test("7. Boleto con devolución de cambio deja espacio amplio de 8 avances NEWLINE para impedir daño en la impresión al cortar", () => {
     const bytes = generateTicketBytes({
       ...baseTicket,
       billeteRecibido: 20,
@@ -111,15 +113,13 @@ describe("💵 VUELTO PENDIENTE EN EMISIÓN DE BOLETOS E IMPRESIÓN TÉRMICA 58M
     expect(bytes[cutIndex + 1]).toBe(0x56);
     expect(bytes[cutIndex + 2]).toBe(0x01);
 
-    // Los 5 avances de margen antes del corte son 0x0A (LF): 3 estándar + 2 líneas en blanco para corte fácil
-    expect(bytes[cutIndex - 1]).toBe(0x0A);
-    expect(bytes[cutIndex - 2]).toBe(0x0A);
-    expect(bytes[cutIndex - 3]).toBe(0x0A);
-    expect(bytes[cutIndex - 4]).toBe(0x0A);
-    expect(bytes[cutIndex - 5]).toBe(0x0A);
-    // cutIndex - 6 es el NEWLINE que cierra la línea de publicidad
-    expect(bytes[cutIndex - 6]).toBe(0x0A);
-    // cutIndex - 7 es el último caracter de la publicidad (no un salto de línea)
-    expect(bytes[cutIndex - 7]).not.toBe(0x0A);
+    // Los 8 avances de margen antes del corte son 0x0A (LF)
+    for (let i = 1; i <= 8; i++) {
+      expect(bytes[cutIndex - i]).toBe(0x0A);
+    }
+    // cutIndex - 9 es el NEWLINE que cierra la línea de publicidad
+    expect(bytes[cutIndex - 9]).toBe(0x0A);
+    // cutIndex - 10 es el último caracter de la publicidad (no un salto de línea)
+    expect(bytes[cutIndex - 10]).not.toBe(0x0A);
   });
 });

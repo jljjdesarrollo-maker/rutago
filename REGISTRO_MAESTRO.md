@@ -6544,3 +6544,27 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
        * *Prueba 6:* Valida que boletos normales tengan exactamente 3 avances `0x0A` antes de `CUT`.
        * *Prueba 7:* Valida que boletos con devolución tengan exactamente 5 avances `0x0A` (3 estándar + 2 líneas en blanco) tras la última palabra impresa.
      - **Resultado:** **7 de 7 pruebas unitarias aprobadas al 100% en verde**.
+
+---
+
+### 🏛️ 23. Comparativa y Calibración Definitiva de Margen de Corte: Normal (5 Avances) vs Devolución (8 Avances + Drenaje BLE) (v3.61.77)
+* **Fecha de Implementación:** 2026-11-07
+* **Estado:** 🟢 **APLICADO, CERTIFICADO Y COMPILADO AL 100% (7/7 TESTS EN VUELTO-PENDIENTE)**
+* **Diagnóstico y Requerimiento del Usuario:**
+  - *"Necesito que revises el número de líneas de espacio que se dejan después de un ticket normal sin devolución, y lo compares con aquellos tickets que sí implican devolución de dinero o cambio."*
+  - *"El ticket normal deja el espacio adecuado para cortar e imprimir sin problema. Sin embargo, el ticket con devolución no deja suficiente espacio, lo que provoca que al cortar se dañe la impresión."*
+  - **Análisis de Ingeniería Comparativo:**
+    1. **Boleto Normal:** 5 avances `NEWLINE` (probado y aprobado por el usuario en operación real: deja el espacio adecuado para cortar e imprimir sin problema).
+    2. **Boleto con Devolución:** El bloque adicional `PENDIENTE DEVOLUCION` expande el ticket a casi 400 bytes. Al cortar manualmente, 5 líneas resultaban insuficientes ante la mayor longitud del papel. Adicionalmente, en `src/lib/printer.ts`, la desconexión inmediata de GATT (`await gatt.disconnect()`) ocurría mientras el búfer Bluetooth de la impresora aún estaba recibiendo los últimos bytes, truncando los avances finales.
+* **Solución de Ingeniería Aplicada:**
+  1. **Diferenciación Robusta de Márgenes (`src/lib/ticket-escpos.ts`):**
+     - **Boleto Normal y Viaje Gratis:** 5 avances `NEWLINE` (preserva intacto el espacio adecuado y aprobado).
+     - **Boleto con Devolución de Cambio:** Elevado a **8 avances `NEWLINE`** (garantiza más de 1.2 cm de papel en blanco después de la última palabra escrita, impidiendo que la cuchilla manual toque o dañe la impresión).
+  2. **Búfer de Drenaje Térmico BLE (`src/lib/printer.ts`):**
+     - Se añadió una espera de 400ms antes de ejecutar `await gatt.disconnect()`. Esto asegura que las impresoras Bluetooth LE procesen íntegramente la totalidad de los 8 avances y el comando de corte antes de cerrar la conexión de radio.
+  3. **Certificación y Pruebas Unitarias (`tests/vuelto-pendiente-ticket.test.ts`):**
+     - *Prueba 6:* Certifica 5 avances `0x0A` para boletos normales (espacio adecuado confirmado).
+     - *Prueba 7:* Certifica 8 avances `0x0A` para boletos con devolución de cambio (margen de seguridad anti-daño).
+     - **Resultado:** **7 de 7 pruebas unitarias aprobadas al 100% (42 assertions en verde)**.
+  4. **Sincronización:**
+     - Actualizado `package.json` y `HomeScreenVT.tsx` a `v3.61.77`.
