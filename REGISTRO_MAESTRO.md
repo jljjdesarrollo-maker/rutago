@@ -6441,4 +6441,67 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
      - Prueba unitaria añadida en `tests/frenos-zapatas-izq-der.test.ts` (Prueba #8: *Tareas en 1 columna vertical sin truncate para lectura integral*).
      - **Resultado Global:** **248 pruebas aprobadas (0 fallas en 35 suites, 1405 assertions en verde)**.
 
+---
 
+### 🏛️ 20. Sincronización Integral y Nivelación de la Rama de Pruebas (Staging) con Producción (v3.61.74)
+* **Fecha de Implementación:** 2026-11-07
+* **Estado:** 🟢 **APLICADO, CERTIFICADO Y COMPILADO AL 100% (248 TESTS PASS EN 35 SUITES)**
+* **Motivación y Requerimiento de Negocio:**
+  - Nivelar la versión de pruebas (`staging`), la cual se encontraba 20 commits por detrás de `main` (rezagada en `v3.61.60`).
+  - Absorber todas las actualizaciones operativas, forenses y visuales desplegadas en producción sin tocar ni alterar la rama `main` ni la base de datos de producción (`DATABASE_URL`).
+* **Solución de Ingeniería Aplicada:**
+  1. **Integración Completa de Código en la Rama `staging`:**
+     - Se realizó un avance limpio de `origin/staging` integrando los 20 commits de `main` hasta `v3.61.74` (commit `fe53b11`).
+     - Incorporados todos los módulos clave:
+       * **Mantenimiento y Frenos:** Desdoblamiento canónico en 4 ítems de zapatas (izq/der) y lista vertical de 1 columna sin truncamiento de nombres en `ChoferMantenimientoWidget.tsx` (v3.61.73 - v3.61.74).
+       * **Historial Técnico del Conductor:** Reconciliación de arreglos extraordinarios de fosa y ruta con mano de obra propia $0.00 (v3.61.72).
+       * **Odometría y Calibración:** Saneamiento oficial de odómetros Unidad 01 a 907,085 km y jerarquía auditada socio/ayudante (v3.61.68 - v3.61.70).
+       * **Promociones:** Sincronización en la nube de "Viaje Gratis" por unidad física (v3.61.67).
+       * **Rendimiento de Aplicación:** Arquitectura de carga diferida (dynamic imports), caché instantáneo SWR e índices nativos IndexedDB para emisión ultrarrápida de boletos (v3.61.63 - v3.61.66).
+       * **Auditoría Financiera:** Conciliación estricta de `DailyRecord` contra `VentaBoleto` y comprobantes neutros para ayudante (v3.61.61 - v3.61.62).
+  2. **Garantía y Blindaje de Aislamiento de Staging:**
+     - `src/lib/db.ts` evalúa prioritariamente `STAGING_POSTGRES_URL` / `STAGING_PRISMA_DATABASE_URL`, garantizando que todas las pruebas en Staging impacten de forma hermética en `rutago-staging-db`.
+     - `src/components/common/EnvironmentBanner.tsx` despliega el banner superior ámbar `[ 🧪 SIMULADOR ] MODO ENTRENAMIENTO` en los dominios de prueba (`test-rutago.vercel.app` / `-git-staging`).
+  3. **Certificación y Pruebas Automatizadas:**
+     - Ejecución de la suite completa de pruebas: **248 pruebas aprobadas (0 fallas en 35 suites, 1405 assertions en verde)**.
+  4. **Despliegue Continuo a Vercel:**
+     - Publicación exitosa en `origin/staging` disparando el Preview Deployment automático en Vercel sin tocar Producción.
+
+
+
+
+
+---
+
+### 🏛️ 21. Formato Ultracompacto de Devolución/Vuelto en Impresión Térmica ESC/POS (58mm) y Banner de Ruta (v3.61.75)
+* **Fecha de Implementación:** 2026-11-07
+* **Estado:** 🟢 **APLICADO, CERTIFICADO Y COMPILADO AL 100% (249 TESTS PASS EN 35 SUITES)**
+* **Diagnóstico y Requerimiento del Usuario:**
+  - En la venta de boletos con billetes de alta denominación ($5, $10, $20) cuando se cobran 2, 3 o 4 pasajeros en la misma transacción, el bloque de devolución impreso en el boleto térmico omitía qué pasaje o cuántos boletos se habían pagado, dificultando al ayudante identificar el viaje exacto al momento de devolver el dinero al pasajero.
+  - El usuario especificó un requerimiento clave de eficiencia operativa: *"LOS DATOS DE LA DEVOLUCIÓN DEBEN SER LO NECESARIO, ES DECIR LO MÍNIMO POR EL TIEMPO DE VELOCIDAD DE IMPRESIÓN"*.
+* **Solución de Ingeniería Aplicada:**
+  1. **Bloque Ultracompacto de 3 Líneas de Alta Velocidad (`src/lib/ticket-escpos.ts`):**
+     - Se rediseñó el bloque `PENDIENTE DEVOLUCION` para impresoras térmicas de 58mm en exactamente 3 líneas de avance rápido sin ralentizar la emisión en ruta:
+       ```text
+       --------------------------------
+             PENDIENTE DEVOLUCION
+          3x Malacatos ($3.75) • Billete: $10
+                     VUELTO: $6.25
+       --------------------------------
+       ```
+     - Línea 1: Encabezado bold estándar `PENDIENTE DEVOLUCION`.
+     - Línea 2: Desglose compacto en un solo renglón con cantidad, destino, total cobrado y denominación del billete recibido (ej. `3x Vilcabamba ($3.75) • Billete: $10` o `1x Vilcabamba ($1.25) • Billete: $20`).
+     - Línea 3: Cifra destacada en doble altura `VUELTO: $X.XX` para lectura inmediata.
+  2. **Banner Reactivo en Pantalla del Ayudante (`src/components/transport/TicketScreen.tsx`):**
+     - Se extendió el estado `lastSale` incorporando los campos opcionales `vuelto?: number` y `billete?: number`.
+     - El banner superior de confirmación tras la venta exhibe de inmediato una pastilla destacada ámbar con el vuelto exacto a entregar:
+       `✓ Malacatos x3 — $3.75 (ENTERO)   [ VUELTO: $6.25 ]`
+     - Elimina dudas del ayudante durante la atención rápida en puerta o pasillo.
+  3. **Certificación y Pruebas Automatizadas (`tests/vuelto-pendiente-ticket.test.ts`):**
+     - Actualizadas y añadidas pruebas unitarias certificando:
+       * Emisión normal sin selección de billete (sin bloque de devolución).
+       * Emisión individual de 1 boleto con vuelto de $18.75 (billete $20).
+       * Emisión grupal de 2 pasajeros con vuelto de $7.50 (billete $10).
+       * Emisión grupal de 3 pasajeros con vuelto de $6.25 (billete $10).
+       * Manejo de cortesía en viajes gratis ganadores (ignora vuelto).
+     - **Resultado Global:** **249 pruebas aprobadas al 100% (0 fallas en 35 suites, 1409 assertions en verde)**.
