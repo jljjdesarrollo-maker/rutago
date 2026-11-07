@@ -127,6 +127,13 @@
    - Suite de 6 pruebas unitarias específicas en `tests/ayudante-bus-isolation.test.ts` (71/71 tests aprobados al 100%).
    - Commit: `feat(ayudante): v3.61.35 - blindaje y aislamiento multi-tenant del ayudante por unidad fisica`
 
+23. **v3.61.78 (Margen de Corte y Fragmentación BLE Universal para Toda la Flota):** ✅ COMPLETADA
+   - Alcance Universal Global: Aplica a toda la flota de autobuses independientemente del `busId` o unidad física.
+   - Solución definitiva al corte de boletos con cambio / devolución: erradicación del truncamiento de búfer BLE reduciendo `CHUNK_SIZE = 96` con pausas de 30 ms en `src/lib/printer.ts`.
+   - Calibración de 8 avances `NEWLINE` en `src/lib/ticket-escpos.ts` y drenaje mecánico de 600 ms antes de desconexión GATT.
+   - Validación física en campo 100% aprobada y confirmada con éxito por el usuario en impresora térmica de 58 mm.
+   - Commit: `fix(printer): v3.61.78 - fragmentacion BLE a 96 bytes y drenaje de 600ms para margen de corte en tickets con vuelto`
+
 ---
 
 ### 🏛️ REGLAS DE ARQUITECTURA OFICIAL IMPLEMENTADAS:

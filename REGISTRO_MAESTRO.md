@@ -6573,8 +6573,10 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
 
 ### 🏛️ 24. Erradicación del Truncamiento Térmico BLE: Fragmentación a 96 Bytes y Drenaje Mecánico (v3.61.78)
 * **Fecha de Implementación:** 2026-11-07
-* **Estado:** 🟢 **APLICADO, CERTIFICADO Y COMPILADO AL 100% (251/251 TESTS EN VERDE)**
-* **Diagnóstico de Causa Raíz Físca:**
+* **Estado:** 🟢 **APROBADO EN CAMPO, TOTALMENTE FUNCIONAL Y VERIFICADO AL 100% (251/251 TESTS EN VERDE)**
+* **Alcance Arquitectónico:** **UNIVERSAL Y GLOBAL (TODA LA FLOTA DE AUTOBUSES)**.
+  - Este cambio opera en el motor de bajo nivel de comunicación térmica ESC/POS (`src/lib/ticket-escpos.ts`) y la capa Bluetooth LE (`src/lib/printer.ts`), por lo cual **aplica de manera idéntica y universal para todos y cada uno de los autobuses de la cooperativa** (Bus 01, Bus 02, Bus 08, Bus 10, Bus 15, Bus 19, etc.), sin depender de ningún `busId` específico ni requerir configuraciones adicionales por unidad.
+* **Diagnóstico de Causa Raíz Física:**
   - Los boletos normales de ~210 bytes imprimían correctamente y dejaban el margen de corte manual porque cabían dentro del búfer MTU por defecto de los chips Bluetooth de las impresoras térmicas (habitualmente 256 bytes).
   - Al emitirse boletos con devolución de cambio (y más aún con 2 o 3 pasajeros juntos), el tamaño del payload aumentaba a ~380-450 bytes.
   - Al estar configurado `MAX_CHUNK = 512` en `src/lib/printer.ts`, la función `sendBytes` intentaba despachar todos los 380-450 bytes en una sola llamada de `writeValueWithoutResponse`. El stack Bluetooth LE de Android o el microcontrolador de la impresora truncaba silenciosamente los bytes que superaban los 256 bytes.
@@ -6587,6 +6589,10 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
      - Se incrementó el tiempo de espera a 600 ms antes de invocar `gatt.disconnect()`, garantizando que el motor de arrastre físico termine de expulsar el papel antes de apagar el enlace de radio Bluetooth.
   3. **Certificación y Pruebas Unitarias:**
      - 251 pruebas automáticas aprobadas en 35 suites (1432 assertions en verde).
-  4. **Sincronización:**
+  4. **Validación y Aprobación en Operación Real:**
+     - Confirmado por el usuario en pruebas físicas en ruta: los boletos con devolución de dinero salen con el margen adecuado, permitiendo arrancar el papel limpiamente sin dañar la última línea escrita.
+  5. **Sincronización:**
      - Actualizado `package.json` y `HomeScreenVT.tsx` a `v3.61.78`.
+     - Confirmado commit `03e9c67` y sincronizado en rama `main` de GitHub.
+
 
