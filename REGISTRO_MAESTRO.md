@@ -6568,3 +6568,25 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
      - **Resultado:** **7 de 7 pruebas unitarias aprobadas al 100% (42 assertions en verde)**.
   4. **Sincronización:**
      - Actualizado `package.json` y `HomeScreenVT.tsx` a `v3.61.77`.
+
+---
+
+### 🏛️ 24. Erradicación del Truncamiento Térmico BLE: Fragmentación a 96 Bytes y Drenaje Mecánico (v3.61.78)
+* **Fecha de Implementación:** 2026-11-07
+* **Estado:** 🟢 **APLICADO, CERTIFICADO Y COMPILADO AL 100% (251/251 TESTS EN VERDE)**
+* **Diagnóstico de Causa Raíz Físca:**
+  - Los boletos normales de ~210 bytes imprimían correctamente y dejaban el margen de corte manual porque cabían dentro del búfer MTU por defecto de los chips Bluetooth de las impresoras térmicas (habitualmente 256 bytes).
+  - Al emitirse boletos con devolución de cambio (y más aún con 2 o 3 pasajeros juntos), el tamaño del payload aumentaba a ~380-450 bytes.
+  - Al estar configurado `MAX_CHUNK = 512` en `src/lib/printer.ts`, la función `sendBytes` intentaba despachar todos los 380-450 bytes en una sola llamada de `writeValueWithoutResponse`. El stack Bluetooth LE de Android o el microcontrolador de la impresora truncaba silenciosamente los bytes que superaban los 256 bytes.
+  - Dado que los 8 avances `NEWLINE` y el comando de corte `CUT` están ubicados al final del paquete, eran precisamente estas líneas en blanco las que se descartaban, provocando que la impresora se detuviera inmediatamente tras la última palabra y la cuchilla manual cortara el texto impreso.
+* **Solución de Ingeniería Aplicada:**
+  1. **Fragmentación Fina de Paquetes BLE (`CHUNK_SIZE = 96`):**
+     - En `src/lib/printer.ts`, se eliminó el bypass de paquetes únicos y se forzó una fragmentación uniforme en bloques de 96 bytes.
+     - Cada bloque se aísla mediante `bytes.slice()` (evitando problemas de `byteOffset` en Chromium móvil) y se intercala una pausa de 30 ms para que el microcontrolador térmico procese el búfer sin saturación.
+  2. **Drenaje Mecánico Extendido (600 ms):**
+     - Se incrementó el tiempo de espera a 600 ms antes de invocar `gatt.disconnect()`, garantizando que el motor de arrastre físico termine de expulsar el papel antes de apagar el enlace de radio Bluetooth.
+  3. **Certificación y Pruebas Unitarias:**
+     - 251 pruebas automáticas aprobadas en 35 suites (1432 assertions en verde).
+  4. **Sincronización:**
+     - Actualizado `package.json` y `HomeScreenVT.tsx` a `v3.61.78`.
+

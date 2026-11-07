@@ -167,32 +167,26 @@ async function findPrintCharacteristic(gatt: BluetoothRemoteGATTServer): Promise
 }
 
 // Send raw bytes to printer
-async function sendBytes(characteristic: BluetoothRemoteGATTCharacteristic, data: ArrayBuffer): Promise<boolean> {
+async function sendBytes(characteristic: BluetoothRemoteGATTCharacteristic, data: Uint8Array | ArrayBuffer): Promise<boolean> {
   try {
-    // Split into chunks if needed (BLE max is ~512 bytes, SPP can handle more)
-    const MAX_CHUNK = 512;
-    const bytes = new Uint8Array(data);
+    // Bluetooth LE thermal printers have limited buffer size (128-256 bytes) and MTU (often <= 128 bytes on Android).
+    // Using CHUNK_SIZE = 96 with 30ms delay guarantees NO truncation of ticket tails (trailing blank lines and cutter margin).
+    const CHUNK_SIZE = 96;
+    const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
 
-    if (bytes.length <= MAX_CHUNK) {
+    for (let offset = 0; offset < bytes.length; offset += CHUNK_SIZE) {
+      // Use .slice() to ensure a fresh ArrayBuffer with byteOffset 0 for Android Chrome compatibility
+      const chunkCopy = bytes.slice(offset, Math.min(offset + CHUNK_SIZE, bytes.length));
+      const chunkBuffer = chunkCopy.buffer as ArrayBuffer;
+
       if (characteristic.properties.writeWithoutResponse) {
-        await characteristic.writeValueWithoutResponse(data);
+        await characteristic.writeValueWithoutResponse(chunkBuffer);
       } else {
-        await characteristic.writeValue(data);
+        await characteristic.writeValue(chunkBuffer);
       }
-    } else {
-      // Send in chunks
-      for (let offset = 0; offset < bytes.length; offset += MAX_CHUNK) {
-        const chunk = bytes.slice(offset, offset + MAX_CHUNK);
-        const chunkBuffer = chunk.buffer as ArrayBuffer;
-        if (characteristic.properties.writeWithoutResponse) {
-          await characteristic.writeValueWithoutResponse(chunkBuffer);
-        } else {
-          await characteristic.writeValue(chunkBuffer);
-        }
-        // Small delay between chunks to prevent buffer overflow
-        if (offset + MAX_CHUNK < bytes.length) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
+      // Delay between chunks to allow the printer's microcontroller and thermal motor to process
+      if (offset + CHUNK_SIZE < bytes.length) {
+        await new Promise(resolve => setTimeout(resolve, 30));
       }
     }
     return true;
@@ -229,9 +223,9 @@ export async function printTicket(device: BluetoothDevice, commands: Uint8Array)
       return false;
     }
 
-    const success = await sendBytes(char, commands.buffer);
-    // Buffer de drenaje térmico: esperar a que la impresora procese el buffer completo de avances antes de cerrar el enlace GATT
-    await new Promise(resolve => setTimeout(resolve, 400));
+    const success = await sendBytes(char, commands);
+    // Buffer de drenaje térmico: esperar a que la impresora procese el buffer completo de avances mecánicos antes de cerrar el enlace GATT
+    await new Promise(resolve => setTimeout(resolve, 600));
     await gatt.disconnect();
     return success;
   } catch (e) {
