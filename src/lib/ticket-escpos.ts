@@ -125,9 +125,7 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
       push(NEWLINE);
     }
 
-    // Margin before cut (5 lines para arrancar papel comodamente)
-    push(NEWLINE);
-    push(NEWLINE);
+    // Margin before cut (3 lines para arrancar papel)
     push(NEWLINE);
     push(NEWLINE);
     push(NEWLINE);
@@ -224,12 +222,15 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
       push(NEWLINE);
     }
 
-    // Margin before cut (5 lines para arrancar papel comodamente sin cortar el texto)
-    push(NEWLINE);
-    push(NEWLINE);
-    push(NEWLINE);
-    push(NEWLINE);
-    push(NEWLINE);
+    // Margin before cut:
+    // Para boletos cuando hay devoluciones de vuelto: se dejan dos líneas en blanco después
+    // de la última palabra escrita (5 avances NEWLINE en total) para facilitar el corte manual del boleto.
+    // Para boletos normales (sin devolución): avance estándar compacto de 3 líneas para evitar desperdicio de papel.
+    const hayVuelto = Boolean(t.vueltoPendiente && t.vueltoPendiente > 0);
+    const lineasAvance = hayVuelto ? 5 : 3;
+    for (let i = 0; i < lineasAvance; i++) {
+      push(NEWLINE);
+    }
     push(CUT);
   }
 

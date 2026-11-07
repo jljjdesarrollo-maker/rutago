@@ -6505,3 +6505,42 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
        * Emisión grupal de 3 pasajeros con vuelto de $6.25 (billete $10).
        * Manejo de cortesía en viajes gratis ganadores (ignora vuelto).
      - **Resultado Global:** **249 pruebas aprobadas al 100% (0 fallas en 35 suites, 1409 assertions en verde)**.
+
+---
+
+### 🏛️ 22. Calibración Ergonómica de Corte Manual: 2 Líneas en Blanco para Boletos con Devolución de Vuelto (v3.61.76)
+* **Fecha de Implementación:** 2026-11-07
+* **Estado:** 🟢 **APLICADO, CERTIFICADO Y COMPILADO AL 100% (7/7 TESTS EN VUELTO-PENDIENTE)**
+* **Diagnóstico y Requerimiento del Usuario:**
+  - En la sesión anterior, ante la necesidad de facilitar el corte manual del papel térmico en los boletos impresos, se había intentado un avance global indiscriminado en toda la flota (commit `992e353`).
+  - El usuario aclaró y precisó el requerimiento operativo exacto:
+    * *"REFERENTE A LOS TIKET QUE TIENEN DEVOLUCION"*
+    * *"Necesito que revises los boletos cuando hay devoluciones de vueltos y en estos hay que dejarle dos líneas en blanco después de la última palabra que escribe para dar la facilidad de poder cortar el boleto fácilmente."*
+  - En los boletos normales y de cortesía (viaje gratis), el exceso de avance provocaba desperdicio de papel y restaba velocidad a la atención en ruta.
+  - En los boletos que contienen bloque de `PENDIENTE DEVOLUCION`, al ser arrancados contra la barra dentada manual de las impresoras térmicas de 58mm (distancia cabezal-cuchilla de ~3 líneas), se requería un avance calibrado para que el ticket cortado conserve exactamente 2 líneas en blanco visibles tras la última palabra escrita (publicidad o promo), permitiendo al ayudante sujetar y cortar el boleto con rapidez sin rozar ni dañar el texto.
+* **Solución de Ingeniería Aplicada:**
+  1. **Avance Dinámico Condicional antes del Comando `CUT` (`src/lib/ticket-escpos.ts`):**
+     - Se desacopló el margen de corte separando boletos estándar de boletos con vuelto:
+       ```typescript
+       // Margin before cut:
+       // Para boletos cuando hay devoluciones de vuelto: se dejan dos líneas en blanco después
+       // de la última palabra escrita (5 avances NEWLINE en total) para facilitar el corte manual del boleto.
+       // Para boletos normales (sin devolución): avance estándar compacto de 3 líneas para evitar desperdicio de papel.
+       const hayVuelto = Boolean(t.vueltoPendiente && t.vueltoPendiente > 0);
+       const lineasAvance = hayVuelto ? 5 : 3;
+       for (let i = 0; i < lineasAvance; i++) {
+         push(NEWLINE);
+       }
+       push(CUT);
+       ```
+     - Boletos normales (sin vuelto): restaurados al avance compacto estándar de 3 líneas (0 desperdicio de papel, ~2 seg de impresión).
+     - Boletos de viaje gratis: avance compacto estándar de 3 líneas.
+     - Boletos con vuelto pendiente (`vueltoPendiente > 0`): 5 avances `NEWLINE` (3 para superar el espacio cabezal-cuchilla + 2 líneas en blanco visibles en el ticket físico) que garantizan un corte manual limpio y cómodo a una sola mano.
+  2. **Sincronización de Versión Oficial:**
+     - Actualizado `package.json` a `v3.61.76`.
+     - Actualizado `APP_VERSION` en `src/components/transport/HomeScreenVT.tsx` a `v3.61.76`.
+  3. **Certificación y Pruebas Automatizadas (`tests/vuelto-pendiente-ticket.test.ts`):**
+     - Añadidas 2 nuevas pruebas unitarias específicas:
+       * *Prueba 6:* Valida que boletos normales tengan exactamente 3 avances `0x0A` antes de `CUT`.
+       * *Prueba 7:* Valida que boletos con devolución tengan exactamente 5 avances `0x0A` (3 estándar + 2 líneas en blanco) tras la última palabra impresa.
+     - **Resultado:** **7 de 7 pruebas unitarias aprobadas al 100% en verde**.
