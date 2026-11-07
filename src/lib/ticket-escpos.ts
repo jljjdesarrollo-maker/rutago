@@ -125,7 +125,9 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
       push(NEWLINE);
     }
 
-    // Margin before cut (3 lines para arrancar papel)
+    // Margin before cut (5 lines para arrancar papel comodamente)
+    push(NEWLINE);
+    push(NEWLINE);
     push(NEWLINE);
     push(NEWLINE);
     push(NEWLINE);
@@ -222,7 +224,9 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
       push(NEWLINE);
     }
 
-    // Margin before cut (3 lines para arrancar papel)
+    // Margin before cut (5 lines para arrancar papel comodamente sin cortar el texto)
+    push(NEWLINE);
+    push(NEWLINE);
     push(NEWLINE);
     push(NEWLINE);
     push(NEWLINE);
