@@ -6442,3 +6442,29 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
      - **Resultado Global:** **248 pruebas aprobadas (0 fallas en 35 suites, 1405 assertions en verde)**.
 
 
+
+---
+
+### 🏛️ 20. Sincronización Integral y Nivelación de la Rama de Pruebas (Staging) con Producción (v3.61.74)
+* **Fecha de Implementación:** 2026-11-07
+* **Estado:** 🟢 **APLICADO, CERTIFICADO Y COMPILADO AL 100% (248 TESTS PASS EN 35 SUITES)**
+* **Motivación y Requerimiento de Negocio:**
+  - Nivelar la versión de pruebas (`staging`), la cual se encontraba 20 commits por detrás de `main` (rezagada en `v3.61.60`).
+  - Absorber todas las actualizaciones operativas, forenses y visuales desplegadas en producción sin tocar ni alterar la rama `main` ni la base de datos de producción (`DATABASE_URL`).
+* **Solución de Ingeniería Aplicada:**
+  1. **Integración Completa de Código en la Rama `staging`:**
+     - Se realizó un avance limpio de `origin/staging` integrando los 20 commits de `main` hasta `v3.61.74` (commit `fe53b11`).
+     - Incorporados todos los módulos clave:
+       * **Mantenimiento y Frenos:** Desdoblamiento canónico en 4 ítems de zapatas (izq/der) y lista vertical de 1 columna sin truncamiento de nombres en `ChoferMantenimientoWidget.tsx` (v3.61.73 - v3.61.74).
+       * **Historial Técnico del Conductor:** Reconciliación de arreglos extraordinarios de fosa y ruta con mano de obra propia $0.00 (v3.61.72).
+       * **Odometría y Calibración:** Saneamiento oficial de odómetros Unidad 01 a 907,085 km y jerarquía auditada socio/ayudante (v3.61.68 - v3.61.70).
+       * **Promociones:** Sincronización en la nube de "Viaje Gratis" por unidad física (v3.61.67).
+       * **Rendimiento de Aplicación:** Arquitectura de carga diferida (dynamic imports), caché instantáneo SWR e índices nativos IndexedDB para emisión ultrarrápida de boletos (v3.61.63 - v3.61.66).
+       * **Auditoría Financiera:** Conciliación estricta de `DailyRecord` contra `VentaBoleto` y comprobantes neutros para ayudante (v3.61.61 - v3.61.62).
+  2. **Garantía y Blindaje de Aislamiento de Staging:**
+     - `src/lib/db.ts` evalúa prioritariamente `STAGING_POSTGRES_URL` / `STAGING_PRISMA_DATABASE_URL`, garantizando que todas las pruebas en Staging impacten de forma hermética en `rutago-staging-db`.
+     - `src/components/common/EnvironmentBanner.tsx` despliega el banner superior ámbar `[ 🧪 SIMULADOR ] MODO ENTRENAMIENTO` en los dominios de prueba (`test-rutago.vercel.app` / `-git-staging`).
+  3. **Certificación y Pruebas Automatizadas:**
+     - Ejecución de la suite completa de pruebas: **248 pruebas aprobadas (0 fallas en 35 suites, 1405 assertions en verde)**.
+  4. **Despliegue Continuo a Vercel:**
+     - Publicación exitosa en `origin/staging` disparando el Preview Deployment automático en Vercel.
