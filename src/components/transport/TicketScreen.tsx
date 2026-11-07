@@ -43,7 +43,14 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
   const [pasajeroTipo, setPasajeroTipo] = useState<TipoPasajero>('normal');
   const montoInputRef = useRef<HTMLInputElement>(null);
   const submitLockRef = useRef(false); // Anti double-tap + double viaje gratis
-  const [lastSale, setLastSale] = useState<{ parada: string; monto: number; tipo: string; cantidad?: number } | null>(null);
+  const [lastSale, setLastSale] = useState<{
+    parada: string;
+    monto: number;
+    tipo: string;
+    cantidad?: number;
+    vuelto?: number;
+    billete?: number;
+  } | null>(null);
   const [ventasHoy, setVentasHoy] = useState(0);
   const [totalHoy, setTotalHoy] = useState(0);
   const [esViajeGratis, setEsViajeGratis] = useState(false);
@@ -282,7 +289,14 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
       setLastSale({ parada: parada.trim(), monto: 0, tipo: 'VIAJE GRATIS!' });
       setTimeout(() => setEsViajeGratis(false), 3000);
     } else {
-      setLastSale({ parada: parada.trim(), monto: cobradoNum * cantidadEfectiva, tipo: pasajeroTipo === 'normal' ? 'ENTERO' : 'MEDIA', cantidad: cantidadEfectiva });
+      setLastSale({
+        parada: parada.trim(),
+        monto: cobradoNum * cantidadEfectiva,
+        tipo: pasajeroTipo === 'normal' ? 'ENTERO' : 'MEDIA',
+        cantidad: cantidadEfectiva,
+        vuelto: vueltoPendienteEfectivo,
+        billete: billeteRecibidoEfectivo,
+      });
     }
     // Fase 4: Actualización optimista instantánea (0 ms) de cabecera y contador de frecuencia
     const montoCobradoEfectivo = esGanador ? 0 : cobradoNum * cantidadEfectiva;
@@ -455,11 +469,18 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
       <div className="flex-1 overflow-y-auto px-2 py-2">
         {/* Flash de confirmación normal */}
         {lastSale && lastSale.tipo !== 'VIAJE GRATIS!' && (
-          <div className="bg-green-500 text-white rounded-xl px-3 py-2 flex items-center gap-2 mb-2 animate-pulse">
-            <Check className="w-4 h-4 flex-shrink-0" />
-            <div className="text-xs font-bold">
-              ✓ {lastSale.parada}{lastSale.cantidad && lastSale.cantidad > 1 ? ` x${lastSale.cantidad}` : ''} — ${lastSale.monto.toFixed(2)} ({lastSale.tipo})
+          <div className="bg-green-500 text-white rounded-xl px-3 py-2 flex items-center justify-between gap-2 mb-2 animate-pulse">
+            <div className="flex items-center gap-2 min-w-0">
+              <Check className="w-4 h-4 flex-shrink-0" />
+              <div className="text-xs font-bold truncate">
+                ✓ {lastSale.parada}{lastSale.cantidad && lastSale.cantidad > 1 ? ` x${lastSale.cantidad}` : ''} — ${lastSale.monto.toFixed(2)} ({lastSale.tipo})
+              </div>
             </div>
+            {lastSale.vuelto !== undefined && lastSale.vuelto > 0 && (
+              <div className="bg-amber-400 text-amber-950 px-2 py-0.5 rounded text-[11px] font-black tracking-tight whitespace-nowrap shadow-sm">
+                VUELTO: ${lastSale.vuelto.toFixed(2)}
+              </div>
+            )}
           </div>
         )}
 

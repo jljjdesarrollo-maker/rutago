@@ -177,21 +177,19 @@ export function generateTicketBytes(t: TicketData): Uint8Array {
     push(BOLD_OFF);
     push(NEWLINE);
 
-    // Bloque condicional de Vuelto Pendiente (solo si fue seleccionado por el ayudante)
+    // Bloque condicional de Vuelto Pendiente ultracompacto (3 líneas de alta velocidad para 58mm)
     if (t.vueltoPendiente && t.vueltoPendiente > 0) {
       push(NEWLINE);
       push("--------------------------------");
       push(NEWLINE);
       push(BOLD_ON);
-      push(DBL_H);
       push(center("PENDIENTE DEVOLUCION"));
-      push(NORM);
       push(BOLD_OFF);
       push(NEWLINE);
-      if (t.billeteRecibido && t.billeteRecibido > 0) {
-        push(center("Billete: $" + t.billeteRecibido.toFixed(2)));
-        push(NEWLINE);
-      }
+      const cantStr = t.cantidad && t.cantidad > 1 ? `${t.cantidad}x ` : '1x ';
+      const billeteStr = t.billeteRecibido && t.billeteRecibido > 0 ? ` • Billete: $${t.billeteRecibido % 1 === 0 ? t.billeteRecibido.toFixed(0) : t.billeteRecibido.toFixed(2)}` : '';
+      push(center(`${cantStr}${t.destino} ($${totalStr})${billeteStr}`));
+      push(NEWLINE);
       push(BOLD_ON);
       push(DBL_H);
       push(center("VUELTO: $" + t.vueltoPendiente.toFixed(2)));

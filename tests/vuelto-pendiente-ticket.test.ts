@@ -30,7 +30,7 @@ describe("💵 VUELTO PENDIENTE EN EMISIÓN DE BOLETOS E IMPRESIÓN TÉRMICA 58M
     expect(text).not.toContain("VUELTO:");
   });
 
-  test("2. Boleto CON billete de $20 seleccionado (pasaje $1.25): imprime PENDIENTE DEVOLUCION, Billete: $20.00 y VUELTO: $18.75", () => {
+  test("2. Boleto CON billete de $20 seleccionado (pasaje $1.25): imprime PENDIENTE DEVOLUCION ultracompacto con 1x Vilcabamba ($1.25) • Billete: $20 y VUELTO: $18.75", () => {
     const bytes = generateTicketBytes({
       ...baseTicket,
       billeteRecibido: 20,
@@ -39,11 +39,11 @@ describe("💵 VUELTO PENDIENTE EN EMISIÓN DE BOLETOS E IMPRESIÓN TÉRMICA 58M
     const text = decodeTicket(bytes);
     expect(text).toContain("$1.25");
     expect(text).toContain("PENDIENTE DEVOLUCION");
-    expect(text).toContain("Billete: $20.00");
+    expect(text).toContain("1x Vilcabamba ($1.25) • Billete: $20");
     expect(text).toContain("VUELTO: $18.75");
   });
 
-  test("3. Boleto CON billete de $10 seleccionado para 2 pasajeros (2 x $1.25 = $2.50): imprime VUELTO: $7.50", () => {
+  test("3. Boleto CON billete de $10 seleccionado para 2 pasajeros (2 x $1.25 = $2.50): imprime 2x Vilcabamba ($2.50) • Billete: $10 y VUELTO: $7.50", () => {
     const bytes = generateTicketBytes({
       ...baseTicket,
       cantidad: 2,
@@ -53,11 +53,25 @@ describe("💵 VUELTO PENDIENTE EN EMISIÓN DE BOLETOS E IMPRESIÓN TÉRMICA 58M
     const text = decodeTicket(bytes);
     expect(text).toContain("$2.50");
     expect(text).toContain("PENDIENTE DEVOLUCION");
-    expect(text).toContain("Billete: $10.00");
+    expect(text).toContain("2x Vilcabamba ($2.50) • Billete: $10");
     expect(text).toContain("VUELTO: $7.50");
   });
 
-  test("4. Boleto ganador de VIAJE GRATIS ignora vuelto pendiente y mantiene formato de cortesía", () => {
+  test("4. Boleto CON billete de $10 para 3 pasajeros (3 x $1.25 = $3.75): imprime 3x Vilcabamba ($3.75) • Billete: $10 y VUELTO: $6.25", () => {
+    const bytes = generateTicketBytes({
+      ...baseTicket,
+      cantidad: 3,
+      billeteRecibido: 10,
+      vueltoPendiente: 6.25,
+    });
+    const text = decodeTicket(bytes);
+    expect(text).toContain("$3.75");
+    expect(text).toContain("PENDIENTE DEVOLUCION");
+    expect(text).toContain("3x Vilcabamba ($3.75) • Billete: $10");
+    expect(text).toContain("VUELTO: $6.25");
+  });
+
+  test("5. Boleto ganador de VIAJE GRATIS ignora vuelto pendiente y mantiene formato de cortesía", () => {
     const bytes = generateTicketBytes({
       ...baseTicket,
       esViajeGratis: true,
