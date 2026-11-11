@@ -26,6 +26,8 @@ import {
   Filter,
   Droplets,
   FileText,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -42,9 +44,11 @@ import {
   getParadasPagoByBus,
   calcularDesgasteRegularizacion,
   filtrarParadasPagoOffline,
+  calcularDurabilidadRepuesto,
   type ParadaPagoRegistro,
   type ParadaPagador,
   type SocioModalidadPago,
+  type PiezaRepuestoItem,
 } from '@/lib/paradas-vt-storage';
 import { type MantenimientoBusItem } from '@/lib/mantenimiento-catalogo';
 import { 
@@ -288,7 +292,7 @@ export function ChoferMantenimientoWidget({
     return getMantenimientoOutbox().length;
   });
 
-  // Modal para Novedad / Arreglo Rápido Fuera de Catálogo (v3.60.12)
+  // Modal para Novedad / Arreglo Rápido Fuera de Catálogo (v3.60.12 / v3.61.79)
   const [isArregloModalOpen, setIsArregloModalOpen] = useState<boolean>(false);
   const [arregloDescripcion, setArregloDescripcion] = useState<string>('');
   const [arregloKm, setArregloKm] = useState<string>('');
@@ -300,6 +304,64 @@ export function ChoferMantenimientoWidget({
   const [arregloSocioModalidad, setArregloSocioModalidad] = useState<SocioModalidadPago>('TRANSFERENCIA_TOTAL');
   const [arregloSocioAbono, setArregloSocioAbono] = useState<string>('');
   const [arregloIsSaving, setArregloIsSaving] = useState<boolean>(false);
+  // Campos Técnicos de Mantenimiento y Repuestos (v3.61.79)
+  const [arregloImpresiones, setArregloImpresiones] = useState<string>('');
+  const [arregloPiezas, setArregloPiezas] = useState<PiezaRepuestoItem[]>([]);
+  const [arregloManoObra, setArregloManoObra] = useState<string>('');
+  const [arregloAyudanteKmRef, setArregloAyudanteKmRef] = useState<{ date: string; kmFinal: string; esExacto?: boolean } | null>(null);
+
+  // Sincronización oficial del odómetro del ayudante para Arreglo en Ruta (v3.61.79)
+  useEffect(() => {
+    if (!isArregloModalOpen || !arregloFecha) {
+      setArregloAyudanteKmRef(null);
+      return;
+    }
+    let cancelled = false;
+    getBusOdometerForDate(disco, arregloFecha).then((res) => {
+      if (!cancelled && res && res.kmFinal) {
+        setArregloAyudanteKmRef({ date: res.date, kmFinal: String(res.kmFinal), esExacto: res.esExacto });
+        const parsed = parseInt(String(res.kmFinal), 10);
+        if (!isNaN(parsed) && parsed > 0) {
+          setArregloKm((prev) => (!prev || prev === '0' || prev === kmActual.toString() ? parsed.toString() : prev));
+        }
+      } else if (!cancelled) {
+        setArregloAyudanteKmRef(null);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [isArregloModalOpen, arregloFecha, disco, kmActual]);
+
+  // Cálculo automático de durabilidad del repuesto/trabajo (v3.61.79)
+  const arregloDurabilidadInfo = useMemo(() => {
+    const kmNum = parseInt(arregloKm || '', 10) || kmActual;
+    if (!kmNum || kmNum <= 0) return null;
+    const textoEval = (
+      (arregloDescripcion || '') + ' ' +
+      arregloPiezas.map((p) => p.descripcion + ' ' + (p.marca || '')).join(' ')
+    ).trim();
+    if (!textoEval) return null;
+    return calcularDurabilidadRepuesto(activeBusId, textoEval, kmNum, arregloFecha);
+  }, [activeBusId, arregloDescripcion, arregloPiezas, arregloKm, kmActual, arregloFecha]);
+
+  const handleAddPiezaArreglo = () => {
+    const nueva: PiezaRepuestoItem = {
+      id: `pz-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      descripcion: '',
+      esOriginal: true,
+      marca: '',
+    };
+    setArregloPiezas((prev) => [...prev, nueva]);
+  };
+
+  const handleUpdatePiezaArreglo = (id: string, updates: Partial<PiezaRepuestoItem>) => {
+    setArregloPiezas((prev) =>
+      prev.map((pz) => (pz.id === id ? { ...pz, ...updates } : pz))
+    );
+  };
+
+  const handleRemovePiezaArreglo = (id: string) => {
+    setArregloPiezas((prev) => prev.filter((pz) => pz.id !== id));
+  };
 
   // Suscripción reactiva al cambio de unidad física y al odómetro auditado (Arqueo de Llegada)
   useEffect(() => {
@@ -1658,6 +1720,9 @@ export function ChoferMantenimientoWidget({
         itemsRealizados: [descTrim],
         codigosMantenimiento: [],
         ownerExpenseId: expenseId,
+        impresionesGenerales: arregloImpresiones.trim() || undefined,
+        piezasRepuesto: arregloPiezas.filter((p) => p.descripcion.trim().length > 0),
+        costoManoObra: parseFloat(arregloManoObra || '0') || undefined,
         createdAt: new Date().toISOString(),
       });
 
@@ -1692,6 +1757,12 @@ export function ChoferMantenimientoWidget({
         abonos: abonosList,
         origenPago: costoNum === 0 ? 'CHOFER' : (arregloPagador === 'AYUDANTE' ? 'AYUDANTE_RUTA' : 'SOCIO_DIRECTO'),
         descontadoEnRuta: arregloPagador === 'AYUDANTE',
+        impresionesGenerales: arregloImpresiones.trim() || undefined,
+        piezasRepuesto: arregloPiezas.filter((p) => p.descripcion.trim().length > 0),
+        costoManoObra: parseFloat(arregloManoObra || '0') || undefined,
+        duracionKmAnterior: arregloDurabilidadInfo?.duracionKm,
+        diasDesdeAnterior: arregloDurabilidadInfo?.dias,
+        alertaGarantia: arregloDurabilidadInfo?.alertaGarantia,
         createdAt: new Date().toISOString(),
       });
 
@@ -1709,6 +1780,9 @@ export function ChoferMantenimientoWidget({
       setArregloTaller('');
       setArregloFactura('');
       setArregloCosto('');
+      setArregloImpresiones('');
+      setArregloPiezas([]);
+      setArregloManoObra('');
     } catch (err) {
       console.error('Error guardando arreglo rápido:', err);
       toast({
@@ -1947,6 +2021,9 @@ export function ChoferMantenimientoWidget({
               setArregloSocioModalidad('TRANSFERENCIA_TOTAL');
               setArregloSocioAbono('');
               setArregloFecha(new Date().toISOString().split('T')[0]);
+              setArregloImpresiones('');
+              setArregloPiezas([]);
+              setArregloManoObra('');
               setIsArregloModalOpen(true);
             }}
             className="cursor-pointer bg-[#053225] hover:bg-[#073b2d] active:scale-[0.98] text-white rounded-3xl p-4 sm:p-5 text-left transition shadow-md flex flex-col justify-between min-h-[115px] border border-emerald-900/60 select-none"
@@ -4269,9 +4346,33 @@ export function ChoferMantenimientoWidget({
                 </p>
               </div>
 
+              {/* Durabilidad y Alerta de Garantía Inteligente */}
+              {arregloDurabilidadInfo && arregloDurabilidadInfo.duracionKm !== undefined && (
+                <div className={`p-2.5 rounded-xl border text-xs flex items-start gap-2 ${
+                  arregloDurabilidadInfo.alertaGarantia
+                    ? 'bg-rose-50 border-rose-300 text-rose-900'
+                    : 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                }`}>
+                  <span className="text-base shrink-0">{arregloDurabilidadInfo.alertaGarantia ? '⚠️' : '📊'}</span>
+                  <div className="space-y-0.5 flex-1">
+                    <p className="font-black text-[11px] leading-tight">
+                      {arregloDurabilidadInfo.alertaGarantia ? 'Alerta de Garantía / Reincidencia Prematura' : 'Durabilidad Histórica'}
+                    </p>
+                    <p className="text-[10px] leading-tight font-medium">
+                      {arregloDurabilidadInfo.mensajeEvaluacion}
+                      {arregloDurabilidadInfo.ultimoServicio && (
+                        <span className="block mt-0.5 text-slate-600">
+                          Último servicio: {arregloDurabilidadInfo.ultimoServicio.fecha} a {arregloDurabilidadInfo.ultimoServicio.odometroServicio?.toLocaleString()} km ({arregloDurabilidadInfo.ultimoServicio.detalleTrabajo || arregloDurabilidadInfo.ultimoServicio.taller || 'Taller'})
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Grid Tacómetro, Costo y Fecha */}
               <div className="grid grid-cols-2 gap-3">
-                {/* Odómetro */}
+                {/* Odómetro con blindaje del ayudante */}
                 <div>
                   <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">
                     Tacómetro (Km)
@@ -4283,15 +4384,29 @@ export function ChoferMantenimientoWidget({
                     placeholder={kmActual.toString()}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-black font-mono text-slate-900 focus:ring-2 focus:ring-orange-500 shadow-2xs"
                   />
-                  <span className="text-[10px] text-slate-400 font-semibold block mt-0.5">
-                    Actual: {kmActual.toLocaleString()} km
-                  </span>
+                  <div className="mt-0.5 space-y-0.5">
+                    <span className="text-[10px] text-slate-400 font-semibold block">
+                      Actual bus: {kmActual.toLocaleString()} km
+                    </span>
+                    {arregloAyudanteKmRef && (
+                      <div className="flex items-center justify-between text-[9px] bg-blue-50 border border-blue-200 text-blue-900 rounded-md px-1.5 py-0.5">
+                        <span className="truncate">📋 Ayudante: <strong>{parseInt(arregloAyudanteKmRef.kmFinal, 10).toLocaleString()} km</strong></span>
+                        <button
+                          type="button"
+                          onClick={() => setArregloKm(arregloAyudanteKmRef.kmFinal)}
+                          className="text-[9px] font-black text-blue-700 underline cursor-pointer shrink-0 ml-1"
+                        >
+                          Usar
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Costo Factura */}
+                {/* Costo Factura (Único valor total requerido, sin fricción por pieza) */}
                 <div>
                   <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">
-                    Costo Total ($)
+                    Costo Total ($) *
                   </label>
                   <input
                     type="number"
@@ -4305,6 +4420,103 @@ export function ChoferMantenimientoWidget({
                     $0 si fue garantía o cortesía
                   </span>
                 </div>
+              </div>
+
+              {/* Repuestos / Piezas Instaladas (Opcional, 1 toque con una sola mano) */}
+              <div className="p-3 bg-slate-50/80 border border-slate-200 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>⚙️ Repuestos / Piezas Instaladas</span>
+                    <span className="text-[10px] font-normal text-slate-500 normal-case">(opcional)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAddPiezaArreglo}
+                    className="flex items-center gap-1 text-[11px] font-bold text-orange-700 bg-orange-100 hover:bg-orange-200 px-2.5 py-1 rounded-xl transition cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Añadir Repuesto
+                  </button>
+                </div>
+
+                {arregloPiezas.length === 0 ? (
+                  <p className="text-[10px] text-slate-400 italic">
+                    Si compraste repuestos específicos (kit selector, zapatas, empaques, etc.), añádelos aquí para registrar si fueron originales o alternativos y evaluar su calidad.
+                  </p>
+                ) : (
+                  <div className="space-y-2 pt-1">
+                    {arregloPiezas.map((pz, idx) => (
+                      <div key={pz.id} className="p-2 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-slate-400 w-4">{idx + 1}.</span>
+                          <input
+                            type="text"
+                            value={pz.descripcion}
+                            onChange={(e) => handleUpdatePiezaArreglo(pz.id, { descripcion: e.target.value })}
+                            placeholder="Ej: Kit selector de marcha, zapatas, empaque..."
+                            className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal focus:ring-1 focus:ring-orange-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePiezaArreglo(pz.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                            title="Eliminar repuesto"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        
+                        {/* Toggle Original vs Alternativo en 1 toque + Marca libre */}
+                        <div className="flex items-center gap-2 pl-5">
+                          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdatePiezaArreglo(pz.id, { esOriginal: true })}
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-black transition cursor-pointer ${
+                                pz.esOriginal
+                                  ? 'bg-emerald-600 text-white shadow-2xs'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              🛡️ Original
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdatePiezaArreglo(pz.id, { esOriginal: false })}
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-black transition cursor-pointer ${
+                                !pz.esOriginal
+                                  ? 'bg-slate-700 text-white shadow-2xs'
+                                  : 'text-slate-600 hover:text-slate-900'
+                              }`}
+                            >
+                              ⚙️ Alterno
+                            </button>
+                          </div>
+                          <input
+                            type="text"
+                            value={pz.marca || ''}
+                            onChange={(e) => handleUpdatePiezaArreglo(pz.id, { marca: e.target.value })}
+                            placeholder="Marca opcional (ej: Hino, 555, Donaldson)"
+                            className="flex-1 px-2 py-1 rounded-lg border border-slate-200 text-[10px] text-slate-800 placeholder:text-slate-400"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Impresiones / Diagnóstico del Trabajo */}
+              <div>
+                <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">
+                  💬 Impresiones / Diagnóstico del Trabajo (Opcional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={arregloImpresiones}
+                  onChange={(e) => setArregloImpresiones(e.target.value)}
+                  placeholder="Ej: Se desgastó por falta de grasa; el empaque de escape estaba quemado y silbaba; etc."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium text-slate-900 focus:ring-2 focus:ring-orange-500 shadow-2xs resize-none placeholder:text-slate-400"
+                />
               </div>
 
               {/* Fecha del Servicio con Auditoría */}
@@ -4337,30 +4549,43 @@ export function ChoferMantenimientoWidget({
                 )}
               </div>
 
-              {/* Taller y Factura */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Taller, Factura y Mano de Obra */}
+              <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1">
                     Taller / Mecánico
                   </label>
                   <input
                     type="text"
                     value={arregloTaller}
                     onChange={(e) => setArregloTaller(e.target.value)}
-                    placeholder="Ej. Taller Don Pepe"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-medium text-slate-900 focus:ring-2 focus:ring-orange-500 shadow-2xs"
+                    placeholder="Ej. Taller Pepe"
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium text-slate-900 focus:ring-2 focus:ring-orange-500 shadow-2xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-black text-slate-700 uppercase tracking-wider mb-1">
-                    Factura / Nota Ref
+                  <label className="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1">
+                    Factura / Nota
                   </label>
                   <input
                     type="text"
                     value={arregloFactura}
                     onChange={(e) => setArregloFactura(e.target.value)}
-                    placeholder="Ej. 001-002-1234"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-sm font-mono text-slate-900 focus:ring-2 focus:ring-orange-500 shadow-2xs"
+                    placeholder="001-002"
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-mono text-slate-900 focus:ring-2 focus:ring-orange-500 shadow-2xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-700 uppercase tracking-wider mb-1">
+                    Mano Obra ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={arregloManoObra}
+                    onChange={(e) => setArregloManoObra(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-orange-500 shadow-2xs"
                   />
                 </div>
               </div>

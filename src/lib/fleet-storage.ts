@@ -677,14 +677,32 @@ export async function getBusOdometerForDate(
   try {
     const cleanDisco = busIdOrDisco.replace(/^BUS-/i, "").padStart(2, "0");
     const res = await fetch(`/api/buses/odometro?disco=${cleanDisco}&fecha=${fecha}`, { cache: "no-store" });
-    if (!res.ok) return null;
-    const json = await res.json();
-    if (json.success && json.data?.odometroFecha) {
-      return json.data.odometroFecha;
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data?.odometroFecha) {
+        return json.data.odometroFecha;
+      }
     }
   } catch (err) {
     console.warn("[getBusOdometerForDate] Error consultando odómetro de fecha:", err);
   }
+
+  // Fallback offline / local: si coincide con la última lectura guardada localmente por el ayudante
+  const localLatest = getLatestBusOdometer(busIdOrDisco);
+  if (localLatest && localLatest.date === fecha && localLatest.kmFinal) {
+    const parsed = parseInt(localLatest.kmFinal, 10);
+    if (!isNaN(parsed)) {
+      return {
+        date: localLatest.date,
+        kmFinal: parsed,
+        kmInicial: null,
+        kmRecorrido: null,
+        esExacto: true,
+        ayudante: 'Ayudante Local',
+      };
+    }
+  }
+
   return null;
 }
 

@@ -6757,3 +6757,55 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
    - 100% de compatibilidad con los 33 ítems de catálogo Hino AK.
    - Conservación del historial de talleres existentes.
    - Creación dinámica de nuevos componentes sin alterar el código fuente.
+
+---
+
+### 🏛️ 36. Despliegue de Módulo Técnico de Mantenimiento, Repuestos, Durabilidad y Gobernanza de Odómetro (v3.61.79)
+* **Fecha:** 2026-11-11
+* **Versión Oficial:** `v3.61.79`
+* **Estado:** 🟢 **IMPLEMENTADO, PROBADO AL 100% (255 tests pasados en 36 suites) Y SINCRONIZADO**
+* **Componentes y Módulos Desarrollados:**
+  1. `src/types/expenses.ts`:
+     - Nueva interfaz `PiezaRepuestoItem`: `id`, `descripcion`, `esOriginal` (booleano), `marca?`, `cantidad?`, `precioTotal?`.
+     - Extensión de `OwnerExpense` con `impresionesGenerales`, `piezasRepuesto`, `costoManoObra`, `duracionKmAnterior`, `diasDesdeAnterior`, `alertaGarantia`.
+  2. `src/lib/paradas-vt-storage.ts`:
+     - Re-export de `PiezaRepuestoItem` e interfaz `ResultadoDurabilidadRepuesto`.
+     - Implementación de `calcularDurabilidadRepuesto(busId, componenteODescripcion, odometroActual, fechaActual)`:
+       * Extrae palabras clave mecánicas (omitiendo stopwords como 'lado', 'para', 'cambio').
+       * Encuentra el último servicio del mismo componente/sistema previo en el historial.
+       * Calcula exactamente $\Delta \text{Km} = \text{Odómetro Actual} - \text{Odómetro Previo}$ y días transcurridos.
+       * Detecta automáticamente `alertaGarantia = true` ante reincidencias prematuras en menos de 30 días o menos de 4,000 km.
+     - Extensión de `saveParadaPago` para asociar y calcular durabilidad y alertas en background.
+     - Actualización de `syncRetroactiveParadasFromExpenses` para mapear los nuevos campos en la sincronización contable.
+  3. `src/lib/fleet-storage.ts`:
+     - Incorporación de fallback resiliente offline en `getBusOdometerForDate(disco, fecha)`: ante cortes de conectividad o rutas remotas (ej. Loja - Vilcabamba), consulta el odómetro registrado localmente por el ayudante.
+  4. `src/components/transport/ChoferMantenimientoWidget.tsx`:
+     - Estado reactivo para `arregloImpresiones`, `arregloPiezas`, `arregloManoObra` y `arregloAyudanteKmRef`.
+     - Sincronización oficial del tacómetro con el odómetro del ayudante para la fecha (`getBusOdometerForDate`).
+     - Alerta visual de concordancia y botón `[ Usar ]` para garantizar la verdad del tacómetro del ayudante.
+     - Banner dinámico de `Durabilidad Histórica` y `Alerta de Garantía / Reincidencia Prematura`.
+     - Sección ergonómica `⚙️ Repuestos / Piezas Instaladas`:
+       * Botón `[ + Añadir Repuesto ]`.
+       * Botones táctiles de un solo toque: `[ 🛡️ Original ]` (verde esmeralda) vs `[ ⚙️ Alterno ]` (gris slate).
+       * Campo de texto libre para marca (ej. "Hino Genuino", "555", "Donaldson", "Koyo").
+       * **Cero fricción de precios individuales:** El chofer no desglose costos por pieza; solo registra el `Costo Total ($)` único.
+     - Área de texto libre para `💬 Impresiones / Diagnóstico del Trabajo (Opcional)` con soporte de dictado por voz.
+     - Entrada opcional para `Mano de Obra / Lavado ($)`.
+     - Persistencia sincronizada hacia `saveParadaPago` y `saveOwnerExpenseToApi`.
+  5. `src/components/transport/MantenimientoScreen.tsx`:
+     - Desglose visual en el historial de paradas y mantenimientos del Socio:
+       * Badges distintivos `[ 🛡️ Original: descripción (marca) ]` y `[ ⚙️ Alterno: descripción (marca) ]`.
+       * Diagnóstico e impresiones del chofer/taller en panel ámbar destacado.
+       * Métrica de durabilidad previa: `📊 Vida Útil Previa: X km (Y días)`.
+       * Insignia roja de advertencia: `⚠️ Reincidencia en Garantía`.
+       * Sub-etiqueta de Mano de Obra desglosada.
+  6. `src/components/transport/HomeScreenVT.tsx` & `package.json`:
+     - Actualización de versión a `v3.61.79`.
+  7. `tests/mantenimiento-repuestos-durabilidad.test.ts`:
+     - Nueva suite con 4 pruebas unitarias que validan:
+       * Cálculo exacto de $\Delta \text{Km}$ y días con alerta de garantía ante reincidencia prematura.
+       * Almacenamiento fiel de piezas con toggle Original/Alternativo y marca sin precios unitarios.
+       * Cálculo automático en background por `saveParadaPago`.
+       * Concordancia estricta del odómetro con el registro oficial del ayudante.
+     - **Resultado de Pruebas:** 255 tests aprobados al 100% (0 fallos, 1,454 aserciones verificadas) en 36 archivos de test.
+

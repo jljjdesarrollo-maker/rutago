@@ -2859,6 +2859,58 @@ export function MantenimientoScreen({
                             </div>
                           )}
 
+                          {/* Chips de piezas individuales con Original vs Alternativo y Marca */}
+                          {p.piezasRepuesto && p.piezasRepuesto.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {p.piezasRepuesto.map((pz, idx) => (
+                                <span
+                                  key={idx}
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border flex items-center gap-1 ${
+                                    pz.esOriginal
+                                      ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                                      : 'bg-slate-100 text-slate-800 border-slate-300'
+                                  }`}
+                                >
+                                  <span>{pz.esOriginal ? '🛡️ Original' : '⚙️ Alterno'}</span>
+                                  <span className="font-semibold text-slate-900">{pz.descripcion}</span>
+                                  {pz.marca && <span className="font-normal text-slate-500">({pz.marca})</span>}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Diagnóstico / Impresiones del Chofer o Taller */}
+                          {p.impresionesGenerales && (
+                            <div className="mt-1 p-1.5 rounded-lg bg-amber-50/70 border border-amber-200/80 text-[10px] text-amber-950 leading-snug">
+                              <span className="font-bold text-[9px] uppercase tracking-wider text-amber-800 block">
+                                💬 Diagnóstico / Impresiones:
+                              </span>
+                              <span>{p.impresionesGenerales}</span>
+                            </div>
+                          )}
+
+                          {/* Durabilidad y Alerta de Garantía */}
+                          {(p.duracionKmAnterior !== undefined || p.alertaGarantia || (p.costoManoObra !== undefined && p.costoManoObra > 0)) && (
+                            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                              {p.duracionKmAnterior !== undefined && (
+                                <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border flex items-center gap-1 ${
+                                  p.alertaGarantia
+                                    ? 'bg-rose-100 text-rose-900 border-rose-300'
+                                    : 'bg-slate-100 text-slate-800 border-slate-200'
+                                }`}>
+                                  {p.alertaGarantia ? '⚠️ Reincidencia en Garantía:' : '📊 Vida Útil Previa:'}
+                                  <span>{p.duracionKmAnterior.toLocaleString()} km</span>
+                                  {p.diasDesdeAnterior !== undefined && <span>({p.diasDesdeAnterior} días)</span>}
+                                </span>
+                              )}
+                              {p.costoManoObra !== undefined && p.costoManoObra > 0 && (
+                                <span className="text-[9px] text-slate-500 font-semibold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                  Mano de obra: ${p.costoManoObra.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
                           {/* Chips de items realizados si existen y no hay detalleTrabajo */}
                           {p.itemsRealizados && p.itemsRealizados.length > 0 && !p.detalleTrabajo && (
                             <div className="flex items-center gap-1 flex-wrap mt-1">

@@ -10,6 +10,7 @@ import {
   recordDeletedExpenseId,
   getDeletedExpenseIds,
 } from './owner-expenses-storage';
+import type { PiezaRepuestoItem } from '../types/expenses';
 
 export type ParadaPagador = 'AYUDANTE' | 'SOCIO' | 'CHOFER';
 export type SocioModalidadPago = 'TRANSFERENCIA_TOTAL' | 'TRANSFERENCIA_PARCIAL' | 'CREDITO_FIADO';
@@ -47,6 +48,110 @@ export interface ParadaPagoRegistro {
   anuladoAt?: string;
   anuladoPor?: string;
   motivoAnulacion?: string;
+
+  // Detalles Técnicos de Mantenimiento y Repuestos (v3.61.79)
+  impresionesGenerales?: string;
+  piezasRepuesto?: PiezaRepuestoItem[];
+  costoManoObra?: number;
+  duracionKmAnterior?: number;
+  diasDesdeAnterior?: number;
+  alertaGarantia?: boolean;
+}
+
+export type { PiezaRepuestoItem };
+
+export interface ResultadoDurabilidadRepuesto {
+  duracionKm?: number;
+  dias?: number;
+  alertaGarantia?: boolean;
+  ultimoServicio?: ParadaPagoRegistro;
+  mensajeEvaluacion?: string;
+}
+
+/**
+ * Calcula automáticamente la vida útil y duración transcurrida (Delta Km y Días)
+ * entre el servicio actual y la última intervención previa sobre el mismo componente o sistema.
+ */
+export function calcularDurabilidadRepuesto(
+  busId: string,
+  componenteODescripcion: string,
+  odometroActual: number,
+  fechaActual: string
+): ResultadoDurabilidadRepuesto {
+  if (!busId || !componenteODescripcion || odometroActual <= 0) {
+    return {};
+  }
+  const paradas = getParadasPagoByBus(busId);
+  const descLower = componenteODescripcion.toLowerCase().trim();
+  
+  // Extraer palabras clave relevantes (filtrando palabras comunes)
+  const stopwords = new Set(['lado', 'para', 'costado', 'cambio', 'arreglo', 'nuevo', 'bocines', 'revisión', 'taller', 'buje']);
+  const keywords = descLower
+    .split(/[\s,+/_\-()]+/)
+    .filter((k) => k.length > 3 && !stopwords.has(k));
+
+  const fechaActMs = new Date(fechaActual).getTime();
+
+  // Buscar servicios previos válidos con odómetro menor
+  const paradasPrevias = paradas
+    .filter((p) => {
+      if (p.estado === 'ANULADO') return false;
+      const kmP = p.odometroServicio || p.odometroKm || 0;
+      if (kmP >= odometroActual) return false;
+
+      const pDesc = (
+        (p.detalleTrabajo || '') +
+        ' ' +
+        (p.estacionNombre || '') +
+        ' ' +
+        (p.itemsRealizados || []).join(' ') +
+        ' ' +
+        (p.impresionesGenerales || '') +
+        ' ' +
+        (p.piezasRepuesto?.map((pz) => pz.descripcion).join(' ') || '')
+      ).toLowerCase();
+
+      if (pDesc.includes(descLower)) return true;
+      if (keywords.length > 0 && keywords.some((k) => pDesc.includes(k))) return true;
+      return false;
+    })
+    .sort((a, b) => {
+      const kmB = b.odometroServicio || b.odometroKm || 0;
+      const kmA = a.odometroServicio || a.odometroKm || 0;
+      return kmB - kmA;
+    });
+
+  if (paradasPrevias.length === 0) {
+    return {};
+  }
+
+  const prev = paradasPrevias[0];
+  const kmPrev = prev.odometroServicio || prev.odometroKm || 0;
+  const deltaKm = Math.max(0, odometroActual - kmPrev);
+
+  let dias: number | undefined;
+  if (prev.fecha) {
+    const fechaPrevMs = new Date(prev.fecha).getTime();
+    if (!isNaN(fechaPrevMs) && !isNaN(fechaActMs) && fechaActMs >= fechaPrevMs) {
+      dias = Math.round((fechaActMs - fechaPrevMs) / (1000 * 60 * 60 * 24));
+    }
+  }
+
+  // Alerta de garantía: reincidencia prematura en menos de 30 días o menos de 4,000 km
+  const alertaGarantia = (dias !== undefined && dias < 30) || (deltaKm > 0 && deltaKm < 4000);
+
+  let mensajeEvaluacion = `Duró ${deltaKm.toLocaleString()} km${dias !== undefined ? ` (${dias} días)` : ''}`;
+  if (alertaGarantia) {
+    mensajeEvaluacion += ' • ⚠️ Alerta de Garantía (reincidencia prematura)';
+  }
+
+  return {
+    duracionKm: deltaKm,
+    dias,
+    alertaGarantia,
+    ultimoServicio: prev,
+    mensajeEvaluacion,
+  };
 }
 
 export interface ResultadoCalculoRegularizacion {
@@ -377,6 +482,12 @@ export function syncRetroactiveParadasFromExpenses(busId?: string): number {
         socioSaldoPendiente: pagador === 'SOCIO' ? saldo : undefined,
         ownerExpenseId: exp.id,
         detalleTrabajo,
+        impresionesGenerales: exp.impresionesGenerales,
+        piezasRepuesto: exp.piezasRepuesto,
+        costoManoObra: exp.costoManoObra,
+        duracionKmAnterior: exp.duracionKmAnterior,
+        diasDesdeAnterior: exp.diasDesdeAnterior,
+        alertaGarantia: exp.alertaGarantia,
         createdAt: exp.createdAt || new Date().toISOString(),
       };
 
@@ -486,6 +597,33 @@ export function saveParadaPago(registro: ParadaPagoRegistro): void {
     // que la caja y arqueo del ayudante de HOY permanezcan 100% blindados e intactos.
     if (registro.pagador === 'AYUDANTE' && registro.fecha < today) {
       registro.descontadoEnVT = true;
+    }
+
+    // 4. Cálculo Automático de Durabilidad y Alerta de Garantía (v3.61.79)
+    if (
+      registro.duracionKmAnterior === undefined &&
+      registro.odometroServicio &&
+      registro.odometroServicio > 0 &&
+      (registro.detalleTrabajo || registro.estacionNombre || (registro.piezasRepuesto && registro.piezasRepuesto.length > 0))
+    ) {
+      const componenteTexto =
+        registro.piezasRepuesto && registro.piezasRepuesto.length > 0
+          ? registro.piezasRepuesto.map((p) => p.descripcion).join(' ') + ' ' + (registro.detalleTrabajo || '')
+          : registro.detalleTrabajo || registro.estacionNombre || '';
+
+      const dur = calcularDurabilidadRepuesto(
+        registro.busId,
+        componenteTexto,
+        registro.odometroServicio,
+        registro.fecha || today
+      );
+      if (dur.duracionKm !== undefined) {
+        registro.duracionKmAnterior = dur.duracionKm;
+        registro.diasDesdeAnterior = dur.dias;
+        if (dur.alertaGarantia) {
+          registro.alertaGarantia = true;
+        }
+      }
     }
 
     const raw = localStorage.getItem(STORAGE_PARADAS_KEY);

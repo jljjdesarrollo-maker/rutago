@@ -123,5 +123,22 @@ export interface OwnerExpense {
   anuladoAt?: string;
   anuladoPor?: string;
   motivoAnulacion?: string;
+
+  // Detalles Técnicos de Mantenimiento y Repuestos (v3.61.79)
+  impresionesGenerales?: string;
+  piezasRepuesto?: PiezaRepuestoItem[];
+  costoManoObra?: number;
+  duracionKmAnterior?: number;
+  diasDesdeAnterior?: number;
+  alertaGarantia?: boolean;
+}
+
+export interface PiezaRepuestoItem {
+  id: string;
+  descripcion: string;     // Ej: "Kit selector", "Empaque turbo", "Pernos de cobre"
+  esOriginal: boolean;     // true = [🛡️ Original], false = [⚙️ Alterno]
+  marca?: string;          // Texto libre opcional: "555", "Donaldson", "Koyo", etc.
+  cantidad?: number;       // Opcional (ej: 1, 6)
+  precioTotal?: number;    // Opcional
 }
 
