@@ -6596,3 +6596,164 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
      - Confirmado commit `03e9c67` y sincronizado en rama `main` de GitHub.
 
 
+
+---
+
+### 🏛️ 25. Auditoría y Extracción de Historial Técnico: Últimos 10 Mantenimientos de la Unidad 01
+* **Fecha de Consulta:** 2026-11-10
+* **Estado:** 🟢 **AUDITADO Y DOCUMENTADO**
+* **Unidad Consultada:** Bus 01 (Disco Oficial 01 • Placa TAA-5152 • Hino AK)
+* **Resumen de Extracción:**
+  - Se realizó la extracción y conciliación cruzada de las paradas técnicas de taller, registros del conductor (`tests/historial-chofer-arreglos-novedades.test.ts`), gastos de socio (`src/lib/owner-expenses-storage.ts`), arqueos operativos en ruta (`docs/arqueos_unidad_01`) y la calibración de odómetros (`odometro-calibracion-quincena.ts`).
+  - Se identificaron cronológicamente las 10 intervenciones mecánicas y de mantenimiento más recientes registradas para la Unidad 01, con indicación de fecha, kilometraje/odómetro de servicio, taller o responsable, y costo/modalidad de pago.
+
+---
+
+### 🏛️ 26. Análisis de Arquitectura: Campo Estructurado de Repuestos (Marca y Originalidad) sin Fricción Operativa
+* **Fecha:** 2026-11-10
+* **Tema:** Evaluación técnica para sustituir campos de texto libre por especificación estructurada de repuestos (`marca`, `tipo: ORIGINAL | ALTERNO | GENERICO`, `especificación`) en paradas de taller y mantenimiento.
+* **Dictamen de Ingeniería:**
+  - **Aprobado con recomendación de enfoque "2-Touch UI":** Se descarta un campo de texto libre obligatorio que añadiría lentitud al chofer/ayudante en ruta.
+  - **Patrón Propuesto:** Selector táctil de 3 estados (`[🛡️ Genuino/Original]`, `[⚙️ Alterno de Marca]`, `[⚪ Genérico]`) junto con chips predictivos contextuales según el componente (ej. para engrase: `[EP-2 Roja Litio]`, `[EP-2 Azul]`, `[Estándar]`; para aceite: `[Mobil Delvac]`, `[Shell]`, `[Castrol]`).
+  - **Impacto:** Cero fricción en fosa (2 toques), trazabilidad de garantías para el socio y tipado estricto retrocompatible en base de datos.
+
+---
+
+### 🏛️ 27. Recepción y Análisis de Factura Real: Comercial Jaramillo Repuestos (10/11/2026)
+* **Fecha:** 2026-11-10 (08:37:48)
+* **Comprobante:** Factura Electrónica Nro: `001001-000037311` de *Comercial Jaramillo Repuestos Automotrices CJRA Cía. Ltda.* (RUC: 1191791890001).
+* **Cliente:** Jaya Jaramillo José Leonardo (Socio Propietario Bus 01).
+* **Forma de Pago:** CRÉDITO (Vence: 25/11/2026).
+* **Retirado por:** Sr. Jorge Patiño (Ayudante Bus 01).
+* **Desglose de Repuestos Involucrados (Mantenimiento de Turbo Hino AK):**
+  1. `1x` Empaque Turbo Costado Hino AK GD GH FF 1J ($26.96)
+  2. `6x` Perno Turbo Costado Hino Todos Cobre ($23.47)
+  3. `6x` Tuerca Perno Turbo Hino Dutro 8mm Tipo ($15.66)
+  * **Subtotal:** $66.09 | **IVA 15%:** $9.92 | **Total Factura:** $76.01
+* **Requerimiento Clave del Usuario:**
+  - El modelo debe contemplar **múltiples piezas de repuesto por mantenimiento** de forma sencilla, permitiendo registrar la lista de piezas utilizadas (como en la factura de turbo recién emitida) con su marca/tipo (original/alterno), sin complicar la carga de datos.
+
+---
+
+### 🏛️ 28. Análisis Forense de Cuaderno de Ruta (05-11-2026) y Segmentación de Mantenimiento vs Arreglo en Ruta
+* **Fecha:** 2026-11-11
+* **Evidencia Documental:** Fotografía del cuaderno físico de operaciones de la Unidad 01 (05-11-2026).
+  - **Odómetro:** `908,065 km` (evolución natural desde los `907,085 km` del 02-11-2026; +980 km en 3 jornadas).
+  - **Producción Bruta:** `$433.50` en 8 vueltas (incluyendo pernocta Loja-Yangana-Loja).
+  - **Gastos Operativos:** `$365.00` (Chofer $30, Ayudante $20, Diésel $150, Plan Renova $68, Gastos varios $8.50).
+  - **Intervenciones Técnicas en Ruta Identificadas:**
+    1. `Kit del selector de marcha`: **$66.00** (Repuesto / Pieza).
+    2. `Lavado selector de marcha`: **$20.00** (Mano de obra / Servicio técnico).
+    3. `Arreglo de una llanta`: **$5.00** (Emergencia de rodaje / Vulcanizadora).
+    * Subtotal Técnico en Ruta: **$91.00** deducidos directamente del líquido del día.
+* **Dictamen de Segmentación Funcional:**
+  - **Segmento A (Arreglos en Ruta / Novedades Correctivas):** Aplicación OBLIGATORIA y prioritaria del desglose multi-pieza (`Repuestos` vs `Mano de Obra / Taller`), ya que resuelve exactamente casos como el del selector ($66 kit + $20 lavado) o el turbo ($76.01 empaque + pernos cobre + tuercas).
+  - **Segmento B (Preventivos Periódicos de Fosa/Catálogo):** Mantener flujo ágil con receta pre-cargada (Combo Aceite/Filtros, Engrase EP2), con desglose detallado como opción colapsable/opcional para no entorpecer rutinas de 5 segundos.
+
+---
+
+### 🏛️ 29. Propuesta de Diseño UX/UI Ergonómica (Una Sola Mano): Campo General de Impresiones + Repuestos Multi-Ítem con Selector Original/Alterno y Marca
+* **Fecha:** 2026-11-11
+* **Requerimiento del Usuario:**
+  1. Campo general de texto para registrar impresiones, diagnóstico y detalles del mantenimiento (comentarios del chofer/mecánico).
+  2. Sección de repuestos donde cada pieza permita con una sola mano:
+     - Alternar entre `[ 🛡️ Original ]` y `[ ⚙️ Alternativo ]` mediante un switch/chip táctil de 1 toque.
+     - Seleccionar o completar la `Marca` (chips rápidos sugeridos + texto libre).
+     - Indicar cantidad y costo unitario/subtotal.
+* **Solución Propuesta:**
+  - Estructura visual para `ChoferMantenimientoWidget` y modales de taller centrada en la "Zona del Pulgar" (Thumb Zone móvil).
+  - Modelado en TypeScript con `piezasRepuesto: Array<{ descripcion: string; esOriginal: boolean; marca?: string; cantidad: number; precioTotal: number }>` y `impresionesGenerales: string`.
+
+---
+
+### 🏛️ 30. Consenso de Arquitectura Operativa: Erradicación de Precios Unitarios y Supresión de Encasillamiento de Marcas
+* **Fecha:** 2026-11-11
+* **Decisión de Negocio y UX (Aporte Fundamental del Usuario):**
+  1. **Erradicación de Precios Unitarios por Repuesto:** Exigir el precio desglosado por tornillo/pieza es una barrera crítica de fricción para el conductor. Los repuestos cambian de precio con el tiempo y no aportan valor contable individual.
+  2. **Dato Financiero Mandatorio Único:** Se exige única y estrictamente el **Valor Total del Mantenimiento ($)**.
+  3. **No Encasillar Marcas:** El mercado automotriz tiene cientos de marcas. El clasificador esencial es **Original vs Alternativo**, permitiendo ingresar la marca como texto libre opcional o integrada en el nombre de la pieza (ej. "Rodamiento Koyo").
+  4. **Trazabilidad Patrimonial Clave:** Para el socio, lo que importa es el historial: *¿Qué repuesto se compró?*, *¿Era original o alterno?* y *¿Cuánto costó el trabajo completo en total?*
+
+---
+
+### 🏛️ 31. Visión Estratégica: Inteligencia de Durabilidad y Rentabilidad de Repuestos (Costo/Km y Garantías)
+* **Fecha:** 2026-11-11
+* **Concepto Central:** Transformar el registro de mantenimientos en un motor de decisión para futuras compras sin recargar de trabajo al conductor.
+* **4 Pilares Estratégicos Propuestos:**
+  1. **Cálculo Automático de Duración (Delta Km):** Al asentar un repuesto a 908,065 km, el sistema detecta de forma invisible el odómetro del cambio anterior para calcular kilómetros y días exactos de vida útil.
+  2. **Comparador de Rentabilidad Original vs Alterno:** Evaluación del Costo Real por cada 1,000 km (revela si un alterno barato resultó más caro por desgaste prematuro y doble mano de obra).
+  3. **Escudo de Garantía Activa:** Alerta inmediata de fosa si una pieza falla antes del 50% de su ciclo para reclamar al taller o almacén.
+  4. **Ficha de Consulta Rápida en Mostrador:** Historial técnico en 1 segundo para saber marca, medida y tipo exacto comprado la última vez.
+
+---
+
+### 🏛️ 32. Cobertura Universal del Motor de Durabilidad: Preventivos, Fosa y Arreglos en Ruta
+* **Fecha:** 2026-11-11
+* **Pregunta Clave:** ¿Aplica el cálculo de durabilidad, costo/km y alertas de garantía a TODOS los ítems, incluyendo los arreglos en ruta?
+* **Dictamen de Ingeniería:**
+  - **SÍ, APLICA AL 100% DE MANERA UNIVERSAL.**
+  - **Mecanismo de Enlace:** En lugar de requerir que un arreglo en ruta tenga un "código de catálogo predefinido rígido", el motor utiliza **emparejamiento semántico y por componente** (ej. "escape", "turbo", "selector", "llanta", "zapatas", "bocines", "paquete/muelle").
+  - **Doble Impacto:**
+    1. En *Preventivos*: Evalúa la rentabilidad de las marcas de catálogo (Mobil vs Shell, Donaldson vs Genuino Hino, etc.).
+    2. En *Arreglos en Ruta*: Detecta fallas recurrentes de talleres (soldaduras mal hechas, pernos que se aflojan, repuestos de mala calidad) y activa el **Escudo de Garantía**.
+
+---
+
+### 🏛️ 33. Arquitectura de Coexistencia y Escalabilidad Futura (Ítems, Talleres y Nuevas Clasificaciones)
+* **Fecha:** 2026-11-11
+* **Preguntas de Gobernanza Resueltas:**
+  1. *¿Qué pasa con los 33 ítems creados?* Permanecen intactos como la columna vertebral canónica. Cada código `MNT-...` conserva su odómetro base y ciclo oficial.
+  2. *¿Qué pasa con los talleres existentes?* Mantienen su histórico intacto y se enriquecen con métricas de durabilidad del trabajo realizado (auditoría de calidad por taller).
+  3. *¿Cómo se escalan nuevas clasificaciones futuras sin hardcoding?* Se implementa la jerarquía relacional de 3 niveles:
+     - `EstacionServicio` (Contenedor operativo)
+     - `Componente / Ítem` (Identificador maestro: oficiales de catálogo o creados dinámicamente en ruta `MNT-CUSTOM-...`)
+     - `Piezas / Repuestos` (Desglose de compras: nombre, original/alterno, marca opcional).
+* **Garantía Técnica:** Cero ruptura de datos históricos, compatibilidad 100% con SQLite/PostgreSQL/localStorage y extensibilidad infinita sin requerir despliegues de código por cada repuesto nuevo.
+
+---
+
+### 🏛️ 34. Consolidación Arquitectónica: Modelo Integral de Mantenimientos, Repuestos, Durabilidad y Odometría Ayudante-Chofer
+* **Fecha:** 2026-11-11
+* **Reafirmación de Gobernanza de Odómetros (v3.61.68):**
+  - La autoridad del tacómetro reside en el **registro diario del ayudante** (arqueo con foto).
+  - Al registrar mantenimientos, el chofer **no inventa kilometrajes**: el sistema auto-carga el odómetro oficial del ayudante correspondiente a la fecha seleccionada (`getBusOdometerForDate`), garantizando concordancia contable y operativa absoluta.
+* **Propuesta Integral de Cambios:**
+  1. **Capa de Datos (Tipos y Persistencia):** Extensión de `ParadaPagoRegistro` y `OwnerExpense` con `impresionesGenerales` y `piezasRepuesto: PiezaRepuestoItem[]` (con `descripcion`, `esOriginal`, `marcaOpcional`, sin precios individuales forzados).
+  2. **Capa UX/UI Móvil ("Una Sola Mano"):**
+     - Campo de texto libre para impresiones/diagnóstico (con soporte de dictado de voz).
+     - Tarjetas táctiles de 48px `[ 🛡️ Original ]` / `[ ⚙️ Alterno ]`.
+     - Único campo financiero obligatorio: `Valor Total del Mantenimiento ($)`.
+     - Auto-sincronización con el odómetro del ayudante.
+  3. **Motor de Durabilidad y Métricas (Para el Socio):**
+     - Detección automática del $\Delta \text{Km}$ con el último mantenimiento del mismo componente.
+     - Indicador de costo real por cada 1,000 km (Original vs Alternativo).
+     - Alerta de garantía si reincide en menos del 50% de la vida útil.
+  4. **Compatibilidad Total:** Preservación de los 33 ítems Hino AK, talleres existentes y apertura para nuevos componentes dinámicos.
+
+---
+
+### 🏛️ 35. Aprobación Oficial de Propuesta: Hoja de Ruta e Implementación del Módulo Técnico de Mantenimientos y Repuestos
+* **Fecha:** 2026-11-11
+* **Estado:** 🟢 **APROBADO POR EL USUARIO PARA IMPLEMENTACIÓN Y COMMIT**
+* **Objetivo:** Registrar formalmente la propuesta arquitectónica aprobada para la próxima versión de RutaGo.
+
+#### 🎯 Especificación Funcional Definitiva:
+1. **Gobernanza del Odómetro (Concordancia con Ayudante):**
+   - El odómetro se toma de forma transparente y estricta del registro diario del ayudante para la fecha seleccionada (`getBusOdometerForDate(disco, fecha)`). El conductor no altera ni inventa odómetros.
+2. **Registro Ultrarrápido a Una Sola Mano (Chofer / Arreglo en Ruta y Taller):**
+   - **Campo Único Financiero Obligatorio:** `Valor Total del Mantenimiento ($)` (sin desglose forzado de precios por pieza ni subtotales).
+   - **Campo General de Impresiones:** Área de texto libre con soporte de dictado por voz (diagnóstico, sensaciones y comentarios mecánicos).
+   - **Desglose de Repuestos:**
+     * Nombre de pieza / descripción.
+     * Switch táctil de 48px: `[ 🛡️ Original ]` o `[ ⚙️ Alterno ]`.
+     * Campo de marca libre / opcional.
+     * Botón `[ + Agregar otra pieza ]`.
+   - **Mano de Obra y Taller:** Costo de mano de obra (opcional) y nombre del taller proveedor.
+3. **Motor Invisible de Durabilidad y Métricas para el Socio:**
+   - Cálculo automático de $\Delta \text{Km}$ y días de vida útil entre el cambio actual y el anterior.
+   - Comparador de rendimiento financiero: Costo Real por cada 1,000 km (`Original` vs `Alternativo`).
+   - Alerta roja de garantía activa ante reincidencias prematuras (< 50% de vida útil).
+4. **Preservación Institucional:**
+   - 100% de compatibilidad con los 33 ítems de catálogo Hino AK.
+   - Conservación del historial de talleres existentes.
+   - Creación dinámica de nuevos componentes sin alterar el código fuente.
