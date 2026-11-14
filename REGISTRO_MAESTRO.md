@@ -6809,3 +6809,31 @@ Previo a cualquier modificación de código o esquema, se generó y verificó un
        * Concordancia estricta del odómetro con el registro oficial del ayudante.
      - **Resultado de Pruebas:** 255 tests aprobados al 100% (0 fallos, 1,454 aserciones verificadas) en 36 archivos de test.
 
+
+---
+
+### 🏛️ 37. Compensación de Cabecera Parroquial en Compuerta de Anticipación para Rutas Largas / Extendidas (v3.61.80)
+* **Fecha:** 2026-11-14
+* **Versión Oficial:** `v3.61.80`
+* **Estado:** 🟢 **IMPLEMENTADO, PROBADO AL 100% (261 tests aprobados en 37 suites) Y SINCRONIZADO**
+* **Diagnóstico y Causa Raíz:**
+  - En la auditoría de la compuerta de anticipación (`TIEMPO_ANTICIPACION_MAX = 45` min en `calcularEstadoTiempoVenta`), se detectó que en los retornos de **rutas largas/extendidas** desde parroquias hacia Loja, la hora registrada en el rol (`estado.hora`) corresponde al punto de control intermedio (Malacatos en El Tambo; Vilcabamba en La Elvira, Zahuayco y Yangana) y no a la salida real desde la cabecera parroquial:
+    * `El Tambo → Loja`, `La Elvira → Loja`, `Zahuayco → Loja`: salen **60 min antes** de `estado.hora`.
+    * `Yangana → Loja`: sale **30 min antes** de `estado.hora`.
+  - Al aplicar 45 min fijos antes de `estado.hora`, los ayudantes en El Tambo, La Elvira y Zahuayco quedaban bloqueados durante los **primeros 15 minutos reales de viaje** (`-60m` a `-45m` del rol) y sin margen previo de embarque en cabecera.
+* **Cambios Implementados:**
+  1. `src/components/transport/types-boletos.ts`:
+     - Extensión de `TiempoVentaConfig` y `DEFAULT_TIEMPO_VENTA_CONFIG` con `tiempoAnticipacion?: number` (valor por defecto: **`45` min** antes de la salida real).
+     - Implementación de `getOffsetCabeceraMinutos(ruta)`: retorna `+60` min para retornos `El Tambo / La Elvira / Zahuayco → Loja`, `+30` min para `Yangana → Loja`, y `0` min para `Loja ⇄ Vilcabamba` e idas `Loja → Parroquia`.
+     - Actualización de `calcularEstadoTiempoVenta`: calcula `TIEMPO_ANTICIPACION_MAX = anticipacionBase + offsetCabecera` (`105 min` antes del rol en El Tambo/La Elvira/Zahuayco → Loja y `75 min` en Yangana → Loja), conservando `minutosTranscurridos` anclado a `estado.hora` para preservar intactos `tiempoLimite` (90/140 min) y las validaciones de pernocta/Día 2.
+     - Inclusión de `offsetCabeceraMinutos` en `EstadoTiempoVenta`.
+  2. `src/components/transport/TicketScreen.tsx`:
+     - Banner dinámico de compuerta de anticipación (`tiempoEstado.bloqueadoPorAnticipacion`): muestra exactamente `tiempoAnticipacionMinutos` antes del rol y, cuando `offsetCabeceraMinutos > 0`, aclara los minutos antes de la salida real en parroquia.
+  3. `src/components/transport/VTConfigScreen.tsx`:
+     - Nuevo campo editable **"Anticipación Permitida antes de Salida Real"** (`tiempoConfig.tiempoAnticipacion`, rango `15`–`120` min, default `45` min) dentro de *Tiempos Límites de Venta por Frecuencia*, con nota explicativa del ajuste automático de `+60m` / `+30m` en retornos parroquiales.
+  4. `src/components/transport/HomeScreenVT.tsx` & `package.json`:
+     - Actualización de versión a `v3.61.80`.
+  5. `tests/rutas-largas-anticipacion.test.ts`:
+     - Nueva suite con 6 pruebas unitarias validando `getOffsetCabeceraMinutos`, habilitación 45 min antes de salida real en El Tambo / La Elvira / Zahuayco (`Rol - 105m`), Yangana (`Rol - 75m`, incluyendo retorno pernocta Día 2), rutas de ida desde Loja (`45m` exactos) y configuración personalizada (`30m` base).
+* **Certificación Técnica:**
+  - **Pruebas Unitarias:** **261 de 261 pruebas aprobadas al 100%** (0 fallos, 1,487 aserciones verificadas) en 37 archivos de test (`bun test tests/`).

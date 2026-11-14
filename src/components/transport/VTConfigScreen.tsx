@@ -591,6 +591,28 @@ export function VTConfigScreen({ onBack }: VTConfigScreenProps) {
               </div>
             </div>
 
+            {/* Anticipación antes de salida */}
+            <div className="bg-amber-50/70 rounded-xl p-3 border border-amber-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-amber-950">Anticipación Permitida antes de Salida Real</span>
+                <span className="text-[10px] font-semibold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">Pre-Embarque</span>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-[#3A3A3A]/70">Minutos antes de salida desde cabecera</Label>
+                <Input
+                  type="number"
+                  min={15}
+                  max={120}
+                  value={tiempoConfig.tiempoAnticipacion ?? 45}
+                  onChange={e => setTiempoConfig(prev => ({ ...prev, tiempoAnticipacion: parseInt(e.target.value) || 45 }))}
+                  className="h-10 rounded-lg text-sm border-[#D6D6D6] bg-white"
+                />
+                <span className="text-[10px] text-amber-900/75 block">
+                  Por defecto: 45 min. En retornos desde El Tambo, La Elvira y Zahuayco se suman +60 min automáticos y en Yangana +30 min por el tramo previo desde la parroquia.
+                </span>
+              </div>
+            </div>
+
             {/* Guardar Tiempos */}
             <Button
               onClick={() => {

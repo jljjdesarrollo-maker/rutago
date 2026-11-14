@@ -608,7 +608,7 @@ export function TicketScreen({ session, estado, connection, onClose, ganadorPosi
           <div className="mb-2 bg-amber-50 border border-amber-300 rounded-xl p-3 text-xs text-amber-950 font-bold flex items-center gap-2 shadow-sm">
             <Clock className="w-4 h-4 text-amber-700 flex-shrink-0" />
             <span>
-              ⏳ Salida programada para las {estado.hora}{tiempoEstado.esPernocta ? " (Día 2 · Pernocta)" : ""}. La emisión de boletos se habilitará 45 min antes de la salida.
+              ⏳ Salida programada en rol a las {estado.hora}{tiempoEstado.esPernocta ? " (Día 2 · Pernocta)" : ""}. La emisión de boletos se habilitará {tiempoEstado.tiempoAnticipacionMinutos ?? 45} min antes del rol{(tiempoEstado.offsetCabeceraMinutos ?? 0) > 0 ? ` (${Math.max(0, (tiempoEstado.tiempoAnticipacionMinutos ?? 45) - (tiempoEstado.offsetCabeceraMinutos ?? 0))} min antes de salida en parroquia)` : ""}.
             </span>
           </div>
         )}

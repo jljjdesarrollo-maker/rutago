@@ -141,6 +141,7 @@ export interface TiempoVentaConfig {
   tiempoLimiteCorta: number;      // Minutos bloqueo ruta corta (default 90)
   tiempoAlertaExtendida: number;  // Minutos alerta ruta extendida (default 135)
   tiempoLimiteExtendida: number;  // Minutos bloqueo ruta extendida (default 140)
+  tiempoAnticipacion?: number;    // Minutos de anticipacion antes de salida real (default 45)
 }
 
 export const DEFAULT_TIEMPO_VENTA_CONFIG: TiempoVentaConfig = {
@@ -148,6 +149,7 @@ export const DEFAULT_TIEMPO_VENTA_CONFIG: TiempoVentaConfig = {
   tiempoLimiteCorta: 90,
   tiempoAlertaExtendida: 135,
   tiempoLimiteExtendida: 140,
+  tiempoAnticipacion: 45,
 };
 
 export const TIEMPO_VENTA_CONFIG_KEY = 'rg_tiempo_venta_config';
@@ -180,6 +182,25 @@ export function esRutaCorta(ruta: string): boolean {
   return false;
 }
 
+/**
+ * En retornos parroquiales hacia Loja, la hora del rol corresponde al paso por Malacatos
+ * (El Tambo) o salida desde Vilcabamba (La Elvira, Zahuayco, Yangana), pero el bus sale
+ * antes desde la cabecera parroquial:
+ * - El Tambo / La Elvira / Zahuayco -> Loja: 60 min antes del rol
+ * - Yangana -> Loja: 30 min antes del rol
+ */
+export function getOffsetCabeceraMinutos(ruta: string): number {
+  const r = (ruta || '').trim().toLowerCase();
+  if (!r || r.startsWith('loja') || !r.includes('loja')) return 0;
+  if (r.includes('tambo') || r.includes('elvira') || r.includes('zahuayco')) {
+    return 60;
+  }
+  if (r.includes('yangana')) {
+    return 30;
+  }
+  return 0;
+}
+
 export interface EstadoTiempoVenta {
   minutosTranscurridos: number;
   tiempoAlerta: number;
@@ -191,6 +212,7 @@ export interface EstadoTiempoVenta {
   esPernocta?: boolean;
   bloqueadoPorAnticipacion?: boolean;
   tiempoAnticipacionMinutos?: number;
+  offsetCabeceraMinutos?: number;
 }
 
 export function calcularEstadoTiempoVenta(
@@ -205,7 +227,14 @@ export function calcularEstadoTiempoVenta(
   const esCorta = esRutaCorta(ruta);
   const tiempoAlerta = esCorta ? config.tiempoAlertaCorta : config.tiempoAlertaExtendida;
   const tiempoLimite = esCorta ? config.tiempoLimiteCorta : config.tiempoLimiteExtendida;
-  const TIEMPO_ANTICIPACION_MAX = 45; // Ventas permitidas maximo 45 min antes de salida
+  const anticipacionBase = Math.max(
+    0,
+    typeof config.tiempoAnticipacion === "number" && !isNaN(config.tiempoAnticipacion)
+      ? config.tiempoAnticipacion
+      : (DEFAULT_TIEMPO_VENTA_CONFIG.tiempoAnticipacion ?? 45)
+  );
+  const offsetCabecera = getOffsetCabeceraMinutos(ruta);
+  const TIEMPO_ANTICIPACION_MAX = anticipacionBase + offsetCabecera; // Anticipacion efectiva respecto a hora del rol
 
   if (!horaFrecuencia) {
     return {
@@ -219,6 +248,7 @@ export function calcularEstadoTiempoVenta(
       esPernocta: Boolean(esPernoctaRetorno),
       bloqueadoPorAnticipacion: false,
       tiempoAnticipacionMinutos: TIEMPO_ANTICIPACION_MAX,
+      offsetCabeceraMinutos: offsetCabecera,
     };
   }
 
@@ -238,6 +268,7 @@ export function calcularEstadoTiempoVenta(
       esPernocta: Boolean(esPernoctaRetorno),
       bloqueadoPorAnticipacion: false,
       tiempoAnticipacionMinutos: TIEMPO_ANTICIPACION_MAX,
+      offsetCabeceraMinutos: offsetCabecera,
     };
   }
 
@@ -290,5 +321,6 @@ export function calcularEstadoTiempoVenta(
     esPernocta: esPernoctaEfectiva,
     bloqueadoPorAnticipacion,
     tiempoAnticipacionMinutos: TIEMPO_ANTICIPACION_MAX,
+    offsetCabeceraMinutos: offsetCabecera,
   };
 }
